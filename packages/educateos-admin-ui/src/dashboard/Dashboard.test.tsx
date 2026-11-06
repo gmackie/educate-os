@@ -2,7 +2,7 @@
 // The aggregates never name a minor and never show what anyone wrote: the screens read only the
 // count-and-total routes, and nothing they render carries a name or a per-person row.
 import { describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/dom";
+import { screen, waitFor, within } from "@testing-library/dom";
 import { STUDENT_NAMES, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 
@@ -40,6 +40,27 @@ describe("the dashboard", () => {
     expect(within(roster).getByText("None")).toBeTruthy();
     expect(within(roster).getByText(/managed by hand/)).toBeTruthy();
     expect(within(roster).queryByText("OneRoster CSV export")).toBeNull();
+  });
+});
+
+describe("the district's name", () => {
+  it("renames the district, trimmed, and offers no rename until the name changes (SCHO-344)", async () => {
+    const district = fakeDistrict();
+    const { user } = renderConsole(district.client, "dashboard");
+    const form = await screen.findByRole("form", { name: "Rename the district" });
+    const name = within(form).getByRole("textbox", { name: /Name/ });
+    const rename = within(form).getByRole("button", { name: "Rename" }) as HTMLButtonElement;
+    expect((name as HTMLInputElement).value).toBe("Fake Unified");
+    expect(rename.disabled).toBe(true);
+
+    await user.clear(name);
+    expect(rename.disabled).toBe(true);
+    await user.type(name, "  Northfield Co-op ");
+    await user.click(rename);
+    expect(await screen.findByText("The district is now named Northfield Co-op.", { selector: "*:not([data-testid=announcer])" })).toBeTruthy();
+    expect(district.calls.find((c) => c.name === "admin.renameDistrict")!.input).toStrictEqual({ body: { name: "Northfield Co-op" } });
+    // The dashboard reloads the district, whose name now matches what was typed.
+    await waitFor(() => expect(rename.disabled).toBe(true));
   });
 });
 

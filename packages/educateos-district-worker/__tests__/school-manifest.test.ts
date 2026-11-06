@@ -1,11 +1,12 @@
 // The public school manifest at /.well-known/educateos.json (ADR-0014, SCHO-259).
-import { SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
+import { importJWK, SignJWT, type JWK } from "jose";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { describe, expect, it } from "vitest";
 import {
   readSchoolManifestSettings, SCHOOL_MANIFEST_PATH, SchoolManifest, schoolManifest, serveSchoolManifest,
 } from "../src/school-manifest.ts";
-import { TEST_CONFIG } from "./fixtures.ts";
+import { ACCESS_AUDIENCE, ACCESS_ISSUER, TEST_CONFIG } from "./fixtures.ts";
 
 const CONFIG = JSON.stringify(TEST_CONFIG);
 const ORIGIN = "https://northfield.educateos.io";
@@ -46,6 +47,28 @@ describe("the school manifest", () => {
     expect(preflight.response.headers.get("access-control-allow-origin")).toBe("*");
     const post = await fetchWorker(new Request(url, { method: "POST", body: "{}" }));
     expect(post.response.status).toBe(405);
+  });
+
+  it("names the district as its directory now does, after an administrator renames it (SCHO-344)", async () => {
+    const rename = async (name: string) => {
+      const admin = NORTHFIELD.principals.find((p) => p.id === "prn_nf-district-admin")!.externalIdentities[0]!.subject;
+      const key = await importJWK(JSON.parse(env.TEST_ACCESS_PRIVATE_JWK) as JWK, "RS256");
+      const now = Math.floor(Date.now() / 1000);
+      const assertion = await new SignJWT({ iss: ACCESS_ISSUER, aud: ACCESS_AUDIENCE, sub: admin, iat: now, exp: now + 300 })
+        .setProtectedHeader({ alg: "RS256", kid: "test-access-key" })
+        .sign(key);
+      return fetchWorker(new Request("https://district.example/api/admin/district", {
+        method: "POST",
+        headers: { "cf-access-jwt-assertion": assertion, "content-type": "application/json" },
+        body: JSON.stringify({ name }),
+      }));
+    };
+    const renamed = await rename(" Northfield Co-op ");
+    expect(renamed.response.status).toBe(200);
+    expect(JSON.parse(renamed.body)).toMatchObject({ id: NORTHFIELD.district.id, name: "Northfield Co-op" });
+    const { body } = await fetchWorker(new Request(`https://district.example${SCHOOL_MANIFEST_PATH}`));
+    expect(SchoolManifest.parse(JSON.parse(body)).name).toBe("Northfield Co-op");
+    expect((await rename(NORTHFIELD.district.name)).response.status).toBe(200);
   });
 
   it("serves only its exact path", async () => {

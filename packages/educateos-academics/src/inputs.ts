@@ -114,3 +114,8 @@ export const PrincipalPatch = z.strictObject({
 });
 /** A change to a principal. */
 export type PrincipalPatch = z.infer<typeof PrincipalPatch>;
+
+/** A district's new name (SCHO-344), as a district administrator sets it: trimmed, 1 to 120 characters. */
+export const DistrictRename = z.strictObject({ name: z.string().trim().min(1).max(120) });
+/** A district's new name. */
+export type DistrictRename = z.infer<typeof DistrictRename>;

@@ -122,6 +122,11 @@ export interface SchoolManifestInputs {
   requestOrigin: string;
   /** The Worker's version tag, if the deploy set one (`CF_VERSION_METADATA.tag`). */
   versionTag?: unknown;
+  /**
+   * The district's name as its directory now has it, which an administrator may have changed
+   * (`admin.renameDistrict`, SCHO-344). Without it, the name `DISTRICT_CONFIG` seeded the district with.
+   */
+  districtName?: string | undefined;
 }
 
 /** Builds the manifest. Throws when either configuration is invalid. */
@@ -131,7 +136,7 @@ export function schoolManifest(inputs: SchoolManifestInputs): SchoolManifest {
   const tag = typeof inputs.versionTag === "string" && inputs.versionTag !== "" ? inputs.versionTag : null;
   return SchoolManifest.parse({
     v: 1,
-    name: config.directory.district.name,
+    name: inputs.districtName ?? config.directory.district.name,
     origin: settings.origin ?? inputs.requestOrigin,
     brand: { logo: settings.logo ?? null, accent: settings.accent ?? null },
     signIn: settings.signIn ?? impliedSignIn(config),

@@ -201,6 +201,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).app.guardDirectory.admittedSubject(request);
   }
 
+  /** The district's name as its directory now has it (SCHO-344), for the public school manifest. */
+  async districtName(): Promise<string> {
+    return (await (await this.#boot()).app.guardDirectory.ledgerDirectory()).district.name;
+  }
+
   /** The profile-free directory the AI call guard's ledger resolves funding against. */
   async ledgerDirectory(): Promise<DistrictDirectorySnapshot> {
     return (await this.#boot()).app.guardDirectory.ledgerDirectory();

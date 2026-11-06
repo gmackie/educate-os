@@ -189,6 +189,19 @@ describe("a co-op administrator manages its people (SCHO-212)", () => {
     expectError(await district.call(teacher, "admin.grantDistrictAdmin", { params: { principalId: NF.admin }, body: {} }), 404, "not-found");
     expectError(await district.call(teacher, "admin.updatePrincipal", { params: { principalId: NF.admin }, body: { displayName: "X" } }), 404, "not-found");
   });
+
+  it("renames the district for administrators only, audited, and every reader sees the new name (SCHO-344)", async () => {
+    const district = await bootDistrict(COOP, { authority: "local" });
+    const { admin, teacher } = await buildCoopClass(district);
+    const renamed = await district.ok(admin, "admin.renameDistrict", { body: { name: "  Northfield Co-op  " } });
+    expect(renamed).toStrictEqual({ ...NORTHFIELD.district, name: "Northfield Co-op" });
+    expect((await district.stores.directory.load()).snapshot.district.name).toBe("Northfield Co-op");
+    expect(district.audit.events().filter((e) => e.action === "update" && e.resourceKind === "district").map((e) => e.effect)).toStrictEqual(["allow"]);
+    expectError(await district.call(admin, "admin.renameDistrict", { body: { name: " " } }), 400, "validation-failed");
+    expectError(await district.call(admin, "admin.renameDistrict", { body: { name: "x".repeat(121) } }), 400, "validation-failed");
+    expectError(await district.call(teacher, "admin.renameDistrict", { body: { name: "Not Ours" } }), 403, "forbidden");
+    expect((await district.stores.directory.load()).snapshot.district.name).toBe("Northfield Co-op");
+  });
 });
 
 describe("modules and pages in a roster district", () => {

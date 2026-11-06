@@ -258,7 +258,10 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   Administrators then correct a person's name, email or kind (`admin.updatePrincipal`), deactivate
   or reactivate them (`admin.setPrincipalStatus`), and make staff district administrators or take
   that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always
-  keeps one active administrator, and nobody can remove their own administration.
+  keeps one active administrator, and nobody can remove their own administration. Any district
+  administrator, roster district or not, can rename the district (`admin.renameDistrict`, `POST
+  /api/admin/district`, SCHO-344): `directory.district.name` only seeds the name on the Durable
+  Object's first start, and the school manifest, every screen and the calendar feed read the stored one.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD` (a comma-separated list, see [Sign-in](#sign-in)).
 - `CLEVER_DISTRICT_TOKEN` (optional secret, SCHO-203): the district-app token Clever issued for the
   district, for the scheduled Clever roster sync. It is not a deploy input (the wizard requires every

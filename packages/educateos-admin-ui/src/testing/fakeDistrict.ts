@@ -530,12 +530,18 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   let approvedRemoval: string | undefined;
   const HELD_FINGERPRINT = "a".repeat(64);
   const libraryCourses: { packageId: string; version: string }[] = [];
+  let districtName = "Fake Unified";
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
     "me.get": () => ({ principalId: "prn_fk-admin", districtId: "dst_fake", kind: "staff", displayName: "Avery Admin", roles: [], enrollments: [] }) as never,
+    "admin.renameDistrict": (input: Record<string, unknown>) => {
+      districtName = String((input.body as { name: string }).name).trim();
+      return { id: "dst_fake" as never, name: districtName, timeZone: "America/Chicago", trustedIssuers: [ISSUER] };
+    },
     "admin.health": () => ({
       districtId: "dst_fake",
+      districtName,
       directory: { schools: 2, terms: 1, offerings: CLASSES.length, students: 91, staff: 5, activeEnrollments: 96 },
       work: { workspaces: 12, artifacts: 30, submissions: 8, installedActivities: 4 },
       content: { awaitingReview: 3, releases: 2 },
