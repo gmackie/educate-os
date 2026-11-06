@@ -13,7 +13,7 @@
 moved the instance to one origin: the router serves `https://northfield.educateos.io`, with the
 LMS at `/` (the district Worker, through the router's `DISTRICT` binding) and the Workshop at `/ai`
 (its RPC at `/ai/api`, its frontend built with `VITE_WORKSHOP_BASE_PATH=/ai/`). One Access
-application ("SchoolOS (demo district)", the backend's `CF_ACCESS_AUD`) covers the host, and
+application ("EducateOS Northfield", renamed from "SchoolOS (demo district)" on 2026-11-06; the backend's `CF_ACCESS_AUD`) covers the host, and
 "EducateOS Northfield (bypass)" covers the paths that check their own credential. The router also
 holds `schoolos.gmac.io` and `district.schoolos.gmac.io` and answers there only with `/healthz`
 and redirects (`LEGACY_HOSTS`: 301 for GET and HEAD, 308 otherwise). Workshop sign-in resolves the
