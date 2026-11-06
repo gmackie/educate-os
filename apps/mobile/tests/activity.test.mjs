@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  clock, handInStatus, isFinished, permittedResources, readiness, spokenFrame, spokenText, stepWork, studentNotes, workByStep, workSteps, workTitle,
+  clock, handInStatus, isFinished, sharedComment, permittedResources, readiness, spokenFrame, spokenText, stepWork, studentNotes, workByStep, workSteps, workTitle,
 } from '../src/activity.ts';
 import { gradeRange, isElementaryBand, isYoungLearnerBand } from '../src/gradeBand.ts';
 
@@ -111,4 +111,14 @@ test('hand-in status: the newest attempt not withdrawn, with every attempt count
   assert.deepEqual(handInStatus([first, { ...second, withdrawnAt: '2026-11-03T10:00:00Z' }], 3),
     { handedIn: true, attempt: 1, submittedAt: first.submittedAt, used: 2, allowed: 3 });
   assert.equal(handInStatus([{ ...first, withdrawnAt: '2026-11-03T10:00:00Z' }], 1).handedIn, false);
+});
+
+test('sharedComment shows the newest released comment, or nothing', () => {
+  assert.equal(sharedComment(undefined), undefined);
+  assert.equal(sharedComment([]), undefined);
+  assert.equal(sharedComment([{ comments: [{ body: '  ', enteredAt: '2026-11-01T00:00:00Z' }] }]), undefined);
+  assert.equal(sharedComment([
+    { comments: [{ body: 'Old note', enteredAt: '2026-11-01T00:00:00Z' }] },
+    { comments: [{ body: ' Great retelling! ', enteredAt: '2026-11-06T00:00:00Z' }, { body: 'Earlier', enteredAt: '2026-11-02T00:00:00Z' }] },
+  ]), 'Great retelling!');
 });

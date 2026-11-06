@@ -89,8 +89,15 @@ export type CalendarEvent = {
   offeringId?: string; assignmentId?: string;
 };
 export type GuardianChild = { studentPrincipalId: string; displayName: string };
+/** Feedback the teacher has released to the child, as the guardian route returns it (oldest first). */
+export type GuardianFeedback = { submissionId: string; state: string; comments: { id: string; body: string; enteredAt: string }[]; updatedAt: string };
 export type GuardianCourse = ClassItem & {
-  assignments: { assignment: { id: string; title: string; dueAt: string; kind: string }; grades: { score: { points: number; maxPoints: number } }[] }[];
+  assignments: {
+    assignment: { id: string; title: string; dueAt: string; kind: string };
+    grades: { score: { points: number; maxPoints: number } }[];
+    /** Older districts leave it out. */
+    feedback?: GuardianFeedback[];
+  }[];
   /** Bare announcements here, unlike the student routes' `{ announcement, courseLabel }`. */
   announcements?: Announcement['announcement'][];
 };
