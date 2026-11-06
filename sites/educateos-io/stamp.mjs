@@ -35,11 +35,11 @@ export function stamp(html, path) {
     const current = markup.replaceAll(`<a href="${path}">`, `<a href="${path}" aria-current="page">`);
     html = html.replace(marked, () => `<!-- site:${name} -->\n${current}\n<!-- /site:${name} -->`);
   }
-  // Marketing analytics stays disabled until observe.gmac.io is healthy and registered.
+  // observe.gmac.io is verified; enable cookieless collection on reviewed marketing paths.
   // Exclude demos, intake, operator and district surfaces even if a shared layout is reused.
   html = html.replace(/<!-- site:analytics -->[\s\S]*?<!-- \/site:analytics -->\n?/g, "");
   if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|pricing\/?$|privacy\/?$)/.test(path)) {
-    html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="false"></script><!-- /site:analytics -->\n</body>');
+    html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><!-- /site:analytics -->\n</body>');
   }
   return html.replace(/<span class="status[^"]*" data-status="([^"]+)">[^<]*<\/span>/g, (_, key) => chip(key, path));
 }

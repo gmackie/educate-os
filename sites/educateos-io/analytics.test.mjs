@@ -9,7 +9,7 @@ const html = '<!-- site:header --><!-- /site:header --><!-- site:footer --><!-- 
 
 test('marketing mount defaults off and is idempotent', () => {
   const result = stamp(html, '/teachers/');
-  assert.match(result, /dataflare.js" data-enabled="false"/);
+  assert.match(result, /dataflare.js" data-enabled="true"/);
   assert.equal(stamp(result, '/teachers/'), result);
 });
 test('restricted pages never receive an analytics mount', () => {
