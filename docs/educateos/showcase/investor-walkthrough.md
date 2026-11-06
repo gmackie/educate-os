@@ -104,8 +104,6 @@ The three messages to land, in this order:
   yet, and the console says so." Honest answers build trust.
 - Click **AI budgets**: "AI spend is capped and budgeted by the district. In this demo no AI runs,
   so it reads zero."
-- Until the demo is redeployed with SCHO-327, skip **Dashboard** and **Policies**: they read "not
-  set up" in the deployed build.
 
 ## 5:45 [Integrations: Cedar Valley]
 

@@ -22,7 +22,7 @@
   (tablet) and 390x844 (phone). On a phone the banner and tour strip take about a quarter of the
   screen, so present from a laptop.
 - [ ] Zoom 100%. For a large room, 110% to 125% still fits every tour screen; check step 2 (the
-  teacher's submission list) and step 5 (the gradebook) at your zoom.
+  teacher's submission list) and step 6 (the gradebook) at your zoom.
 - [ ] Allow the microphone for `educateos.io` (step 1 records). Turn system sound on if you will
   use **Read to me**; the voice is the browser's own.
 - [ ] Light theme unless you have checked yours: the header's theme button switches it for every
@@ -34,7 +34,7 @@
 - [ ] Open `https://educateos.io/demo/?presenter` a few minutes before. The picker shows in about
   a second; the district is ready (tour button enabled) in about 4 seconds on a laptop, and up to
   15 seconds on a slow machine or network.
-- [ ] Press `?` to check presenter mode: keys `1` to `8` open tour steps, `→` and `←` step
+- [ ] Press `?` to check presenter mode: keys `1` to `9` open tour steps, `→` and `←` step
   through. Keys do nothing while the cursor is in a text field: click the page background first.
 - [ ] Leave it on the picker, with Northfield selected.
 
@@ -72,15 +72,11 @@
 
 ## Known rough edges
 
-From the 2026-11-02 rehearsal ([README](README.md#rehearsal-findings-2026-11-02)):
+From the 2026-11-02 rehearsal ([README](README.md#rehearsal-findings-2026-11-02)), rechecked on the
+deployed demo on 2026-11-05 at 1280x800:
 
-- Until the demo is redeployed with SCHO-327, the admin's **Dashboard** and **Policies** read "not
-  set up". Enter the admin through tour step 8 (All classes) and skip both.
-- Priya's seeded recordings are hummed stand-ins, not speech. Say so, or record Mateo first.
-- Tour steps 3, 4 and 6 open at the top of a long page: scroll to the tutor or to **Grade and
-  feedback** on cue.
-- Step 7 opens Lucía; click **Mateo Delgado** for the richer page.
-- Resources are listed as "Resource 1". Don't point at them.
+- Tour steps 5 (Chidi) and 7 (Amara) stop at the tutor and **My work**, not at **Grade and
+  feedback**, which is about two screens further down. Scroll to it on cue.
 
 ## Live district: northfield.educateos.io
 
