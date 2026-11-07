@@ -357,6 +357,12 @@ export interface DemoDistrictDeployment {
    * `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
    */
   showcase?: "northfield";
+  /**
+   * `PRODUCT_ANALYTICS` (SCHO-350): the analytics service the district's pages may send usage
+   * events to, as `ProductAnalyticsDeployment` JSON. Demo districts only, until DATFLR-3's legal
+   * review; an administrator must still turn it on. Absent, analytics stays off.
+   */
+  productAnalytics?: string;
 }
 
 /** A demo district's Worker name: its own, so its own Durable Object namespace. */
@@ -410,6 +416,7 @@ export function buildDemoDistrictConfigs({
       ...district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust },
       ...district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: district.courseLibraryTrust },
       ...district.showcase === undefined ? {} : { DEMO_SHOWCASE: district.showcase },
+      ...district.productAnalytics === undefined ? {} : { PRODUCT_ANALYTICS: district.productAnalytics },
     };
     if (district.oneOrigin?.enabled) {
       // No router in front: the district answers /ai itself, so the Worker runs first for it.

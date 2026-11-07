@@ -56,6 +56,7 @@ import { QuizService } from "@educateos/quizzes";
 import { quizGrading } from "./quizzes.ts";
 // Devices (SCHO-261)
 import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord } from "./devices.ts";
+import { productAnalyticsForAdmin, productAnalyticsForClient, type ProductAnalyticsDeployment } from "./product-analytics.ts";
 import type { DeviceBody } from "./routes.ts";
 // Pairing (SCHO-261)
 import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
@@ -208,6 +209,13 @@ export interface DistrictAppOptions {
    * one shorter than 32 characters) device sign-in is off, and `/api/m/*` answers 503.
    */
   deviceTokenSecret?: string;
+
+  // Product analytics (SCHO-350)
+  /**
+   * The analytics service this deployment names (`PRODUCT_ANALYTICS`). Without it, product
+   * analytics cannot be turned on and every signed-in person's pages are told it is off.
+   */
+  productAnalytics?: ProductAnalyticsDeployment;
 
   // Operations (SCHO-263)
   /** What the district says about the release it runs, on `/api/ops/health` and `/api/ops/releases`. */
@@ -865,6 +873,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   }
 
   const handlers: Handlers = {
+    // Anyone signed in learns whether their pages may send usage events (SCHO-350); nothing about who decided.
+    "me.productAnalytics": async (ctx) => productAnalyticsForClient(ctx.snapshot.district, options.productAnalytics),
     "me.get": async (ctx) => {
       const me = ctx.snapshot.principals.find((p) => p.id === ctx.principal.principalId)!;
       const facts = subjectFactsFrom(ctx.snapshot, me.id);
@@ -1472,6 +1482,20 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return authoringPrincipalById((await stores.directory.load()).snapshot, params.principalId, now());
     },
     "admin.renameDistrict": (ctx, { body }) => ctx.academics().renameDistrict(ctx.caller, body),
+    // Product analytics (SCHO-350): read like the district's health; changed like its name.
+    "admin.productAnalytics": async (ctx) => {
+      await ctx.requireDistrict("read", "district");
+      return productAnalyticsForAdmin(ctx.snapshot.district, options.productAnalytics);
+    },
+    "admin.setProductAnalytics": async (ctx, { body }) => {
+      if (body.enabled && options.productAnalytics === undefined) {
+        // Decided first, so a non-administrator learns nothing about the deployment.
+        await ctx.requireDistrict("update", "district");
+        throw new EducateOsError("conflict", "This deployment names no analytics service, so product analytics cannot be turned on.");
+      }
+      const district = await ctx.academics().setProductAnalytics(ctx.caller, body);
+      return productAnalyticsForAdmin(district, options.productAnalytics);
+    },
 
     // Gradebook (SCHO-187). Kept in one block, apart from the handlers above.
     "teacher.gradebook": (ctx, { params }) => ctx.gradebook().grid(ctx.caller, params.offeringId),

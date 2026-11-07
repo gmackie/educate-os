@@ -15,6 +15,7 @@ export * from "./communication/index.ts";
 export * from "./gadget-assessment.ts";
 // Devices (SCHO-261)
 export * from "./devices.ts";
+export * from "./product-analytics.ts";
 // Pairing (SCHO-261)
 export * from "./pairing.ts";
 // Operations (SCHO-263)

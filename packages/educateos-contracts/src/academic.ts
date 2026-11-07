@@ -19,6 +19,21 @@ import { UtcTimestamp } from "./primitives.ts";
  */
 export const ArchivedAt = UtcTimestamp;
 
+/**
+ * A district administrator's product-analytics decision (SCHO-350): whether the district's pages
+ * may send usage events to the analytics service its deployment names, and who decided it, when.
+ * Absent on a district, analytics is off: no district starts with it on.
+ */
+export const ProductAnalyticsSetting = z.strictObject({
+  enabled: z.boolean(),
+  /** When the administrator last turned it on or off. */
+  changedAt: UtcTimestamp,
+  /** The administrator who did. */
+  changedBy: PrincipalId,
+});
+/** A district's product-analytics decision. */
+export type ProductAnalyticsSetting = z.infer<typeof ProductAnalyticsSetting>;
+
 /** A district: the tenant, and the owner of every record beneath it. */
 export const District = z.strictObject({
   id: DistrictId,
@@ -27,6 +42,8 @@ export const District = z.strictObject({
   timeZone: z.string().min(1),
   /** The issuers whose identities this district trusts. An identity from any other is rejected. */
   trustedIssuers: z.array(z.url({ protocol: /^https$/ })).min(1),
+  /** Whether product analytics is on (SCHO-350). Absent means off. */
+  productAnalytics: ProductAnalyticsSetting.optional(),
 });
 /** A district. */
 export type District = z.infer<typeof District>;

@@ -16,7 +16,7 @@ import {
   demoDistrictConfigName, demoDistrictWorkerName, generateProductionConfigs, productionBuildEnv, productionPackageNames,
   productionWorkerName, renderProductionConfig, type DemoDistrictDeployment, type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
-import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST, EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
+import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST, DEMO_PRODUCT_ANALYTICS, EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 const PACKAGES = readDeployablePackages(PACKAGES_DIR);
@@ -373,6 +373,8 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
       COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
       // The showcase it may seed (SCHO-326).
       DEMO_SHOWCASE: "northfield",
+      // The analytics service an administrator may turn on (SCHO-350); off until one does.
+      PRODUCT_ANALYTICS: DEMO_PRODUCT_ANALYTICS,
     });
     // The district's assets, with /ai run through the Worker for its "AI isn't enabled" page.
     assert.deepEqual(config.assets, { ...district.assets, run_worker_first: [
@@ -538,6 +540,8 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
       COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
       // The showcase it may seed (SCHO-326).
       DEMO_SHOWCASE: "northfield",
+      // The analytics service an administrator may turn on (SCHO-350); off until one does.
+      PRODUCT_ANALYTICS: DEMO_PRODUCT_ANALYTICS,
     });
     const { assets: _a, vars: _v, ...rest } = config;
     const { assets: _b, vars: _w, ...restBefore } = before;

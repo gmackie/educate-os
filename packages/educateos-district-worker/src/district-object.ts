@@ -379,6 +379,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         // Demo showcase (SCHO-326)
         demoShowcase: this.env.DEMO_SHOWCASE,
         demoOperatorToken: this.env.DEMO_OPERATOR_TOKEN,
+        // Product analytics (SCHO-350)
+        productAnalytics: this.env.PRODUCT_ANALYTICS,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
