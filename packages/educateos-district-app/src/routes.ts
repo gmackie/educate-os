@@ -133,7 +133,7 @@ import {
   StudentQuizView,
 } from "@educateos/quizzes";
 import type { AcademicOperationName } from "@educateos/academics";
-import { CoursePatch, DistrictRename, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, SchoolPatch, TermPatch } from "@educateos/academics";
+import { CoursePatch, DistrictRename, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, ProductAnalyticsChange, SchoolPatch, TermPatch } from "@educateos/academics";
 import { EvidenceContract } from "@educateos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@educateos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@educateos/ai-governance";
@@ -157,6 +157,7 @@ import {
   WeeklyNote,
 } from "./communication/model.ts";
 import type { GuardianDigest } from "./communication/digest.ts";
+import { ProductAnalyticsAdminBody, ProductAnalyticsClientBody } from "./product-analytics.ts";
 
 /**
  * Which part of EducateOS a route belongs to. Student routes answer only student principals,
@@ -1101,6 +1102,12 @@ function route<const S extends RouteSpec>(spec: S): S {
 export const ROUTES = {
   // Me
   "me.get": route({ method: "GET", path: "/api/me", surface: "me", response: MeBody }),
+  /**
+   * Whether the caller's pages may send usage events, and where (SCHO-350): on only when the
+   * deployment names an analytics service and a district administrator turned it on. Read by
+   * `@educateos/shell` after sign-in; the public school manifest never carries it.
+   */
+  "me.productAnalytics": route({ method: "GET", path: "/api/me/product-analytics", surface: "me", response: ProductAnalyticsClientBody }),
 
   // Student: workspaces
   "student.listWorkspaces": route({ method: "GET", path: "/api/student/workspaces", surface: "student", response: z.array(WorkspaceViewBody) }),
@@ -1649,6 +1656,19 @@ export const ROUTES = {
    * policy decision is audited. Answers the district as it now stands.
    */
   "admin.renameDistrict": route({ method: "POST", path: "/api/admin/district", surface: "admin", body: DistrictRename, response: District }),
+  /**
+   * Product analytics as a district administrator sees it (SCHO-350): whether this deployment names
+   * an analytics service, whether it is on, and who last turned it on or off, when.
+   */
+  "admin.productAnalytics": route({ method: "GET", path: "/api/admin/district/product-analytics", surface: "admin", response: ProductAnalyticsAdminBody }),
+  /**
+   * Turns product analytics on or off (SCHO-350). District administrators only; the policy
+   * decision is audited. Turning it on where the deployment names no analytics service is a
+   * `conflict`; turning it off always works.
+   */
+  "admin.setProductAnalytics": route({
+    method: "POST", path: "/api/admin/district/product-analytics", surface: "admin", body: ProductAnalyticsChange, response: ProductAnalyticsAdminBody,
+  }),
   // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
   // policy engine with the guardian as subject, and built from the child's own view.
   "guardian.listChildren": route({ method: "GET", path: "/api/guardian/children", surface: "guardian", response: z.array(GuardianChildBody) }),

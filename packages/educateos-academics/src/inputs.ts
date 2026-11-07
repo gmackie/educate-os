@@ -119,3 +119,8 @@ export type PrincipalPatch = z.infer<typeof PrincipalPatch>;
 export const DistrictRename = z.strictObject({ name: z.string().trim().min(1).max(120) });
 /** A district's new name. */
 export type DistrictRename = z.infer<typeof DistrictRename>;
+
+/** A district administrator turning product analytics on or off (SCHO-350). */
+export const ProductAnalyticsChange = z.strictObject({ enabled: z.boolean() });
+/** Product analytics on or off. */
+export type ProductAnalyticsChange = z.infer<typeof ProductAnalyticsChange>;

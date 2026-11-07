@@ -18,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -123,6 +123,9 @@ export interface DistrictSettings {
   demoShowcase?: string | undefined;
   /** `DEMO_OPERATOR_TOKEN`, the bearer token of the demo operator's seed routes, a Worker secret. */
   demoOperatorToken?: string | undefined;
+  // Product analytics (SCHO-350)
+  /** `PRODUCT_ANALYTICS`, the analytics service the district's pages may send usage events to, as JSON. Without it analytics stays off. */
+  productAnalytics?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -266,6 +269,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const authority = authorityFor(config.authority);
   const marketplaceTrust = readMarketplaceTrust(settings.marketplaceTrust);
   const courseLibraryTrust = readCourseLibraryTrust(settings.courseLibraryTrust);
+  const productAnalytics = readProductAnalyticsDeployment(settings.productAnalytics);
   const analytics = analyticsSettings({
     CF_ANALYTICS_TOKEN: settings.analyticsToken,
     CF_ACCOUNT_ID: settings.analyticsAccountId,
@@ -321,6 +325,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(marketplaceTrust === undefined ? {} : { marketplaceTrust }),
     // Course library (SCHO-331): bundles are verified against the deployment's publisher pin.
     ...(courseLibraryTrust === undefined ? {} : { courseLibraryTrust }),
+    // Product analytics (SCHO-350): the service the deployment names; an administrator still turns it on.
+    ...(productAnalytics === undefined ? {} : { productAnalytics }),
     ...(analytics === undefined ? {} : {
       opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
     }),

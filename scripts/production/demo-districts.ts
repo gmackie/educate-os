@@ -53,6 +53,18 @@ export const EDUCATEOS_COURSE_LIBRARY_TRUST = JSON.stringify({ localDomains: [],
  */
 export const DEMO_SHOWCASE = "northfield";
 
+/**
+ * The analytics service the demo districts' pages may send usage events to (SCHO-350): the district
+ * Dataflare deployment (DATFLR-7, gmackie/glass-analytics `deployments/district`), project
+ * `educateos-district`, which accepts events only from these districts' origins. Each district's
+ * administrator must still turn product analytics on; it starts off. Never set for a customer
+ * district until DATFLR-3's legal review is done.
+ */
+export const DEMO_PRODUCT_ANALYTICS = JSON.stringify({
+  host: "https://glass-educateos-district.dataflare-district.workers.dev",
+  project: "educateos-district",
+});
+
 /** The demo districts deployed as their own district Workers, in fixture order. */
 export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   "riverbend", "prairie", "cedarvalley", "lakeshore", "harbor",
@@ -64,4 +76,5 @@ export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   marketplaceTrust: DEMO_MARKETPLACE_TRUST,
   courseLibraryTrust: EDUCATEOS_COURSE_LIBRARY_TRUST,
   showcase: DEMO_SHOWCASE,
+  productAnalytics: DEMO_PRODUCT_ANALYTICS,
 }));

@@ -42,6 +42,7 @@ import {
   NewTerm,
   OfferingPatch,
   PrincipalPatch,
+  ProductAnalyticsChange,
   SchoolPatch,
   TermPatch,
   type OfferingFilter,
@@ -759,6 +760,26 @@ export class AcademicDirectory {
     await this.#require(caller, "update", new Targets(snapshot).district("district"));
     if (snapshot.district.name === name) return snapshot.district;
     const district: District = { ...snapshot.district, name };
+    await this.#commit({ ...snapshot, district }, version);
+    return district;
+  }
+
+  /**
+   * Turns product analytics on or off for the district (SCHO-350), stamping who decided it and
+   * when. A district administrator's `update` on the district, decided (and so audited) by the
+   * authorizer, as a rename is. The decision is the district's own, whatever owns its roster.
+   * Setting it to what it already is changes nothing, so the stamp keeps the decision that counts.
+   * Whether the deployment names an analytics service at all is the caller's to check first.
+   */
+  async setProductAnalytics(caller: Caller, rawInput: ProductAnalyticsChange): Promise<District> {
+    const { enabled } = parseInput(ProductAnalyticsChange, rawInput);
+    const { snapshot, version } = await this.#store.load();
+    await this.#require(caller, "update", new Targets(snapshot).district("district"));
+    if ((snapshot.district.productAnalytics?.enabled ?? false) === enabled) return snapshot.district;
+    const district: District = {
+      ...snapshot.district,
+      productAnalytics: { enabled, changedAt: this.#now().toISOString(), changedBy: caller.principal.principalId },
+    };
     await this.#commit({ ...snapshot, district }, version);
     return district;
   }

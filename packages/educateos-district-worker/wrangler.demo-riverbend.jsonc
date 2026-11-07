@@ -62,6 +62,7 @@
     "SCHOOL_MANIFEST": "{\"origin\":\"https://riverbend.educateos.io\",\"features\":{\"ai\":false}}",
     "MARKETPLACE_TRUST": "{\"root\":{\"threshold\":1,\"keys\":[{\"keyId\":\"ed25519-ZcqIp-xFaMyAdLm9A_VLfM9gzi-04hir2JmHXqornqc\",\"publicKey\":\"mUuoDdWb6ERTjC_o3SI4hYf6pdb7tElPlkoVqPxx24k\"}]},\"keySetVersion\":0,\"keys\":[{\"keyId\":\"ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58\",\"publicKey\":\"LVFy9O5qtmgvCGs0uhfjF9Q3aJZ4cQhrYYyouuF6YKg\"}]}",
     "COURSE_LIBRARY_TRUST": "{\"localDomains\":[],\"publishers\":[{\"domain\":\"educateos.io\",\"keys\":[{\"keyId\":\"ed25519-71yD_H7OvXca1DCaK5pp8PV-vIbDw9K2H3ZARqsNiWo\",\"publicKey\":\"7TQKh8xhmsc6yI2MUmIiuntUli4NyGU4Sr2v10P-dPk\"}]}]}",
-    "DEMO_SHOWCASE": "northfield"
+    "DEMO_SHOWCASE": "northfield",
+    "PRODUCT_ANALYTICS": "{\"host\":\"https://glass-educateos-district.dataflare-district.workers.dev\",\"project\":\"educateos-district\"}"
   }
 }

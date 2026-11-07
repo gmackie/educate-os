@@ -35,7 +35,7 @@ export const ROSTER_EXTERNAL: AuthorityMap = {
 /** A directory over a fresh copy of `snapshot`, authorized by the role table unless overridden. */
 export function directoryFor(
   snapshot: DistrictDirectorySnapshot = NORTHFIELD,
-  options: { authority?: AuthorityMap; authorizer?: Authorizer } = {},
+  options: { authority?: AuthorityMap; authorizer?: Authorizer; now?: () => Date } = {},
 ) {
   const store = InMemoryAcademicStore.seeded(snapshot);
   const authority = options.authority ?? ALL_LOCAL;
@@ -43,6 +43,7 @@ export function directoryFor(
     store,
     authority,
     authorizer: options.authorizer ?? new RoleTableAuthorizer(storePrincipalFacts(store)),
+    ...(options.now === undefined ? {} : { now: options.now }),
   });
   return { store, directory, authority };
 }
