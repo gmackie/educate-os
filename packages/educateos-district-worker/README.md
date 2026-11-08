@@ -307,9 +307,9 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   audited, stored on the district; absent means off), and only then does `GET
   /api/me/product-analytics` tell signed-in pages where to send events. It never appears in the
   public school manifest, which the phone app validates strictly. Unset, analytics cannot be turned
-  on; a malformed value fails the start. Only the demo districts set it (`DEMO_PRODUCT_ANALYTICS`
-  in `scripts/production/demo-districts.ts`); no customer district until the student-data legal
-  review (DATFLR-3). Not a deploy input.
+  on; a malformed value fails the start. Only the demo districts set it, Northfield
+  (schoolos.gmac.io) included (`DEMO_PRODUCT_ANALYTICS` in `scripts/production/demo-districts.ts`);
+  no customer district until the student-data legal review (DATFLR-3). Not a deploy input.
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
 - `LTI_PLATFORM` (optional): `on` also serves the district as an LTI 1.3 Platform for third-party tools (SCHO-179, `src/lti-platform.ts`), at `LTI_TOOL_ORIGIN`. Any other value, or unset, leaves it off, as every production configuration does. See [docs/educateos/lti.md](../../docs/educateos/lti.md#educateos-as-an-lti-platform-scho-179-if-10).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
