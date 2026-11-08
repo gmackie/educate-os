@@ -16,6 +16,30 @@ test('restricted pages never receive an analytics mount', () => {
   for (const path of ['/demo/', '/app', '/interest/demo/', '/registry/abc', '/district/student', '/clever/launch']) {
     assert.doesNotMatch(stamp(html, path), /dataflare.js/);
     // Even copying the marketing bootstrap to one of these pages cannot load a remote SDK.
-    runInNewContext(source, {document: {currentScript: {dataset: {enabled: 'true'}}, createElement() {throw new Error('Unexpected remote SDK load');}}, location: {pathname: path}});
+    runInNewContext(source, browser(path, () => {throw new Error('Unexpected remote SDK load');}));
   }
+});
+
+// A minimal browser for the journey loader v2: it needs window, navigator and document.head.
+function browser(pathname, createElement) {
+  const window = {};
+  return {window, navigator: {}, location: {pathname, hash: '', search: ''}, document: {currentScript: {dataset: {enabled: 'true'}}, head: {append() {}}, createElement}};
+}
+
+test('the loader collects only the reviewed marketing paths, cookieless and without identify', () => {
+  const loads = (path) => {
+    let loaded = false;
+    runInNewContext(source, browser(path, () => { loaded = true; return {addEventListener() {}}; }));
+    return loaded;
+  };
+  for (const path of ['/', '/teachers/', '/leaders', '/families/', '/developers/', '/developers/mcp', '/gadgets/', '/connectors/x', '/pricing', '/privacy/']) {
+    assert.equal(loads(path), true, path);
+  }
+  for (const path of ['/teachers/demo', '/interest/', '/tour/', '/demo/', '/privacy/extra', '/app']) {
+    assert.equal(loads(path), false, path);
+  }
+  assert.match(source, /project: 'educateos-site'/);
+  assert.match(source, /persistence: 'cookieless'/);
+  assert.match(source, /identify: false/);
+  assert.match(source, /replay: false/);
 });
