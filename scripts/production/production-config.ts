@@ -157,6 +157,12 @@ export interface ProductionInstance {
      * bundles the district's course library imports, as `PublisherTrust` JSON. Absent, it imports none.
      */
     courseLibraryTrust?: string;
+    /**
+     * `PRODUCT_ANALYTICS` (SCHO-350): the analytics service the district's pages may send usage
+     * events to, as `ProductAnalyticsDeployment` JSON. Demo districts only, until DATFLR-3's legal
+     * review; an administrator must still turn it on. Absent, analytics stays off.
+     */
+    productAnalytics?: string;
   };
   /**
    * One origin per district (ADR-0014): when `enabled`, the router serves the district at the root
@@ -560,6 +566,7 @@ export function buildProductionConfigs({
         .flatMap((name) => guardVars[name] === undefined ? [] : [[name, guardVars[name]]]));
       const showcase: Record<string, string> = {
         ...instance.district.showcase === undefined ? {} : { DEMO_SHOWCASE: instance.district.showcase },
+        ...instance.district.productAnalytics === undefined ? {} : { PRODUCT_ANALYTICS: instance.district.productAnalytics },
         ...instance.district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: instance.district.courseLibraryTrust },
       };
       vars = { ...hallMonitorVars, ...showcase, ...vars };

@@ -106,7 +106,8 @@ declare namespace Cloudflare {
     /**
      * Product analytics (SCHO-350): the analytics service this district's pages may send usage
      * events to, as JSON (`ProductAnalyticsDeployment` from `@educateos/district-app`: an https
-     * `host` origin and a `project`). Set only by the generated demo configs (scripts/production),
+     * `host` origin and a `project`). Set only by the generated demo district and Northfield (schoolos.gmac.io)
+     * configs (scripts/production),
      * never by a customer district until its legal review is done (DATFLR-3). Unset, analytics stays
      * off; set, a district administrator must still turn it on.
      */
