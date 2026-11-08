@@ -93,9 +93,6 @@ export default defineConfig({
       // Bundled blueprint files are user-authored gadget source extracted verbatim for review. They
       // do not follow the host repository's lint rules and must round-trip without code changes.
       '**/bundled-blueprints/blueprints/*/files/**',
-      // The Dataflare journey loader is copied verbatim from glass-analytics
-      // (deployments/observe/journey-loader/dataflare.js) with only its CONFIG block edited (SCHO-352).
-      'sites/educateos-io/public/assets/dataflare.js',
       '**/*.gen.ts',
       '**/node_modules/**',
       '**/.wrangler/**',

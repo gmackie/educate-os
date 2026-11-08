@@ -10,6 +10,8 @@
 //   window.dataflare?.reset()                                     // on sign-out
 (() => {
   const CONFIG = {
+    // Canonical glass-analytics code follows; keep this repo's lint rules off it (SCHO-352).
+    /* eslint-disable unicorn/no-useless-fallback-in-spread */
     project: 'educateos-site',
     // Path prefixes that are never collected: no SDK, no events. End an entry with $ for one exact path.
     exclude: ['/admin', '/api'],
