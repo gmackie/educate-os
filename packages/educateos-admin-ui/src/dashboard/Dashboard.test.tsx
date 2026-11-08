@@ -8,7 +8,8 @@ import { renderConsole } from "../testing/renderConsole.tsx";
 
 /** The routes whose answers are counts and totals only. */
 // `me.get` is the shell asking who is signed in, to name them and draw their navigation (SCHO-260).
-const AGGREGATE_ROUTES = new Set(["admin.health", "admin.aiUsage", "admin.getConfig", "admin.planConfig", "me.get"]);
+// `admin.productAnalytics` is the district's own on/off setting, never anything about a person (SCHO-350).
+const AGGREGATE_ROUTES = new Set(["admin.health", "admin.aiUsage", "admin.getConfig", "admin.planConfig", "admin.productAnalytics", "me.get"]);
 
 describe("the dashboard", () => {
   it("shows counts and totals for every area, and no student's name", async () => {
@@ -61,6 +62,37 @@ describe("the district's name", () => {
     expect(district.calls.find((c) => c.name === "admin.renameDistrict")!.input).toStrictEqual({ body: { name: "Northfield Co-op" } });
     // The dashboard reloads the district, whose name now matches what was typed.
     await waitFor(() => expect(rename.disabled).toBe(true));
+  });
+
+  it("turns product analytics on and off, saying what it sends and that a privacy review comes first (SCHO-350)", async () => {
+    const district = fakeDistrict();
+    const { user } = renderConsole(district.client, "dashboard");
+    const card = (await screen.findByRole("heading", { name: "Product analytics" })).parentElement!;
+    const toggle = (await within(card).findByRole("switch", { name: "Count visits to this district's pages" })) as HTMLButtonElement;
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(within(card).getByText("Turn this on only after your district's student-privacy review approves it.")).toBeTruthy();
+    expect(within(card).getByText(/never sends a name, an id, what anyone wrote/)).toBeTruthy();
+    expect(within(card).getByText("Off since the district was set up.")).toBeTruthy();
+
+    await user.click(toggle);
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    expect(district.calls.find((c) => c.name === "admin.setProductAnalytics")!.input).toStrictEqual({ body: { enabled: true } });
+    expect(within(card).getByText(/^Turned on on /)).toBeTruthy();
+    expect(card.textContent).not.toMatch(/prn_/);
+
+    await user.click(toggle);
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("false"));
+    expect(district.calls.filter((c) => c.name === "admin.setProductAnalytics").map((c) => c.input)).toStrictEqual([{ body: { enabled: true } }, { body: { enabled: false } }]);
+  });
+
+  it("offers no switch to flip where the deployment names no analytics service (SCHO-350)", async () => {
+    const district = fakeDistrict({ productAnalyticsConfigured: false });
+    renderConsole(district.client, "dashboard");
+    const card = (await screen.findByRole("heading", { name: "Product analytics" })).parentElement!;
+    const toggle = (await within(card).findByRole("switch", { name: "Count visits to this district's pages" })) as HTMLButtonElement;
+    expect(toggle.disabled || toggle.getAttribute("aria-disabled") === "true").toBe(true);
+    expect(within(card).getByText("This deployment has no analytics service, so it cannot be turned on.")).toBeTruthy();
+    expect(district.calls.some((c) => c.name === "admin.setProductAnalytics")).toBe(false);
   });
 });
 

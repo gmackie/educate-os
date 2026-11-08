@@ -10,3 +10,5 @@ export * from "./manifest.ts";
 export * from "./theme.ts";
 export * from "./SchoolShell.tsx";
 export * from "./SchoolNavigation.tsx";
+export * from "./productAnalytics.ts";
+export * from "./useProductAnalytics.ts";

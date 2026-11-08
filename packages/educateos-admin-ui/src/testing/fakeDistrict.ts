@@ -332,6 +332,8 @@ export interface FakeDistrictOptions {
    * or a status the district cannot read.
    */
   rosterSync?: "runnable" | "feed-rejected" | "removal-held" | "not-runnable" | "unreadable";
+  /** Whether the deployment names an analytics service, so product analytics can be turned on (SCHO-350). Defaults to true. */
+  productAnalyticsConfigured?: boolean;
 }
 
 /** The sign-in an `unlinked` caller signed in with. */
@@ -531,10 +533,21 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   const HELD_FINGERPRINT = "a".repeat(64);
   const libraryCourses: { packageId: string; version: string }[] = [];
   let districtName = "Fake Unified";
+  const productAnalyticsConfigured = options.productAnalyticsConfigured ?? true;
+  let productAnalytics: { enabled: boolean; changedAt: string | null; changedBy: string | null } = { enabled: false, changedAt: null, changedBy: null };
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
     "me.get": () => ({ principalId: "prn_fk-admin", districtId: "dst_fake", kind: "staff", displayName: "Avery Admin", roles: [], enrollments: [] }) as never,
+    "admin.productAnalytics": () => ({ configured: productAnalyticsConfigured, ...productAnalytics }) as never,
+    "admin.setProductAnalytics": (input: Record<string, unknown>) => {
+      const { enabled } = input.body as { enabled: boolean };
+      if (enabled && !productAnalyticsConfigured) {
+        throw new DistrictApiError(409, { code: "conflict", message: "This deployment names no analytics service, so product analytics cannot be turned on.", correlationId: "req-analytics" });
+      }
+      if (productAnalytics.enabled !== enabled) productAnalytics = { enabled, changedAt: "2026-11-07T12:00:00.000Z", changedBy: "prn_fk-admin" };
+      return { configured: productAnalyticsConfigured, ...productAnalytics } as never;
+    },
     "admin.renameDistrict": (input: Record<string, unknown>) => {
       districtName = String((input.body as { name: string }).name).trim();
       return { id: "dst_fake" as never, name: districtName, timeZone: "America/Chicago", trustedIssuers: [ISSUER] };

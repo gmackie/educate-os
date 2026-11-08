@@ -4,7 +4,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SchoolNavigation, type SchoolManifest } from '@educateos/shell'
+import { SchoolNavigation, type ProductAnalyticsSource, type SchoolManifest } from '@educateos/shell'
 import { ThemeProvider, storedThemeMode } from '@gadgets/ui/theme'
 
 vi.mock('@tanstack/react-router', () => ({ useRouterState: () => '/ai/' }))
@@ -104,6 +104,37 @@ describe('whether the Workshop is framed', () => {
     expect(container.textContent).toBe('off')
     await act(async () => startDistrictFrame('/ai/', async () => { throw new Error('offline') }))
     expect(container.textContent).toBe('off')
+  })
+})
+
+describe('product analytics in the AI workspace (SCHO-350)', () => {
+  const HOST = 'https://glass-educateos-district.dataflare-district.workers.dev'
+  const sdkScripts = () => [...document.head.querySelectorAll(`script[src="${HOST}/s.js"]`)]
+  const source = (enabled: boolean) => ({
+    config: vi.fn<ProductAnalyticsSource['config']>(async () => (enabled ? { enabled: true, host: HOST, project: 'educateos-district' } : { enabled: false })),
+    role: vi.fn<ProductAnalyticsSource['role']>(async () => 'student'),
+  })
+
+  afterEach(() => {
+    for (const script of sdkScripts()) script.remove()
+    delete (window as { __educateosProductAnalytics?: true }).__educateosProductAnalytics
+  })
+
+  it('is asked only on a framed district page, and loads only when the district turned it on', async () => {
+    const atRoot = source(true)
+    await act(async () => startDistrictFrame('/', ready(NORTHFIELD), atRoot))
+    const withoutAi = source(true)
+    await act(async () => startDistrictFrame('/ai/', ready({ ...NORTHFIELD, features: { ...NORTHFIELD.features, ai: false } }), withoutAi))
+    expect(atRoot.config).not.toHaveBeenCalled()
+    expect(withoutAi.config).not.toHaveBeenCalled()
+
+    const off = source(false)
+    await act(async () => startDistrictFrame('/ai/', ready(NORTHFIELD), off))
+    expect(off.config).toHaveBeenCalledOnce()
+    expect(sdkScripts()).toHaveLength(0)
+
+    await act(async () => startDistrictFrame('/ai/', ready(NORTHFIELD), source(true)))
+    expect(sdkScripts()).toHaveLength(1)
   })
 })
 
