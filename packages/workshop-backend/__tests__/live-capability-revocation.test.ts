@@ -109,7 +109,7 @@ async function workspace(owner: Principal): Promise<DurableObjectStub<OverseerDu
   let stub = env.TEST_OVERSEER.getByName(`revocation-${++counter}`);
   await runInDurableObject(stub, async (instance: OverseerDurableObject) => {
     let impl = (instance as unknown as { impl: any }).impl;
-    let commitId = await impl.gitStore.writeFilesAsCommit(new Map([["server.js", SERVER_JS]]), {
+    let commitId = await impl.gitCache.writeFilesAsCommit(new Map([["server.js", SERVER_JS]]), {
       parents: [],
       author: { name: "Owner", email: "owner@example.com" },
       message: "synthetic gadget",
@@ -253,7 +253,7 @@ describe("revoking a collaborator", () => {
     let student = await principal("collaborator");
     let ws = await workspace(owner);
     await student.user.recordSharedWorkspaceOpen(
-        ws.id.toString(), "Synthetic workspace", { type: "user", id: owner.name, name: "owner" }, "build");
+        ws.id.toString(), "Synthetic workspace", { type: "user", id: owner.name, name: "owner" }, "build", []);
     await admit(ws, owner, "gadget.execute");
     await admit(ws, student, "gadget.execute");
     using gadget = await ws.testGadgetFacet(GADGET_ID);

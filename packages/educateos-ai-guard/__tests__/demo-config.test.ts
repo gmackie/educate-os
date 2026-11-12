@@ -41,9 +41,10 @@ describe("schoolos.gmac.io demo guard config", () => {
     expect(config.directory?.principals.find((p) => p.id === context?.principal.principalId)?.kind).toBe("staff");
   });
 
-  it("prices every Workers AI model the Workshop suggests, within the per-principal cap", () => {
+  it("prices every visible Workers AI model the Workshop suggests, within the per-principal cap", () => {
     const capUsdNano = BigInt(config.policy.aiMonthlyCapCentsPerPrincipal) * 10_000_000n;
     for (const [modelId, model] of Object.entries(SUGGESTED_MODELS.cloudflare)) {
+      if ("hidden" in model && model.hidden) continue;
       const rate = rateFor(config, { provider: "cloudflare", modelId });
       expect(rate, modelId).toBeDefined();
       const hold = BigInt(estimateMaxUsdNano(rate!, model.outputLimit));
@@ -80,6 +81,7 @@ describe("schoolos.gmac.io demo guard config", () => {
     const context = (await resolver.resolve({ initiator: { type: "gadget", id: ADMIN } }))!;
     const ledger = new AiLedger({ districtId: config.districtId, store: new InMemoryLedgerStore(), source: new ConfiguredGovernanceSource(config) });
     for (const [modelId, model] of Object.entries(SUGGESTED_MODELS.cloudflare)) {
+      if ("hidden" in model && model.hidden) continue;
       const ref = { provider: "cloudflare" as const, modelId };
       const reserved = await ledger.reserve(`demo-${modelId.replaceAll(/[^a-z0-9]/g, "-")}`, context.principal, context.workspace, ref,
         estimateMaxUsdNano(rateFor(config, ref)!, model.outputLimit));

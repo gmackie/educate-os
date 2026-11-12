@@ -53,19 +53,19 @@
         },
         {
           "provider": "cloudflare",
-          "modelId": "@cf/zai-org/glm-5.3-flash"
-        },
-        {
-          "provider": "cloudflare",
-          "modelId": "@cf/deepseek-ai/deepseek-v4-pro-0813"
-        },
-        {
-          "provider": "cloudflare",
           "modelId": "@cf/cloudflare/clef"
         },
         {
           "provider": "cloudflare",
           "modelId": "@cf/cloudflare/clef-flash"
+        },
+        {
+          "provider": "cloudflare",
+          "modelId": "@cf/deepseek-ai/deepseek-v4.1-flash-1017"
+        },
+        {
+          "provider": "cloudflare",
+          "modelId": "@cf/zai-org/glm-5.3"
         }
       ]
     },
@@ -99,16 +99,6 @@
     },
     {
       "provider": "cloudflare",
-      "modelId": "@cf/zai-org/glm-5.3-flash",
-      "mode": "enabled"
-    },
-    {
-      "provider": "cloudflare",
-      "modelId": "@cf/deepseek-ai/deepseek-v4-pro-0813",
-      "mode": "enabled"
-    },
-    {
-      "provider": "cloudflare",
       "modelId": "@cf/cloudflare/clef",
       "mode": "enabled"
     },
@@ -121,6 +111,16 @@
       "provider": "cloudflare",
       "modelId": "hall-monitor-evaluate",
       "mode": "hidden"
+    },
+    {
+      "provider": "cloudflare",
+      "modelId": "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+      "mode": "enabled"
+    },
+    {
+      "provider": "cloudflare",
+      "modelId": "@cf/zai-org/glm-5.3",
+      "mode": "enabled"
     }
   ],
   "policy": {
@@ -156,28 +156,6 @@
     },
     {
       "provider": "cloudflare",
-      "modelId": "@cf/zai-org/glm-5.3-flash",
-      "priceBookId": "educateos-demo-conservative-2026-10",
-      "inputUsdNanoPerMTok": "1000000000",
-      "outputUsdNanoPerMTok": "4000000000",
-      "cacheReadUsdNanoPerMTok": "200000000",
-      "cacheWriteUsdNanoPerMTok": "1000000000",
-      "reserveInputTokens": 128000,
-      "defaultMaxOutputTokens": 32768
-    },
-    {
-      "provider": "cloudflare",
-      "modelId": "@cf/deepseek-ai/deepseek-v4-pro-0813",
-      "priceBookId": "educateos-demo-conservative-2026-10",
-      "inputUsdNanoPerMTok": "1000000000",
-      "outputUsdNanoPerMTok": "4000000000",
-      "cacheReadUsdNanoPerMTok": "200000000",
-      "cacheWriteUsdNanoPerMTok": "1000000000",
-      "reserveInputTokens": 128000,
-      "defaultMaxOutputTokens": 32768
-    },
-    {
-      "provider": "cloudflare",
       "modelId": "@cf/cloudflare/clef",
       "reserveInputTokens": 65536,
       "defaultMaxOutputTokens": 16
@@ -187,6 +165,28 @@
       "modelId": "@cf/cloudflare/clef-flash",
       "reserveInputTokens": 65536,
       "defaultMaxOutputTokens": 16
+    },
+    {
+      "provider": "cloudflare",
+      "modelId": "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+      "priceBookId": "educateos-demo-conservative-2026-10",
+      "inputUsdNanoPerMTok": "1000000000",
+      "outputUsdNanoPerMTok": "4000000000",
+      "cacheReadUsdNanoPerMTok": "200000000",
+      "cacheWriteUsdNanoPerMTok": "1000000000",
+      "reserveInputTokens": 1048576,
+      "defaultMaxOutputTokens": 32768
+    },
+    {
+      "provider": "cloudflare",
+      "modelId": "@cf/zai-org/glm-5.3",
+      "priceBookId": "educateos-demo-conservative-2026-10",
+      "inputUsdNanoPerMTok": "1000000000",
+      "outputUsdNanoPerMTok": "4000000000",
+      "cacheReadUsdNanoPerMTok": "200000000",
+      "cacheWriteUsdNanoPerMTok": "1000000000",
+      "reserveInputTokens": 1048576,
+      "defaultMaxOutputTokens": 32768
     }
   ],
   "moderation": {

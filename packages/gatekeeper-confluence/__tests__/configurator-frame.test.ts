@@ -139,6 +139,7 @@ describe("choosing", () => {
     await picker.tab("Spaces").click();
     await picker.option("My first space").click();
     await poll(picker.location).toBe("Spaces My first space");
+    // The location changes before the space's pages load, so wait for them too.
     await poll(picker.titles).toEqual([
       "All of My first space", "My first space", "Blog", "Engineering", "Onboarding", "Q4 planning",
       "Retro board", "Launch tracker", "Archive",

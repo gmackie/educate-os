@@ -60,6 +60,12 @@
       "new_sqlite_classes": [
         "UserDirectoryDurableObject"
       ]
+    },
+    {
+      "tag": "v4",
+      "new_sqlite_classes": [
+        "AdminAuditDurableObject"
+      ]
     }
   ],
   "account_id": "c07a7e704db1808e1fff91bed2b1cd49",
