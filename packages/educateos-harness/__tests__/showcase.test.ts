@@ -103,7 +103,7 @@ describe("the Northfield showcase, seeded through the district API", () => {
     // The due dates below are fixed, and a due date must fall after installation, so install on a
     // fixed day before them instead of today. Only Date is faked; timers and I/O stay real.
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-01T12:00:00Z") });
-    onTestFinished(() => vi.useRealTimers());
+    onTestFinished(() => { vi.useRealTimers(); });
     const fresh = await bootNorthfield();
     const showcase = { ...NORTHFIELD_SHOWCASE, courses: NORTHFIELD_SHOWCASE.courses.filter((c) => c.offeringId === "off_nf-g1math-fall-r7") };
     await seedShowcase({ showcase, adminId: ADMIN, actAs: fresh.actAs, dueAt: (days) => `2026-11-${String(2 + days).padStart(2, "0")}T15:30:00-05:00` });
