@@ -21,11 +21,11 @@
   "bindings": {
     "LLM": {
       "title": "AI model",
-      "description": "The model the tutor talks with. A Workers AI model the district's AI guard prices; @cf/zai-org/glm-5.3-flash is suggested.",
+      "description": "The model the tutor talks with. A Workers AI model the district's AI guard prices; @cf/zai-org/glm-5.3 is suggested.",
       "type": "aiModel",
       "suggestedModel": {
         "provider": "cloudflare",
-        "modelName": "@cf/zai-org/glm-5.3-flash"
+        "modelName": "@cf/zai-org/glm-5.3"
       },
       "audience": "3-5"
     }
