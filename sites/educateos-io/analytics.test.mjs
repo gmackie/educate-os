@@ -43,3 +43,8 @@ test('the loader collects only the reviewed marketing paths, cookieless and with
   assert.match(source, /identify: false/);
   assert.match(source, /replay: false/);
 });
+
+test('the loader sends to the first-party /_glass deployment, never a third-party host', () => {
+  assert.match(source, /const HOST = 'https:\/\/educateos\.io\/_glass';/);
+  assert.doesNotMatch(source, /const HOST = 'https:\/\/observe\.gmac\.io'/);
+});

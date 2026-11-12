@@ -1,4 +1,6 @@
-# observe.gmac.io rollout
+# Marketing analytics rollout
+
+Since 2026-11-12 (DATFLR-13) the site sends to its own Dataflare deployment at https://educateos.io/_glass (Worker glass-educateos-site, Basin lake, 395-day retention), not observe.gmac.io. The history below is kept as written.
 
 Browser integration is present but disabled. The analytics endpoint returned HTTP 522 during preparation. Enable only after DATFLR-1 proves its production deployment and the project is registered. This uses the direct HTTPS endpoint; no Worker service name/account is assumed. Worker/DO capture is available through worker.ts with an optional DATAFLARE service binding. Await capture or persist an application outbox; do not treat waitUntil as durable delivery.
 

@@ -1,7 +1,7 @@
 # Dataflare app onboarding
 
 Project: educateos-site
-Deployment: https://observe.gmac.io
+Deployment: https://educateos.io/_glass
 Framework: Plain HTML
 App Worker: educateos-site
 Durable Object bindings: CONTROL_PLANE, INTEREST
@@ -13,7 +13,7 @@ For a conservative first rollout, copy browser.js to the app public assets and l
 For the general SDK defaults, add this to index.html (inside <head>, on every page):
 
 ```
-<script defer src="https://observe.gmac.io/s.js" data-project="educateos-site"></script>
+<script defer src="https://educateos.io/_glass/s.js" data-project="educateos-site"></script>
 ```
 
 The generated worker.ts capture helper also works from a Worker/DO without a service binding, using HTTPS ingest at the selected host. Pass {} as its environment for direct capture. Same-origin proxying requires a service binding and returns 503 if it is absent.

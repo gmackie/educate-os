@@ -1,4 +1,4 @@
-// Dataflare journey loader v2 for observe.gmac.io.
+// Dataflare journey loader v2, sending to educateos.io's own Dataflare at /_glass (DATFLR-13).
 // Canonical source: gmackie/glass-analytics deployments/observe/journey-loader/dataflare.js (DATFLR-9).
 // Copy this file to the app's public/dataflare.js and edit ONLY the CONFIG block.
 // Load it once from the root document: <script defer src="/dataflare.js" data-enabled="true"></script>
@@ -29,7 +29,8 @@
     hashRouting: false,
   };
 
-  const HOST = 'https://observe.gmac.io';
+  // Not the canonical observe.gmac.io: educateos.io uses its first-party deployment (DATFLR-13).
+  const HOST = 'https://educateos.io/_glass';
   const script = document.currentScript;
   const pending = [];
   let ready = null;
