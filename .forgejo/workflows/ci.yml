@@ -202,9 +202,9 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       # The gatekeepers' configurator-frame suites launch headless Chromium through Playwright. The
-      # runner image's browser cache is not tied to the locked Playwright, so install the matching one.
+      # runner image has neither the browser the locked Playwright expects nor its system libraries.
       - name: Install the headless Chromium Playwright launches
-        run: pnpm --filter @gadgets/confluence-gatekeeper exec playwright install chromium --only-shell
+        run: pnpm --filter @gadgets/confluence-gatekeeper exec playwright install --with-deps chromium --only-shell
       - name: Test Workshop packages (browser suites excluded)
         run: >-
           node scripts/vp/run.ts --cache --fail-if-no-match
