@@ -1,5 +1,5 @@
 {
-  "host": "https://observe.gmac.io",
+  "host": "https://educateos.io/_glass",
   "project": "educateos-site",
   "wranglerConfig": "wrangler.jsonc"
 }

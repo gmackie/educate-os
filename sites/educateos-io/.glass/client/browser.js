@@ -6,12 +6,12 @@
   if (!allowed()) return;
   if (window.doNotTrack === '1' || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
   const script = document.createElement('script');
-  script.src = "https://observe.gmac.io/s.js";
+  script.src = "https://educateos.io/_glass/s.js";
   // No data-project: initialize explicitly below, before any event can be captured.
   script.addEventListener('load', () => {
     if (!window.glass || typeof window.glass.init !== 'function') return;
     window.glass.init({
-      host: "https://observe.gmac.io", project: "educateos-site",
+      host: "https://educateos.io/_glass", project: "educateos-site",
       persistence: "cookieless",
       autocapture: { pageviews: true, clicks: false, errors: false, webVitals: false },
       flags: false, replay: false,

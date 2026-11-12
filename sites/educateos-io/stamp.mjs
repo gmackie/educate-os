@@ -35,7 +35,7 @@ export function stamp(html, path) {
     const current = markup.replaceAll(`<a href="${path}">`, `<a href="${path}" aria-current="page">`);
     html = html.replace(marked, () => `<!-- site:${name} -->\n${current}\n<!-- /site:${name} -->`);
   }
-  // observe.gmac.io is verified; enable cookieless collection on reviewed marketing paths.
+  // educateos.io/_glass is verified; enable cookieless collection on reviewed marketing paths.
   // Exclude demos, intake, operator and district surfaces even if a shared layout is reused.
   html = html.replace(/<!-- site:analytics -->[\s\S]*?<!-- \/site:analytics -->\n?/g, "");
   if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|pricing\/?$|privacy\/?$)/.test(path)) {
