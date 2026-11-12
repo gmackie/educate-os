@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createDistrictApiClient, type DistrictApiClient } from "@educateos/api-client";
 import type { PrincipalId } from "@educateos/contracts";
 import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, SHOWCASE_BANDS, type ShowcaseBand } from "@educateos/fixtures";
@@ -30,9 +30,13 @@ describe("the Northfield showcase, seeded through the district API", () => {
   let district: Awaited<ReturnType<typeof bootNorthfield>>;
   let first: ShowcaseSummary;
   beforeAll(async () => {
+    // Fixture due dates belong to this school week, independent of the host clock.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-02T12:00:00Z"));
     district = await bootNorthfield();
     first = await district.seed();
   }, 120_000);
+  afterAll(() => vi.useRealTimers());
 
   it("makes every class of every band, with nothing skipped", () => {
     expect(first.skipped).toStrictEqual([]);
