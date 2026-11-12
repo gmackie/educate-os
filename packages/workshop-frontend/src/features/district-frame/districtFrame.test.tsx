@@ -108,7 +108,7 @@ describe('whether the Workshop is framed', () => {
 })
 
 describe('product analytics in the AI workspace (SCHO-350)', () => {
-  const HOST = 'https://glass-educateos-district.dataflare-district.workers.dev'
+  const HOST = 'https://glass-educateos-district.educateos-demo.workers.dev'
   const sdkScripts = () => [...document.head.querySelectorAll(`script[src="${HOST}/s.js"]`)]
   const source = (enabled: boolean) => ({
     config: vi.fn<ProductAnalyticsSource['config']>(async () => (enabled ? { enabled: true, host: HOST, project: 'educateos-district' } : { enabled: false })),
