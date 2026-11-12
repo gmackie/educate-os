@@ -55,8 +55,15 @@ describe("independent creation and connection discovery", () => {
     }]);
   });
 
-  it("hides a vendor advertising neither connections nor creations", async () => {
-    for (const resources of [[], [{ ...CREATION, creatable: false }]]) {
+  it("keeps account-only vendors visible for their singleton or management UI", async () => {
+    const { inUser } = fixture([]);
+    expect(await inUser(user => user.listGatekeeperVendors())).toMatchObject([{
+      id: "example", supportedResources: [],
+    }]);
+  });
+
+  it("hides a vendor whose advertised resources allow neither connections nor creations", async () => {
+    for (const resources of [[{ ...CREATION, creatable: false }]]) {
       const { inUser } = fixture(resources);
       expect(await inUser(user => user.listGatekeeperVendors())).toEqual([]);
     }
