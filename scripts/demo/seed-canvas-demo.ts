@@ -85,6 +85,7 @@ interface Assignment { id: number; name: string; description: string; published:
 interface Enrollment { user_id: number; type: string; enrollment_state: string }
 interface Module { id: number; name: string; published: boolean }
 interface Page { page_id: number; url: string; title: string; body: string; published: boolean }
+interface Topic { id: number; title: string; message: string; published: boolean }
 interface ModuleItem { type: string; content_id?: number; page_url?: string }
 
 /** Creates only missing fixture-owned records; verification checks the real account without writes. */
@@ -146,6 +147,27 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
         if (!assignment.published || assignment.points_possible !== points || !assignment.submission_types.includes("online_text_entry")) problems.push(`Assignment configuration drift: ${planned.offeringId}/${activity.key}`);
       }
     }
+    const topicIds = new Map<string, number>();
+    for (const kind of ["discussions", "announcements"] as const) {
+      const existing = await client.list<Topic>(`${base}/discussion_topics?per_page=100${kind === "announcements" ? "&only_announcements=true" : ""}`);
+      for (const [index, topic] of planned[kind].entries()) {
+        const key = "key" in topic ? topic.key : `announcement-${index + 1}`;
+        const title = `[educateos-demo:${key}] ${topic.title}`;
+        const matches = existing.filter(t => t.title === title);
+        if (matches.length > 1) throw new Error(`Duplicate topic: ${title}`);
+        let record = matches[0];
+        if (record && !record.message.includes("managed by seed-canvas-demo.ts")) throw new Error(`Unowned topic collision: ${title}`);
+        if (!record && mode === "run") record = (await client.request<Topic>("POST", `${base}/discussion_topics`, {
+          title, message: marker + paragraphs("prompt" in topic ? topic.prompt : topic.body),
+          published: true, is_announcement: kind === "announcements", discussion_type: "threaded",
+        })).value;
+        if (!record) problems.push(`Missing ${kind} ${planned.offeringId}/${key}`);
+        else {
+          if (!record.published) problems.push(`Unpublished topic ${planned.offeringId}/${key}`);
+          if (kind === "discussions") topicIds.set(key, record.id);
+        }
+      }
+    }
     const modules = await client.list<Module>(`${base}/modules?per_page=100`);
     const pages = await client.list<Page>(`${base}/pages?per_page=100`);
     for (const [position, unit] of planned.modules.entries()) {
@@ -175,6 +197,13 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
           else problems.push(`Missing module assignment link ${planned.offeringId}/${item.key}`);
         }
       }
+      for (const item of unit.items.filter(i => i.kind === "discussion")) {
+        const topicId = topicIds.get(item.key);
+        if (topicId && !items.some(i => i.type === "Discussion" && i.content_id === topicId)) {
+          if (mode === "run") await client.request("POST", `${base}/modules/${module.id}/items`, { module_item: { type: "Discussion", content_id: topicId } });
+          else problems.push(`Missing module discussion link ${planned.offeringId}/${item.key}`);
+        }
+      }
       if (!module.published) {
         if (mode === "run") await client.request("PUT", `${base}/modules/${module.id}`, { module: { published: true } });
         else problems.push(`Unpublished module ${planned.offeringId}/${position}`);
@@ -187,7 +216,7 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
     mappings.push(mapped);
   }
   return { accountId: ACCOUNT, users: userIds.size, courses: mappings, problems,
-    pending: ["quizzes and discussions", "EducateOS offering/identity links", "LTI launches", "student submissions", "teacher-approved grade return"] };
+    pending: ["quizzes and discussion participation", "EducateOS offering/identity links", "LTI launches", "student submissions", "teacher-approved grade return"] };
 }
 
 async function main() {

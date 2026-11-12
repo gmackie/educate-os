@@ -31,8 +31,10 @@ provider before retrying. For hosts with a slow IPv4 connection and no IPv6 rout
 `--dns-result-order=ipv4first --network-family-autoselection-attempt-timeout=3000` may be needed.
 
 The new Canvas courses still need their own LTI deployments and approved context/identity mappings
-to the live district. A matching fixture ID is **not** an approved identity link. Modules currently
-include activities and introductions; quizzes, discussions and learner work remain to be populated.
+to the live district. A matching fixture ID is **not** an approved identity link. Modules include activities, introductions and discussion links. The seed also creates published
+synthetic discussion topics and announcements using stable titles and ownership markers; it refuses
+collisions and preserves existing content. Quizzes, discussion participation and learner work remain
+to be populated.
 The seed does not manufacture grade approvals or claim grade-return acceptance.
 
 ## Harbor and Classroom
@@ -74,7 +76,8 @@ policies or elevate an unlinked identity to make a demo pass.
 ## Live evidence, 2026-11-12
 
 - Canvas seed and read-only verification: 32 people, 12 published courses, 24 assignments,
-  24 module introductions and linked activities; no reported configuration problems.
+  24 module introductions and linked activities, four discussion topics and fourteen announcements;
+  GET-only verification reports no configuration problems.
 - Harbor seed and read-only verification: four real courses, eight published app-owned assignments; no reported problems.
 - Northfield showcase verification: twelve sample courses installed, all four bands populated;
   35 personas, ten linked. Existing co-op offerings retained.

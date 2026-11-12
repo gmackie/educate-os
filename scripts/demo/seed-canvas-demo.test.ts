@@ -72,11 +72,11 @@ test("a second run creates nothing and verification leaves unrelated account rec
       const rows = enrollments.get(path) ?? []; enrollments.set(path, rows);
       if (method === "GET") value = rows;
       else { rows.push(body.enrollment); value = body.enrollment; }
-    } else if (/^courses\/\d+\/(modules|pages)$/.test(path) || /^courses\/\d+\/modules\/\d+\/items$/.test(path)) {
+    } else if (/^courses\/\d+\/(modules|pages|discussion_topics)$/.test(path) || /^courses\/\d+\/modules\/\d+\/items$/.test(path)) {
       const rows = collections.get(path) ?? []; collections.set(path, rows);
       if (method === "GET") value = rows;
       else {
-        const row = { id: nextId++, ...body.module, ...body.module_item, ...body.wiki_page };
+        const row = { id: nextId++, ...body.module, ...body.module_item, ...body.wiki_page, ...(path.endsWith("discussion_topics") ? body : {}) };
         if (body.wiki_page) { row.page_id = row.id; row.url = `page-${row.id}`; }
         rows.push(row); value = row;
       }
@@ -92,6 +92,11 @@ test("a second run creates nothing and verification leaves unrelated account rec
   };
   const client = new CanvasClient("secret", transport);
   assert.deepEqual((await seedCanvasDemo(client, "run")).problems, []);
+  const topics = [...collections.entries()].filter(([path]) => path.endsWith("/discussion_topics")).flatMap(([, rows]) => rows);
+  assert.equal(topics.filter(t => t.is_announcement).length, canvasDemoPlan().courses.reduce((n, c) => n + c.announcements.length, 0));
+  assert.equal(topics.filter(t => !t.is_announcement).length, canvasDemoPlan().courses.reduce((n, c) => n + c.discussions.length, 0));
+  assert.ok(topics.every(t => t.published && t.message.includes("managed by seed-canvas-demo.ts")));
+  assert.ok([...collections.values()].flat().some(row => row.type === "Discussion"));
   const firstWrites = writes;
   assert.ok(firstWrites > 50);
   assert.deepEqual((await seedCanvasDemo(client, "run")).problems, []);
