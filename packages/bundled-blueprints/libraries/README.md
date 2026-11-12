@@ -71,7 +71,7 @@ test runs against a stub of `cloudflare:workers` that the package's vitest confi
 - [`sync`](sync/README.md) -- collaboration plumbing: on the server a mutation queue, a subscriber
   registry with presence seeding and broadcast, and versioned upserts; on the client a save scheduler
   with retry backoff, a presence roster and a subscribe helper. The Docs, Sheets and Slides
-  blueprints build on it.
+  blueprints build on it (Docs without presence).
 - [`tutor`](tutor/README.md) -- the bundled AI tutors' page (read-aloud, one-tap replies, sizes by
   grade band) and conversation loop (prompt, privacy filter, reply shaping, transcript export), drawn
   from each tutor's persona. Built on `ui`.

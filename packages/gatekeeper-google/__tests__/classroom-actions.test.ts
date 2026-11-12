@@ -37,6 +37,8 @@ describe("Classroom coursework creation", () => {
   it("queues the assignment, and creates it only once approved", async () => {
     let id = await actions.submit(queue, "createCourseWork", { draft: { title: "Lab 2", maxPoints: 20 } });
 
+    expect(submitted[0]).toMatchObject({ autoApprovable: false, actionKind: { tag: "classroom-create-coursework" } });
+    expect(actions.autoApprovableKinds()).toEqual([]);
     expect(submitted[0].title).toBe("Create Classroom assignment: Lab 2");
     expect(submitted[0].description).toMatch(/created as a draft/);
     expect(submitted[0].fields).toContainEqual(expect.objectContaining({ label: "Assignment", kind: "json" }));
@@ -82,6 +84,7 @@ describe("Classroom grade passback", () => {
   it("patches assignedGrade, then returns the submission, once approved", async () => {
     let id = await actions.submit(queue, "setGrade", grade());
 
+    expect(submitted[0]).toMatchObject({ autoApprovable: false, actionKind: { tag: "classroom-set-grade" } });
     expect(submitted[0].title).toBe("Grade Classroom submission: 92.5 out of 100");
     expect(submitted[0].description).toMatch(/return it to the student/);
     expect(classroom.requests).toEqual([]);

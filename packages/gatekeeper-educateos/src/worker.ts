@@ -206,6 +206,7 @@ const CHANGE_KIND: ActionKind = { tag: "school-change", label: "Change school re
 const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: AssessmentChange; checkpoint: AssessmentCheckpointChange }>({
   checkpoint: {
     kind: { tag: "assessment-checkpoint", label: "Submit current Gadget" },
+    autoApprovable: false,
     delivery: "await-decision",
     describe: (change) => ({
       title: "Submit current Gadget",
@@ -233,6 +234,7 @@ const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: As
   },
   assessment: {
     kind: { tag: "assessment-submission", label: "Submit assessment evidence" },
+    autoApprovable: false,
     delivery: "await-decision",
     describe: (change) => ({ title: "Submit assessment evidence", description: `Assignment ${change.assignmentId}\n${change.revisions.map((revision) => `${revision.artifactId} @ ${revision.revisionId}`).join("\n")}`, implementsRevert: false }),
     apply: async (change, host) => {
@@ -247,6 +249,7 @@ const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: As
   },
   change: {
     kind: CHANGE_KIND,
+    autoApprovable: false,
     delivery: "await-decision",
     // The district's own queue runs a change at most once, so a retried apply is harmless.
     describe: (change) => describeChange(change),

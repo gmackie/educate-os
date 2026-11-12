@@ -525,6 +525,7 @@ const SHARED_GATEKEEPER_CREDS: Record<string, { id: string; secret: string }> = 
   "gatekeeper-x": { id: "X_CLIENT_ID", secret: "X_CLIENT_SECRET" },
   "gatekeeper-clever": { id: "CLEVER_CLIENT_ID", secret: "CLEVER_CLIENT_SECRET" },
   "gatekeeper-microsoft": { id: "MICROSOFT_CLIENT_ID", secret: "MICROSOFT_CLIENT_SECRET" },
+  "gatekeeper-pagerduty": { id: "PAGERDUTY_CLIENT_ID", secret: "PAGERDUTY_CLIENT_SECRET" },
 };
 
 // Deployment-configured vars a gatekeeper reads that its committed `wrangler.jsonc` deliberately
@@ -551,6 +552,8 @@ const PASSTHROUGH_GATEKEEPER_VARS: Record<string, string[]> = {
   // is: unset, it talks to clever.com and api.clever.com, with no district connected. Point both
   // bases at a demo district's fakes, with the login-hint form on, to try it without a Clever app.
   "gatekeeper-clever": ["CLEVER_DISTRICT_TOKENS", "CLEVER_API_BASE", "CLEVER_OAUTH_BASE", "CLEVER_LOGIN_HINT_FORM"],
+  // The signing secret of the PagerDuty webhook a tunnel delivers to; unset, hooks are refused.
+  "gatekeeper-pagerduty": ["PAGERDUTY_WEBHOOK_SECRET"],
   // The Entra tenant (or allowlist of tenant IDs) to accept, which must be set or the gatekeeper
   // refuses to start, the most agents may do in SharePoint, Outlook and Calendar (unset: write, send
   // and schedule), and whether SharePoint asks for every site or only those granted to the app
@@ -603,6 +606,8 @@ for (const gk of gatekeepers) {
   // For local testing, create an account named "admin" to test admin features.
   config.vars = config.vars || {};
   config.vars.ADMINS = ["admin"];
+  // A local instance, where `cf-os api` may act as anyone. Never set by a deployment.
+  config.vars.WORKSHOP_ENVIRONMENT = "development";
 
   if (cloudflareOsDeployment !== undefined) {
     config.vars.CLOUDFLARE_OS_DEPLOYMENT = cloudflareOsDeployment;
@@ -625,6 +630,8 @@ for (const gk of gatekeepers) {
     // needs the token even when the binding is present.
     "CF_AI_GATEWAY", "CF_AI_GATEWAY_PROVIDERS", "CF_AI_GATEWAY_ACCOUNT_ID",
     "CF_AI_GATEWAY_API_TOKEN", "CF_AI_GATEWAY_USE_BINDING",
+    // The admin audit log's minimum retention (see docs/admin-access.md).
+    "ADMIN_AUDIT_RETENTION_MIN_DAYS",
   ];
   // OAuth app credentials (GOOGLE_/GITHUB_/CLOUDFLARE_OAUTH_*) are NOT passed to the backend anymore;
   // they are injected into the gatekeeper Workers (see SHARED_GATEKEEPER_CREDS below).

@@ -15,9 +15,10 @@
     {
       "urlPattern": "https://docs.google.com/document/d/:docId/*",
       "title": "Google Doc",
-      "description": "Read and edit documents you choose.",
+      "description": "Read, edit and comment on documents you choose.",
       "grantable": true,
       "creatable": true,
+      "creationConfigurator": true,
       "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/documents",
@@ -30,6 +31,7 @@
       "description": "Read the values and formatting of a spreadsheet you choose, and change its values, tabs, rows, columns, and formatting, with your approval.",
       "grantable": true,
       "creatable": true,
+      "creationConfigurator": true,
       "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -42,6 +44,7 @@
       "description": "Read a presentation you choose, its slides, layouts, masters, and formatting, and, with your approval, edit its text and design, copy, move, or delete slides, and change its backgrounds and theme colours.",
       "grantable": true,
       "creatable": true,
+      "creationConfigurator": true,
       "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/presentations",
@@ -62,7 +65,7 @@
     {
       "urlPattern": "https://drive.google.com/drive/my-drive",
       "title": "Google Drive",
-      "description": "Find files you can open anywhere in Drive, including shared drives, and read Docs, Sheets, Slides and PDFs. Connect all of Drive, or just one shared drive, folder or file; a Doc, spreadsheet or presentation connected on its own can also be edited, with your approval.",
+      "description": "Find files you can open anywhere in Drive, including shared drives, and read Docs, Sheets, Slides, PDFs, other files and comments. Connect all of Drive, or just one shared drive, folder or file, as read only or as read and write, which also lets agents comment on files with your approval; a Doc connected on its own can be edited and commented on, and a spreadsheet or presentation connected on its own edited, with your approval. A connection request asks for read and write by adding ?access=write to the URL.",
       "grantable": true,
       "oauthScopes": [
         "https://www.googleapis.com/auth/drive.readonly",
@@ -74,8 +77,10 @@
     {
       "urlPattern": "https://drive.google.com/drive/folders/:folderId",
       "title": "Google Drive Folder",
-      "description": "Browse a selected folder or shared drive, search its direct children, and read native Google Docs, Sheets and Slides, and PDFs as text.",
+      "description": "Browse a selected folder or shared drive, search its direct children, and read native Google Docs, Sheets and Slides, PDFs as text, any other file's content as bytes, and comments. A read and write connection also lets agents comment on its files, with your approval; a connection request asks for one by adding ?access=write to the URL.",
       "grantable": true,
+      "creatable": true,
+      "creationConfigurator": true,
       "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/drive.readonly",
@@ -87,7 +92,7 @@
     {
       "urlPattern": "https://drive.google.com/file/d/:fileId/view",
       "title": "Google Drive File",
-      "description": "Read metadata and, for a native Google Doc, Sheet or Slides presentation, content from one Drive file, or its text when it is a PDF.",
+      "description": "Read metadata, comments and, for a native Google Doc, Sheet or Slides presentation, content from one Drive file, its text when it is a PDF, or otherwise its content as bytes. A read and write connection also lets agents comment on the file, with your approval; a connection request asks for one by adding ?access=write to the URL.",
       "grantable": true,
       "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
@@ -337,12 +342,17 @@
       ],
       "methods": [
         "replaceText(oldMarkdown: string, newMarkdown: string, tabId?: string): Promise<void>;",
-        "appendText(markdown: string, tabId?: string): Promise<void>;"
+        "appendText(markdown: string, tabId?: string): Promise<void>;",
+        "listComments(): Promise<DriveComment[]>;",
+        "comment(text: string, options: DocCommentOptions): Promise<DriveComment>;",
+        "suggestEdit(\n    oldText: string, newText: string, options?: DocSuggestEditOptions,\n  ): Promise<DocSuggestion>;",
+        "reply(commentId: string, text: string): Promise<DriveCommentReply>;",
+        "resolve(commentId: string, text?: string): Promise<DriveCommentReply>;"
       ]
     },
     {
       "name": "Cursor",
-      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "source": "packages/gatekeeper-google/src/drive-read-types.d.ts",
       "extends": [],
       "methods": [
         "next(): Promise<T[] | null>;"
@@ -350,7 +360,7 @@
     },
     {
       "name": "GoogleDriveReadSession",
-      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "source": "packages/gatekeeper-google/src/drive-read-types.d.ts",
       "extends": [],
       "methods": [
         "getScope(): Promise<DriveScope>;",
@@ -360,12 +370,14 @@
         "openGoogleDoc(fileId: string): Promise<GoogleDocReadSession>;",
         "openGoogleSheet(fileId: string): Promise<GoogleSpreadsheetReadSession>;",
         "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;",
-        "readPdf(fileId: string): Promise<DrivePdfText>;"
+        "readPdf(fileId: string): Promise<DrivePdfText>;",
+        "readFile(fileId: string, options?: DriveFileReadOptions): Promise<DriveFileBytes>;",
+        "listComments(fileId: string): Promise<Cursor<DriveComment>>;"
       ]
     },
     {
-      "name": "GoogleDriveFolderSession",
-      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "name": "GoogleDriveFolderReadSession",
+      "source": "packages/gatekeeper-google/src/drive-read-types.d.ts",
       "extends": [
         "Pick<GoogleDriveReadSession, \"getScope\">"
       ],
@@ -377,6 +389,48 @@
         "openGoogleSheet(fileId: string): Promise<GoogleSpreadsheetReadSession>;",
         "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;",
         "readPdf(fileId: string): Promise<DrivePdfText>;",
+        "readFile(fileId: string, options?: DriveFileReadOptions): Promise<DriveFileBytes>;",
+        "listComments(fileId: string): Promise<Cursor<DriveComment>>;",
+        "openFolder(folderId: string): Promise<GoogleDriveFolderReadSession>;"
+      ]
+    },
+    {
+      "name": "DriveCommentWrites",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "extends": [],
+      "methods": [
+        "comment(fileId: string, text: string, options?: DriveCommentOptions): Promise<DriveComment>;",
+        "suggestEdit(\n    fileId: string, oldText: string, newText: string, options?: DriveSuggestEditOptions,\n  ): Promise<DocSuggestion>;",
+        "reply(fileId: string, commentId: string, text: string): Promise<DriveCommentReply>;",
+        "resolve(fileId: string, commentId: string, text?: string): Promise<DriveCommentReply>;"
+      ]
+    },
+    {
+      "name": "GoogleDriveSession",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "extends": [
+        "GoogleDriveReadSession",
+        "DriveCommentWrites"
+      ],
+      "methods": []
+    },
+    {
+      "name": "GoogleDriveFileSession",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "extends": [
+        "GoogleDriveReadSession",
+        "DriveCommentWrites"
+      ],
+      "methods": []
+    },
+    {
+      "name": "GoogleDriveFolderSession",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "extends": [
+        "GoogleDriveFolderReadSession",
+        "DriveCommentWrites"
+      ],
+      "methods": [
         "openFolder(folderId: string): Promise<GoogleDriveFolderSession>;"
       ]
     },
@@ -556,7 +610,7 @@
   ],
   "counts": {
     "resources": 14,
-    "interfaces": 29,
-    "declaredMethods": 161
+    "interfaces": 33,
+    "declaredMethods": 175
   }
 }

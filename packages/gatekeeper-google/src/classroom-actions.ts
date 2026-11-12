@@ -60,6 +60,8 @@ export const CLASSROOM_STUDENT_ACTIONS = defineActions<{
   api: ClassroomApi; courseId: string;
 }, ClassroomStudentActions>({
   turnIn: {
+    kind: { tag: "classroom-turn-in", label: "Turn in Classroom work" },
+    autoApprovable: false,
     delivery: "await-decision",
     claimBeforeApply: true,
     describe: ({ courseWorkId, courseWorkTitle }, { courseId }) => ({
@@ -121,6 +123,8 @@ function plusMutationFailed(error: unknown): never {
 /** The Classroom action set, bound once per course binding. */
 export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>({
   createCourseWork: {
+    kind: { tag: "classroom-create-coursework", label: "Create Classroom coursework" },
+    autoApprovable: false,
     delivery: "continue-with-simulation",
     claimBeforeApply: true,
     describe: ({ draft }, { courseId }) => ({
@@ -151,6 +155,8 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
   },
 
   createRubric: {
+    kind: { tag: "classroom-create-rubric", label: "Create Classroom rubric" },
+    autoApprovable: false,
     delivery: "await-decision",
     claimBeforeApply: true,
     describe: ({ courseWorkId, draft }, { courseId }) => ({
@@ -169,6 +175,8 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
   },
 
   updateRubric: {
+    kind: { tag: "classroom-update-rubric", label: "Update Classroom rubric" },
+    autoApprovable: false,
     delivery: "await-decision",
     claimBeforeApply: true,
     describe: (payload, { courseId }) => ({
@@ -185,6 +193,8 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
   },
 
   deleteRubric: {
+    kind: { tag: "classroom-delete-rubric", label: "Delete Classroom rubric" },
+    autoApprovable: false,
     delivery: "await-decision",
     claimBeforeApply: true,
     describe: (payload, { courseId }) => ({
@@ -201,6 +211,8 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
   },
 
   updateGradingPeriodSettings: {
+    kind: { tag: "classroom-grading-periods", label: "Change Classroom grading periods" },
+    autoApprovable: false,
     delivery: "await-decision",
     claimBeforeApply: true,
     describe: (payload, { courseId }) => ({
@@ -217,6 +229,8 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
   },
 
   setGrade: {
+    kind: { tag: "classroom-set-grade", label: "Record Classroom grade" },
+    autoApprovable: false,
     delivery: "continue-with-simulation",
     describe: (grade, { courseId }) => {
       let outOf = grade.maxPoints === undefined ? "" : ` out of ${grade.maxPoints}`;
