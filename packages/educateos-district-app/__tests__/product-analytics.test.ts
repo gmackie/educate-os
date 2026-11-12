@@ -5,7 +5,7 @@ import { readProductAnalyticsDeployment, type ProductAnalyticsDeployment } from 
 import { bootDistrict, expectError, NF } from "./support.ts";
 
 const DATAFLARE: ProductAnalyticsDeployment = {
-  host: "https://glass-educateos-district.dataflare-district.workers.dev",
+  host: "https://glass-educateos-district.educateos-demo.workers.dev",
   project: "educateos-district",
 };
 const GUARDIAN = "prn_nf-guardian-rosa";

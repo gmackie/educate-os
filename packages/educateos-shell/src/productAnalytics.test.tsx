@@ -15,7 +15,7 @@ import {
 } from "./productAnalytics.ts";
 import { useProductAnalytics } from "./useProductAnalytics.ts";
 
-const ON: ProductAnalyticsConfig = { enabled: true, host: "https://glass-educateos-district.dataflare-district.workers.dev", project: "educateos-district" };
+const ON: ProductAnalyticsConfig = { enabled: true, host: "https://glass-educateos-district.educateos-demo.workers.dev", project: "educateos-district" };
 const ORIGIN = "https://harbor.educateos.io";
 
 /** A browser over its own document, so no test touches the real page's globals. */
