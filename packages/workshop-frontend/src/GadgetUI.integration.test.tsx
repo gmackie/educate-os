@@ -204,7 +204,7 @@ describe('GadgetUI RPC recovery', () => {
       root.render(<GadgetUI gadget={gadget.stub} height="100px" />)
     })
     await vi.waitFor(() => expect(container.querySelector('iframe')).not.toBeNull())
-    expect(container.querySelector('iframe')!.getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-popups-to-escape-sandbox')
+    expect(container.querySelector('iframe')!.getAttribute('sandbox')).toBe('allow-scripts allow-pointer-lock allow-popups allow-popups-to-escape-sandbox')
 
     await act(async () => {
       root.render(<GadgetUI gadget={gadget.stub} height="100px" restricted />)

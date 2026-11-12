@@ -1322,7 +1322,10 @@ export function searchCommands(table: ApiTable, query: string, limit = 5): Searc
       const said = new Set(searchTerms(firstSentence(command.doc)));
       const argued = [...argumentWords(table, command, terms)];
       const argument = (term: string) => Math.max(0, ...argued.map(([word, weight]) => weight * termMatch(term, new Set([word]))));
-      const score = terms.reduce((total, term) => total +
+      const predicate = /^(?:can|has|is)[A-Z]/.test(command.method);
+      const checking = terms.some(term => ["can", "has", "is", "check", "allow", "permission"].includes(term));
+      // A permission probe is discovery, rather than the operation a task asks to perform.
+      const score = (predicate && !checking ? 0.5 : 1) * terms.reduce((total, term) => total +
         Math.max(3 * termMatch(term, own), 2 * termMatch(term, said), argument(term), termMatch(term, around)), 0);
       if (score === 0) continue;
       const line = ["cf-os", "api", ...segments, name, ...positionalArgs(command).map((arg) => `<${arg.name}>`)].join(" ");

@@ -43,14 +43,21 @@ const Editor = ({ text }: { text: string }) => {
 describe("composer editor layout", () => {
   let container: HTMLDivElement | undefined;
   let root: Root | undefined;
+  const scrollbarStyles: HTMLStyleElement[] = [];
 
   afterEach(async () => {
     await act(async () => root?.unmount());
     container?.remove();
+    scrollbarStyles.splice(0).forEach((style) => style.remove());
   });
 
   const render = async (text: string) => {
     container = document.body.appendChild(document.createElement("div"));
+    // Custom scrollbar geometry also exercises non-overlay scrollbars on macOS.
+    const scrollbarStyle = document.createElement("style");
+    scrollbarStyle.textContent = "textarea::-webkit-scrollbar { width: 12px; }";
+    document.head.appendChild(scrollbarStyle);
+    scrollbarStyles.push(scrollbarStyle);
     // A flex layout rarely gives the composer a whole-pixel width.
     container.style.width = "403.3px";
     root = createRoot(container);
