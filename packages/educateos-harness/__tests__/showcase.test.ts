@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, onTestFinished, vi } from "vitest";
 import { createDistrictApiClient, type DistrictApiClient } from "@educateos/api-client";
 import type { PrincipalId } from "@educateos/contracts";
 import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, SHOWCASE_BANDS, type ShowcaseBand } from "@educateos/fixtures";
@@ -30,13 +30,9 @@ describe("the Northfield showcase, seeded through the district API", () => {
   let district: Awaited<ReturnType<typeof bootNorthfield>>;
   let first: ShowcaseSummary;
   beforeAll(async () => {
-    // Fixture due dates belong to this school week, independent of the host clock.
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-11-02T12:00:00Z"));
     district = await bootNorthfield();
     first = await district.seed();
   }, 120_000);
-  afterAll(() => vi.useRealTimers());
 
   it("makes every class of every band, with nothing skipped", () => {
     expect(first.skipped).toStrictEqual([]);
@@ -104,6 +100,10 @@ describe("the Northfield showcase, seeded through the district API", () => {
   });
 
   it("dues activities at the time `dueAt` gives, when given one", async () => {
+    // The due dates below are fixed, and a due date must fall after installation, so install on a
+    // fixed day before them instead of today. Only Date is faked; timers and I/O stay real.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-01T12:00:00Z") });
+    onTestFinished(() => { vi.useRealTimers(); });
     const fresh = await bootNorthfield();
     const showcase = { ...NORTHFIELD_SHOWCASE, courses: NORTHFIELD_SHOWCASE.courses.filter((c) => c.offeringId === "off_nf-g1math-fall-r7") };
     await seedShowcase({ showcase, adminId: ADMIN, actAs: fresh.actAs, dueAt: (days) => `2026-11-${String(2 + days).padStart(2, "0")}T15:30:00-05:00` });

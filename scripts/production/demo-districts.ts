@@ -61,7 +61,7 @@ export const DEMO_SHOWCASE = "northfield";
  * district until DATFLR-3's legal review is done.
  */
 export const DEMO_PRODUCT_ANALYTICS = JSON.stringify({
-  host: "https://glass-educateos-district.dataflare-district.workers.dev",
+  host: "https://glass-educateos-district.educateos-demo.workers.dev",
   project: "educateos-district",
 });
 
