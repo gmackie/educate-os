@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import type { DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ResolvedLaunch } from "@educateos/lti";
-import { districtPrincipalResolver, policySelectActivities } from "../src/index.ts";
+import { authorizeDeepLinking, districtPrincipalResolver, policySelectActivities } from "../src/index.ts";
 import { AMARA, BIO, CELL_LAB, createDistrict, ESSAY, MORGAN, NF, NF_CANVAS, rejection, SUBJECTS } from "./setup.ts";
 
 const launchAs = (principalId: string, kind: "student" | "staff"): ResolvedLaunch => ({
@@ -26,6 +26,21 @@ describe("policySelectActivities", () => {
     expect(audit.at(-1)).toMatchObject({ principalId: AMARA, action: "assign", resourceKind: "activity", effect: "deny" });
     expect(await rejection(select(launchAs(MORGAN, "staff"), [CELL_LAB, ESSAY]))).toBe("not-found");
     expect(await rejection(select(launchAs(MORGAN, "staff"), ["act_ghost" as never]))).toBe("not-found");
+  });
+});
+
+describe("authorizeDeepLinking", () => {
+  it("admits the offering's teacher to the content picker and refuses a learner before showing it (SCHO-377)", async () => {
+    const { engine, loadDirectory: directory, audit } = createDistrict();
+    await authorizeDeepLinking({ authorizer: engine }, await directory(), launchAs(MORGAN, "staff"));
+    expect(await rejection(authorizeDeepLinking({ authorizer: engine }, await directory(), launchAs(AMARA, "student")))).toBe("forbidden");
+    expect(audit.at(-1)).toMatchObject({ principalId: AMARA, action: "assign", resourceKind: "activity", effect: "deny" });
+  });
+
+  it("refuses an offering the directory does not hold for the launch's district", async () => {
+    const { engine, loadDirectory: directory } = createDistrict();
+    const elsewhere = { ...launchAs(MORGAN, "staff"), offeringId: "off_ghost" as never };
+    expect(await rejection(authorizeDeepLinking({ authorizer: engine }, await directory(), elsewhere))).toBe("forbidden");
   });
 });
 

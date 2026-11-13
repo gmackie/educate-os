@@ -40,6 +40,7 @@ import {
   LtiAdminService,
   LtiAdvantageService,
   OfficialGradeApprovals,
+  authorizeDeepLinking,
   policySelectActivities,
   recordLaunchServices,
   type ActivityCatalog,
@@ -173,6 +174,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
       return htmlPage(await launchPage(launch));
     },
     onDeepLinkingRequest: async (launch, session) => {
+      await authorizeDeepLinking({ authorizer: app.engine }, await directory(), launch);
       await recordLaunchServices(lti.contextServices, launch);
       return htmlPage(await pickerPage(launch, session));
     },

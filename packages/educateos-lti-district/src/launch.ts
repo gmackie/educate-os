@@ -2,6 +2,7 @@ import {
   EducateOsError,
   type ActivityId,
   type Authorizer,
+  type DistrictDirectorySnapshot,
   type DistrictId,
   type RequestChannel,
 } from "@educateos/contracts";
@@ -52,6 +53,28 @@ export interface PolicySelectActivitiesOptions {
   readonly activities: ActivityCatalog;
   /** Defaults to `http`: a deep link choice is a person's own action in the content picker. */
   readonly channel?: RequestChannel;
+}
+
+/**
+ * Refuses a deep linking request from anyone the policy engine would not let place activities in
+ * the launch's offering (course staff, by the default rule table). Call it from
+ * `onDeepLinkingRequest`, before the content picker is shown: some platforms (Canvas's module
+ * picker) send learners a deep linking request, and {@link policySelectActivities} alone would
+ * refuse only their choice, after showing them the course's activities.
+ */
+export async function authorizeDeepLinking(
+  options: Pick<PolicySelectActivitiesOptions, "authorizer" | "channel">,
+  directory: DistrictDirectorySnapshot,
+  launch: ResolvedLaunch,
+): Promise<void> {
+  const offering = directory.offerings.find((o) => o.id === launch.offeringId && o.districtId === launch.principal.districtId);
+  const decision = offering === undefined ? undefined : await options.authorizer.authorize({
+    subject: { principalId: launch.principal.principalId, districtId: launch.principal.districtId },
+    action: "assign",
+    resource: { kind: "activity", scope: { level: "offering", districtId: offering.districtId, schoolId: offering.schoolId, offeringId: offering.id }, classification: "course" },
+    context: { channel: options.channel ?? "http" },
+  });
+  if (decision?.effect !== "allow") throw new EducateOsError("forbidden", "You cannot add activities to this course.");
 }
 
 /**
