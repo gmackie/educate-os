@@ -108,6 +108,19 @@ jobs:
       - name: District validation report
         run: node packages/educateos-pilot-gate/src/validate.ts --out district-report --revision "${{ github.event.pull_request.head.sha || github.sha }}"
 
+      # Dependency vulnerability audit (SCHO-375, docs/educateos/security/dependency-scanning.md).
+      # `pnpm audit` over every pnpm lockfile: it reads the lockfiles, not node_modules, so it needs
+      # no install and takes seconds. On a pull request a new high or critical advisory in a
+      # production dependency fails the gate unless the checked-in baseline accepts it; on main and
+      # the nightly run it only reports, so a new upstream advisory never turns main red. A registry
+      # outage is a warning, not a failure. Last of the gate's steps and run after a failed one too,
+      # so a lint or test failure never hides its result and its failure never skips a test.
+      - name: Dependency vulnerability audit
+        if: ${{ !cancelled() }}
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && github.base_ref || '' }}
+        run: node scripts/security/dependency-audit.ts ${BASE_REF:+--base-ref "$BASE_REF"}
+
       # This Forgejo accepts v3 artifacts, not v4.
       - name: Upload the district validation report
         if: always()
