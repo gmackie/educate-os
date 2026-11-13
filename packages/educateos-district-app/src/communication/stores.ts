@@ -43,6 +43,8 @@ export interface NotificationStore {
    * A notification's ID is derived from what it is about, so this is what keeps generation idempotent.
    */
   addIfAbsent(notifications: readonly Notification[]): Promise<Notification[]>;
+  /** The IDs of `ids` not stored yet: what {@link addIfAbsent} would add, without adding it. */
+  missing(ids: readonly NotificationId[]): Promise<NotificationId[]>;
   /** Replaces stored notifications, matched by ID. An ID not stored is ignored. */
   update(notifications: readonly Notification[]): Promise<void>;
   /** Every notification not yet emailed or skipped, oldest first. */
@@ -153,6 +155,10 @@ export class InMemoryNotificationStore implements NotificationStore {
       added.push(structuredClone(parsed));
     }
     return added;
+  }
+
+  async missing(ids: readonly NotificationId[]): Promise<NotificationId[]> {
+    return ids.filter((id) => !this.#items.has(id));
   }
 
   async update(notifications: readonly Notification[]): Promise<void> {

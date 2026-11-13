@@ -491,6 +491,20 @@ export class CommunicationService {
    * and keyed by what it is about, so running this again adds nothing twice. Returns those added.
    */
   async syncNotifications(caller: Caller): Promise<Notification[]> {
+    return this.#stores.notifications.addIfAbsent(await this.#notificationsOwed(caller));
+  }
+
+  /**
+   * Whether {@link syncNotifications} would add anything for the caller now. It reads and decides
+   * as that does, through this service's decider, and stores nothing.
+   */
+  async owesNotifications(caller: Caller): Promise<boolean> {
+    const owed = await this.#notificationsOwed(caller);
+    return owed.length > 0 && (await this.#stores.notifications.missing(owed.map((n) => n.id))).length > 0;
+  }
+
+  /** Every notification the caller is owed now, stored or not. */
+  async #notificationsOwed(caller: Caller): Promise<Notification[]> {
     const snapshot = await this.#snapshot();
     const principalId = caller.principal.principalId;
     const me = snapshot.principals.find((p) => p.id === principalId);
@@ -537,7 +551,7 @@ export class CommunicationService {
         });
       }
     }
-    return this.#stores.notifications.addIfAbsent(candidates);
+    return candidates;
   }
 
   /** The caller's newest notifications, after bringing them up to date, and how many are unread. */
@@ -584,13 +598,19 @@ export class CommunicationService {
    * The periodic notification job: brings every active student's notifications up to date, then
    * emails the ones still owed an email, honouring each principal's preferences. A notification
    * already read in the app is not emailed. A failed send is left to the next run.
+   *
+   * With a `screen`, a student is brought up to date only if the screen finds them owed a
+   * notification not stored yet (SCHO-370). The screen should decide without recording, so a sweep
+   * in which nothing changed writes nothing; the students it passes are then synced through this
+   * service, whose decisions are recorded as before.
    */
-  async runNotificationJob(): Promise<{ added: number; emailed: number; skipped: number; failed: number }> {
+  async runNotificationJob(screen?: Pick<CommunicationService, "owesNotifications">): Promise<{ added: number; emailed: number; skipped: number; failed: number }> {
     const snapshot = await this.#snapshot();
     let added = 0;
     for (const student of snapshot.principals.filter((p) => p.kind === "student" && p.status === "active")) {
-      const caller: Caller = { principal: { principalId: student.id, districtId: student.districtId }, channel: "system", correlationId: crypto.randomUUID() };
-      added += (await this.syncNotifications(caller)).length;
+      const caller = (): Caller => ({ principal: { principalId: student.id, districtId: student.districtId }, channel: "system", correlationId: crypto.randomUUID() });
+      if (screen !== undefined && !await screen.owesNotifications(caller())) continue;
+      added += (await this.syncNotifications(caller())).length;
     }
     const counts = { added, emailed: 0, skipped: 0, failed: 0 };
     const at = () => this.#options.now().toISOString();
