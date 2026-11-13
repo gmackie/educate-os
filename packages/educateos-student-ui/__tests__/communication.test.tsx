@@ -126,6 +126,25 @@ describe("settings", () => {
     expect(district.calls.filter((c) => c.name === "me.revokeCalendarFeed")).toHaveLength(1);
   });
 
+  it("downloads the student's own archive and says what was left out (SCHO-371)", async () => {
+    const district = fakeDistrict();
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => "blob:archive");
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    try {
+      await renderApp(district, "/settings");
+      await user.click(await screen.findByRole("button", { name: "Download my work" }));
+      expect(await screen.findByText(/Remove it and download again to include: Club notes\./)).toBeTruthy();
+      expect(district.calls.filter((c) => c.name === "student.exportArchive")).toHaveLength(1);
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(click).toHaveBeenCalledOnce();
+      expect(announcement()).toBe("Your work is downloading");
+    } finally {
+      click.mockRestore();
+    }
+  });
+
   it("embedded in a host, links the calendar at the district's own address and leaves signing out to the host", async () => {
     const user = userEvent.setup();
     await renderApp(fakeDistrict(), "/settings", { aiHelp: false }, { districtOrigin: "https://northfield.example" });

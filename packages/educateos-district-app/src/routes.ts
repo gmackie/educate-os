@@ -157,6 +157,8 @@ import {
   WeeklyNote,
 } from "./communication/model.ts";
 import type { GuardianDigest } from "./communication/digest.ts";
+// Student archive (SCHO-371): the manifest's type only, so this browser-safe module carries no exporter.
+import type { StudentArchiveManifest } from "@educateos/portability";
 import { ProductAnalyticsAdminBody, ProductAnalyticsClientBody } from "./product-analytics.ts";
 
 /**
@@ -699,6 +701,30 @@ export const DistrictExportBody = z.strictObject({
 });
 /** A district export. */
 export type DistrictExportBody = z.infer<typeof DistrictExportBody>;
+// Student archive (SCHO-371)
+
+/** The media type of a `.educateos` student archive (`ARCHIVE_MEDIA_TYPE` in `@educateos/portability`). */
+export const STUDENT_ARCHIVE_MEDIA_TYPE = "application/vnd.educateos.student-archive+zip";
+
+/**
+ * A student's `.educateos` archive as the route answers it: the file, base64-encoded, its manifest,
+ * and what was left out because it held text shaped like a password, key or token, which the
+ * student can remove and export again.
+ */
+export const StudentArchiveBody = z.strictObject({
+  fileName: z.string(),
+  mediaType: z.literal(STUDENT_ARCHIVE_MEDIA_TYPE),
+  base64: z.string(),
+  /** The archive's `manifest.json`: its export ID, subject reference and items. */
+  manifest: declared<StudentArchiveManifest>(),
+  withheld: z.array(z.strictObject({
+    kind: z.enum(["artifact", "submission", "feedback", "resource"]),
+    label: z.string(),
+    found: z.array(z.string()),
+  })),
+});
+/** A student archive. */
+export type StudentArchiveBody = z.infer<typeof StudentArchiveBody>;
 
 // Guardians (ADR-0012, SCHO-188): shapes
 
@@ -1293,6 +1319,13 @@ export const ROUTES = {
     method: "GET", path: "/api/student/assignments/:assignmentId/grades", surface: "student",
     params: params({ assignmentId: AssignmentId }), response: z.array(OfficialGradeVersion),
   }),
+  /**
+   * The caller's own `.educateos` archive (SCHO-371): their personal workspaces, the course work of
+   * terms that are over, their submissions, the feedback shared with them and the resources their
+   * classes used, each item let in only by a policy decision on `export`, every one audited. Only
+   * ever the caller's: there is nothing to name another student by.
+   */
+  "student.exportArchive": route({ method: "GET", path: "/api/student/archive", surface: "student", response: StudentArchiveBody }),
 
   // Teacher: classes
   "teacher.listOfferings": route({ method: "GET", path: "/api/teacher/offerings", surface: "teacher", response: z.array(TeachingOfferingBody) }),

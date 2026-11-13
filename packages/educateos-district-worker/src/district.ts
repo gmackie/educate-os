@@ -144,6 +144,8 @@ export interface DistrictSeams {
   onUnreadableConfigRevision?: (revisionId: string) => void;
   /** Told the counts and size of each district export (SCHO-364), to log them. */
   onDistrictExported?: DistrictAppOptions["onDistrictExported"];
+  /** Told the item count, withheld count and size of each student archive (SCHO-371), to log them. */
+  onStudentArchiveExported?: DistrictAppOptions["onStudentArchiveExported"];
   /** The fetch LTI platform calls go through (SCHO-177). Defaults to the global fetch. */
   platformFetch?: typeof fetch;
   /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
@@ -294,6 +296,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     importFetch: showcase === undefined ? seams.importFetch : withShowcaseReadings(seams.importFetch),
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     ...(seams.onDistrictExported === undefined ? {} : { onDistrictExported: seams.onDistrictExported }),
+    ...(seams.onStudentArchiveExported === undefined ? {} : { onStudentArchiveExported: seams.onStudentArchiveExported }),
     authority,
     // Scheduled roster sync (SCHO-203)
     rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init)),

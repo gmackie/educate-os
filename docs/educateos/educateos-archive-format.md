@@ -218,6 +218,30 @@ redistribution.
 - **District IDs and storage keys.** These are replaced as described under Identifiers.
 - **Material whose rights forbid redistribution.** See source rights above.
 
+## Taking an archive from the district app
+
+A student takes their own archive from the district app (SCHO-371):
+
+- **Route:** `student.exportArchive`, `GET /api/student/archive`, and in the Student app, Settings →
+  Take your work with you → Download my work. The response is JSON: `fileName`
+  (`educateos-archive-<date>.educateos`), `mediaType`
+  (`application/vnd.educateos.student-archive+zip`), `base64` (the archive), `manifest` (the same
+  object as its `manifest.json`) and `withheld` (the items left out because they held secret-shaped
+  text: kind, title and what was found, never the text itself).
+- **Who:** the signed-in student, for themselves. The route belongs to the student surface, so
+  staff and guardians are refused before anything is read, and it takes no parameter that could
+  name another student. There is no route yet for staff, guardians, or an administrator acting for
+  a student who has left.
+- **Policy:** the district app's engine decides `export` on every item as the student, as described
+  above, and records every decision in the audit trail under the request's correlation ID. The
+  archive's `provenance.json` names the rule that let each record in.
+- **What the district keeps:** the export's ID mapping (`ExportMappingStore`), one row per export
+  in the district's Durable Object (`educateos_export_mappings`). It is never in the archive or the
+  response. The district Worker logs each export's item count, withheld count and size
+  (`student.archive.export`), never who took it or what is in it.
+- **Size:** the archive is built in memory and answered in one response. A reader accepts it only
+  within the limits under Container.
+
 ## Validation
 
 `validateArchive(bytes)` returns a typed `ValidatedArchive` view, or rejects the archive with

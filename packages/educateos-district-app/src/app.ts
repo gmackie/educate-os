@@ -37,7 +37,7 @@ import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { type AssignmentViewBody, type DistrictExportManifest, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
+import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
@@ -68,6 +68,8 @@ import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall 
 import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
 // District export (SCHO-364)
 import { buildDistrictExport } from "./district-export.ts";
+// Student archive (SCHO-371)
+import { DistrictStudentRecordSource, StudentArchiveExporter } from "@educateos/portability";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -169,6 +171,11 @@ export interface DistrictAppOptions {
    * Worker to log. Shared code imports no logger, so the Node harness can run it.
    */
   onDistrictExported?: (exported: { counts: DistrictExportManifest["counts"]; bytes: number }) => void;
+  /**
+   * Told the size of each student archive a student takes (SCHO-371): how many items it holds,
+   * how many were withheld, and its bytes, for the Worker to log. Never who, or what.
+   */
+  onStudentArchiveExported?: (exported: { items: number; withheld: number; bytes: number }) => void;
   /**
    * Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), once per
    * revision, for the Worker to log. Shared code imports no logger, so the Node harness can run it.
@@ -971,6 +978,23 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "student.withdrawSubmission": (ctx, { params }) => ctx.assessment().withdraw(ctx.caller, params.submissionId),
     "student.officialGrades": (ctx, { params }) =>
       ctx.assessment().officialGrades(ctx.caller, params.assignmentId, ctx.principal.principalId),
+    // Student archive (SCHO-371): the exporter asks the engine about every item as the caller, so
+    // what the archive holds is exactly what policy lets them export, each decision audited.
+    "student.exportArchive": async (ctx) => {
+      const exporter = new StudentArchiveExporter({
+        artifacts: ctx.artifacts(),
+        workspaces: ctx.workspaces(),
+        directory: stores.directory,
+        policy: ctx.decider,
+        records: new DistrictStudentRecordSource({ assessment: stores.assessment, studio: stores.contentStudio, directory: stores.directory }),
+        mappings: stores.exportMappings,
+        now,
+      });
+      const { bytes, manifest, withheld } = await exporter.exportStudentArchive(ctx.caller);
+      options.onStudentArchiveExported?.({ items: manifest.items.length, withheld: withheld.length, bytes: bytes.byteLength });
+      const fileName = `educateos-archive-${manifest.exportedAt.slice(0, 10)}.educateos`;
+      return { fileName, mediaType: STUDENT_ARCHIVE_MEDIA_TYPE, base64: encodeBase64(bytes), manifest, withheld };
+    },
 
     // Teacher
     "teacher.listOfferings": async (ctx) => {

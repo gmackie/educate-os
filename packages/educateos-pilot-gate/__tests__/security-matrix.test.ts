@@ -12,7 +12,7 @@ import { ArtifactsGitBackend, InMemoryArtifacts, InMemoryCredentialLedger, Proje
 import { catalogSeedRelease, contentDigest } from "@educateos/catalog";
 import { SigningIdentity } from "@educateos/fleet";
 import { DistrictReleaseManager, InMemoryDistrictReleaseStore, pinReleaseKeys, RootReleaseSigner } from "@educateos/releases";
-import { InMemoryExportMappingStore, InMemoryStudentRecordSource, readZip, StudentArchiveExporter } from "@educateos/portability";
+import { readZip, validateArchive } from "@educateos/portability";
 import { bootHarness } from "@educateos/harness";
 import { criterion } from "./gate.ts";
 import { importThinCartridge } from "./cartridge.ts";
@@ -601,6 +601,35 @@ criterion("s14.term-end", {
     const rivera = await northfield.as(NF.rivera);
     expect((await rivera.call("teacher.listSubmissions", { params: { assignmentId: assignment.id } })).map((s) => s.id)).toStrictEqual([receipt.submissionId]);
   },
+  "export-offered": async () => {
+    const clock = new PilotClock("2026-10-20T15:00:00Z");
+    const [entry] = await bootHarness();
+    const northfield = await bootDistrictFor(entry!, { now: clock.now });
+    const roster = { rivera: true, students: ["nf-s-2001", "nf-s-2004"] } as const;
+    const { offeringId, termId } = await applyNorthfieldRoster(northfield, roster);
+    const { assignment } = await teacherInstallsEssay(northfield, NF.rivera, offeringId);
+    const { student, head } = await studentSubmitsEssay(northfield, NF.amara, offeringId, assignment.id, "AMARA-CLASS-ESSAY on a later start.");
+    await studentSubmitsEssay(northfield, NF.elena, offeringId, assignment.id, "PEER-WORK Elena argues school should start later.");
+    clock.set("2027-02-01T15:00:00Z");
+    await applyNorthfieldRoster(northfield, roster);
+    await (await northfield.as(NF.admin)).call("admin.closeTerm", { params: { termId } });
+
+    // The term is over: the student takes their archive over the API, with the closed class's work.
+    const exported = await student.call("student.exportArchive");
+    const bytes = Uint8Array.from(atob(exported.base64), (c) => c.charCodeAt(0));
+    const archive = await validateArchive(bytes);
+    const course = archive.artifacts.filter((a) => a.context.kind === "course");
+    expect(course).toHaveLength(1);
+    expect(course[0]!.revisions.at(-1)!.digest).toBe(head.content.digest);
+    expect(archive.submissions).toHaveLength(1);
+    const text = (await readZip(bytes)).map((e) => new TextDecoder().decode(e.bytes)).join("\n");
+    expect(text).toContain("AMARA-CLASS-ESSAY");
+    for (const forbidden of ["PEER-WORK", "prn_nf-", "wsp_", "art_"]) expect(text).not.toContain(forbidden);
+    // Each item went in on an audited decision, as the student (the artifact service decides its own reads too).
+    const allowed = northfield.audit.events().filter((e) => e.action === "export" && e.principalId === NF.amara && e.effect === "allow");
+    expect(archive.provenance.decisions.length).toBeGreaterThan(0);
+    expect(allowed.length).toBeGreaterThanOrEqual(archive.provenance.decisions.length);
+  },
 });
 
 criterion("s14.root-unavailable", {
@@ -704,18 +733,9 @@ criterion("s14.cross-district-import", {
     const peer = await studentSubmitsEssay(northfield, NF.elena, NF.eng9, assignment.id, "PEER-WORK Elena argues school should start later.");
     await teacher.call("teacher.addComment", { params: { submissionId: peer.receipt.submissionId }, body: { body: "TEACHER-ONLY-NOTE for Elena." } });
 
-    const exporter = new StudentArchiveExporter({
-      artifacts: artifactsOf(northfield),
-      workspaces: workspacesOf(northfield),
-      directory: northfield.stores.directory,
-      policy: northfield.app.engine,
-      records: new InMemoryStudentRecordSource(),
-      mappings: new InMemoryExportMappingStore(),
-      now,
-    });
-    const exported = await exporter.exportStudentArchive(callerOf(northfield, NF.amara));
+    const exported = await amara.call("student.exportArchive");
     expect(exported.withheld).toMatchObject([{ kind: "artifact", label: "Club notes" }]);
-    const text = (await readZip(exported.bytes)).map((entry) => new TextDecoder().decode(entry.bytes)).join("\n");
+    const text = (await readZip(Uint8Array.from(atob(exported.base64), (c) => c.charCodeAt(0)))).map((entry) => new TextDecoder().decode(entry.bytes)).join("\n");
     expect(text).toContain("AMARA-OWN-JOURNAL");
     for (const forbidden of ["PEER-WORK", "TEACHER-ONLY-NOTE", "sk-proj-", "Elena", "prn_nf-", "wsp_", "art_"]) expect(text).not.toContain(forbidden);
   },

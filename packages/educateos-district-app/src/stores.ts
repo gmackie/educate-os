@@ -51,6 +51,8 @@ import { InMemoryOpsStore, type OpsStore } from "./ops.ts";
 import { InMemoryMarketplacePackStore, type MarketplacePackStore } from "./marketplace.ts";
 // Course library (SCHO-331)
 import { InMemoryCourseLibraryStore, type CourseLibraryStore } from "./course-library.ts";
+// Student archive (SCHO-371)
+import { InMemoryExportMappingStore, type ExportMappingStore } from "@educateos/portability";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -313,6 +315,9 @@ export interface DistrictAppStores {
   // Delegations (SCHO-175)
   /** Staff members' delegations to registered clients, which bound every request a client makes for them. */
   delegations: DelegationStore;
+  // Student archive (SCHO-371)
+  /** How each student archive's export-local IDs map back to district IDs; kept here, never in the archive. */
+  exportMappings: ExportMappingStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -362,5 +367,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     courseLibrary: new InMemoryCourseLibraryStore(),
     // Delegations (SCHO-175)
     delegations: new InMemoryDelegationStore(),
+    // Student archive (SCHO-371)
+    exportMappings: new InMemoryExportMappingStore(),
   };
 }
