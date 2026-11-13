@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // The aggregates never name a minor and never show what anyone wrote: the screens read only the
 // count-and-total routes, and nothing they render carries a name or a per-person row.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/dom";
 import { STUDENT_NAMES, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
@@ -93,6 +93,33 @@ describe("the district's name", () => {
     expect(toggle.disabled || toggle.getAttribute("aria-disabled") === "true").toBe(true);
     expect(within(card).getByText("This deployment has no analytics service, so it cannot be turned on.")).toBeTruthy();
     expect(district.calls.some((c) => c.name === "admin.setProductAnalytics")).toBe(false);
+  });
+});
+
+describe("the district export (SCHO-367)", () => {
+  it("downloads the streamed ZIP under the name the district gives it", async () => {
+    const district = fakeDistrict();
+    const download = vi.fn(async () => new Response(new Uint8Array([0x50, 0x4b]), { headers: { "content-disposition": 'attachment; filename="dst_nf-2026-11-13.zip"' } }));
+    const saved: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.download);
+    });
+    Object.assign(URL, { createObjectURL: vi.fn(() => "blob:export"), revokeObjectURL: vi.fn() });
+    try {
+      const { user } = renderConsole({ ...district.client, download: download as never }, "dashboard");
+      const card = (await screen.findByRole("heading", { name: "Export the district" })).parentElement!;
+      await user.click(within(card).getByRole("button", { name: "Export" }));
+      await waitFor(() => expect(saved).toStrictEqual(["dst_nf-2026-11-13.zip"]));
+      expect(download).toHaveBeenCalledWith("admin.exportDistrict");
+    } finally {
+      click.mockRestore();
+    }
+  });
+
+  it("is not offered where the console's client cannot stream a file", async () => {
+    renderConsole(fakeDistrict().client, "dashboard");
+    await screen.findByRole("heading", { name: "Product analytics" });
+    expect(screen.queryByRole("heading", { name: "Export the district" })).toBeNull();
   });
 });
 

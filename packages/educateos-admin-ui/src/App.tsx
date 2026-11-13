@@ -1,8 +1,8 @@
 import { createContext, use, useEffect, useRef, type ReactNode } from "react";
 import { Loader, Text } from "@cloudflare/kumo";
-import { DistrictApiError, unlinkedSignInOf, type DistrictApiClient } from "@educateos/api-client";
+import { DistrictApiError, unlinkedSignInOf } from "@educateos/api-client";
 import { SchoolShell, navigationFor, shellRoleOf, type NavGroup, type NavIcon, type SchoolManifest, type ShellFeatures } from "@educateos/shell";
-import { AdminClientProvider } from "./app/AdminClientContext.tsx";
+import { AdminClientProvider, type AdminClient } from "./app/AdminClientContext.tsx";
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./app/Announcer.tsx";
 import { NotAddedYet } from "./app/NotAddedYet.tsx";
@@ -193,7 +193,7 @@ const ShellConsole = ({ shell, gate, path, schoolId, config }: { shell: District
 
 /** The district admin console, reading from `client`. */
 export const AdminApp = ({ client, shell }: {
-  client: DistrictApiClient;
+  client: AdminClient;
   /**
    * The district origin around the console (SCHO-260): frames it in the shared SchoolShell. A host
    * that embeds it omits this and keeps its own frame.

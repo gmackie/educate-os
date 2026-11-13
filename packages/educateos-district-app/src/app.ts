@@ -35,9 +35,9 @@ import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type A
 import { AssessmentCi, AssessmentRuns, assertRubricAuthority, builtinRegistry, signRubricRelease, verifyRubricRelease, type EvaluatorRegistry } from "@educateos/assessment-ci";
 import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
-import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
+import { CORRELATION_HEADER, errorResponse, fileResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
+import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type FileDownload, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
@@ -168,7 +168,8 @@ export interface DistrictAppOptions {
   defaultPolicy?: PolicySettings;
   /**
    * Told the size of each district export an administrator takes (SCHO-364), counts only, for the
-   * Worker to log. Shared code imports no logger, so the Node harness can run it.
+   * Worker to log: once the streamed ZIP has been sent whole (SCHO-367). Shared code imports no
+   * logger, so the Node harness can run it.
    */
   onDistrictExported?: (exported: { counts: DistrictExportManifest["counts"]; bytes: number }) => void;
   /**
@@ -1530,10 +1531,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.exportDistrict": async (ctx) => {
       await ctx.require("export", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can export the district.");
       const exportedAt = now();
-      const { bytes, manifest } = await buildDistrictExport(stores, ctx.snapshot, ctx.principal.principalId, exportedAt);
-      options.onDistrictExported?.({ counts: manifest.counts, bytes: bytes.byteLength });
-      const fileName = `${districtId}-${exportedAt.toISOString().slice(0, 10)}.zip`;
-      return { fileName, mediaType: "application/zip" as const, base64: encodeBase64(bytes), manifest };
+      const { body, manifest } = await buildDistrictExport(stores, ctx.snapshot, ctx.principal.principalId, exportedAt);
+      // Told once the whole ZIP has been sent, with its size; a failed or abandoned export tells nothing.
+      let bytes = 0;
+      const counted = body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          bytes += chunk.byteLength;
+          controller.enqueue(chunk);
+        },
+        flush() {
+          options.onDistrictExported?.({ counts: manifest.counts, bytes });
+        },
+      }));
+      return { fileName: `${districtId}-${exportedAt.toISOString().slice(0, 10)}.zip`, body: counted };
     },
     // Product analytics (SCHO-350): read like the district's health; changed like its name.
     "admin.productAnalytics": async (ctx) => {
@@ -1823,6 +1833,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return jsonResponse(await runOperation(ctx, operation, input as { params?: object; body?: object }), spec.status ?? 200, correlationId);
     }
     const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
+    if (spec.download !== undefined) return fileResponse(await handler(ctx, input) as FileDownload, spec.download, correlationId);
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
 

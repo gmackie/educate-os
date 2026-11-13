@@ -2,8 +2,8 @@
 
 - Status: Runbook. Not yet run end to end against a live district.
 - Issues: SCHO-364 (district export and this runbook), SCHO-143 (offboarding runbook). Follow-ups:
-  SCHO-367 (streamed export), SCHO-368 (installer uninstall and registry deregistration). SCHO-371
-  added the student archive route.
+  SCHO-368 (installer uninstall and registry deregistration). SCHO-371 added the student archive
+  route; SCHO-367 streamed the district export and added the remaining district-authored records.
 
 How a district takes its data out of EducateOS and removes it. EducateOS runs in the district's own
 Cloudflare account, so leaving is mostly deleting things the district already owns. Gmacko Ventures
@@ -28,15 +28,18 @@ A district administrator exports the whole district in one ZIP of JSON records a
 The format, and what is and is not in it, is in
 [educateos-archive-format.md, "District export"](../educateos-archive-format.md#district-export).
 
-With the API client, signed in as the administrator:
+In the admin console, the dashboard's **Export the district** card → **Export** saves it. For a
+large district, download it straight to disk instead: `GET /api/admin/district/export.zip` with
+the administrator's credential answers the ZIP itself, streamed, under the file name in its
+`Content-Disposition`. With the API client, signed in as the administrator:
 
 ```ts
-const exported = await client.call("admin.exportDistrict");
-await writeFile(exported.fileName, Buffer.from(exported.base64, "base64"));
+const response = await client.download("admin.exportDistrict");
+await pipeline(Readable.fromWeb(response.body!), createWriteStream("district-export.zip"));
 ```
 
-Or `GET /api/admin/district/export` with the administrator's credential, and decode `base64` from
-the JSON body. Then check it:
+If the download stops part-way (a content file could not be read, or the connection dropped), the
+ZIP is unreadable: export again. Then check it:
 
 1. Unzip it and read `manifest.json`. `counts` should match the admin console's district health
    (schools, terms, classes, students, staff, submissions).
@@ -49,12 +52,13 @@ The export holds students' personal information. Store it under the district's d
 rules. Only district administrators can take it; each export is in the policy audit trail and the
 district Worker's logs (`district.export`, counts only).
 
-**Limits today.** The export is one response, so a district holding more than 32 MiB of work content
-is refused with `unavailable` (SCHO-367 streams it). Some district-authored records are not in it
-yet: Content Studio items and releases, activity definitions, rubric releases, Assessment CI runs,
-the course library and marketplace packs (SCHO-367). Until then, export each class's content as a
-Common Cartridge (`teacher.exportCartridge`, a teacher of the class) and each gradebook as CSV
-(`teacher.exportGradebookCsv`).
+**Limits today.** There is no size limit: the export is streamed, one content file at a time
+(SCHO-367). An archive past 65,534 files or 4 GiB uses ZIP64, which every general-purpose unzip tool
+reads. It has not been timed against a large district, and it cannot resume: a failure means
+exporting again. Assessment CI runs are not in it (their store cannot list them yet), nor are the
+course library's signed course packages themselves. For a copy other learning platforms can open,
+also export each class's content as a Common Cartridge (`teacher.exportCartridge`, a teacher of the
+class) and each gradebook as CSV (`teacher.exportGradebookCsv`).
 
 ## 2. Give students and staff their own work
 
