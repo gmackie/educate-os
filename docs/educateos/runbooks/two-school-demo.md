@@ -63,6 +63,42 @@ outcomes, never credentials. Teacher-scoped delegated API operations prove provi
 they do not prove an authenticated teacher or student EducateOS session. The previous graded
 exemplars are documented in [Classroom verification](classroom-verification.md).
 
+### Harbor learner work and teacher review
+
+`scripts/demo/harbor-classroom-work.ts` gives the seeded Harbor activities real learner work. Each
+learner turns in their own submission with a token delegated to their own synthetic account
+(`classroom.coursework.me`, which reaches only their own submission). Each course's own teacher
+then grades and returns its first activity with the script's synthetic scores, and leaves the
+second turned in for review. Reruns change nothing, and a grade a teacher has since edited is kept.
+Each run also checks that a learner's attempts to read or grade a classmate's submission are refused.
+
+```sh
+node scripts/demo/harbor-classroom-work.ts run    --out /tmp/harbor-work.json
+node scripts/demo/harbor-classroom-work.ts verify --out /tmp/harbor-work-verified.json
+```
+
+These are provider-side workflows by each actual synthetic account, through the same Classroom
+calls the Google connector makes. They are not a Workshop approval flow (see
+[Classroom verification](classroom-verification.md)).
+
+### Signing presenters in as Harbor personas
+
+Harbor's roster comes from Classroom, so its teachers and students have no Access sign-in of
+their own. A presenter's Access sign-in can be linked to one synthetic teacher or student with the
+demo operator route. The route needs **both** the operator token (Keychain
+`educateos-harbor-demo-operator-token`) and the presenter's own Access assertion:
+
+```sh
+curl -X POST https://harbor.educateos.io/api/demo/operator/identity-links \
+  -H "authorization: Bearer $OPERATOR" -H "cf-access-jwt-assertion: $CF_AUTHORIZATION" \
+  -H "content-type: application/json" -d '{"principalId":"<teacher or student principal>"}'
+```
+
+The link goes through the district's own identity request and administrator approval, so it is
+audited. Administrators, district-scoped roles, unknown or ambiguous personas and service tokens
+are refused. A sign-in another principal already owns returns 409. Verify the result with
+`/api/me` in the presenter's session.
+
 ## Demo sign-in credential recovery
 
 Agent-inbox's supported source of truth is app `agent-inbox`, stage `production`, secret
