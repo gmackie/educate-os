@@ -186,6 +186,11 @@ jobs:
   # slot for ~11 min and was ~40% of this repo's runner time, while every repo's required checks
   # queued for the same five Linux slots. A Workshop regression still shows on main right after
   # merge.
+  #
+  # Advisory, so continue-on-error sits on the steps that run upstream code, not on the job. Forgejo
+  # ignores a job-level continue-on-error: the job's failure still turned the whole run red, which
+  # is why 20 of 21 failed main runs between 2026-11-06 and 2026-11-13 had a green gate (SCHO-357).
+  # A failure here is reported by the last step as a warning, and the test log keeps the details.
   workshop-tests:
     # After the gate rather than beside it: both jobs start workerd test fleets, and running them at
     # once on a shared runner host starved each other's tests into timeouts.
@@ -193,7 +198,6 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -201,13 +205,40 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      # The same Vite Task cache as the gate, under its own key: it holds these tasks, not the
+      # gate's, and only main and the nightly run reach this job. Upstream packages rarely change
+      # with an EducateOS merge, so most of their suites replay instead of taking ~15 minutes.
+      - name: Restore Vite Task cache
+        id: vite-task-cache
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules/.vite/task-cache
+          key: vite-task-workshop-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}:${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vite-task-workshop-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}:
       # The gatekeepers' configurator-frame suites launch headless Chromium through Playwright. The
       # runner image has neither the browser the locked Playwright expects nor its system libraries.
       - name: Install the headless Chromium Playwright launches
+        id: chromium
+        continue-on-error: true
         run: pnpm --filter @gadgets/confluence-gatekeeper exec playwright install --with-deps chromium --only-shell
       - name: Test Workshop packages (browser suites excluded)
+        id: workshop
+        continue-on-error: true
         run: >-
           node scripts/vp/run.ts --cache --fail-if-no-match
           --filter=!cloudflare-os --filter='!@educateos/*'
           --filter=!@gadgets/workshop-frontend --filter=!@gadgets/configurator-ui
           test
+      - name: Save Vite Task cache
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules/.vite/task-cache
+          key: ${{ steps.vite-task-cache.outputs.cache-primary-key }}
+      - name: Report an upstream Workshop failure
+        if: ${{ steps.chromium.outcome == 'failure' || steps.workshop.outcome == 'failure' }}
+        run: |
+          echo "::warning title=Workshop suites failed::Upstream Workshop tests failed (Chromium install: ${{ steps.chromium.outcome }}, tests: ${{ steps.workshop.outcome }}). Advisory only; see the test step's log for the failing suites."
