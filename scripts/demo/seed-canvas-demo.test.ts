@@ -1,3 +1,4 @@
+import { canvasQuizQuestion } from "./canvas-quiz.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { activityInstructions, canvasDemoPlan, CanvasClient, seedCanvasDemo } from "./seed-canvas-demo.ts";
@@ -72,14 +73,22 @@ test("a second run creates nothing and verification leaves unrelated account rec
       const rows = enrollments.get(path) ?? []; enrollments.set(path, rows);
       if (method === "GET") value = rows;
       else { rows.push(body.enrollment); value = body.enrollment; }
-    } else if (/^courses\/\d+\/(modules|pages|discussion_topics)$/.test(path) || /^courses\/\d+\/modules\/\d+\/items$/.test(path)) {
+    } else if (/^courses\/\d+\/(modules|pages|discussion_topics|quizzes)$/.test(path) || /^courses\/\d+\/modules\/\d+\/items$/.test(path)) {
       const rows = collections.get(path) ?? []; collections.set(path, rows);
       if (method === "GET") value = rows;
       else {
-        const row = { id: nextId++, ...body.module, ...body.module_item, ...body.wiki_page, ...(path.endsWith("discussion_topics") ? body : {}) };
+        const row = { id: nextId++, ...body.quiz, ...body.module, ...body.module_item, ...body.wiki_page, ...(path.endsWith("discussion_topics") ? body : {}) };
         if (body.wiki_page) { row.page_id = row.id; row.url = `page-${row.id}`; }
         rows.push(row); value = row;
       }
+    } else if (/^courses\/\d+\/quizzes\/\d+\/questions$/.test(path)) {
+      const rows = collections.get(path) ?? []; collections.set(path, rows);
+      if (method === "GET") value = rows;
+      else { const row = { id: nextId++, ...body.question }; rows.push(row); value = row; }
+    } else if (/^courses\/\d+\/quizzes\/\d+$/.test(path) && method === "PUT") {
+      const prefix = path.split("/").slice(0, 3).join("/");
+      const row = collections.get(prefix)!.find(r => r.id === Number(path.split("/")[3]))!;
+      Object.assign(row, body.quiz, { question_count: collections.get(`${path}/questions`)!.length }); value = row;
     } else if (/^courses\/\d+\/modules\/\d+$/.test(path) && method === "PUT") {
       const [prefix, id] = [path.split("/").slice(0, 3).join("/"), Number(path.split("/")[3])];
       const row = collections.get(prefix)!.find(r => r.id === id)!;
@@ -103,6 +112,33 @@ test("a second run creates nothing and verification leaves unrelated account rec
   assert.equal(writes, firstWrites);
   assert.deepEqual((await seedCanvasDemo(client, "verify")).problems, []);
   assert.equal(writes, firstWrites);
+  const quiz = [...collections.entries()].find(([path]) => path.endsWith("/quizzes"))![1][0]!;
+  quiz.published = false;
+  assert.ok((await seedCanvasDemo(client, "run")).problems.some(p => p.startsWith("Quiz configuration drift:")));
+  assert.equal(writes, firstWrites, "incomplete quizzes require inspection, never blind recreation");
+  quiz.published = true;
+  quiz.description = "Teacher-owned content";
+  await assert.rejects(seedCanvasDemo(client, "run"), /Unowned quiz collision/);
+  assert.equal(writes, firstWrites);
   assert.deepEqual(courses[0], { id: 2, course_code: "EDU-LTI", workflow_state: "available" });
   assert.deepEqual(users[0], { id: 2, login_id: "existing-admin" });
+});
+
+
+test("all-or-nothing multiple select stays teacher scored without exposing its key", () => {
+  const question = canvasQuizQuestion({ type: "multiple-select", prompt: "Choose <one>", points: 2,
+    choices: [{ id: "a", text: "Choice A" }, { id: "b", text: "Choice B" }], correctChoiceIds: ["a"], scoring: "all-or-nothing" }, 1);
+  assert.equal(question.question_type, "essay_question");
+  assert.ok(question.question_text.includes("&lt;one&gt;"));
+  assert.ok(question.question_text.includes("teacher will score"));
+  assert.ok(!("answers" in question));
+});
+
+test("numeric tolerance and multiple-choice keys are preserved in Canvas question fields", () => {
+  const numeric = canvasQuizQuestion({ type: "numeric", prompt: "Measure", points: 3, answer: 12, tolerance: 0.5 }, 2);
+  assert.ok("answers" in numeric);
+  assert.deepEqual(numeric.answers, [{ numerical_answer_type: "exact_answer", answer_exact: 12, answer_error_margin: 0.5, answer_weight: 100 }]);
+  const choice = canvasQuizQuestion({ type: "multiple-choice", prompt: "Pick", points: 1, choices: [{ id: "x", text: "X" }, { id: "y", text: "Y" }], correctChoiceId: "y" }, 1);
+  assert.ok("answers" in choice);
+  assert.deepEqual(choice.answers.map(a => a.answer_weight), [0, 100]);
 });

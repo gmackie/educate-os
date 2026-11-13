@@ -6,6 +6,8 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { NORTHFIELD, NORTHFIELD_SHOWCASE, type ShowcaseActivity } from "../../packages/educateos-fixtures/src/index.ts";
 
+import { canvasQuizQuestion } from "./canvas-quiz.ts";
+
 const ORIGIN = "https://canvas.mackie.house";
 const ACCOUNT = 3;
 const PREFIX = "educateos-demo:";
@@ -85,6 +87,7 @@ interface Assignment { id: number; name: string; description: string; published:
 interface Enrollment { user_id: number; type: string; enrollment_state: string }
 interface Module { id: number; name: string; published: boolean }
 interface Page { page_id: number; url: string; title: string; body: string; published: boolean }
+interface Quiz { id: number; title: string; description: string; published: boolean; question_count: number; hide_results?: string; show_correct_answers?: boolean }
 interface Topic { id: number; title: string; message: string; published: boolean }
 interface ModuleItem { type: string; content_id?: number; page_url?: string }
 
@@ -107,7 +110,7 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
     if (user) userIds.set(planned.fixtureId, user.id);
     else problems.push(`Missing user ${planned.fixtureId}`);
   }
-  const mappings: { offeringId: string; canvasCourseId: number; assignments: { key: string; canvasAssignmentId: number }[] }[] = [];
+  const mappings: { offeringId: string; canvasCourseId: number; quizzes: { key: string; canvasQuizId: number }[]; assignments: { key: string; canvasAssignmentId: number }[] }[] = [];
   for (const planned of plan.courses) {
     const matches = courses.filter(c => c.sis_course_id === planned.sisId);
     if (matches.length > 1) throw new Error(`Duplicate Canvas SIS course ${planned.offeringId}`);
@@ -130,7 +133,7 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
       }
     }
     const assignments = await client.list<Assignment>(`${base}/assignments?per_page=100`);
-    const mapped = { offeringId: planned.offeringId, canvasCourseId: course.id, assignments: [] as { key: string; canvasAssignmentId: number }[] };
+    const mapped = { offeringId: planned.offeringId, canvasCourseId: course.id, quizzes: [] as { key: string; canvasQuizId: number }[], assignments: [] as { key: string; canvasAssignmentId: number }[] };
     for (const activity of planned.activities) {
       const name = `[${activity.key}] ${activity.title}`;
       const matches = assignments.filter(a => a.name === name);
@@ -145,6 +148,34 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
       else {
         mapped.assignments.push({ key: activity.key, canvasAssignmentId: assignment.id });
         if (!assignment.published || assignment.points_possible !== points || !assignment.submission_types.includes("online_text_entry")) problems.push(`Assignment configuration drift: ${planned.offeringId}/${activity.key}`);
+      }
+    }
+    // Canvas ignores show_correct_answers whenever hide_results is set; always hides all results.
+    const quizIds = new Map<string, number>();
+    const quizzes = await client.list<Quiz>(`${base}/quizzes?per_page=100`);
+    for (const quiz of planned.quizzes) {
+      const title = `[educateos-demo:${quiz.key}] ${quiz.title}`;
+      // Validate every item before creating a provider record.
+      const questions = quiz.items.map((item, index) => canvasQuizQuestion(item, index + 1));
+      const matches = quizzes.filter(q => q.title === title);
+      if (matches.length > 1) throw new Error(`Duplicate quiz: ${title}`);
+      let record = matches[0];
+      if (record && !record.description.includes("managed by seed-canvas-demo.ts")) throw new Error(`Unowned quiz collision: ${title}`);
+      if (!record && mode === "run") {
+        record = (await client.request<Quiz>("POST", `${base}/quizzes`, { quiz: {
+          title, description: marker + paragraphs(quiz.description), quiz_type: "assignment", published: false,
+          hide_results: "always", allowed_attempts: 1,
+        } })).value;
+        for (const question of questions) await client.request("POST", `${base}/quizzes/${record.id}/questions`, { question });
+        const check = await client.list(`${base}/quizzes/${record.id}/questions?per_page=100`);
+        if (check.length !== questions.length) throw new Error(`Quiz questions incomplete: ${title}. Inspect before retrying.`);
+        record = (await client.request<Quiz>("PUT", `${base}/quizzes/${record.id}`, { quiz: { published: true, hide_results: "always" } })).value;
+      }
+      if (!record) problems.push(`Missing quiz ${planned.offeringId}/${quiz.key}`);
+      else {
+        quizIds.set(quiz.key, record.id);
+        mapped.quizzes.push({ key: quiz.key, canvasQuizId: record.id });
+        if (!record.published || record.question_count !== questions.length || record.hide_results !== "always") problems.push(`Quiz configuration drift: ${planned.offeringId}/${quiz.key}. Inspect incomplete quizzes before retrying.`);
       }
     }
     const topicIds = new Map<string, number>();
@@ -204,6 +235,13 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
           else problems.push(`Missing module discussion link ${planned.offeringId}/${item.key}`);
         }
       }
+      for (const item of unit.items.filter(i => i.kind === "quiz")) {
+        const quizId = quizIds.get(item.key);
+        if (quizId && !items.some(i => i.type === "Quiz" && i.content_id === quizId)) {
+          if (mode === "run") await client.request("POST", `${base}/modules/${module.id}/items`, { module_item: { type: "Quiz", content_id: quizId } });
+          else problems.push(`Missing module quiz link ${planned.offeringId}/${item.key}`);
+        }
+      }
       if (!module.published) {
         if (mode === "run") await client.request("PUT", `${base}/modules/${module.id}`, { module: { published: true } });
         else problems.push(`Unpublished module ${planned.offeringId}/${position}`);
@@ -216,7 +254,7 @@ export async function seedCanvasDemo(client: CanvasClient, mode: "run" | "verify
     mappings.push(mapped);
   }
   return { accountId: ACCOUNT, users: userIds.size, courses: mappings, problems,
-    pending: ["quizzes and discussion participation", "EducateOS offering/identity links", "LTI launches", "student submissions", "teacher-approved grade return"] };
+    pending: ["quiz attempts and discussion participation", "EducateOS offering/identity links", "LTI launches", "student submissions", "teacher-approved grade return"] };
 }
 
 async function main() {
