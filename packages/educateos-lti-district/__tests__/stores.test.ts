@@ -162,3 +162,32 @@ describe("InMemoryRecordTable", () => {
     expect(table.list("c")).toEqual([{ key: "a", row: { value: 1, expiresAt: undefined } }]);
   });
 });
+
+describe("course connection updates", () => {
+  it("preserves concurrent courses, deployments and activity links and accepts exact retries", async () => {
+    const { stores } = createDistrict();
+    const registration = canvasRegistration({ activityLinks: [{ offeringId: BIO, linkId: "existing", activityId: CELL_LAB }] });
+    await stores.registrations.save(registration);
+    await Promise.all([
+      stores.registrations.addCourseLink(registration, { contextId: "new-bio", offeringId: BIO }, "new-deploy-bio"),
+      stores.registrations.addCourseLink(registration, { contextId: "new-eng", offeringId: ENG9 }, "new-deploy-eng"),
+    ]);
+    const result = await stores.registrations.get(registration);
+    expect(result?.offerings).toEqual([...registration.offerings, { contextId: "new-bio", offeringId: BIO }, { contextId: "new-eng", offeringId: ENG9 }]);
+    expect(result?.deploymentIds).toEqual([...registration.deploymentIds, "new-deploy-bio", "new-deploy-eng"]);
+    expect(result?.activityLinks).toEqual(registration.activityLinks);
+    expect(result?.authLoginUrl).toBe(registration.authLoginUrl);
+    await stores.registrations.addCourseLink(registration, { contextId: "new-bio", offeringId: BIO }, "new-deploy-bio");
+    expect(await stores.registrations.get(registration)).toEqual(result);
+  });
+
+  it("rejects context rebinding and unknown targets without changing the registration", async () => {
+    const { stores } = createDistrict();
+    const registration = canvasRegistration();
+    await stores.registrations.save(registration);
+    expect(await rejection(stores.registrations.addCourseLink(registration, { contextId: BIO_CONTEXT, offeringId: ENG9 }, "deploy"))).toBe("conflict");
+    await expect(stores.registrations.addCourseLink(registration, { contextId: "unknown", offeringId: OfferingId.parse("off_missing") }, "deploy")).rejects.toThrow();
+    expect(await stores.registrations.get(registration)).toEqual(registration);
+    expect(await rejection(stores.registrations.addCourseLink({ ...registration, clientId: "missing" }, { contextId: "new", offeringId: BIO }, "deploy"))).toBe("not-found");
+  });
+});

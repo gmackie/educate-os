@@ -2,6 +2,7 @@ import { z } from "zod";
 import { EnrollmentId, OfferingId, EducateOsError, SourceLink, UtcTimestamp } from "@educateos/contracts";
 import {
   ActivityLink,
+  OfferingMapping,
   decidePassbackClaim,
   GradeRoute,
   LtiContextServices,
@@ -101,6 +102,8 @@ export interface DistrictRegistrationStore extends PlatformRegistrationStore {
    * `(issuer, clientId)` exists.
    */
   save(registration: PlatformRegistration): Promise<void>;
+  /** Adds a validated course and deployment without rebinding an existing context. Exact retries are idempotent. */
+  addCourseLink(key: RegistrationKey, mapping: OfferingMapping, deploymentId: string): Promise<void>;
 }
 
 const registrationKey = (key: RegistrationKey): string => tupleKey(key.issuer, key.clientId);
@@ -137,6 +140,28 @@ export class TableRegistrationStore implements DistrictRegistrationStore {
         throw new EducateOsError("conflict", "This platform is already registered with that client ID.");
       }
       this.#table.put(LTI_COLLECTIONS.registrations, key, registration);
+    });
+  }
+
+  async addCourseLink(key: RegistrationKey, input: OfferingMapping, rawDeploymentId: string): Promise<void> {
+    const mapping = OfferingMapping.parse(input);
+    const deploymentId = z.string().min(1).max(255).parse(rawDeploymentId);
+    const append = (registration: PlatformRegistration): PlatformRegistration => {
+      const existing = registration.offerings.find(m => m.contextId === mapping.contextId);
+      if (existing && existing.offeringId !== mapping.offeringId) throw new EducateOsError("conflict", "That platform course is already connected to another offering.");
+      return PlatformRegistration.parse({ ...registration,
+        offerings: existing ? registration.offerings : [...registration.offerings, mapping],
+        deploymentIds: registration.deploymentIds.includes(deploymentId) ? registration.deploymentIds : [...registration.deploymentIds, deploymentId],
+      });
+    };
+    const registration = await this.get(key);
+    if (!registration) throw new EducateOsError("not-found", "No such LTI registration.");
+    await this.#targets.assertRegistration(append(registration));
+    this.#table.atomically(() => {
+      const row = this.#table.get(LTI_COLLECTIONS.registrations, registrationKey(key));
+      if (!row) throw new EducateOsError("not-found", "No such LTI registration.");
+      // Re-read after validation so concurrent additions and deep links are preserved.
+      this.#table.put(LTI_COLLECTIONS.registrations, registrationKey(key), append(read(PlatformRegistration, row.value, LTI_COLLECTIONS.registrations)));
     });
   }
 
