@@ -24,6 +24,8 @@ const PRIVATE = "PRIVATE-JOURNAL-SCHO-364";
 const OLD_CAP = 32 * 1024 * 1024;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
+const sha256 = (bytes: Uint8Array) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+
 /** An upload-sized PNG-signed file of distinct bytes, so no two share a digest. */
 function bigPng(seed: number): Uint8Array {
   const bytes = new Uint8Array(MAX_UPLOAD_BYTES);
@@ -146,7 +148,6 @@ describe("the whole-district export, over the seeded Northfield showcase", () =>
     const held = [...files].filter(([path]) => path.startsWith("content/"));
     expect(held.reduce((n, [, bytes]) => n + bytes.byteLength, 0)).toBeGreaterThan(OLD_CAP);
     // Compared by digest: element-wise equality of megabytes is slower than the test's budget.
-    const sha256 = (bytes: Uint8Array) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
     for (const bytes of uploads) {
       const archived = files.get(contentPath(sha256(bytes) as never));
       expect(archived?.byteLength).toBe(bytes.byteLength);

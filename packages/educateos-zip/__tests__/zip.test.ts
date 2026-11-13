@@ -72,6 +72,11 @@ async function* entriesOf(entries: readonly ZipWriteEntry[], pulled?: string[]):
   }
 }
 
+async function* failingAfter(entry: ZipWriteEntry): AsyncIterable<ZipWriteEntry> {
+  yield entry;
+  throw new Error("content went missing");
+}
+
 describe("zipStream (SCHO-367)", () => {
   const entries = [
     { path: "manifest.json", bytes: encoder.encode("{}\n".repeat(40)) },
@@ -100,11 +105,7 @@ describe("zipStream (SCHO-367)", () => {
   });
 
   it("errors the stream when an entry cannot be read", async () => {
-    async function* failing(): AsyncIterable<ZipWriteEntry> {
-      yield entries[0]!;
-      throw new Error("content went missing");
-    }
-    await expect(new Response(zipStream(failing())).arrayBuffer()).rejects.toThrow("content went missing");
+    await expect(new Response(zipStream(failingAfter(entries[0]!))).arrayBuffer()).rejects.toThrow("content went missing");
   });
 
   it("adds the ZIP64 end records past 65,534 entries, which the bounded reader refuses", async () => {
