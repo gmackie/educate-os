@@ -120,7 +120,7 @@ describe("the demo", () => {
     const progress = (n: number) => findByRole(banner(), "button", { name: new RegExp(`Things to try ${n}/7`) }, BOOT);
     expect(await progress(0)).toBeDefined();
     const open = async (screen: string, heading: string) => {
-      await userEvent.click(within(getByRole(container, "navigation", { name: "Admin sections" })).getByRole("link", { name: screen, exact: true }));
+      await userEvent.click(within(getByRole(container, "navigation", { name: "Admin sections" })).getByRole("link", { name: screen }));
       return findByRole(container, "heading", { name: heading, level: 2 }, BOOT);
     };
 
