@@ -200,7 +200,8 @@ There is no uninstall command. In the Cloudflare dashboard, delete everything na
 `educateos-<name>-*`: the Workers, KV namespaces, the R2 bucket, the D1 databases, the AI Gateway,
 the Workers custom domains (deleting the Worker removes its custom domain and DNS record with it),
 and the Access application and policy. **Deleting the Workers and storage deletes the district's
-data with them**; export first. This is how the 2026-10-26 trial installs were removed (10 Workers,
+data with them**; export first. The full sequence (district export, disconnecting integrations,
+revoking Access and the IdP, deletion and confirming it) is [district-offboarding.md](district-offboarding.md). This is how the 2026-10-26 trial installs were removed (10 Workers,
 6 KV namespaces, 2 R2 buckets, 4 domains, 2 Access applications and 2 policies); afterwards the
 hostnames answered 530.
 
