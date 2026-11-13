@@ -33,8 +33,12 @@ provider before retrying. For hosts with a slow IPv4 connection and no IPv6 rout
 The new Canvas courses still need their own LTI deployments and approved context/identity mappings
 to the live district. A matching fixture ID is **not** an approved identity link. Modules include activities, introductions and discussion links. The seed also creates published
 synthetic discussion topics and announcements using stable titles and ownership markers; it refuses
-collisions and preserves existing content. Quizzes, discussion participation and learner work remain
-to be populated.
+collisions and preserves existing content. Eight Canvas Classic quizzes are also seeded and linked into modules. Questions preserve numeric
+tolerances and choice keys in teacher-only question fields. All-or-nothing multiple-select items
+become explicitly teacher-scored responses because Canvas Classic uses different automatic scoring.
+Results stay hidden (`hide_results: always`); Canvas ignores `show_correct_answers` in this mode.
+Existing incomplete quizzes are reported for inspection, never blindly recreated or published.
+Quiz attempts, discussion participation and learner work remain to be populated.
 The seed does not manufacture grade approvals or claim grade-return acceptance.
 
 ## Harbor and Classroom
