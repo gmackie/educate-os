@@ -35,7 +35,7 @@ published v3.1 API. Its own guided "Clever tour" covers it.
 Three schools (Northfield Elementary K-5, Middle 6-8, High 9-12), twelve showcase classes, three per
 band, and one past-term class. Each class has modules, readings, activities with signed rubrics,
 announcements, quizzes, and student work at every stage: not started, draft, submitted, graded and
-released. The picker offers ten personas:
+released. The picker offers ten people, and Avery Admin twice (the second time for a technology director's review):
 
 | Band | Student | Teacher |
 |---|---|---|
@@ -45,12 +45,39 @@ released. The picker offers ten personas:
 | 9-12 | Amara Okafor, grade 9 | Sam Rivera, English 9 |
 | Family | Rosa Delgado, guardian of Mateo (grade 1) and Lucía (grade 10) | |
 | District | Avery Admin, district administrator | |
+| District | Avery Admin, as a technology director's review (`?persona=it-director`) | |
 
 Each persona has "Things to try" (the band journeys in `packages/educateos-demo/src/journeys.ts`),
 which tick as the real app makes the requests that doing them takes. The K-12 tour strip under the
 banner opens nine screens in order (`src/tour/storyTour.ts`); the third is Mr. Yazzie's Grade 1
 Reading modules, whose units 3 to 6 came from the Grade 1 Reading Foundations course package, with
-Add a course below them. `?presenter` in the URL turns on presenter mode: number keys 1 to 9 open a
+Add a course below them. `?persona=<id>` opens straight into one persona's app and journey; in
+Cedar Valley it signs them in through the portal.
+
+The technology director's review (SCHO-365, <https://educateos.io/demo/?persona=it-director>) is
+Avery Admin's account with a journey through what a district IT reviewer signs off on. Each step
+ticks only on its own console screen, since the Dashboard makes some of the same requests:
+
+1. **All classes**: every class, by school and term.
+2. **Manage classes and people**: every person, their role and whether they can sign in.
+3. **Roster**: the roster source (a OneRoster CSV export, previewed before it applies) and what the
+   directory holds. Cedar Valley shows the Clever path instead.
+4. **Policies**: tighten a district floor (the monthly AI cap is the quickest) and review it. The
+   review is the configuration dry run: what the change reaches, before anything applies.
+5. **Apply** it as a new configuration version (Modules and activation lists the versions).
+6. **AI budgets**: funding pools and the safety reserve. Northfield funds no AI and has no
+   Cloudflare account, so every cost reads $0.00 or "Not available", and the screen says why.
+7. **Operations**: no EducateOS admin can reach the district's operations API unless the district
+   enrolls one, and what it does is logged.
+
+What an IT reviewer may ask for that the demo does not show: a log of the policy engine's or Hall
+Monitor's safety decisions (the district's explain-and-simulate API has no console screen), real AI
+cost or allowance figures, sign-in and identity-provider settings (SSO is set in the configuration,
+not on a screen), a scheduled roster sync and its history in Northfield (its Roster sync screen
+says the roster has no identity mapping; Cedar Valley's runs), and a general audit log of
+administrators' changes beyond configuration versions and the operations log.
+
+`?presenter` in the URL turns on presenter mode: number keys 1 to 9 open a
 step, the arrow keys step through, `?` shows the keys.
 
 ## Real and simulated

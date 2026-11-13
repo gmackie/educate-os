@@ -109,6 +109,56 @@ describe("the demo", () => {
     expect(await within(tutor).findByText(/Neither sent nor kept/)).toBeDefined();
   });
 
+  it("opens the technology director's journey from a link, and ticks each step as the console's screens make its requests", async () => {
+    act(() => root.unmount());
+    container.remove();
+    await mount("/demo/?persona=it-director");
+    expect(await findByRole(container, "heading", { name: "Dashboard" }, BOOT)).toBeDefined();
+    expect(banner().textContent).toContain("You're Avery Admin · Technology director review");
+    // The Dashboard reads the district's health and re-plans its configuration, which is not reviewing either.
+    expect(await findByText(container, "Nothing is blocking the configuration in force.", {}, BOOT)).toBeDefined();
+    const progress = (n: number) => findByRole(banner(), "button", { name: new RegExp(`Things to try ${n}/7`) }, BOOT);
+    expect(await progress(0)).toBeDefined();
+    const open = async (screen: string, heading: string) => {
+      await userEvent.click(within(getByRole(container, "navigation", { name: "Admin sections" })).getByRole("link", { name: screen }));
+      return findByRole(container, "heading", { name: heading, level: 2 }, BOOT);
+    };
+
+    await open("All classes", "All classes");
+    expect(await progress(1)).toBeDefined();
+    await open("Manage classes and people", "Manage classes and people");
+    expect(await progress(2)).toBeDefined();
+    await open("Roster", "Roster");
+    expect(await findByText(container, /^The directory holds 3 schools/, {}, BOOT)).toBeDefined();
+    expect(await progress(3)).toBeDefined();
+
+    await open("Policies", "Policies");
+    const cap = await findByRole(container, "textbox", { name: /^Monthly AI cap per person/ }, BOOT);
+    await userEvent.clear(cap);
+    await userEvent.type(cap, "1.00");
+    await userEvent.click(getByRole(container, "button", { name: "Review change" }));
+    expect(await findByText(container, "This is a preview. Nothing changes until you choose Apply policy.", {}, BOOT)).toBeDefined();
+    expect(await progress(4)).toBeDefined();
+    const approve = queryByRole(container, "checkbox", { name: /I approve the items listed above/ });
+    if (approve !== null) await userEvent.click(approve);
+    const apply = await findByRole(container, "button", { name: "Apply policy" }, BOOT);
+    await waitFor(() => expect((apply as HTMLButtonElement).disabled).toBe(false), BOOT);
+    await userEvent.click(apply);
+    expect(await findByText(container, /^District policy updated\. Version 2/, {}, BOOT)).toBeDefined();
+    expect(await progress(5)).toBeDefined();
+
+    await open("AI budgets", "AI budgets");
+    expect(await findByText(container, "No safety reserve is configured", {}, BOOT)).toBeDefined();
+    expect(await progress(6)).toBeDefined();
+    await open("Operations", "Operations");
+    expect(await findByText(container, "No admin is enrolled. Nobody can use this district's operations API.", {}, BOOT)).toBeDefined();
+    expect(await progress(7)).toBeDefined();
+
+    // Becoming someone else drops the link's persona, so a reload does not bring them back.
+    await switchPersona();
+    expect(window.location.search).toBe("");
+  });
+
   it("signs a student out to the persona picker, not off the site", async () => {
     await choose("Grade 4 student");
     await findByRole(container, "heading", { name: "Hi, Abena Mensah" }, BOOT);
@@ -222,6 +272,15 @@ describe("the demo's districts", () => {
     await choose("Earth Science and Algebra teacher");
     await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Cedar Valley USD hasn't synced from Clever yet" }, BOOT)).toBeDefined();
+  });
+
+  it("opens a Cedar Valley persona from a link by signing them in through the portal", async () => {
+    act(() => root.unmount());
+    container.remove();
+    await mount("/demo/?district=cedarvalley&persona=admin");
+    // The administrator lands on the console's Roster sync screen, where the first sync is run.
+    expect(await findByRole(container, "button", { name: "Run complete sync" }, BOOT)).toBeDefined();
+    expect(banner().textContent).toContain("You're Elaine Park");
   });
 
   it("changes Cedar Valley in Clever from its Clever side, and a delta sync in Roster sync brings the changes in", async () => {

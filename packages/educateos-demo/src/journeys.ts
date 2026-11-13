@@ -139,6 +139,50 @@ export const JOURNEYS: Readonly<Record<PersonaId, readonly JourneyStep[]>> = {
     { id: "admin.classes", label: "Look over all the district's classes", done: { method: "GET", paths: ["/api/admin/offerings"] } },
     { id: "admin.roster", label: "Open a class's roster from All classes", done: { method: "GET", paths: ["/api/admin/offerings/:x/roster"] } },
   ],
+  // What a district technology director reviews (SCHO-365). Several of these requests are made by
+  // other screens too (the Dashboard reads the district's health and re-plans its configuration, a
+  // school's page lists its classes), so each step names its own screen.
+  "it-director": [
+    {
+      id: "it-director.classes",
+      label: "Open All classes: every class from kindergarten to grade 12, by school and term",
+      done: { method: "GET", paths: ["/api/admin/offerings"] },
+      on: /^#\/classes$/,
+    },
+    {
+      id: "it-director.people",
+      label: "Open Manage classes and people: every person, their role and whether they can sign in",
+      done: { method: "GET", paths: ["/api/admin/authoring"] },
+      on: /^#\/classes-people(\/|$)/,
+    },
+    {
+      id: "it-director.roster",
+      label: "Open Roster: where the roster comes from (a OneRoster export, previewed before it applies) and what it holds",
+      done: { method: "GET", paths: ["/api/admin/health"] },
+      on: /^#\/roster$/,
+    },
+    {
+      id: "it-director.preview",
+      label: "In Policies, tighten a district floor, such as the monthly AI cap, and review the change: a dry run of every class it reaches",
+      done: { method: "POST", paths: ["/api/admin/config/plan"] },
+      on: /^#\/policies$/,
+    },
+    {
+      id: "it-director.apply",
+      label: "Apply it, as a new version of the district's configuration",
+      done: { method: "POST", paths: ["/api/admin/config/apply"] },
+    },
+    {
+      id: "it-director.budgets",
+      label: "Open AI budgets: funding pools and the safety reserve (empty here: the demo funds no AI, so costs read $0.00 or Not available)",
+      done: { method: "GET", paths: ["/api/admin/ai/funding"] },
+    },
+    {
+      id: "it-director.operations",
+      label: "Open Operations: no EducateOS admin can reach the district unless you enroll one, and what it did is logged",
+      done: { method: "GET", paths: ["/api/admin/ops/keys"] },
+    },
+  ],
 };
 
 /** What to try as `persona`. */

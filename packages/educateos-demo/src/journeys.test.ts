@@ -36,6 +36,28 @@ describe("journey steps", () => {
     expect(await stepsDoneBy("guardian", course, answer(200), "#/family/children/prn_1/courses/off_1")).toEqual(["guardian.course"]);
   });
 
+  it("counts the technology director's steps only on their own screens, not the Dashboard's or a school's reads", async () => {
+    const tick = (method: string, path: string, screen: string) => stepsDoneBy("it-director", request(method, path), answer(200), screen);
+    // The Dashboard reads the district's health and re-plans the configuration in force on load.
+    expect(await tick("GET", "/api/admin/health", "#/dashboard")).toEqual([]);
+    expect(await tick("GET", "/api/admin/health", "")).toEqual([]);
+    expect(await tick("POST", "/api/admin/config/plan", "#/dashboard")).toEqual([]);
+    // Modules and activation dry-runs two plans on load to survey the classes.
+    expect(await tick("POST", "/api/admin/config/plan", "#/modules")).toEqual([]);
+    // A school's page lists its classes too.
+    expect(await tick("GET", "/api/admin/offerings", "#/schools/sch_1")).toEqual([]);
+
+    expect(await tick("GET", "/api/admin/offerings", "#/classes")).toEqual(["it-director.classes"]);
+    expect(await tick("GET", "/api/admin/authoring", "#/classes-people/sections/off_1")).toEqual(["it-director.people"]);
+    expect(await tick("GET", "/api/admin/health", "#/roster")).toEqual(["it-director.roster"]);
+    expect(await tick("POST", "/api/admin/config/plan", "#/policies")).toEqual(["it-director.preview"]);
+    expect(await tick("POST", "/api/admin/config/apply", "#/policies")).toEqual(["it-director.apply"]);
+    expect(await tick("GET", "/api/admin/ai/funding", "#/ai-budgets")).toEqual(["it-director.budgets"]);
+    expect(await tick("GET", "/api/admin/ops/keys", "#/operations")).toEqual(["it-director.operations"]);
+    // The same requests as the plain administrator tick only their own journey.
+    expect(await stepsDoneBy("admin", request("GET", "/api/admin/ai/funding"), answer(200), "#/ai-budgets")).toEqual([]);
+  });
+
   it("keeps each persona to its own steps", async () => {
     expect(await stepsDoneBy("guardian", request("GET", "/api/admin/offerings"), answer(200), "#/")).toEqual([]);
   });

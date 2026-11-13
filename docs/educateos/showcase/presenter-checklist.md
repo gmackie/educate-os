@@ -38,6 +38,21 @@
   through. Keys do nothing while the cursor is in a text field: click the page background first.
 - [ ] Leave it on the picker, with Northfield selected.
 
+## IT director
+
+For a district technology director, open `https://educateos.io/demo/?persona=it-director` (add
+`&presenter` if you want the keys). It signs you in as Avery Admin, with seven "Things to try"
+through the console; the [README](README.md#what-is-in-northfield) lists them and what the demo
+lacks for IT.
+
+- [ ] Point out that every configuration change, the policy floors included, is previewed as a dry
+  run before **Apply**, and lands as a new version.
+- [ ] On **AI budgets**, say plainly that the demo funds no AI and has no Cloudflare account, so
+  the figures are empty; the live district has real ones.
+- [ ] For the Clever path, switch to the Cedar Valley tab and run its first roster sync as Elaine
+  Park.
+- [ ] Do not claim a safety decision log on screen: there is none in the console yet.
+
 ## Reset state
 
 - **Reset demo** (top right) boots a fresh district in about 2 seconds, clears the tour and

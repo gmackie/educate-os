@@ -135,6 +135,18 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
     lookFor: "All classes, each class's roster, learning standards and policies",
     subject: "nf-0001",
   },
+  // The same administrator, for a district technology director reviewing the platform (SCHO-365):
+  // a journey through what IT signs off on, which `?persona=it-director` opens straight into.
+  {
+    id: "it-director",
+    kind: "admin",
+    section: "district",
+    name: "Avery Admin",
+    role: "Technology director review",
+    description: "Review what IT signs off on, signed in as the district administrator: the directory, the roster source, policy floors, AI budgets, vendor access, and a configuration change previewed before it applies.",
+    lookFor: "Roster, Policies, AI budgets and Operations, and the dry-run preview before Apply",
+    subject: "nf-0001",
+  },
 ];
 
 /** The publisher keys the district's course library accepts: educateos.io's committed key, as the demo districts pin it. */

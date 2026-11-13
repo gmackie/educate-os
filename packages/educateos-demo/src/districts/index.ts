@@ -3,7 +3,7 @@
 // a Clever fake and its integration that Northfield's visitors never need.
 import { CEDARVALLEY_PERSONAS } from "./cedarvalleyPersonas.ts";
 import { bootNorthfield, NORTHFIELD_PERSONAS, NORTHFIELD_SECTIONS } from "./northfield.ts";
-import type { DemoDistrict, DistrictKey, Persona, PersonaSection } from "./shared.ts";
+import type { DemoDistrict, DistrictKey, Persona, PersonaId, PersonaSection } from "./shared.ts";
 
 export type { DemoDistrict, DemoRoster, DistrictKey, GradeBand, Persona, PersonaId, PersonaKind, PersonaSection, RosterSyncResult } from "./shared.ts";
 export { ROSTER_SYNC_ROUTE } from "./shared.ts";
@@ -60,4 +60,13 @@ export const districtInfo = (key: DistrictKey): DistrictInfo => DISTRICTS.find((
 export function districtFromSearch(search: string): DistrictKey {
   const asked = new URLSearchParams(search).get("district");
   return DISTRICTS.find((d) => d.key === asked)?.key ?? "northfield";
+}
+
+/**
+ * The persona of `district` a page's query string opens straight into (`?persona=it-director`), so
+ * a link can land a visitor in one persona's app and journey; undefined when it names none of them.
+ */
+export function personaFromSearch(search: string, district: DistrictKey): PersonaId | undefined {
+  const asked = new URLSearchParams(search).get("persona");
+  return districtInfo(district).personas.find((p) => p.id === asked)?.id;
 }
