@@ -32,10 +32,10 @@ test('the loader collects only the reviewed marketing paths, cookieless and with
     runInNewContext(source, browser(path, () => { loaded = true; return {addEventListener() {}}; }));
     return loaded;
   };
-  for (const path of ['/', '/teachers/', '/leaders', '/families/', '/developers/', '/developers/mcp', '/gadgets/', '/connectors/x', '/pricing', '/privacy/']) {
+  for (const path of ['/', '/teachers/', '/leaders', '/families/', '/developers/', '/developers/mcp', '/gadgets/', '/connectors/x', '/it/', '/it/install/', '/it/security-questionnaire/', '/it/accessibility/', '/pricing', '/privacy/']) {
     assert.equal(loads(path), true, path);
   }
-  for (const path of ['/teachers/demo', '/interest/', '/tour/', '/demo/', '/privacy/extra', '/app']) {
+  for (const path of ['/teachers/demo', '/interest/', '/tour/', '/demo/', '/privacy/extra', '/app', '/items/']) {
     assert.equal(loads(path), false, path);
   }
   assert.match(source, /project: 'educateos-site'/);
