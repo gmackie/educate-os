@@ -51,7 +51,7 @@ describe("a student's archive, over the seeded Northfield showcase", () => {
 
     exported = await (await actAs(STUDENT)).call("student.exportArchive");
     archive = await validateArchive(decode(exported.base64));
-    text = (await readZip(decode(exported.base64))).map((entry) => new TextDecoder().decode(entry.bytes)).join("\n");
+    text = (await readZip(decode(exported.base64))).map((file) => new TextDecoder().decode(file.bytes)).join("\n");
   }, 180_000);
 
   it("is a valid .educateos archive whose manifest the response repeats", () => {
