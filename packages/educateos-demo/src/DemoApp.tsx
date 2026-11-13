@@ -3,7 +3,7 @@ import { Loader } from "@cloudflare/kumo";
 import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { CleverSide } from "./clever/CleverSide.tsx";
 import { cleverSideOf } from "./clever/cleverSide.ts";
-import { ROSTER_SYNC_ROUTE, districtFromSearch, districtInfo, type DemoDistrict, type DistrictKey, type PersonaId } from "./districts/index.ts";
+import { ROSTER_SYNC_ROUTE, districtFromSearch, districtInfo, personaFromSearch, type DemoDistrict, type DistrictKey, type PersonaId } from "./districts/index.ts";
 import { DemoBanner } from "./DemoBanner.tsx";
 import { PersonaPicker } from "./PersonaPicker.tsx";
 import { PersonaWorkspace } from "./PersonaWorkspace.tsx";
@@ -64,6 +64,16 @@ const showDistrictInUrl = (key: DistrictKey) => {
   window.history.replaceState(null, "", window.location.pathname + (query === "" ? "" : `?${query}`));
 };
 
+/** Drops `?persona=` from the page's query once the visitor is someone else, so a reload does not bring it back. */
+const showPersonaInUrl = (id: PersonaId | undefined) => {
+  const search = new URLSearchParams(window.location.search);
+  const asked = search.get("persona");
+  if (asked === null || asked === id) return;
+  search.delete("persona");
+  const query = search.toString();
+  window.history.replaceState(null, "", window.location.pathname + (query === "" ? "" : `?${query}`) + window.location.hash);
+};
+
 /**
  * The demo: one district booted in the page and shared by every persona, so what one does the
  * others see. Reset boots a fresh copy of it; switching district boots the other. Nothing is kept
@@ -76,12 +86,17 @@ export const DemoApp = () => {
   const [presenter] = useState(() => presenterFromSearch(window.location.search));
   const [generation, setGeneration] = useState(0);
   const [district, setDistrict] = useState<DistrictState>({ status: "booting" });
-  const [personaId, setPersonaId] = useState<PersonaId>();
+  // A link can open straight into a persona (`?persona=it-director`): in a district entered through
+  // its portal, by signing them in there, as a presenter's key does.
+  const [linked] = useState(() => personaFromSearch(window.location.search, districtKey));
+  const [personaId, setPersonaId] = useState<PersonaId | undefined>(signsInThroughPortal(districtKey) ? undefined : linked);
   const [done, setDone] = useState<ReadonlySet<string>>(new Set());
   // Each persona's portal sign-in, in a district entered through its portal, and the visit to the
   // portal a screen or the tour sent the visitor on, to sign someone in.
   const [signIns, setSignIns] = useState<Partial<Record<PersonaId, PortalSignIn>>>({});
-  const [portalVisit, setPortalVisit] = useState<PortalVisit>();
+  const [portalVisit, setPortalVisit] = useState<PortalVisit | undefined>(
+    linked !== undefined && signsInThroughPortal(districtKey) ? { persona: linked, launch: true, n: 0 } : undefined,
+  );
   const visits = useRef(0);
   const [tour, setTour] = useState(() => new CleverTourStore());
   const [tourOpen, setTourOpen] = useState(false);
@@ -135,6 +150,7 @@ export const DemoApp = () => {
   const persona = info.personas.find((p) => p.id === personaId);
   /** Sends the visitor to the portal, signed in to it as `id`. */
   const visitPortal = (id: PersonaId, { route, launch = false }: { route?: string; launch?: boolean } = {}) => {
+    showPersonaInUrl(id);
     setAppRoute();
     visits.current += 1;
     setPortalVisit({ persona: id, ...(route === undefined ? {} : { route }), launch, n: visits.current });
@@ -142,6 +158,7 @@ export const DemoApp = () => {
     window.scrollTo(0, 0);
   };
   const choose = (id: PersonaId | undefined, route?: string) => {
+    showPersonaInUrl(id);
     // Through the portal, someone not yet signed in goes to it, signed in to it as them, and their
     // app opens at `route` once the portal has signed them in.
     if (id !== undefined && signsInThroughPortal(districtKey) && signIns[id] === undefined) return visitPortal(id, route === undefined ? {} : { route });
