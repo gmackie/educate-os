@@ -57,6 +57,9 @@ export interface DistrictApiClientOptions {
 /** The arguments a route takes: none when every part of its input may be omitted. */
 export type CallArgs<N extends RouteName> = {} extends RouteInput<N> ? [input?: RouteInput<N>] : [input: RouteInput<N>];
 
+/** The routes that stream a file rather than answer JSON (SCHO-367), which {@link DistrictApiClient.download} reads. */
+export type DownloadRouteName = { [N in RouteName]: (typeof ROUTES)[N] extends { download: string } ? N : never }[RouteName];
+
 /** A typed client for one district's API. */
 export interface DistrictApiClient {
   /**
@@ -66,38 +69,56 @@ export interface DistrictApiClient {
   call<N extends RouteName>(name: N, ...args: CallArgs<N>): Promise<RouteResponse<N>>;
 }
 
+/** The part of a district client that reads streamed files (SCHO-367), apart so a fake client need not. */
+export interface DistrictFileClient {
+  /**
+   * Requests a route that streams a file. Resolves with the response once the district has started
+   * sending it, for the caller to read or save, or rejects with a {@link DistrictApiError} as
+   * {@link DistrictApiClient.call} does.
+   */
+  download<N extends DownloadRouteName>(name: N, ...args: CallArgs<N>): Promise<Response>;
+}
+
 /** Creates a client for the district at `options.baseUrl`. */
-export function createDistrictApiClient(options: DistrictApiClientOptions): DistrictApiClient {
+export function createDistrictApiClient(options: DistrictApiClientOptions): DistrictApiClient & DistrictFileClient {
   const send = options.fetch ?? ((request: Request) => fetch(request));
+  /** Sends a route's request; a failure is thrown as the server's error body. */
+  const request = async (spec: RouteSpec, args: readonly unknown[]): Promise<Response> => {
+    const input = (args[0] ?? {}) as { params?: Record<string, string>; query?: Record<string, string | undefined>; body?: unknown };
+    const url = new URL(routePath(spec.path, input.params), options.baseUrl);
+    for (const [key, value] of Object.entries(input.query ?? {})) if (value !== undefined) url.searchParams.set(key, value);
+
+    const headers = new Headers({ accept: spec.download ?? "application/json" });
+    const token = typeof options.token === "function" ? await options.token() : options.token;
+    if (token !== undefined) headers.set("authorization", `Bearer ${token}`);
+    if (spec.method === "POST") headers.set("content-type", "application/json");
+    const response = await send(new Request(url, {
+      method: spec.method,
+      headers,
+      ...(spec.method === "POST" ? { body: JSON.stringify(input.body ?? {}) } : {}),
+    }));
+    if (!response.ok) {
+      const error = EducateOsErrorBody.safeParse(await response.json().catch(() => undefined));
+      throw new DistrictApiError(response.status, error.success
+        ? error.data
+        : { code: "unavailable", message: `The district answered ${response.status}.`, ...correlation(response) });
+    }
+    return response;
+  };
   return {
     async call<N extends RouteName>(name: N, ...args: CallArgs<N>): Promise<RouteResponse<N>> {
       const spec: RouteSpec = ROUTES[name];
-      const input = (args[0] ?? {}) as { params?: Record<string, string>; query?: Record<string, string | undefined>; body?: unknown };
-      const url = new URL(routePath(spec.path, input.params), options.baseUrl);
-      for (const [key, value] of Object.entries(input.query ?? {})) if (value !== undefined) url.searchParams.set(key, value);
-
-      const headers = new Headers({ accept: "application/json" });
-      const token = typeof options.token === "function" ? await options.token() : options.token;
-      if (token !== undefined) headers.set("authorization", `Bearer ${token}`);
-      if (spec.method === "POST") headers.set("content-type", "application/json");
-      const response = await send(new Request(url, {
-        method: spec.method,
-        headers,
-        ...(spec.method === "POST" ? { body: JSON.stringify(input.body ?? {}) } : {}),
-      }));
-
+      if (spec.download !== undefined) throw new TypeError(`${name} streams a file: read it with download, not call.`);
+      const response = await request(spec, args);
       const body: unknown = await response.json().catch(() => undefined);
-      if (!response.ok) {
-        const error = EducateOsErrorBody.safeParse(body);
-        throw new DistrictApiError(response.status, error.success
-          ? error.data
-          : { code: "unavailable", message: `The district answered ${response.status}.`, ...correlation(response) });
-      }
       const parsed = spec.response.safeParse(body);
       if (!parsed.success) {
         throw new DistrictApiError(response.status, { code: "unavailable", message: `The district's ${name} response did not match its schema.`, ...correlation(response) });
       }
       return parsed.data as RouteResponse<N>;
+    },
+    async download<N extends DownloadRouteName>(name: N, ...args: CallArgs<N>): Promise<Response> {
+      return request(ROUTES[name], args);
     },
   };
 }

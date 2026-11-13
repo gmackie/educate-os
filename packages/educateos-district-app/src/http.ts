@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { EducateOsError, type EducateOsErrorBody } from "@educateos/contracts";
 import { ERROR_STATUS } from "@educateos/academics";
-import { ROUTES, type RouteName, type RouteSpec } from "./routes.ts";
+import { ROUTES, type FileDownload, type RouteName, type RouteSpec } from "./routes.ts";
 
 /** The response header carrying the request's correlation ID, which its audit events share. */
 export const CORRELATION_HEADER = "x-correlation-id";
@@ -88,6 +88,23 @@ export function jsonResponse(body: unknown, status: number, correlationId: strin
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", [CORRELATION_HEADER]: correlationId },
+  });
+}
+
+/**
+ * A streamed file download (SCHO-367): `file.body` as the response body, saved as `file.fileName`,
+ * never cached. The name is checked so it cannot break out of the header.
+ */
+export function fileResponse(file: FileDownload, mediaType: string, correlationId: string): Response {
+  if (!/^[A-Za-z0-9._-]{1,200}$/.test(file.fileName)) throw new Error(`unsafe download file name ${JSON.stringify(file.fileName)}`);
+  return new Response(file.body, {
+    status: 200,
+    headers: {
+      "content-type": mediaType,
+      "content-disposition": `attachment; filename="${file.fileName}"`,
+      "cache-control": "no-store",
+      [CORRELATION_HEADER]: correlationId,
+    },
   });
 }
 

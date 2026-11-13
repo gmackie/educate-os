@@ -188,6 +188,12 @@ export interface RouteSpec {
   /** The success status. Defaults to 200. */
   readonly status?: 200 | 201;
   /**
+   * The route streams a file of this media type rather than answering JSON (SCHO-367). Its
+   * handler returns a {@link FileDownload}, its response is {@link FileDownload}, and the client
+   * reads it with `download`, not `call`.
+   */
+  readonly download?: "application/zip";
+  /**
    * The academic operation the route runs (SCHO-173). Its path parameters and body together are
    * the operation's input, its response is the operation's output, and the server runs it through
    * `invokeOperation` exactly as an agent's tool call runs it, with no handler of its own.
@@ -634,8 +640,12 @@ export const CartridgeExportBody = z.strictObject({
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
 // District export (SCHO-364)
 
-/** The format tag in every district export's `manifest.json`. */
-export const DISTRICT_EXPORT_FORMAT = "educateos.district-export/v1";
+/**
+ * The format tag in every district export's `manifest.json`. Version 2 (SCHO-367) adds the
+ * Content Studio, activities, rubric releases, course library, marketplace packs and weekly notes,
+ * and their counts; version 1 (SCHO-364) was answered as base64 inside JSON and is no longer made.
+ */
+export const DISTRICT_EXPORT_FORMAT = "educateos.district-export/v2";
 
 /**
  * What a district export leaves out, and why. Fixed, so the manifest says the same thing every
@@ -644,11 +654,13 @@ export const DISTRICT_EXPORT_FORMAT = "educateos.district-export/v1";
 export const DISTRICT_EXPORT_EXCLUSIONS = [
   "personal workspaces and their artifacts, which belong to their owners alone: each student takes them with the student archive (.educateos)",
   "credentials and sign-in state: device tokens, phone pairing rooms, ops keys, guardian invitation tokens and pending identity links",
-  "the policy decision audit trail and the ops audit log",
+  "the policy decision audit trail, the ops audit log and the Content Studio's review trail",
   "AI usage ledger, funding allocations and Workshop user links",
-  "Content Studio items and releases, activity definitions, rubric releases, Assessment CI runs, the catalog mirror, the course library and marketplace packs",
-  "weekly notes, notifications, calendar feeds, email preferences and the digest ledger",
+  "Assessment CI runs, which their store cannot list yet, and the framework catalog mirror, which is published catalog data",
+  "the course library's signed course packages themselves: each course's index entry and every class's installs are in course-library.json",
+  "notifications, calendar feeds, email preferences and the digest ledger",
   "roster sync mirror and run history",
+  "student archive export mappings, which the district keeps to reconcile a later import",
   "the bytes of content held outside the district's storage: external links and registered providers (listed in notCopied)",
 ] as const;
 
@@ -681,6 +693,14 @@ export const DistrictExportManifest = z.strictObject({
     guardianRelationships: exportCount,
     configRevisions: exportCount,
     offeringFiles: exportCount,
+    studioItems: exportCount,
+    studioReleases: exportCount,
+    activityDefinitions: exportCount,
+    activityInstallations: exportCount,
+    rubricReleases: exportCount,
+    libraryCourses: exportCount,
+    marketplacePacks: exportCount,
+    weeklyNotes: exportCount,
   }),
   /** Every file in the archive but this one, in path order. */
   files: z.array(z.string()),
@@ -692,15 +712,16 @@ export const DistrictExportManifest = z.strictObject({
 /** A district export's manifest. */
 export type DistrictExportManifest = z.infer<typeof DistrictExportManifest>;
 
-/** A district export as the route answers it: the ZIP, base64-encoded, and its manifest. */
-export const DistrictExportBody = z.strictObject({
-  fileName: z.string(),
-  mediaType: z.literal("application/zip"),
-  base64: z.string(),
-  manifest: DistrictExportManifest,
-});
-/** A district export. */
-export type DistrictExportBody = z.infer<typeof DistrictExportBody>;
+/**
+ * A file a {@link RouteSpec.download} route answers (SCHO-367): its name, for `Content-Disposition`
+ * (ASCII letters, digits, `.`, `_` and `-` only), and its bytes as a stream.
+ */
+export interface FileDownload {
+  fileName: string;
+  body: ReadableStream<Uint8Array>;
+}
+/** A streamed file, as a route's response type. Never parsed: the client reads the stream itself. */
+export const FileDownload = z.custom<FileDownload>((value) => typeof value === "object" && value !== null && "body" in value);
 // Student archive (SCHO-371)
 
 /** The media type of a `.educateos` student archive (`ARCHIVE_MEDIA_TYPE` in `@educateos/portability`). */
@@ -1773,14 +1794,17 @@ export const ROUTES = {
     method: "POST", path: "/api/admin/district/product-analytics", surface: "admin", body: ProductAnalyticsChange, response: ProductAnalyticsAdminBody,
   }),
   /**
-   * The whole district in one ZIP (SCHO-364), for a district that keeps its own copy or leaves
-   * EducateOS: the directory, course workspaces, course artifacts and every revision a student
-   * submitted, with their held content, assignments, submissions, feedback and grades, each class's
-   * modules, discussions, quizzes, gradebook and announcements, guardian relationships and
-   * configuration revisions, as JSON. Personal workspaces are not in it. District administrators
-   * only, as people; the policy decision (`admin.district.export`) is audited.
+   * The whole district as one streamed ZIP (SCHO-364, streamed since SCHO-367), for a district that
+   * keeps its own copy or leaves EducateOS: the directory, course workspaces, course artifacts and
+   * every revision a student submitted, with their held content, assignments, submissions, feedback
+   * and grades, each class's modules, discussions, quizzes, gradebook, announcements and weekly
+   * notes, guardian relationships, configuration revisions, the Content Studio, activities, rubric
+   * releases, the course library and marketplace packs, as JSON. Personal workspaces are not in it.
+   * District administrators only, as people; the policy decision (`admin.district.export`) is
+   * audited. The path moved from `/api/admin/district/export`, whose base64-in-JSON answer it
+   * replaces, so an old caller is told 404 rather than handed a ZIP it reads as JSON.
    */
-  "admin.exportDistrict": route({ method: "GET", path: "/api/admin/district/export", surface: "admin", response: DistrictExportBody }),
+  "admin.exportDistrict": route({ method: "GET", path: "/api/admin/district/export.zip", surface: "admin", download: "application/zip", response: FileDownload }),
   // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
   // policy engine with the guardian as subject, and built from the child's own view.
   "guardian.listChildren": route({ method: "GET", path: "/api/guardian/children", surface: "guardian", response: z.array(GuardianChildBody) }),

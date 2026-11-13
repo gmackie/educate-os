@@ -5,10 +5,10 @@ import { createRoot } from "react-dom/client";
 import { afterEach } from "vitest";
 import { configure } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import type { DistrictApiClient } from "@educateos/api-client";
 import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import type { SchoolManifest } from "@educateos/shell";
 import { AdminApp } from "../App.tsx";
+import type { AdminClient } from "../app/AdminClientContext.tsx";
 
 // jsdom has no PointerEvent, which Base UI's controls construct when they are pressed.
 if (typeof window.PointerEvent === "undefined") {
@@ -85,7 +85,7 @@ export const SCHOOL: SchoolManifest = {
  * Renders the console at `screen` against `client`, framed by `school`'s shell as main.tsx frames
  * it (or unframed, `false`, as a host that embeds it does), and a user-event session to drive it.
  */
-export function renderConsole(client: DistrictApiClient, screen = "dashboard", school: SchoolManifest | false = SCHOOL) {
+export function renderConsole(client: AdminClient, screen = "dashboard", school: SchoolManifest | false = SCHOOL) {
   window.location.hash = `#/${screen}`;
   const container = document.body.appendChild(document.createElement("div"));
   const root = createRoot(container);

@@ -3,6 +3,7 @@ import { LayerCard, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
 import { count, rosterProviderName } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
+import { DistrictExportCard } from "./DistrictExportCard.tsx";
 import { DistrictNameForm } from "./DistrictNameForm.tsx";
 import { ProductAnalyticsCard } from "./ProductAnalyticsCard.tsx";
 import { useLoad } from "../app/useLoad.ts";
@@ -102,6 +103,7 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
           </ul>
           <DistrictNameForm name={h.districtName} onRenamed={health.reload} />
           <ProductAnalyticsCard />
+          <DistrictExportCard />
           </>
         )}
       </LoadState>

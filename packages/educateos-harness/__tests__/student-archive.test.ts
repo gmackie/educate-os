@@ -3,7 +3,7 @@
 // theirs the district holds, withholds secret-shaped work, names nobody by district ID, and carries
 // no classmate's work. Only students reach the route, and only ever for themselves.
 import { beforeAll, describe, expect, it } from "vitest";
-import { createDistrictApiClient, type DistrictApiClient } from "@educateos/api-client";
+import { createDistrictApiClient, type DistrictApiClient, type DistrictFileClient } from "@educateos/api-client";
 import type { PrincipalId } from "@educateos/contracts";
 import { STUDENT_ARCHIVE_MEDIA_TYPE, type StudentArchiveBody } from "@educateos/district-app";
 import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
@@ -20,7 +20,7 @@ const PEER = "PEER-JOURNAL-SCHO-371";
 const decode = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
 describe("a student's archive, over the seeded Northfield showcase", () => {
-  let actAs: (id: string) => Promise<DistrictApiClient>;
+  let actAs: (id: string) => Promise<DistrictApiClient & DistrictFileClient>;
   let exported: StudentArchiveBody;
   let archive: ValidatedArchive;
   let text: string;
@@ -64,8 +64,8 @@ describe("a student's archive, over the seeded Northfield showcase", () => {
   it("holds the student's personal work and every live submission of theirs the district holds", async () => {
     expect(archive.artifacts.some((a) => a.context.kind === "personal" && a.title === "Journal")).toBe(true);
     expect(text).toContain(OWN);
-    const district = await (await actAs(ADMIN)).call("admin.exportDistrict");
-    const files = (await readZip(decode(district.base64))).filter((entry) => entry.path === "assessment.json");
+    const district = new Uint8Array(await (await (await actAs(ADMIN)).download("admin.exportDistrict")).arrayBuffer());
+    const files = (await readZip(district)).filter((entry) => entry.path === "assessment.json");
     const { submissions } = JSON.parse(new TextDecoder().decode(files[0]!.bytes)) as { submissions: { studentPrincipalId: string; withdrawnAt?: string }[] };
     const own = submissions.filter((s) => s.studentPrincipalId === STUDENT && s.withdrawnAt === undefined);
     expect(own.length).toBeGreaterThan(0);
