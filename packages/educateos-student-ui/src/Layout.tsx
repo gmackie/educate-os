@@ -23,48 +23,54 @@ const useIsPhone = (): boolean =>
 /** Who the Learning Home is showing: a student, or a guardian's family view (ADR-0012). */
 export type Audience = "student" | "family";
 
-/** The main navigation, in the header on a wide screen or along the bottom on a phone, where its entries share the width. */
-const MainNav = ({ label, audience, placement }: { label: string; audience: Audience; placement: "header" | "bottom" }) => (
-  <nav aria-label={label}>
-    <ul className={placement === "bottom" ? "flex items-center justify-between gap-2" : "flex items-center gap-4 whitespace-nowrap lg:gap-6"}>
-      {audience === "student" ? (
-        <>
+/**
+ * The main navigation, in the header on a wide screen or along the bottom on a phone, where its
+ * entries share the width with each icon over its label, so all four fit at 320px (WCAG 1.4.10).
+ */
+const MainNav = ({ label, audience, placement }: { label: string; audience: Audience; placement: "header" | "bottom" }) => {
+  const entry = placement === "bottom" ? "flex flex-col items-center gap-1 py-2 text-sm" : "flex items-center gap-2 py-2";
+  return (
+    <nav aria-label={label}>
+      <ul className={placement === "bottom" ? "flex items-center justify-between gap-2" : "flex items-center gap-4 whitespace-nowrap lg:gap-6"}>
+        {audience === "student" ? (
+          <>
+            <li>
+              <Link href="/" variant="plain" className={entry}>
+                <HouseIcon aria-hidden size={20} />
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link href="/my-space" variant="plain" className={entry}>
+                <LockSimpleIcon aria-hidden size={20} />
+                My space
+              </Link>
+            </li>
+            <li>
+              <Link href="/grades" variant="plain" className={entry}>
+                <ExamIcon aria-hidden size={20} />
+                Grades
+              </Link>
+            </li>
+            <li>
+              <Link href="/calendar" variant="plain" className={entry}>
+                <CalendarBlankIcon aria-hidden size={20} />
+                Calendar
+              </Link>
+            </li>
+          </>
+        ) : (
           <li>
-            <Link href="/" variant="plain" className="flex items-center gap-2 py-2">
-              <HouseIcon aria-hidden size={20} />
-              Home
+            <Link href="/family" variant="plain" className={entry}>
+              <UsersThreeIcon aria-hidden size={20} />
+              My children
             </Link>
           </li>
-          <li>
-            <Link href="/my-space" variant="plain" className="flex items-center gap-2 py-2">
-              <LockSimpleIcon aria-hidden size={20} />
-              My space
-            </Link>
-          </li>
-          <li>
-            <Link href="/grades" variant="plain" className="flex items-center gap-2 py-2">
-              <ExamIcon aria-hidden size={20} />
-              Grades
-            </Link>
-          </li>
-          <li>
-            <Link href="/calendar" variant="plain" className="flex items-center gap-2 py-2">
-              <CalendarBlankIcon aria-hidden size={20} />
-              Calendar
-            </Link>
-          </li>
-        </>
-      ) : (
-        <li>
-          <Link href="/family" variant="plain" className="flex items-center gap-2 py-2">
-            <UsersThreeIcon aria-hidden size={20} />
-            My children
-          </Link>
-        </li>
-      )}
-    </ul>
-  </nav>
-);
+        )}
+      </ul>
+    </nav>
+  );
+};
 
 /**
  * The frame every screen sits in: a skip link, the header, the main landmark, and the navigation,
@@ -83,7 +89,8 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
       </a>
       <header className="border-b border-kumo-hairline">
         {/* Wider than the page below it, so the navigation and controls keep to one line on a laptop. */}
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        {/* Wraps the controls under the name when a phone at 320px has no room for both (WCAG 1.4.10). */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Text variant="heading" as="p">
             <span className="flex items-center gap-2 whitespace-nowrap">
               <BookOpenIcon aria-hidden size={24} />

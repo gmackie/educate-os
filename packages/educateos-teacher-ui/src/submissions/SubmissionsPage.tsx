@@ -36,7 +36,7 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
         />
       )}
       {assignments.status === "ready" && list.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[16rem_1fr]">
           <nav aria-label="Activities">
             <ul className="flex flex-col gap-1">
               {list.map((a) => (

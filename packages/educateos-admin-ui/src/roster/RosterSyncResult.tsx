@@ -2,6 +2,7 @@ import { Badge, Banner, Table, Text } from "@cloudflare/kumo";
 import { CheckCircle, Info, Warning } from "@phosphor-icons/react";
 import { count } from "../app/labels.ts";
 import { RECORD_TYPES, failureReason, modeName, runSummary, type SyncRunResult } from "./rosterSync.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type Preview = NonNullable<SyncRunResult["preview"]>;
 
@@ -23,7 +24,7 @@ const SyncIssues = ({ preview }: { preview: Preview }) => {
     <section aria-labelledby="sync-issues-heading" className="flex flex-col gap-2">
       <Text as="h4" variant="heading" id="sync-issues-heading">Issues ({rows.length})</Text>
       {rows.length === 0 ? <Text variant="secondary">The roster had no problems.</Text> : (
-        <div className="overflow-x-auto">
+        <TableScroll label="Issues the sync found in the roster">
           <Table>
             <caption className="sr-only">Issues the sync found in the roster</caption>
             <Table.Header>
@@ -45,7 +46,7 @@ const SyncIssues = ({ preview }: { preview: Preview }) => {
               ))}
             </Table.Body>
           </Table>
-        </div>
+        </TableScroll>
       )}
       {rows.some((row) => row.error) && <Text variant="secondary">Errors stop a sync: fix them in the roster, then sync again. Warnings are records the sync skipped on purpose.</Text>}
     </section>
@@ -74,7 +75,7 @@ export const RosterSyncResult = ({ result, provider }: {
           ? <Banner variant="alert" icon={<Warning weight="fill" />} title="This sync is waiting for approval" description={failureReason(run.errorCode, provider)} />
           : <Banner variant="error" icon={<Warning weight="fill" />} title="The sync failed" description={run.errorCode === undefined ? undefined : failureReason(run.errorCode, provider)} />}
       {run.outcome === "succeeded" && (
-        <div className="overflow-x-auto">
+        <TableScroll label="Records the sync added, updated and deactivated, by type">
           <Table>
             <caption className="sr-only">Records the sync added, updated and deactivated, by type</caption>
             <Table.Header>
@@ -100,7 +101,7 @@ export const RosterSyncResult = ({ result, provider }: {
             Roles: {count(run.counts.roleAssignments.added, "role")} granted, {count(run.counts.roleAssignments.removed, "role")} removed.
             Deactivated people and enrollments are kept, inactive, never deleted.
           </Text>
-        </div>
+        </TableScroll>
       )}
       {preview !== undefined && <SyncIssues preview={preview} />}
     </section>

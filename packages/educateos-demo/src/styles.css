@@ -5,6 +5,8 @@
 @source "../../educateos-admin-ui/src";
 @source "../../ui/src";
 @import "@cloudflare/kumo/styles";
+/* Kumo's light-theme text tokens, raised to WCAG AA contrast (SCHO-361). */
+@import "../../educateos-shell/src/contrast.css";
 @import "tailwindcss";
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
 

@@ -6,6 +6,7 @@ import type { ConfigVersion } from "../app/useDistrictConfig.ts";
 import { documentFromDesired, withModuleState, withRolloutClasses, type DesiredModule, type DesiredStateView, type ModuleState } from "../configDocument.ts";
 import type { ProposedChange } from "./ChangeReview.tsx";
 import type { ClassSummary } from "./classSurvey.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type RolloutChoice = "selected" | "all";
 
@@ -72,7 +73,7 @@ export const ModulesEditor = ({ head, classes, names, onPreview }: ModulesEditor
     <div className="flex flex-col gap-6">
       <section aria-labelledby="modules-heading" className="flex flex-col gap-3">
         <Text as="h3" variant="heading" id="modules-heading">Capability packs</Text>
-        <div className="overflow-x-auto">
+        <TableScroll label="Capability packs and their state">
           <Table>
             <caption className="sr-only">Capability packs and their state</caption>
             <Table.Header>
@@ -110,7 +111,7 @@ export const ModulesEditor = ({ head, classes, names, onPreview }: ModulesEditor
               })}
             </Table.Body>
           </Table>
-        </div>
+        </TableScroll>
         <Text variant="secondary" size="sm">
           A module needed by another turns on with it. Module settings are shown as configured; editing them here needs the district's settings forms.
         </Text>

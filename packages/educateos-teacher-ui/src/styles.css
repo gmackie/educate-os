@@ -3,6 +3,8 @@
 /* The district shell (SCHO-260) is source-only: its classes are compiled here. */
 @source "../../educateos-shell/src/**/*.{ts,tsx}";
 @import "@cloudflare/kumo/styles";
+/* Kumo's light-theme text tokens, raised to WCAG AA contrast (SCHO-361). */
+@import "../../educateos-shell/src/contrast.css";
 @import "tailwindcss";
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
 

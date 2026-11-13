@@ -2,6 +2,7 @@ import { Badge, Banner, Table, Text } from "@cloudflare/kumo";
 import { Warning } from "@phosphor-icons/react";
 import type { RouteResponse } from "@educateos/api-client";
 import { count } from "../app/labels.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 /** What a roster import would change, as the district previews it. */
 export type RosterPreviewBody = RouteResponse<"admin.previewRoster">;
@@ -100,7 +101,7 @@ export const RosterPreview = ({ preview }: { preview: RosterPreviewBody }) => {
       )}
       <section aria-labelledby="roster-changes-heading" className="flex flex-col gap-2">
         <Text as="h4" variant="heading" id="roster-changes-heading">Changes</Text>
-        <div className="overflow-x-auto">
+        <TableScroll label="Records added, updated and deactivated by type">
           <Table>
             <caption className="sr-only">Records added, updated and deactivated by type</caption>
             <Table.Header>
@@ -127,7 +128,7 @@ export const RosterPreview = ({ preview }: { preview: RosterPreviewBody }) => {
               })}
             </Table.Body>
           </Table>
-        </div>
+        </TableScroll>
         <Text variant="secondary">
           Roles: {count(roleAssignments.added.length, "role")} granted, {count(roleAssignments.removed.length, "role")} removed. {count(preview.linked.length, "user")} linked to people who already sign in.
         </Text>

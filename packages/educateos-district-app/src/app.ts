@@ -18,7 +18,7 @@ import {
   type VerifiedPrincipal,
 } from "@educateos/contracts";
 import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
-import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName } from "@educateos/academics";
+import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName, type AcademicStore } from "@educateos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule, type RelationshipSource, type SubjectSource } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
@@ -387,12 +387,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const retention = RetentionPolicy.parse(options.retention ?? { courseWorkspaceRetentionDays: 365 });
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
-  const information = directoryPolicyInformation(stores.directory, policySource, {
-    relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now), ...options.policySources?.relationships ?? []],
+  const informationOver = (directory: AcademicStore) => directoryPolicyInformation(directory, policySource, {
+    relationships: [guardianRelationships(stores.guardianRelationships, directory, now), ...options.policySources?.relationships ?? []],
     subjects: options.policySources?.subjects ?? [],
     delegations: stores.delegations,
     now,
   });
+  const information = informationOver(stores.directory);
   const rules = options.rules ?? DISTRICT_APP_RULES;
   const engine = new PolicyEngine({ information, audit: stores.audit, rules, now });
   // The same engine for explaining decisions (SCHO-175), except that it records nothing: the audit
@@ -814,28 +815,28 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   });
 
   // Communication (SCHO-189): the service over a decider, and its assessment reads through the same one.
-  const communicationFor = (decider: PolicyDecider, assessment: AssessmentService = systemAssessment(decider)) =>
+  const communicationFor = (decider: PolicyDecider, assessment: AssessmentService = systemAssessment(decider), directory: AcademicStore = stores.directory) =>
     new CommunicationService({
       districtId,
       stores: stores.communication,
-      directory: stores.directory,
+      directory,
       decider,
       assessment,
       ...(options.mail === undefined ? {} : { mail: options.mail }),
       ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
       now,
     });
-  function systemAssessment(decider: PolicyDecider): AssessmentService {
+  function systemAssessment(decider: PolicyDecider, directory: AcademicStore = stores.directory): AssessmentService {
     const artifacts = new LearningArtifacts({
       records: stores.artifactRecords,
       content: stores.artifactContent,
       workspaces: stores.workspaces,
-      directory: stores.directory,
+      directory,
       policy: decider,
       approvedExternalHosts: options.approvedExternalHosts ?? [],
       now,
     });
-    return new AssessmentService({ records: stores.assessment, artifacts, content: stores.artifactContent, directory: stores.directory, policy: decider, now });
+    return new AssessmentService({ records: stores.assessment, artifacts, content: stores.artifactContent, directory, policy: decider, now });
   }
   // The weekly family digest goes out over the district's own guardian relationships (ADR-0012,
   // SCHO-188): the store the guardian routes and the policy engine read.
@@ -850,6 +851,17 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       now,
     });
   const jobDecider: PolicyDecider = { decide: (request, decideOptions) => engine.decide(request, decideOptions) };
+  /**
+   * The notification sweep's screen (SCHO-370): the same reads and decisions over one read of the
+   * directory, recording none, so an hour in which nothing changed writes nothing and reads the
+   * directory once. Only students it finds owed a notification are synced through `jobDecider`,
+   * whose decisions are recorded as any other system read is.
+   */
+  async function notificationScreen(): Promise<CommunicationService> {
+    const directory = await directoryAsRead(stores.directory);
+    const quiet = new PolicyEngine({ information: informationOver(directory), audit: { record: async () => {} }, rules, now });
+    return communicationFor(quiet, systemAssessment(quiet, directory), directory);
+  }
   /** The calendar feed: the one route a token alone authorizes, so it is served before sign-in. */
   async function serveCalendarFeed(request: Request, correlationId: string): Promise<Response | undefined> {
     const match = /^\/api\/calendar\/([^/]+)\.ics$/.exec(new URL(request.url).pathname);
@@ -1871,7 +1883,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     catalog,
     stores,
     communication: {
-      runNotificationJob: () => communicationFor(jobDecider).runNotificationJob(),
+      runNotificationJob: async () => communicationFor(jobDecider).runNotificationJob(await notificationScreen()),
       runWeeklyDigest: () => familyDigest(communicationFor(jobDecider)).runWeeklyJob(),
     },
     rostering: {
@@ -1974,5 +1986,19 @@ function deviceBody(device: DeviceRecord): DeviceBody {
     status: device.status,
     revokedAt: device.revokedAt,
     revokedReason: device.revokedReason,
+  };
+}
+
+/**
+ * `store`'s directory as read now: every load returns a copy of that one read, and nothing commits.
+ * For a job that only reads, so its many decisions do not each read the whole directory again.
+ */
+async function directoryAsRead(store: AcademicStore): Promise<AcademicStore> {
+  const read = await store.load();
+  return {
+    load: async () => structuredClone(read),
+    commit: async () => {
+      throw new EducateOsError("conflict", "This directory is a read for one job; it takes no commits.");
+    },
   };
 }
