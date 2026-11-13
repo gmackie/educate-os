@@ -39,7 +39,9 @@ describe("the streamed district export (SCHO-367)", () => {
     expect(reads()).toBe(0);
     for (; next.done !== true; next = await reader.read()) chunks.push(next.value);
 
-    const zip = await readZip(new Uint8Array(await new Blob(chunks).arrayBuffer()), LIMITS);
+    const bytes = new Uint8Array(chunks.reduce((n, chunk) => n + chunk.byteLength, 0));
+    chunks.reduce((at, chunk) => (bytes.set(chunk, at), at + chunk.byteLength), 0);
+    const zip = await readZip(bytes, LIMITS);
     const manifest = DistrictExportManifest.parse(JSON.parse(new TextDecoder().decode(zip.files.get("manifest.json")!)));
     expect(manifest).toStrictEqual(exported.manifest);
     expect(reads()).toBeGreaterThan(0);
