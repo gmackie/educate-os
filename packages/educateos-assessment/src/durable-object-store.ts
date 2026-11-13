@@ -83,13 +83,18 @@ export class AssessmentRecordCorruptionError extends Error {
  */
 export class DurableObjectAssessmentRecordStore implements AssessmentRecordStore {
   readonly #storage: DurableSqlStorage;
+  /** Whether the table is made and migrated: checked once, not on every read (SCHO-370). */
+  #ready = false;
 
   constructor(storage: DurableSqlStorage) {
     this.#storage = storage;
   }
 
   async load(): Promise<StoredAssessment> {
-    return this.#storage.transactionSync(() => this.#read());
+    const loaded = this.#storage.transactionSync(() => this.#read());
+    // Only once the transaction that made and migrated the table has committed.
+    this.#ready = true;
+    return loaded;
   }
 
   async commit(next: AssessmentState, expectedVersion: number): Promise<void> {
@@ -107,11 +112,14 @@ export class DurableObjectAssessmentRecordStore implements AssessmentRecordStore
         JSON.stringify(parsed),
       );
     });
+    this.#ready = true;
   }
 
   #read(): StoredAssessment {
-    this.#storage.sql.exec(SCHEMA);
-    migrateLegacyTables(this.#storage.sql, [LEGACY_RECORDS]);
+    if (!this.#ready) {
+      this.#storage.sql.exec(SCHEMA);
+      migrateLegacyTables(this.#storage.sql, [LEGACY_RECORDS]);
+    }
     const [row] = this.#storage.sql.exec(`SELECT version, state_json FROM ${ASSESSMENT_RECORDS_TABLE} WHERE id = 1`).toArray();
     if (row === undefined) return { version: 0, state: structuredClone(EMPTY) };
     if (typeof row.version !== "number") throw new AssessmentRecordCorruptionError("the assessment records row has an unexpected shape");

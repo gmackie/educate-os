@@ -146,6 +146,7 @@ import {
   WeeklyNote,
   type AnnouncementId,
   type IsoWeek,
+  type NotificationId,
   type AnnouncementStore,
   type CalendarFeedStore,
   type CommunicationStores,
@@ -1426,6 +1427,13 @@ export class DurableObjectNotificationStore implements NotificationStore {
           JSON.stringify(n),
         ).toArray().length > 0
       )
+    );
+  }
+
+  async missing(ids: readonly NotificationId[]): Promise<NotificationId[]> {
+    // One primary-key lookup each: a row read for every ID stored, none for the rest.
+    return this.#tables.transaction((sql) =>
+      ids.filter((id) => sql.exec(`SELECT 1 FROM ${COMMUNICATION_TABLES.notifications} WHERE id = ?`, id).toArray().length === 0)
     );
   }
 
