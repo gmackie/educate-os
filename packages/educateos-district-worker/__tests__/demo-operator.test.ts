@@ -4,7 +4,7 @@
 // administrator, and they seed exactly what scripts/demo/seed-district.ts does: additive only, and a
 // rerun adds nothing.
 import { describe, expect, it } from "vitest";
-import { DistrictDirectorySnapshot } from "@educateos/contracts";
+import { DistrictDirectorySnapshot, type VerifiedIdentity } from "@educateos/contracts";
 import { createDistrictApp, inMemoryDistrictStores, type DistrictApp } from "@educateos/district-app";
 import { DEMO_DISTRICTS, NORTHFIELD, type DemoDistrict } from "@educateos/fixtures";
 import { AUTOMATION, DEMO_STARTER_PACK, listingOf, rosterFiles } from "@educateos/harness/demo-district";
@@ -30,7 +30,7 @@ const AUTOMATION_SUBJECT = "adfd94dd-86a7-5838-b9a7-d1eb94227303";
 const demo = (slug: string) => DEMO_DISTRICTS.find((d) => d.slug === slug)!;
 
 /** A standalone demo district as its DISTRICT_CONFIG seeds it, with the operator routes on. */
-async function boot(slug: string, options: { now?: () => number; directory?: DistrictDirectorySnapshot } = {}) {
+async function boot(slug: string, options: { now?: () => number; directory?: DistrictDirectorySnapshot; identity?: VerifiedIdentity } = {}) {
   const config = readDistrictWorkerConfig(JSON.stringify(demoDistrictConfig(demo(slug), { adminSubject: ADMIN_SUBJECT })));
   const app = await createDistrictApp({
     stores: inMemoryDistrictStores(options.directory ?? config.directory),
@@ -40,7 +40,7 @@ async function boot(slug: string, options: { now?: () => number; directory?: Dis
     marketplaceTrust: readMarketplaceTrust(DEMO_MARKETPLACE_TRUST)!,
   });
   const events: DemoOperatorEvent[] = [];
-  const operator = startDemoOperator({ app, token: TOKEN, onEvent: (e) => void events.push(e), ...(options.now === undefined ? {} : { now: options.now }) });
+  const operator = startDemoOperator({ app, token: TOKEN, verifyRequest: async () => options.identity, onEvent: (e) => void events.push(e), ...(options.now === undefined ? {} : { now: options.now }) });
   return { app, operator, events, admin: config.directory.principals[0]!, adminId: config.directory.principals[0]!.id };
 }
 
@@ -57,6 +57,45 @@ async function call(operator: DemoOperator, method: "GET" | "POST", path: string
 const seed = (operator: DemoOperator, body: unknown = {}) => call(operator, "POST", "seed", { body }).then((r) => {
   expect(r.status, JSON.stringify(r.body)).toBe(200);
   return r.body as OperatorSeedResult;
+});
+
+describe("linking demo presenters", () => {
+  const identity: VerifiedIdentity = { issuer: "https://gmacko.cloudflareaccess.com", subject: AUTOMATION_SUBJECT, credential: "person" };
+
+  it("approves a real roster persona through the administrator workflow, preserves its existing links and roles, and retries without another decision", async () => {
+    const { app, operator, events, adminId } = await boot("harbor", { identity });
+    await rosterUnderOtherIds(app, adminId, demo("harbor"));
+    const before = (await app.stores.directory.load()).snapshot;
+    const nia = before.principals.find((p) => p.displayName === "Nia Fontaine")!;
+    const body = { principalId: nia.id };
+    expect((await call(operator, "POST", "identity-links", { body })).body).toStrictEqual({ districtId: "dst_harbor", principalId: nia.id, status: "linked" });
+    const after = (await app.stores.directory.load()).snapshot;
+    expect(after.roleAssignments).toStrictEqual(before.roleAssignments);
+    expect(after.principals.filter((p) => p.id !== nia.id)).toStrictEqual(before.principals.filter((p) => p.id !== nia.id));
+    expect(after.principals.find((p) => p.id === nia.id)!.externalIdentities).toStrictEqual([...nia.externalIdentities, { districtId: app.districtId, issuer: identity.issuer, subject: identity.subject }]);
+    const index = await app.stores.identityLinks.read();
+    expect(index.open()).toHaveLength(0);
+    expect((await call(operator, "POST", "identity-links", { body })).status).toBe(200);
+    expect((await app.stores.directory.load()).snapshot).toStrictEqual(after);
+    expect(await app.stores.identityLinks.read()).toEqual(index);
+    expect(JSON.stringify(events)).not.toContain(identity.subject);
+    expect(events.at(-1)).toMatchObject({ event: "demo.operator.identity-linked", principalId: adminId });
+    const owen = before.principals.find((p) => p.displayName === "Owen Kerr")!;
+    expect((await call(operator, "POST", "identity-links", { body: { principalId: owen.id } })).status).toBe(409);
+  }, 60_000);
+
+  it("requires both credentials, rejects supplied identity claims and cannot link administrators or unknown people", async () => {
+    const { operator, adminId } = await boot("harbor", { identity });
+    await seed(operator);
+    expect((await call(operator, "POST", "identity-links", { token: null, body: { principalId: adminId } })).status).toBe(401);
+    expect((await call(operator, "POST", "identity-links", { body: { principalId: adminId } })).status).toBe(403);
+    expect((await call(operator, "POST", "identity-links", { body: { principalId: "prn_nobody" } })).status).toBe(403);
+    expect((await call(operator, "POST", "identity-links", { body: { principalId: adminId, subject: identity.subject } })).status).toBe(400);
+    for (const signer of [undefined, { ...identity, credential: "service" as const }]) {
+      const other = await boot("harbor", signer === undefined ? {} : { identity: signer });
+      expect((await call(other.operator, "POST", "identity-links", { body: { principalId: adminId } })).status).toBe(401);
+    }
+  }, 60_000);
 });
 
 /** The directory's record counts. */

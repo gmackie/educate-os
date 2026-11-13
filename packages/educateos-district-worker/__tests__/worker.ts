@@ -13,6 +13,7 @@ import { DEMO_DISTRICTS } from "@educateos/fixtures";
 import { LMS_ISSUER, PLATFORM_TOOL_JWKS_URL } from "./fixtures.ts";
 import { demoDistrictConfig } from "../scripts/demo-district-config.ts";
 import { DEMO_MARKETPLACE_TRUST } from "../../../scripts/production/demo-districts.ts";
+import { DEMO_ACCESS_ISSUER } from "@educateos/harness/demo-district";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 /** Synthetic upstream release service. Its fixtures persist across district object restarts. */
@@ -180,7 +181,7 @@ const RIVERBEND_CONFIG = JSON.stringify(demoDistrictConfig(DEMO_DISTRICTS.find((
  */
 export class RiverbendDistrictObject extends DistrictObject {
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
-    super(ctx, { ...env, DISTRICT_CONFIG: RIVERBEND_CONFIG, MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST });
+    super(ctx, { ...env, CF_ACCESS_ISS: DEMO_ACCESS_ISSUER, DISTRICT_CONFIG: RIVERBEND_CONFIG, MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST });
   }
 }
 
