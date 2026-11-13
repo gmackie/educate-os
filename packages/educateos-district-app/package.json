@@ -35,13 +35,13 @@
     "@educateos/registry": "workspace:*",
     "@educateos/releases": "workspace:*",
     "@educateos/workspaces": "workspace:*",
+    "@educateos/zip": "workspace:*",
     "zod": "catalog:",
     "@educateos/assessment-sdk": "workspace:*"
   },
   "devDependencies": {
     "@educateos/fixtures": "workspace:*",
     "@educateos/provider-fakes": "workspace:*",
-    "@educateos/zip": "workspace:*",
     "@gadgets/scripts": "workspace:*",
     "@types/node": "26.1.0",
     "vitest": "catalog:"

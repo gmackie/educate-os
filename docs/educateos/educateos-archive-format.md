@@ -336,6 +336,66 @@ names this district as the destination; the importer checks that list before eve
 district the destination has not pinned cannot revoke there, just as its signatures are not
 verified there. As with transfers, the root is never on the path.
 
+## District export
+
+The `.educateos` archive is one learner's. A district administrator who wants the district's own
+copy of its records, or who is leaving EducateOS ([offboarding runbook](runbooks/district-offboarding.md)),
+takes a **district export** instead (SCHO-364). It is a different file with a different reader:
+district records under the district's own IDs, for the district's own systems, not something a
+learner carries to another district.
+
+- **Route:** `admin.exportDistrict`, `GET /api/admin/district/export`. The response is JSON:
+  `fileName`, `mediaType` (`application/zip`), `base64` (the ZIP) and `manifest` (the same object as
+  the ZIP's `manifest.json`). The API client's `call("admin.exportDistrict")` returns it.
+- **Who:** a district administrator, over HTTP, as a person. The request is decided on the district
+  as a `restricted` resource with the action `export`, so only the rule `admin.district.export`
+  allows it: not school administrators, teachers, students, agents or another district's
+  administrators. The decision is in the policy audit trail. The district Worker logs
+  `district.export` with the record counts and size, never the contents.
+- **Container:** the deterministic ZIP subset of `@educateos/zip` (store or raw deflate, no ZIP64,
+  DOS-epoch timestamps). `manifest.json` comes first, the rest in byte-wise path order.
+- **Size:** built in memory and answered in one response, so a district holding more than 32 MiB of
+  work content is refused with `unavailable` for now. A streamed export is SCHO-367.
+
+Every record is JSON in the shape the district's stores keep it (the Zod schemas in
+`@educateos/contracts`, `@educateos/workspaces`, `@educateos/learning-artifacts`,
+`@educateos/assessment`, `@educateos/curriculum`, `@educateos/discussions`, `@educateos/quizzes`):
+
+| Path | Holds |
+| --- | --- |
+| `manifest.json` | `format` (`educateos.district-export/v1`), district ID and name, `exportedAt`, `exportedBy`, record `counts`, every other `files` path, `notCopied` and `excluded` |
+| `directory.json` | The academic directory: district, schools, terms, catalog courses, offerings, principals (with their sign-in identities), enrollments and role assignments |
+| `workspaces.json` | Course workspaces, course grants, term closures and the retention job's deletion records |
+| `artifacts.json` | Artifacts in course workspaces, and any artifact a submitted revision belongs to, with their revisions (whole lineage for course artifacts; the submitted revisions only otherwise), pins and shares |
+| `assessment.json` | Assignments, starter materials, submissions, feedback, grade proposals and official grade versions |
+| `guardians.json` | Guardian relationships, in every status |
+| `config.json` | Applied configuration revisions. Credentials are never in configuration (ADR-0004), so none are here |
+| `offerings/<offering>/course-content.json`, `discussions.json`, `quizzes.json`, `gradebook.json`, `announcements.json` | Each class's modules and pages, discussion board, quiz book, gradebook settings and markers, and announcements, where the class has any |
+| `content/<sha256 hex>` | The bytes of every revision and starter material the district holds inline or in R2, once per digest. The name is the content's SHA-256, so a reader verifies each file against the records that name it |
+
+Content held outside the district (an approved external link, a registered content provider) is
+named in the manifest's `notCopied` by digest and reference, not copied.
+
+**Not in it**, as the manifest's `excluded` list repeats: personal workspaces and their artifacts
+(they are their owners' alone; each student takes them with their own `.educateos` archive, and a
+personal-private artifact in a course workspace is left out too), credentials and sign-in state
+(device tokens, pairing rooms, ops keys, guardian invitation tokens, pending identity links), the
+policy and ops audit trails, the AI ledger and funding allocations, Workshop user links, Content
+Studio items and releases, activity definitions, rubric releases, Assessment CI runs, the catalog
+mirror, course library and marketplace packs, weekly notes, notifications, calendar feeds, email
+preferences and the digest ledger, and the roster sync mirror. SCHO-367 adds the district-authored
+ones among these.
+
+It is not screened for secret-shaped text, as the learner archive is: it is the district's own
+record, and holds student personal information. Keep it under the district's data-governance
+rules.
+
+The harness test `packages/educateos-harness/__tests__/district-export.test.ts` exports the seeded
+Northfield showcase and checks it against the API's own views: directory and work counts from
+`admin.health`, every principal `admin.authoring` lists, every submitted revision with content
+whose SHA-256 matches, a class's modules and assignments as its teacher sees them, no personal
+workspace content, and refusal to a teacher and a student.
+
 ## Versioning
 
 `formatVersion` changes whenever a reader of the old version could misread an archive written in

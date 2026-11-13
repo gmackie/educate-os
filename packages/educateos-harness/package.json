@@ -29,6 +29,7 @@
     "@gadgets/scripts": "workspace:*",
     "@educateos/academics": "workspace:*",
     "@educateos/policy": "workspace:*",
+    "@educateos/zip": "workspace:*",
     "vitest": "catalog:"
   }
 }

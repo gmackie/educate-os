@@ -23,3 +23,5 @@ export * from "./ops.ts";
 export * from "./ops-analytics.ts";
 // Course library (SCHO-331)
 export * from "./course-library.ts";
+// District export (SCHO-364)
+export * from "./district-export.ts";

@@ -36,7 +36,8 @@ function decodeBase64(base64: string): Uint8Array {
   return bytes;
 }
 
-function encodeBase64(bytes: Uint8Array): string {
+/** `bytes` as standard base64, in chunks so a large package does not overflow the call stack. */
+export function encodeBase64(bytes: Uint8Array): string {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);

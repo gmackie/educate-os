@@ -627,6 +627,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "admin.district.export",
+    description: "A district admin, as a person rather than an agent, exports the district's records and its students' course work and submissions in one archive, to keep them or leave EducateOS with them (SCHO-364). Personal workspaces stay their owners' and are not in it.",
+    when: { kinds: ["district"], roles: ["district-admin"], classifications: ["restricted"], actions: ["export"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "admin.school.directory",
     description: "A school admin manages their school's record, offerings and enrollments.",
     when: { kinds: ["school", "offering", "enrollment"], roles: ["school-admin"], actions: ["read", "list", "create", "update"] },
