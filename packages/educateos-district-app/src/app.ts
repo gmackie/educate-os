@@ -37,11 +37,11 @@ import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { type AssignmentViewBody, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
+import { type AssignmentViewBody, type DistrictExportManifest, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
-import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
+import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
 import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
@@ -66,6 +66,8 @@ import { installListing, packBody, packTemplates } from "./marketplace.ts";
 import type { PublisherTrust } from "@educateos/ocs";
 import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
 import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
+// District export (SCHO-364)
+import { buildDistrictExport } from "./district-export.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -162,6 +164,11 @@ export interface DistrictAppOptions {
   registry?: CapabilityRegistry;
   /** The policy floor before the first configuration revision is applied. */
   defaultPolicy?: PolicySettings;
+  /**
+   * Told the size of each district export an administrator takes (SCHO-364), counts only, for the
+   * Worker to log. Shared code imports no logger, so the Node harness can run it.
+   */
+  onDistrictExported?: (exported: { counts: DistrictExportManifest["counts"]; bytes: number }) => void;
   /**
    * Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), once per
    * revision, for the Worker to log. Shared code imports no logger, so the Node harness can run it.
@@ -1482,6 +1489,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return authoringPrincipalById((await stores.directory.load()).snapshot, params.principalId, now());
     },
     "admin.renameDistrict": (ctx, { body }) => ctx.academics().renameDistrict(ctx.caller, body),
+    // District export (SCHO-364): decided on the district as a restricted resource, so only the
+    // export rule can allow it.
+    "admin.exportDistrict": async (ctx) => {
+      await ctx.require("export", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can export the district.");
+      const exportedAt = now();
+      const { bytes, manifest } = await buildDistrictExport(stores, ctx.snapshot, ctx.principal.principalId, exportedAt);
+      options.onDistrictExported?.({ counts: manifest.counts, bytes: bytes.byteLength });
+      const fileName = `${districtId}-${exportedAt.toISOString().slice(0, 10)}.zip`;
+      return { fileName, mediaType: "application/zip" as const, base64: encodeBase64(bytes), manifest };
+    },
     // Product analytics (SCHO-350): read like the district's health; changed like its name.
     "admin.productAnalytics": async (ctx) => {
       await ctx.requireDistrict("read", "district");

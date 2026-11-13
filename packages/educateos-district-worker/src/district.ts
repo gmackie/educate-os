@@ -18,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -142,6 +142,8 @@ export interface DistrictSeams {
   sendEmail?: SendEmailBinding;
   /** Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), to log it. */
   onUnreadableConfigRevision?: (revisionId: string) => void;
+  /** Told the counts and size of each district export (SCHO-364), to log them. */
+  onDistrictExported?: DistrictAppOptions["onDistrictExported"];
   /** The fetch LTI platform calls go through (SCHO-177). Defaults to the global fetch. */
   platformFetch?: typeof fetch;
   /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
@@ -291,6 +293,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(seams.workshopReleases === undefined ? {} : { workshopReleases: seams.workshopReleases }),
     importFetch: showcase === undefined ? seams.importFetch : withShowcaseReadings(seams.importFetch),
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
+    ...(seams.onDistrictExported === undefined ? {} : { onDistrictExported: seams.onDistrictExported }),
     authority,
     // Scheduled roster sync (SCHO-203)
     rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init)),

@@ -1288,6 +1288,9 @@ importers:
       '@educateos/workspaces':
         specifier: workspace:*
         version: link:../educateos-workspaces
+      '@educateos/zip':
+        specifier: workspace:*
+        version: link:../educateos-zip
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -1298,9 +1301,6 @@ importers:
       '@educateos/provider-fakes':
         specifier: workspace:*
         version: link:../educateos-provider-fakes
-      '@educateos/zip':
-        specifier: workspace:*
-        version: link:../educateos-zip
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
@@ -1598,6 +1598,9 @@ importers:
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy
+      '@educateos/zip':
+        specifier: workspace:*
+        version: link:../educateos-zip
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts

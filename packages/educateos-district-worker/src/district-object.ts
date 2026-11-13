@@ -56,6 +56,9 @@ interface DistrictLogFields {
   failed?: number;
   alreadyDone?: number;
   revisionId?: string;
+  /** A district export's record counts and size (SCHO-364): never its contents. */
+  counts?: Record<string, number>;
+  bytes?: number;
 }
 
 // The demo showcase's routes (SCHO-326): who did what, by counts and IDs.
@@ -392,6 +395,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
           event: "config.revision.unreadable",
           revisionId,
         }),
+        // SCHO-364: an administrator exported the district; counts and size only.
+        onDistrictExported: ({ counts, bytes }) => logger.info("a district administrator exported the district", { event: "district.export", counts, bytes }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
         discussionHallMonitor: (screening) => discussionHallMonitor({

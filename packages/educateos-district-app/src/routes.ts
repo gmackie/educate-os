@@ -630,6 +630,76 @@ export const CartridgeExportBody = z.strictObject({
 });
 /** A cartridge export. */
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
+// District export (SCHO-364)
+
+/** The format tag in every district export's `manifest.json`. */
+export const DISTRICT_EXPORT_FORMAT = "educateos.district-export/v1";
+
+/**
+ * What a district export leaves out, and why. Fixed, so the manifest says the same thing every
+ * time and a reader never mistakes an absent file for an empty store.
+ */
+export const DISTRICT_EXPORT_EXCLUSIONS = [
+  "personal workspaces and their artifacts, which belong to their owners alone: each student takes them with the student archive (.educateos)",
+  "credentials and sign-in state: device tokens, phone pairing rooms, ops keys, guardian invitation tokens and pending identity links",
+  "the policy decision audit trail and the ops audit log",
+  "AI usage ledger, funding allocations and Workshop user links",
+  "Content Studio items and releases, activity definitions, rubric releases, Assessment CI runs, the catalog mirror, the course library and marketplace packs",
+  "weekly notes, notifications, calendar feeds, email preferences and the digest ledger",
+  "roster sync mirror and run history",
+  "the bytes of content held outside the district's storage: external links and registered providers (listed in notCopied)",
+] as const;
+
+const exportCount = z.int().nonnegative();
+
+/** The `manifest.json` of a district export. */
+export const DistrictExportManifest = z.strictObject({
+  format: z.literal(DISTRICT_EXPORT_FORMAT),
+  districtId: DistrictId,
+  districtName: z.string(),
+  exportedAt: z.iso.datetime(),
+  /** The administrator who exported it. */
+  exportedBy: PrincipalId,
+  /** How many records of each kind the archive holds. */
+  counts: z.strictObject({
+    schools: exportCount,
+    terms: exportCount,
+    courses: exportCount,
+    offerings: exportCount,
+    principals: exportCount,
+    enrollments: exportCount,
+    courseWorkspaces: exportCount,
+    artifacts: exportCount,
+    revisions: exportCount,
+    contentFiles: exportCount,
+    assignments: exportCount,
+    submissions: exportCount,
+    feedback: exportCount,
+    gradeVersions: exportCount,
+    guardianRelationships: exportCount,
+    configRevisions: exportCount,
+    offeringFiles: exportCount,
+  }),
+  /** Every file in the archive but this one, in path order. */
+  files: z.array(z.string()),
+  /** Content the records name but whose bytes the district does not hold, by digest. */
+  notCopied: z.array(z.strictObject({ digest: z.string(), backend: z.enum(["external", "registered"]), reference: z.string() })),
+  /** What is not in the archive. See {@link DISTRICT_EXPORT_EXCLUSIONS}. */
+  excluded: z.array(z.string()),
+});
+/** A district export's manifest. */
+export type DistrictExportManifest = z.infer<typeof DistrictExportManifest>;
+
+/** A district export as the route answers it: the ZIP, base64-encoded, and its manifest. */
+export const DistrictExportBody = z.strictObject({
+  fileName: z.string(),
+  mediaType: z.literal("application/zip"),
+  base64: z.string(),
+  manifest: DistrictExportManifest,
+});
+/** A district export. */
+export type DistrictExportBody = z.infer<typeof DistrictExportBody>;
+
 // Guardians (ADR-0012, SCHO-188): shapes
 
 /** One of a guardian's children, through a relationship in force. */
@@ -1669,6 +1739,15 @@ export const ROUTES = {
   "admin.setProductAnalytics": route({
     method: "POST", path: "/api/admin/district/product-analytics", surface: "admin", body: ProductAnalyticsChange, response: ProductAnalyticsAdminBody,
   }),
+  /**
+   * The whole district in one ZIP (SCHO-364), for a district that keeps its own copy or leaves
+   * EducateOS: the directory, course workspaces, course artifacts and every revision a student
+   * submitted, with their held content, assignments, submissions, feedback and grades, each class's
+   * modules, discussions, quizzes, gradebook and announcements, guardian relationships and
+   * configuration revisions, as JSON. Personal workspaces are not in it. District administrators
+   * only, as people; the policy decision (`admin.district.export`) is audited.
+   */
+  "admin.exportDistrict": route({ method: "GET", path: "/api/admin/district/export", surface: "admin", response: DistrictExportBody }),
   // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
   // policy engine with the guardian as subject, and built from the child's own view.
   "guardian.listChildren": route({ method: "GET", path: "/api/guardian/children", surface: "guardian", response: z.array(GuardianChildBody) }),
