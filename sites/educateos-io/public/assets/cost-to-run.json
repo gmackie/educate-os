@@ -1,0 +1,41 @@
+{
+  "$comment": "Inputs to educateos.io/pricing (SCHO-362). cost-to-run.mjs computes every figure on the page from this file, and build.mjs stamps them into each <... data-cost=\"key\"> element; build.mjs --check fails if the page is stale. Method, raw measurements and the worked calculation: docs/educateos/cost-to-run.md. Change a price or an assumption here, then run node sites/educateos-io/build.mjs.",
+  "checked": "2026-11-13",
+  "measuredWindow": "2026-10-14 to 2026-11-12",
+  "sizes": [500, 2500, 10000, 50000],
+  "prices": {
+    "$comment": "Cloudflare's published Workers Paid list prices in USD, read live on the date in `checked`. Each `source` is the page they come from.",
+    "workersBase": { "usd": 5, "source": "https://developers.cloudflare.com/workers/platform/pricing/" },
+    "workersRequests": { "included": 10000000, "perMillion": 0.30, "source": "https://developers.cloudflare.com/workers/platform/pricing/" },
+    "workersCpuMs": { "included": 30000000, "perMillion": 0.02, "source": "https://developers.cloudflare.com/workers/platform/pricing/" },
+    "durableObjectRequests": { "included": 1000000, "perMillion": 0.15, "source": "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
+    "durableObjectGbSeconds": { "included": 400000, "perMillion": 12.50, "source": "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
+    "sqliteRowsRead": { "included": 25000000000, "perMillion": 0.001, "source": "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
+    "sqliteRowsWritten": { "included": 50000000, "perMillion": 1.00, "source": "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
+    "sqliteStorageGb": { "included": 5, "perGbMonth": 0.20, "source": "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
+    "workersLogEvents": { "included": 20000000, "perMillion": 0.60, "source": "https://developers.cloudflare.com/workers/platform/pricing/" },
+    "accessSeat": { "freeUsers": 50, "perUserMonth": 7, "source": "https://www.cloudflare.com/plans/sase-zero-trust/" }
+  },
+  "assumptions": {
+    "$comment": "Activity per person. `measured` values come from the live demo districts in the window above; the rest are assumptions we chose, stated on the page.",
+    "studentsPerTeacher": { "value": 15, "kind": "assumed" },
+    "guardiansSigningInPerStudent": { "value": 0.5, "kind": "assumed" },
+    "schoolDaysPerMonth": { "value": 20, "kind": "assumed" },
+    "daysPerMonth": { "value": 31, "kind": "assumed" },
+    "studentRequestsPerSchoolDay": { "value": 120, "kind": "assumed" },
+    "teacherRequestsPerSchoolDay": { "value": 400, "kind": "assumed" },
+    "guardianRequestsPerMonth": { "value": 40, "kind": "assumed" },
+    "teacherWorkshopRequestsPerSchoolDay": { "value": 40, "kind": "assumed" },
+    "teacherWorkshopActiveHoursPerSchoolDay": { "value": 1, "kind": "assumed" },
+    "cpuMsPerRequest": { "value": 3, "kind": "measured", "note": "router plus district Worker, 2.7 ms mean, rounded up" },
+    "workshopCpuMsPerRequest": { "value": 91, "kind": "measured", "note": "workshop-backend mean, 90.3 ms, rounded up" },
+    "logEventsPerRequest": { "value": 2, "kind": "assumed" },
+    "rowsReadPerRequest": { "value": 250, "kind": "measured", "note": "Northfield, 2026-10-27 to 10-31: 89 on average, 230 on the busiest day, rounded up" },
+    "rowsWrittenPerRequest": { "value": 4, "kind": "measured", "note": "Northfield, 2026-10-27 to 10-31: 0.95 on average, 3.5 on the busiest day, rounded up" },
+    "cronRunsPerMonth": { "value": 749, "kind": "measured", "note": "hourly notification sweep plus the weekly digest, from the Worker's Cron Triggers" },
+    "sweepRowsReadPerStudent": { "value": 5000, "kind": "measured", "note": "1,400 to 2,300 in the demo districts; about 4,900 in Northfield; rises with roster size" },
+    "sweepRowsWrittenPerStudent": { "value": 18, "kind": "measured", "note": "15 to 18 in all five demo districts" },
+    "storageMbPerStudent": { "value": 1, "kind": "measured", "note": "0.5 to 0.9 MB per rostered student in the demo districts, rounded up" },
+    "durableObjectGb": { "value": 0.125, "kind": "published", "note": "duration is billed on 128 MB per object" }
+  }
+}

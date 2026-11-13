@@ -4,6 +4,7 @@
 import {readFileSync} from "node:fs";
 import {dirname, join, relative, sep} from "node:path";
 import {fileURLToPath} from "node:url";
+import {costFigures} from "./cost-to-run.mjs";
 
 export const root = dirname(fileURLToPath(import.meta.url));
 export const publicDir = join(root, "public");
@@ -13,7 +14,8 @@ const partials = {
   footer: readFileSync(join(root, "partials/footer.html"), "utf8").trim(),
 };
 
-const statuses = JSON.parse(readFileSync(join(publicDir, "assets/integration-status.json"), "utf8"));
+const costs = costFigures();
+const statuses =JSON.parse(readFileSync(join(publicDir, "assets/integration-status.json"), "utf8"));
 
 function chip(key, path) {
   const level = statuses.levels[statuses.features[key]];
@@ -41,5 +43,10 @@ export function stamp(html, path) {
   if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|it(?:\/.*)?$|pricing\/?$|privacy\/?$)/.test(path)) {
     html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><!-- /site:analytics -->\n</body>');
   }
-  return html.replace(/<span class="status[^"]*" data-status="([^"]+)">[^<]*<\/span>/g, (_, key) => chip(key, path));
+  html = html.replace(/<span class="status[^"]*" data-status="([^"]+)">[^<]*<\/span>/g, (_, key) => chip(key, path));
+  // The cost figures on /pricing (SCHO-362), computed by cost-to-run.mjs from assets/cost-to-run.json.
+  return html.replace(/(<(\w+)\b[^>]*\sdata-cost="([^"]+)"[^>]*>)[^<]*(<\/\2>)/g, (_, open, _tag, key, close) => {
+    if (!costs.has(key)) throw new Error(`${path}: data-cost="${key}" is not a figure cost-to-run.mjs computes`);
+    return `${open}${costs.get(key)}${close}`;
+  });
 }
