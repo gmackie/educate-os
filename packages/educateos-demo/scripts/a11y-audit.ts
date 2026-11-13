@@ -188,10 +188,10 @@ const CONTROL_CONTRAST = () => {
     return [255, 255, 255];
   };
   const ratio = (a: number[], b: number[]) => {
-    const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+    const [x, y] = [lum(a), lum(b)].toSorted((p, q) => q - p);
     return (x! + 0.05) / (y! + 0.05);
   };
-  const out: { control: string; ratio: number }[] = [];
+  const under: { control: string; ratio: number }[] = [];
   const controls = document.querySelectorAll('input:not([type=hidden]):not([type=file]), textarea, select, [role=checkbox], [role=radio], [role=switch], [role=combobox]');
   for (const el of controls) {
     const r = el.getBoundingClientRect();
@@ -212,10 +212,10 @@ const CONTROL_CONTRAST = () => {
     if (/^(checkbox|radio)$/.test((el as HTMLInputElement).type) && s.appearance !== "none") continue;
     if (best < 3) {
       const name = el.getAttribute("aria-label") ?? (el as HTMLInputElement).labels?.[0]?.textContent ?? el.getAttribute("placeholder") ?? "";
-      out.push({ control: `${el.getAttribute("role") ?? el.tagName.toLowerCase()} "${name.trim().slice(0, 30)}"`, ratio: Math.round(best * 100) / 100 });
+      under.push({ control: `${el.getAttribute("role") ?? el.tagName.toLowerCase()} "${name.trim().slice(0, 30)}"`, ratio: Math.round(best * 100) / 100 });
     }
   }
-  return out;
+  return under;
 };
 
 /**
@@ -309,7 +309,7 @@ const audit = async (page: Page, base: Pick<ScreenResult, "persona" | "screen" |
  * banner), then the first thing its main content leads into, such as a class or an activity.
  */
 const linksOn = async (page: Page) =>
-  page.evaluate((CRITICAL_FLOWS) => {
+  page.evaluate((flows) => {
     const links: { name: string; hash: string; flow?: number }[] = [];
     const add = (a: HTMLAnchorElement, flow?: number) => {
       const hash = new URL(a.href).hash;
@@ -324,7 +324,7 @@ const linksOn = async (page: Page) =>
     // quiz, a teacher reviewing an assignment's submissions, a quiz's results, and everyone's
     // notifications and settings.
     const all = [...document.querySelectorAll<HTMLAnchorElement>("a[href*='#/']")];
-    CRITICAL_FLOWS.forEach((flow, i) => {
+    flows.forEach((flow, i) => {
       const link = all.find((a) => new RegExp(flow).test(new URL(a.href).hash));
       if (link !== undefined) add(link, i);
     });
