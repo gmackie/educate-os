@@ -38,8 +38,44 @@ tolerances and choice keys in teacher-only question fields. All-or-nothing multi
 become explicitly teacher-scored responses because Canvas Classic uses different automatic scoring.
 Results stay hidden (`hide_results: always`); Canvas ignores `show_correct_answers` in this mode.
 Existing incomplete quizzes are reported for inspection, never blindly recreated or published.
-Quiz attempts, discussion participation and learner work remain to be populated.
 The seed does not manufacture grade approvals or claim grade-return acceptance.
+
+### Northfield learner work, teacher review and LTI acceptance
+
+`scripts/demo/canvas-participation.ts` populates the seeded courses from the showcase fixtures:
+learners submit their fixture work, post their discussion entries and take the quizzes with their
+fixture answers; each course's teacher grades work the fixture marks graded or released, posts
+their discussion replies and scores essay items. Each person acts as themself with a Canvas API
+token minted in the Canvas Rails console that expires within the hour (`scripts/demo/canvas-actors.ts`;
+the console is reached with `ssh labnuc`, overridable with `CANVAS_RAILS_RUNNER`), and every token
+a run minted is expired before it exits. Reruns add nothing, a teacher's later grade is kept, and
+each run checks that a learner cannot read a classmate's submission. These are Canvas-native
+workflows, not EducateOS grade approval or AGS passback.
+
+```sh
+node scripts/demo/canvas-participation.ts run    --out /tmp/canvas-work.json
+node scripts/demo/canvas-participation.ts verify --out /tmp/canvas-work-verified.json
+```
+
+`scripts/demo/canvas-lti-acceptance.ts` drives genuine LTI 1.3 launches with a scripted browser
+signed in to Canvas as each synthetic person (a single-use Canvas session token), following the
+same OIDC forms and redirects a browser would, and refusing to go anywhere but Canvas and the
+district tool. `launches` has each connected course's teacher and a learner open EducateOS from
+course navigation; each must be accepted as themself in that course's offering. `deep-link` has a
+course's teacher add two EducateOS activities to its first module through Canvas's module
+external-tool picker (`LtiDeepLinkingRequest`, `link_selection`); Canvas saves the signed content
+items as module items, the teacher publishes them, and a learner's launch of each must open exactly
+the selected activity. A rerun reuses the items, and a learner must not reach the picker.
+Canvas is behind Access, so pass a `CF_Authorization` value for canvas.mackie.house (agent-inbox's
+`scripts/access-sign-in.ts`).
+
+```sh
+node scripts/demo/canvas-lti-acceptance.ts launches --access-cookie <file> --out /tmp/launches.json
+node scripts/demo/canvas-lti-acceptance.ts deep-link --offering off_nf-eng8-fall-p2 --access-cookie <file> --out /tmp/deep-link.json
+```
+
+Grade return through AGS is a separate, teacher-approved step: see "Connecting additional Canvas
+courses" below.
 
 ## Harbor and Classroom
 
