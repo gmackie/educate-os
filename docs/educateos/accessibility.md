@@ -1,20 +1,20 @@
 # EducateOS accessibility audit and conformance report (WCAG 2.1 AA)
 
 - Status: Living document. Re-run the audit and update this page in the PR that changes its evidence.
-- Date: 2026-11-13 (audit run at commit `327896391`, branch `SCHO-361-accessibility`)
+- Date: 2026-11-13 (audit run on branch `SCHO-361-accessibility`, rebased on main `ef94376e7`)
 - Issue: SCHO-361 (parent SCHO-358)
 - Public report: [educateos.io/it/accessibility/](https://educateos.io/it/accessibility/), an ACR in VPAT layout built from this page
 
 ## Summary
 
 EducateOS **partially conforms** to WCAG 2.1 Level AA. The Student, Teacher, Guardian and Admin
-UIs, as they run in the zero-login demo, were audited with automated and programmatic checks on 127
+UIs, as they run in the zero-login demo, were audited with automated and programmatic checks on 143
 screens, each in a light theme, a dark theme and at 320 CSS pixels wide. Before fixes, those checks
 found 14 distinct failures, all serious. All 14 are fixed in this change. After the fixes:
 
-- axe-core reports no WCAG 2.0/2.1 A or AA violations on any of the 381 screen audits;
+- axe-core reports no WCAG 2.0/2.1 A or AA violations on any of the 429 screen audits;
 - no screen scrolls sideways at 320px;
-- every one of 4,328 keyboard focus stops has a name and a visible focus change;
+- every one of 4,782 keyboard focus stops has a name and a visible focus change;
 - every action exercised announced its outcome through a live region.
 
 Four criteria remain **Partially supports**:
@@ -43,7 +43,7 @@ persona on Northfield's picker:
 | Learning Home (student) | Grade 1, Grade 4, Grade 7, Grade 9 student | 43: Home, My space, Grades, Calendar, Notifications, Settings, each course, an activity, a quiz, and a notification's activity |
 | Learning Home (family) | Guardian of Mateo (grade 1) and Lucía (grade 10) | 3: a child's home, My children, the other child |
 | Teacher Studio | Grade 1, Grade 4, World History 7, English 9 teacher | 64: My classes, Roster, Modules, Resources, Create activity, Submissions, an assignment's submissions, a student's work under review, Gradebook, Announcements, Discussions, Quizzes, quiz results |
-| Admin console | District administrator | 16: Home, Dashboard, Roster, Roster sync, All classes, Manage classes and people, Guardians, Modules and activation, Learning standards, Course library, Policies, AI usage, AI budgets, Term rollover, Operations, a school |
+| Admin console | District administrator, Technology director review | 32, 16 each: Home, Dashboard, Roster, Roster sync, All classes, Manage classes and people, Guardians, Modules and activation, Learning standards, Course library, Policies, AI usage, AI budgets, Term rollover, Operations, a school |
 | Demo chrome | none | 1: the persona picker |
 
 Not evaluated: the Cedar Valley district's Clever portal and tour, the Workshop AI workspace at
@@ -108,7 +108,7 @@ criterion, so all are rated serious.
 | 12 | The quizzes table widens the page by 199 to 205px | 1.4.10 | Teacher Quizzes | It scrolls in its own region | Fixed |
 | 13 | Long discussion titles, which are one-line buttons, widen the page by 44 to 91px | 1.4.10 | Teacher Discussions; student course pages | The title buttons wrap | Fixed |
 | 14 | The submissions layout's single grid column sizes to its content, 16 to 60px too wide | 1.4.10 | Teacher assignment submissions | `grid-cols-1` below the md breakpoint | Fixed |
-| 15 | Text field, text area and combobox boundaries (Kumo's `kumo-line` ring) are 1.25 to 1.52:1 | 1.4.11 | 270 controls on 118 of 381 screen audits | Not changed: darkening every field is a design change | Open, SCHO-379 |
+| 15 | Text field, text area and combobox boundaries (Kumo's `kumo-line` ring) are 1.25 to 1.52:1 | 1.4.11 | 284 controls on 132 of 429 screen audits | Not changed: darkening every field is a design change | Open, SCHO-379 |
 | 16 | Kumo Link's hover colour (`text-kumo-link/70`) is 4.23:1 light and 4.08:1 dark while hovered | 1.4.3 | Links in lists, such as notifications | Upstream | Open, SCHO-380 |
 | 17 | Every screen of an app has the same document title | 2.4.2 | All apps | Per-route titles | Open, SCHO-382 |
 | 18 | A teacher can't extend a timed quiz's limit for one student (IEP/504 extended time) | 2.2.1 | Student quizzes | Per-student extended time | Open, SCHO-383 |
@@ -128,14 +128,14 @@ district's install.
 
 | Check | Result |
 |---|---|
-| axe violations (381 audits) | 0 |
-| axe "incomplete" (left to manual review) | color-contrast on 158 nodes in each 1280px theme and 687 at 320px: text over gradients, pseudo-content, very short text, and text partly covered by the sticky header or fixed phone navigation. One `th-has-data-cells`. None reviewed node by node. |
-| Screens with exactly one `h1` | 127 of 127 |
-| Sideways scrolling at 320px | 0 of 127 screens |
-| Text clipped by the 1.4.12 spacing | 0 of 127 screens |
-| Keyboard walks | 126 walks, 4,328 stops. Every stop has a name and a visible focus change, and each walk cycled back to its start. The exception is the four teachers' Modules screens, which have more than 120 stops: the walk still moved through 120 distinct elements, so nothing trapped it. Each app's skip link is its first stop after the demo banner. |
-| Status messages | 13 actions exercised, 13 announced (two more teachers had no discussion to pin) |
-| Form controls under 3:1 | 270 text fields, text areas and comboboxes (finding 15). No checkboxes, radios or switches. |
+| axe violations (429 audits) | 0 |
+| axe "incomplete" (left to manual review) | color-contrast on 174 nodes in each 1280px theme and 905 at 320px: text over gradients, pseudo-content, very short text, and text partly covered by the sticky header or fixed phone navigation. Two `th-has-data-cells`. None reviewed node by node. |
+| Screens with exactly one `h1` | 143 of 143 |
+| Sideways scrolling at 320px | 0 of 143 screens |
+| Text clipped by the 1.4.12 spacing | 0 of 143 screens |
+| Keyboard walks | 142 walks, 4,782 stops. Every stop has a name and a visible focus change, and each walk cycled back to its start. The exception is the four teachers' Modules screens, which have more than 120 stops: the walk still moved through 120 distinct elements, so nothing trapped it. Each app's skip link is its first stop after the demo banner. |
+| Status messages | 14 actions exercised, 14 announced (two more teachers had no discussion to pin) |
+| Form controls under 3:1 | 284 text fields, text areas and comboboxes (finding 15). No checkboxes, radios or switches. |
 
 ## Conformance by criterion
 
@@ -194,7 +194,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 1.4.13 Content on Hover or Focus | Supports | No custom content appears on hover or focus: menus and popovers open on click. Browser title tooltips are the browser's own. |
 | 2.4.5 Multiple Ways | Supports | Each app has persistent navigation, and screens are also reached from lists, breadcrumbs, the calendar and notifications. |
 | 2.4.6 Headings and Labels | Supports | Every screen has one h1 that names it, and sections and fields are labelled for their purpose. |
-| 2.4.7 Focus Visible | Supports | All 4,328 focus stops change visibly with focus, and screenshots confirm the rings in both themes. |
+| 2.4.7 Focus Visible | Supports | All 4,782 focus stops change visibly with focus, and screenshots confirm the rings in both themes. |
 | 3.1.2 Language of Parts | Supports | The apps' own text is English. Teacher-written content in another language isn't marked with its language: there is no authoring control for it. |
 | 3.2.3 Consistent Navigation | Supports | Each app's navigation is the same, in the same order, on every screen. |
 | 3.2.4 Consistent Identification | Supports | The same components and labels are used for the same functions across the apps. |
