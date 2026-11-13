@@ -76,8 +76,9 @@ export const GradebookGrid = ({ gradebook, caption, onOpenCell }: {
     event.preventDefault();
   };
 
+  // Relative, so the cells' screen-reader-only labels are clipped with the table instead of scrolling the page.
   return (
-    <LayerCard className="overflow-x-auto p-0">
+    <LayerCard className="relative overflow-x-auto p-0">
       <Table ref={table} role="grid" aria-readonly={onOpenCell === undefined}>
         <caption className="sr-only">{caption}</caption>
         <Table.Header>

@@ -2,6 +2,7 @@ import { Banner, Table, Text } from "@cloudflare/kumo";
 import { Warning } from "@phosphor-icons/react";
 import type { RouteResponse } from "@educateos/api-client";
 import { formatPercent, formatUsdNanoExact } from "./budgetFormat.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 /** The month-end projection, as the district reports it. */
 export type ProjectionReport = RouteResponse<"admin.aiProjection">;
@@ -27,7 +28,7 @@ export const ProjectionTable = ({ projection }: { projection: ProjectionReport }
           description={`At this rate it spends ${formatUsdNanoExact(pool.projectedUsdNano)} of ${formatUsdNanoExact(pool.monthlyAllocationUsdNano)} this month, over the ${projection.warningPercent}% warning level. Requests are refused once a pool is used up.`}
         />
       ))}
-      <div className="overflow-x-auto">
+      <TableScroll label="Month-end projection">
         <Table>
           <Table.Header>
             <Table.Row>
@@ -48,7 +49,7 @@ export const ProjectionTable = ({ projection }: { projection: ProjectionReport }
             ))}
           </Table.Body>
         </Table>
-      </div>
+      </TableScroll>
     </section>
   );
 };

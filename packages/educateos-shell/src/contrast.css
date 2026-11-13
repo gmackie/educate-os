@@ -1,0 +1,42 @@
+/*
+ * Text contrast for every surface on a district origin (SCHO-361). Kumo's light theme sets two text
+ * tokens just under WCAG 2.1 AA's 4.5:1 for normal text on its own surfaces:
+ *
+ * - subtle (oklch 55.6%, #737373) is 4.46:1 on kumo-elevated and 4.27:1 on the tab list, and it
+ *   carries secondary text, table headers and descriptions throughout the district apps;
+ * - warning (#bd6500) is 4.0:1 on kumo-warning-tint, as in Banner's "alert" variant.
+ *
+ * And placeholder text, which is text too (a Select's "Choose…" is its only label in the box), is
+ * 2.6:1 in light mode and 3.8:1 in dark.
+ *
+ * Changed here until Kumo's own tokens are. Unlayered, so it outranks Kumo's base-layer tokens; a
+ * [data-mode="dark"] subtree still sets its own. Each app's stylesheet imports it after Kumo's.
+ */
+:root:not([data-mode="dark"]) {
+  /* 4.7:1 on kumo-recessed, 4.8:1 on the tab list, 5.0:1 on kumo-elevated, 5.3:1 on white. */
+  --text-color-kumo-subtle: oklch(53% 0 0);
+  --text-color-kumo-placeholder: oklch(53% 0 0);
+  /* 4.9:1 on kumo-warning-tint. */
+  --text-color-kumo-warning: oklch(55% 0.135 57.5);
+}
+
+[data-mode="dark"] {
+  /* Kumo's dark subtle text: 6.9:1 on kumo-control, 7.6:1 on kumo-base. */
+  --text-color-kumo-placeholder: oklch(70.8% 0 0);
+}
+
+/*
+ * WCAG 1.4.11: an unchecked checkbox, radio or switch shows its state only by its ring, which Kumo
+ * draws in kumo-line: 10% black (1.3:1) on light surfaces and oklch 32% (1.5:1) on dark ones. Raised
+ * to 3:1 on the surfaces they sit on. Checked controls are filled and keep Kumo's colours. Text
+ * fields' rings are the same kumo-line and are not changed here (SCHO-361's follow-up).
+ */
+:root:not([data-mode="dark"]) :is([data-kumo-component="Checkbox"], [data-kumo-component="Radio"][data-kumo-part="item"], [data-kumo-component="Switch"]):not([data-checked]) {
+  /* 3.6:1 on white, 3.2:1 on kumo-recessed. */
+  --tw-ring-color: oklch(62% 0 0);
+}
+
+[data-mode="dark"] :is([data-kumo-component="Checkbox"], [data-kumo-component="Radio"][data-kumo-part="item"], [data-kumo-component="Switch"]):not([data-checked]) {
+  /* 4.2:1 on kumo-control, more on the darker surfaces. */
+  --tw-ring-color: oklch(58% 0 0);
+}

@@ -1,6 +1,7 @@
 import { Badge, Meter, Table, Text } from "@cloudflare/kumo";
 import { useDirectoryNames } from "../app/useDirectoryNames.ts";
 import { formatPercent, formatUsdNanoExact, PURPOSE_LABELS, scopeLabel, THRESHOLD_BADGES, type PoolStatus } from "./budgetFormat.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 /** A pool's threshold badge. */
 export const ThresholdBadge = ({ pool }: { pool: PoolStatus }) => {
@@ -28,7 +29,7 @@ export const FundingPoolTable = ({ pools }: { pools: readonly PoolStatus[] }) =>
       <Text as="h3" variant="heading" id="pools-heading">Class and personal pools</Text>
       <Text variant="secondary">Charged is settled spend and bill corrections. Held is set aside for requests still running and returns to the pool if they cost less.</Text>
       {pools.length === 0 ? <Text>No class or personal pools are configured, so no AI requests are funded.</Text> : (
-        <div className="overflow-x-auto">
+        <TableScroll label="Class and personal pools">
           <Table>
             <Table.Header>
               <Table.Row>
@@ -57,7 +58,7 @@ export const FundingPoolTable = ({ pools }: { pools: readonly PoolStatus[] }) =>
               ))}
             </Table.Body>
           </Table>
-        </div>
+        </TableScroll>
       )}
     </section>
   );

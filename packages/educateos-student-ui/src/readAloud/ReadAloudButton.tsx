@@ -15,7 +15,8 @@ export const ReadAloudButton = ({ control, prominent = false }: { control: ReadA
       variant={prominent ? "primary" : "ghost"}
       size={prominent ? "lg" : "sm"}
       icon={<Icon aria-hidden weight="fill" size={prominent ? 28 : undefined} />}
-      aria-label={`Read ${control.label} to me`}
+      // Starts with the visible label, so voice control finds it by what it says (WCAG 2.5.3).
+      aria-label={`Read to me: ${control.label}`}
       aria-pressed={control.reading}
       className={prominent ? "min-h-14 px-5 text-lg" : undefined}
       onClick={control.toggle}

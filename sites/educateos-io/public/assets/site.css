@@ -469,3 +469,17 @@ pre.code .k { color: var(--text-color-kumo-brand); }
 .tour-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .shot > .phone { max-width: 270px; margin: 0 auto; }
 .shot-grid.three > .shot:has(> .phone) figcaption { text-align: center; }
+
+/* The accessibility conformance report, /it/accessibility/ (SCHO-361). */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.status.unsupported { background: var(--color-kumo-danger-tint); color: light-dark(#b91c1c, #fca5a5); }
+.status.na { background: transparent; border-color: var(--color-kumo-line); color: var(--text-color-kumo-default); }
+.spec.acr td:first-child { width: 28%; }
+.spec.acr td:nth-child(2) { width: 1%; white-space: nowrap; }
+.spec.acr td:last-child, .spec.info td:last-child { width: auto; white-space: normal; }
+.spec.acr th, .spec.info th { color: var(--text-color-kumo-default); }
+.spec.acr a, .spec.info a { text-decoration: underline; }
+.spec.info th { width: 24%; font-size: .85rem; vertical-align: top; }
+.spec .lvl { display: block; color: var(--text-color-kumo-default); font-weight: 400; font-size: .8rem; }
+.terms { list-style: none; padding: 0; display: grid; gap: 10px; }
+.terms li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }

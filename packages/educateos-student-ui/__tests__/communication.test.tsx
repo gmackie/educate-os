@@ -45,7 +45,7 @@ describe("notifications", () => {
     ]);
     expect(links[1]!.getAttribute("href")).toContain("asg_osmosis-lab");
 
-    await user.click(screen.getByRole("button", { name: 'Mark "New announcement in English 9 · Period 3: Library visit <Friday>" as read' }));
+    await user.click(screen.getByRole("button", { name: 'Mark read: New announcement in English 9 · Period 3: Library visit <Friday>' }));
     await waitFor(() => expect(announcement()).toBe("Marked as read"));
     expect(district.calls.filter((c) => c.name === "me.markNotificationsRead").map((c) => c.input)).toStrictEqual([{ body: { ids: [`ntf_${"1".repeat(32)}`] } }]);
     await waitFor(() => expect(screen.queryByRole("button", { name: "Mark all as read" })).toBeNull());

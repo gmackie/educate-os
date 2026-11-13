@@ -1,0 +1,10 @@
+{
+  // The Node scripts beside the demo, such as the accessibility audit, with Node's typings, which the
+  // demo's own sources must not see.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["scripts"]
+}

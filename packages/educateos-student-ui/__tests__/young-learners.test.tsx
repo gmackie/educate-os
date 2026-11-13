@@ -116,7 +116,7 @@ describe("the young-learner activity page", () => {
 
   it("reads the overview aloud, highlighting the word being spoken, and stops when the page changes", async () => {
     const { user } = await openPond();
-    const read = screen.getByRole("button", { name: "Read what this activity is about to me" });
+    const read = screen.getByRole("button", { name: "Read to me: what this activity is about" });
     expect(read.getAttribute("aria-pressed")).toBe("false");
     await user.click(read);
     expect(spoken.map((u) => u.text)).toStrictEqual(["We are learning about pond animals."]);
@@ -144,7 +144,7 @@ describe("the young-learner activity page", () => {
   it("hides read-aloud where the browser cannot speak", async () => {
     removeSpeech();
     await openPond();
-    expect(screen.queryByRole("button", { name: /to me$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /to me/ })).toBeNull();
   });
 
   it("saves a drawing from the drawing pad as a PNG, with undo and clear", async () => {
@@ -277,8 +277,8 @@ describe("an upper-elementary class", () => {
     const { container } = await renderApp(fakeDistrict({ youngClass: { gradeBand: "3-5" } }), PAGE);
     await screen.findByRole("heading", { name: "Instructions" });
     expect(container.querySelector("[data-presentation='young']")).toBeNull();
-    expect(screen.getByRole("button", { name: "Read the instructions to me" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Read Draw it to me" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Read to me: the instructions" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Read to me: Draw it" })).toBeTruthy();
     expect(screen.getByRole("img", { name: /^Drawing space for Draw it/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Submit" })).toBeTruthy();
   });
@@ -289,7 +289,7 @@ describe("secondary classes", () => {
     const { container } = await renderApp(fakeDistrict({ youngClass: true }), `/courses/${ENGLISH}/activities/${ESSAY}`);
     await screen.findByRole("heading", { name: "Instructions" });
     expect(container.querySelector("[data-presentation='young']")).toBeNull();
-    expect(screen.queryByRole("button", { name: /to me$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /to me/ })).toBeNull();
   });
 });
 
@@ -320,7 +320,7 @@ describe("a young class's quiz", () => {
     await renderApp(withQuiz(), `/courses/${READING_K2}/quizzes/qz_pond`);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /Start/ }));
-    await user.click(await screen.findByRole("button", { name: "Read question 1 to me" }));
+    await user.click(await screen.findByRole("button", { name: "Read to me: question 1" }));
     expect(spoken.at(-1)!.text).toBe("Which animal lives in a pond?\nFrog.\nCamel.");
     await user.click(screen.getByRole("radio", { name: "Frog" }));
     expect(screen.getByRole("radio", { name: "Frog" }).getAttribute("aria-checked")).toBe("true");

@@ -7,6 +7,7 @@ import { LoadState } from "../app/LoadState.tsx";
 import { sectionPeopleHref } from "../app/useHashRoute.ts";
 import { useDirectoryNames } from "../app/useDirectoryNames.ts";
 import { useLoad } from "../app/useLoad.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type DistrictClass = RouteResponse<"admin.listOfferings">[number];
 
@@ -28,7 +29,7 @@ const ClassTable = ({ classes, names }: { classes: readonly DistrictClass[]; nam
         {needle === "" ? count(classes.length, "class", "classes") : `${count(shown.length, "class", "classes")} of ${classes.length.toLocaleString("en-US")} match`}
       </Text>
       {shown.length === 0 ? <Text variant="secondary">No class matches “{query.trim()}”.</Text> : (
-        <div className="overflow-x-auto">
+        <TableScroll label="Every class in the district">
           <Table>
             <caption className="sr-only">Every class in the district</caption>
             <Table.Header>
@@ -52,7 +53,7 @@ const ClassTable = ({ classes, names }: { classes: readonly DistrictClass[]; nam
               ))}
             </Table.Body>
           </Table>
-        </div>
+        </TableScroll>
       )}
     </div>
   );

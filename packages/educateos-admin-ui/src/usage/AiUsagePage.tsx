@@ -7,6 +7,7 @@ import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
 import { formatCents, formatUsdNano } from "../policies/policySettings.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type UsageReport = RouteResponse<"admin.aiUsage">;
 type UsageTotals = UsageReport["district"];
@@ -15,7 +16,7 @@ const UsageTable = ({ caption, label, rows }: { caption: string; label: string; 
   <section aria-label={caption} className="flex flex-col gap-2">
     <Text as="h3" variant="heading">{caption}</Text>
     {rows.length === 0 ? <Text variant="secondary">No AI use recorded.</Text> : (
-      <div className="overflow-x-auto">
+      <TableScroll label={caption}>
         <Table>
           <Table.Header>
             <Table.Row>
@@ -38,7 +39,7 @@ const UsageTable = ({ caption, label, rows }: { caption: string; label: string; 
             ))}
           </Table.Body>
         </Table>
-      </div>
+      </TableScroll>
     )}
   </section>
 );

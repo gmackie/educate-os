@@ -4,6 +4,7 @@ import { schoolHref } from "../app/useHashRoute.ts";
 import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, type AuthoringDirectory, type School } from "./authoring.ts";
 import { useAuthoringAction } from "./useAuthoringAction.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 /** A school's name and grades as typed. */
 export type SchoolDraft = { name: string; gradeBands: string };
@@ -34,25 +35,27 @@ export const SchoolsSection = ({ directory, onChanged }: { directory: AuthoringD
     <section aria-labelledby="schools-heading" className="flex flex-col gap-3">
       <Text as="h3" variant="heading" id="schools-heading">Schools</Text>
       {directory.schools.length === 0 ? <Text variant="secondary">No schools yet. Name your school or co-op first: every section belongs to one.</Text> : (
-        <Table>
-          <caption className="sr-only">Schools</caption>
-          <Table.Header><Table.Row><Table.Head>School</Table.Head><Table.Head>Grades</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row></Table.Header>
-          <Table.Body>
-            {directory.schools.map((school) => (
-              <Table.Row key={school.id}>
-                <Table.Cell><Link href={schoolHref(school.id)}>{school.name}</Link></Table.Cell>
-                <Table.Cell>{school.gradeBands.join(", ")}</Table.Cell>
-                <Table.Cell>
-                  {writable && (
-                    <Button size="sm" variant="secondary" aria-label={`Edit ${school.name}`} disabled={action.busy} onClick={() => setEditing({ id: school.id, draft: draftOf(school) })}>
-                      Edit
-                    </Button>
-                  )}
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+        <TableScroll label="Schools">
+          <Table>
+            <caption className="sr-only">Schools</caption>
+            <Table.Header><Table.Row><Table.Head>School</Table.Head><Table.Head>Grades</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row></Table.Header>
+            <Table.Body>
+              {directory.schools.map((school) => (
+                <Table.Row key={school.id}>
+                  <Table.Cell><Link href={schoolHref(school.id)}>{school.name}</Link></Table.Cell>
+                  <Table.Cell>{school.gradeBands.join(", ")}</Table.Cell>
+                  <Table.Cell>
+                    {writable && (
+                      <Button size="sm" variant="secondary" aria-label={`Edit ${school.name}`} disabled={action.busy} onClick={() => setEditing({ id: school.id, draft: draftOf(school) })}>
+                        Edit
+                      </Button>
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
+        </TableScroll>
       )}
       {editing !== undefined && (
         <form

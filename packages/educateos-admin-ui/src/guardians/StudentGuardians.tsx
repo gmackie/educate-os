@@ -11,6 +11,7 @@ import { READABLE_KIND_LABEL, STANDING, standingOf } from "./guardianLabels.ts";
 import { DigestPreview } from "./DigestPreview.tsx";
 import { InviteGuardianForm } from "./InviteGuardianForm.tsx";
 import { RelationshipActions } from "./RelationshipActions.tsx";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type Overview = RouteResponse<"admin.studentGuardians">;
 
@@ -125,7 +126,7 @@ export const StudentGuardians = ({ studentId }: { studentId: string }) => {
             {data.relationships.length === 0 ? (
               <Text variant="secondary">{data.student.displayName} has no guardians on EducateOS yet. Invite one below.</Text>
             ) : (
-              <div className="overflow-x-auto">
+              <TableScroll label={`Guardian relationships of ${data.student.displayName}`}>
                 <Table>
                   <caption className="sr-only">{`Guardian relationships of ${data.student.displayName}`}</caption>
                   <Table.Header>
@@ -174,7 +175,7 @@ export const StudentGuardians = ({ studentId }: { studentId: string }) => {
                     })}
                   </Table.Body>
                 </Table>
-              </div>
+              </TableScroll>
             )}
           </section>
 

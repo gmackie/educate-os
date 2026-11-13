@@ -8,6 +8,7 @@ import { count } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
 import { RosterPreview, type RosterPreviewBody } from "./RosterPreview.tsx";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 /** A OneRoster bulk export file name, as the district accepts it: `users.csv`, `enrollments.csv`, ... */
 const ONEROSTER_FILE = /^[A-Za-z]+\.csv$/;
@@ -159,7 +160,7 @@ export const RosterPage = () => {
           )}
         </LoadState>
         {history.length === 0 ? <Text variant="secondary">No imports applied in this session. Earlier sync runs are not listed yet.</Text> : (
-          <div className="overflow-x-auto">
+          <TableScroll label="Roster imports applied in this session">
             <Table>
               <caption className="sr-only">Roster imports applied in this session</caption>
               <Table.Header>
@@ -187,7 +188,7 @@ export const RosterPage = () => {
                 ))}
               </Table.Body>
             </Table>
-          </div>
+          </TableScroll>
         )}
       </section>
     </div>

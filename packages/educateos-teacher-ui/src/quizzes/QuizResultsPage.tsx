@@ -115,7 +115,8 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
           {data.students.length === 0
             ? <Empty icon={<ChartBar size={32} aria-hidden />} title="No attempts yet" description="Results appear here once students start the quiz." />
             : (
-              <LayerCard className="overflow-x-auto p-0">
+              // Focusable, so a keyboard can scroll it sideways on a phone (WCAG 2.1.1).
+              <LayerCard role="group" aria-label="Students' results" tabIndex={0} className="overflow-x-auto p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-brand">
                 <Table>
                   <caption className="sr-only">Students' results</caption>
                   <Table.Header>
@@ -159,7 +160,7 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
           {grading !== undefined && <AttemptGrader key={grading} offeringId={offeringId} attemptId={grading} onGraded={results.reload} />}
           <section aria-labelledby="item-analysis" className="flex flex-col gap-2">
             <h2 id="item-analysis"><Text variant="heading" as="span">How each question went</Text></h2>
-            <LayerCard className="overflow-x-auto p-0">
+            <LayerCard role="group" aria-labelledby="item-analysis" tabIndex={0} className="overflow-x-auto p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-brand">
               <Table>
                 <caption className="sr-only">Item analysis</caption>
                 <Table.Header>

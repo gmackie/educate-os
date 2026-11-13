@@ -5,6 +5,7 @@ import { formatDate } from "../app/labels.ts";
 import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, NEXT_TERM_STATE, type AuthoringDirectory, type Term } from "./authoring.ts";
 import { useAuthoringAction } from "./useAuthoringAction.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 /** How each term state reads. */
 export const STATE_LABEL = { planned: "Planned", active: "In session", grading: "Grading", completed: "Closed" } as const;
@@ -40,42 +41,44 @@ export const TermsSection = ({ directory, onChanged }: { directory: AuthoringDir
     <section aria-labelledby="terms-heading" className="flex flex-col gap-3">
       <Text as="h3" variant="heading" id="terms-heading">Terms</Text>
       {directory.terms.length === 0 ? <Text variant="secondary">No terms yet.</Text> : (
-        <Table>
-          <caption className="sr-only">Terms</caption>
-          <Table.Header><Table.Row><Table.Head>Term</Table.Head><Table.Head>Dates</Table.Head><Table.Head>State</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row></Table.Header>
-          <Table.Body>
-            {directory.terms.map((t) => {
-              const step = NEXT_TERM_STATE[t.state];
-              return (
-                <Table.Row key={t.id}>
-                  <Table.Cell>{t.name}</Table.Cell>
-                  <Table.Cell>{`${formatDate(t.startsOn)} to ${formatDate(t.endsOn)}`}</Table.Cell>
-                  <Table.Cell><Badge variant={t.state === "active" ? "success" : "neutral"}>{STATE_LABEL[t.state]}</Badge></Table.Cell>
-                  <Table.Cell>
-                    {writable && (
-                      <span className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          aria-label={`Edit ${t.name}`}
-                          disabled={action.busy}
-                          onClick={() => setEditing({ id: t.id, draft: { name: t.name, startsOn: t.startsOn, endsOn: t.endsOn } })}
-                        >
-                          Edit
-                        </Button>
-                        {step !== undefined && (
-                          <Button size="sm" aria-label={`${step.label}: ${t.name}`} loading={action.running(t.id)} disabled={action.busy} onClick={() => setMoving(t)}>
-                            {step.label}…
+        <TableScroll label="Terms">
+          <Table>
+            <caption className="sr-only">Terms</caption>
+            <Table.Header><Table.Row><Table.Head>Term</Table.Head><Table.Head>Dates</Table.Head><Table.Head>State</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row></Table.Header>
+            <Table.Body>
+              {directory.terms.map((t) => {
+                const step = NEXT_TERM_STATE[t.state];
+                return (
+                  <Table.Row key={t.id}>
+                    <Table.Cell>{t.name}</Table.Cell>
+                    <Table.Cell>{`${formatDate(t.startsOn)} to ${formatDate(t.endsOn)}`}</Table.Cell>
+                    <Table.Cell><Badge variant={t.state === "active" ? "success" : "neutral"}>{STATE_LABEL[t.state]}</Badge></Table.Cell>
+                    <Table.Cell>
+                      {writable && (
+                        <span className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            aria-label={`Edit ${t.name}`}
+                            disabled={action.busy}
+                            onClick={() => setEditing({ id: t.id, draft: { name: t.name, startsOn: t.startsOn, endsOn: t.endsOn } })}
+                          >
+                            Edit
                           </Button>
-                        )}
-                      </span>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table>
+                          {step !== undefined && (
+                            <Button size="sm" aria-label={`${step.label}: ${t.name}`} loading={action.running(t.id)} disabled={action.busy} onClick={() => setMoving(t)}>
+                              {step.label}…
+                            </Button>
+                          )}
+                        </span>
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+        </TableScroll>
       )}
       <ConfirmDialog
         open={moving !== undefined && next !== undefined}

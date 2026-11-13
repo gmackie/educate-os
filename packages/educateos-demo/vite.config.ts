@@ -16,10 +16,10 @@ const viteBuild = `node --input-type=module -e "process.env.NODE_ENV='production
 const tasks = withVitestTask({
   run: {
     tasks: {
-      // Type-checks the demo and the UIs it mounts, then bundles them with the district app,
+      // Type-checks the demo, the UIs it mounts and its scripts, then bundles them with the district app,
       // which is what proves every service behind the API runs in a browser.
       build: {
-        command: ["tsc", "tsc -p tsconfig.vite.json", viteBuild],
+        command: ["tsc", "tsc -p tsconfig.vite.json", "tsc -p tsconfig.scripts.json", viteBuild],
         cache: { env: ["VITE_*"], input: [{ auto: true }], output: [{ pattern: `${SITE_DIR}/**`, base: "workspace" }] },
       },
     },
