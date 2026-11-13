@@ -94,3 +94,26 @@ policies or elevate an unlinked identity to make a demo pass.
 Required before completion: authenticated role/principal verification, student isolation, LTI
 launches in each intended course, learner submissions, teacher review and approved grade return,
 readback from the learner's session, and production publication evidence for the implementation.
+
+## Connecting additional Canvas courses
+
+An authenticated district administrator can append a course to an existing approved registration
+with `POST /api/lti/registrations/course-links`:
+
+```json
+{
+  "issuer": "https://canvas.mackie.house",
+  "clientId": "<approved Canvas client ID>",
+  "contextId": "<actual Canvas LTI context ID>",
+  "offeringId": "<live district offering ID>",
+  "deploymentId": "<actual installed tool deployment ID>"
+}
+```
+
+Obtain context and deployment IDs from the installed Canvas tool; numeric Canvas course IDs are
+not LTI context IDs. Exact retries are idempotent. The operation rejects context rebinding, unknown
+offerings and untrusted issuers, preserves existing course/activity mappings and endpoints, and
+requires district administration (school administrators, teachers and students are refused).
+Read `/api/lti/registrations` back to verify the saved mapping. This does not link identities or
+prove a launch: use the separate identity approval workflow, then verify a genuine student launch
+and its reported services before configuring grade routes.

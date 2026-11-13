@@ -123,6 +123,17 @@ describe("the district's LTI Tool", () => {
     expect((await api(ADMIN, "POST", "/api/lti/trusted-issuers", { issuer: LMS_ISSUER })).body.trustedIssuers).toContain(LMS_ISSUER);
     expect((await api(ADMIN, "POST", `/api/lti/pending/${pending.id}/approve`, approval)).status).toBe(200);
 
+    const courseLink = { issuer: LMS_ISSUER, clientId: "lms-client-1", contextId: "second-eng9", offeringId: ENG9, deploymentId: "second-deploy" };
+    expect((await api(RIVERA, "POST", "/api/lti/registrations/course-links", courseLink)).status).toBe(403);
+    expect((await api(AMARA, "POST", "/api/lti/registrations/course-links", courseLink)).status).toBe(403);
+    expect((await api(ADMIN, "POST", "/api/lti/registrations/course-links", courseLink)).body).toEqual({ connected: true });
+    expect((await api(ADMIN, "POST", "/api/lti/registrations/course-links", courseLink)).status).toBe(200);
+    expect((await api(ADMIN, "POST", "/api/lti/registrations/course-links", { ...courseLink, contextId: CONTEXT, offeringId: "off_nf-bio-fall-p2" })).status).toBe(409);
+    await evictDurableObject(district());
+    const updated = await api(ADMIN, "GET", "/api/lti/registrations");
+    expect(updated.body.registrations[0].offerings).toContainEqual({ contextId: "second-eng9", offeringId: ENG9 });
+    expect(updated.body.registrations[0].deploymentIds).toContain("second-deploy");
+
     // An unlinked LMS account is shown its subject, for an administrator to link.
     let started = await login();
     let response = await launch(await idToken(started.nonce), started.state, started.cookie);

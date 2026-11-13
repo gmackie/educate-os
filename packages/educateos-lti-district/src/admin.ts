@@ -12,6 +12,7 @@ import {
 import { AssignmentId, type AssessmentRecordStore } from "@educateos/assessment";
 import {
   approvedRegistration,
+  OfferingMapping,
   offeringForContext,
   PendingRegistrationId,
   RegistrationApproval,
@@ -29,6 +30,15 @@ import type {
 } from "./stores.ts";
 import type { GradeColumnStore } from "./columns.ts";
 import { authorizeLti, authorizeLtiOffering, districtResource } from "./authorize.ts";
+
+/** An administrator-approved connection from a platform course and deployment to an offering. */
+export const PlatformCourseLinkInput = OfferingMapping.extend({
+  issuer: z.url({ protocol: /^https$/ }),
+  clientId: z.string().min(1).max(255),
+  deploymentId: z.string().min(1).max(255),
+});
+/** A course connection request. */
+export type PlatformCourseLinkInput = z.infer<typeof PlatformCourseLinkInput>;
 
 /** Which recorded platform context an offering's grades should go to. */
 export const PlatformGradeRouteInput = z.strictObject({
@@ -102,6 +112,17 @@ export class LtiAdminService {
   async listRegistrations(caller: Caller): Promise<readonly PlatformRegistration[]> {
     await this.#authorize(caller, "read", this.#district());
     return this.#options.registrations.list();
+  }
+
+  /** Adds a course to an approved registration, preserving existing course and activity mappings. */
+  async addCourseLink(caller: Caller, rawInput: unknown): Promise<void> {
+    await this.#authorize(caller, "update", this.#district());
+    const input = PlatformCourseLinkInput.safeParse(rawInput);
+    if (!input.success) throw new EducateOsError("validation-failed", "The course connection is malformed.");
+    const { issuer, clientId, contextId, offeringId, deploymentId } = input.data;
+    const registration = await this.#options.registrations.get({ issuer, clientId });
+    if (!registration || registration.districtId !== this.#options.districtId) throw new EducateOsError("not-found", "No such LTI registration.");
+    await this.#options.registrations.addCourseLink({ issuer, clientId }, { contextId, offeringId }, deploymentId);
   }
 
   /**

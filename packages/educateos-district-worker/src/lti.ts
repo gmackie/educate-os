@@ -219,6 +219,10 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
         pending: await admin.listPendingRegistrations(caller),
       }),
     },
+    { method: "POST", path: "registrations/course-links", run: async (caller, request) => {
+      await admin.addCourseLink(caller, await jsonBody(request));
+      return { connected: true };
+    } },
     { method: "POST", path: "pending/:id/approve", run: async (caller, request, { id }) => admin.approveRegistration(caller, id, await jsonBody(request)) },
     {
       method: "POST", path: "pending/:id/reject", run: async (caller, _request, { id }) => {
