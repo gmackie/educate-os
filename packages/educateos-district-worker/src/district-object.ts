@@ -59,6 +59,9 @@ interface DistrictLogFields {
   /** A district export's record counts and size (SCHO-364): never its contents. */
   counts?: Record<string, number>;
   bytes?: number;
+  /** A student archive's item and withheld counts (SCHO-371). */
+  items?: number;
+  withheld?: number;
 }
 
 // The demo showcase's routes (SCHO-326): who did what, by counts and IDs.
@@ -397,6 +400,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         }),
         // SCHO-364: an administrator exported the district; counts and size only.
         onDistrictExported: ({ counts, bytes }) => logger.info("a district administrator exported the district", { event: "district.export", counts, bytes }),
+        // SCHO-371: a student took their archive; counts and size only, never who or what.
+        onStudentArchiveExported: ({ items, withheld, bytes }) => logger.info("a student exported their archive", { event: "student.archive.export", items, withheld, bytes }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
         discussionHallMonitor: (screening) => discussionHallMonitor({

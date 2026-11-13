@@ -31,6 +31,7 @@
     "@educateos/marketplace": "workspace:*",
     "@educateos/ocs": "workspace:*",
     "@educateos/policy": "workspace:*",
+    "@educateos/portability": "workspace:*",
     "@educateos/quizzes": "workspace:*",
     "@educateos/registry": "workspace:*",
     "@educateos/releases": "workspace:*",

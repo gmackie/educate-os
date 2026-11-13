@@ -135,6 +135,8 @@ import { InstalledPack, sameRelease, type MarketplacePackStore } from "./marketp
 // Course library (SCHO-331)
 import { DurableObjectPackageLibrary } from "@educateos/ocs/durable-object-library";
 import { LibraryCourse, OfferingCourseInstalls, type CourseLibrary, type CourseLibraryStore, type LibraryPolicies } from "./course-library.ts";
+// Student archive (SCHO-371)
+import type { ExportMapping, ExportMappingStore } from "@educateos/portability";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -230,6 +232,8 @@ export const DISTRICT_TABLES = {
   courseInstalls: "educateos_course_installs",
   // Delegations (SCHO-175)
   delegations: "educateos_delegations",
+  // Student archive (SCHO-371)
+  exportMappings: "educateos_export_mappings",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1214,6 +1218,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     courseLibrary: new DurableObjectCourseLibraryStore(storage),
     // Delegations (SCHO-175)
     delegations: new DurableObjectDelegationStore(storage),
+    // Student archive (SCHO-371)
+    exportMappings: new DurableObjectExportMappingStore(storage),
   };
 }
 
@@ -2372,5 +2378,33 @@ export class DurableObjectCourseLibraryStore implements CourseLibraryStore {
   #installs(sql: DistrictSqlStorage["sql"], offeringId: string): OfferingCourseInstalls | undefined {
     const [row] = sql.exec(`SELECT installs_json FROM ${DISTRICT_TABLES.courseInstalls} WHERE offering_id = ?`, offeringId).toArray();
     return row === undefined ? undefined : parseStored(OfferingCourseInstalls, row.installs_json, `the course installs of ${offeringId}`);
+  }
+}
+
+// Student archive (SCHO-371)
+
+/**
+ * An {@link ExportMappingStore} in a Durable Object's SQLite: append-only, one row per student
+ * archive, holding how its export-local IDs map back to district IDs.
+ */
+export class DurableObjectExportMappingStore implements ExportMappingStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.exportMappings} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, export_id TEXT NOT NULL UNIQUE, principal_id TEXT NOT NULL,
+        exported_at TEXT NOT NULL, mapping_json TEXT NOT NULL
+      )`,
+    ], []);
+  }
+
+  async record(mapping: ExportMapping): Promise<void> {
+    this.#tables.transaction((sql) => {
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.exportMappings} (export_id, principal_id, exported_at, mapping_json) VALUES (?, ?, ?, ?)`,
+        mapping.exportId, mapping.principalId, mapping.exportedAt, JSON.stringify(mapping),
+      );
+    });
   }
 }

@@ -326,6 +326,14 @@ export function fakeDistrict(options: {
       feed = undefined;
       return { active: false };
     },
+    // Student archive (SCHO-371): a tiny stand-in file, and one item withheld for a secret-shaped key.
+    "student.exportArchive": () => ({
+      fileName: "educateos-archive-2026-11-02.educateos",
+      mediaType: "application/vnd.educateos.student-archive+zip",
+      base64: btoa("PK"),
+      manifest: {},
+      withheld: [{ kind: "artifact", label: "Club notes", found: ["api-key"] }],
+    }),
     "me.get": () => ({ principalId: ME, districtId: DISTRICT, kind: "student", displayName: "Amara Okafor", roles: [], enrollments: [{ offeringId: ENGLISH, role: "student" }, { offeringId: SCIENCE, role: "student" }, ...(youngBand === undefined ? [] : [{ offeringId: READING_K2, role: "student" }])] }),
     "student.listWorkspaces": () => workspaces,
     "student.openPersonalWorkspace": () => workspaces[0],

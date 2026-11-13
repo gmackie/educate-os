@@ -2,8 +2,8 @@
 
 - Status: Runbook. Not yet run end to end against a live district.
 - Issues: SCHO-364 (district export and this runbook), SCHO-143 (offboarding runbook). Follow-ups:
-  SCHO-367 (streamed export), SCHO-368 (installer uninstall and registry deregistration), SCHO-371
-  (student archive route).
+  SCHO-367 (streamed export), SCHO-368 (installer uninstall and registry deregistration). SCHO-371
+  added the student archive route.
 
 How a district takes its data out of EducateOS and removes it. EducateOS runs in the district's own
 Cloudflare account, so leaving is mostly deleting things the district already owns. Gmacko Ventures
@@ -59,10 +59,28 @@ Common Cartridge (`teacher.exportCartridge`, a teacher of the class) and each gr
 ## 2. Give students and staff their own work
 
 Personal workspaces belong to their owners alone and are deliberately not in the district export.
-Each person takes their own work as a `.educateos` archive
-([educateos-archive-format.md](../educateos-archive-format.md)). **The district app does not serve
-that archive yet** (SCHO-371): until it does, announce the shutdown date early and ask students to
-download anything personal they want to keep from their workspaces, artifact by artifact.
+Each student takes their own work as a `.educateos` archive
+([educateos-archive-format.md](../educateos-archive-format.md)): **Settings → Take your work with
+you → Download my work** in the Student app, or `GET /api/student/archive`
+(`student.exportArchive`) with the student's own credential. The archive holds their personal
+workspaces, the work of classes whose term is over, their submissions, the feedback their teachers
+shared with them, and the class resources whose license lets them be copied (the rest as links). The
+policy engine decides every item, and every decision is in the audit trail; the district Worker
+logs only counts (`student.archive.export`). Anything that holds text shaped like a password, key or
+token is left out and listed back to the student, who can remove it and export again.
+
+So that every student can take one:
+
+1. Close the terms that are ending first (`admin.closeTerm`), so their class work is in the archive.
+   Work in a class still running is in it only as the student's submissions.
+2. Announce the shutdown date early, and ask every student to download their work before it. **A
+   student can export only while they can still sign in**: once their account is inactive or
+   graduated, the route refuses them, and there is no route yet for an administrator to export on a
+   student's behalf (see SCHO-371).
+3. Keep the district running until that date.
+
+Staff have personal workspaces too, but the route answers students only: ask staff to download
+anything personal they want to keep, artifact by artifact.
 
 If the district runs the Workshop at `/ai`, people's Workshop gadgets and agents live in the
 Workshop's own storage (the backend Worker's Durable Objects) and are not in either export.

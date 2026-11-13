@@ -3,10 +3,11 @@ import { useQuery } from "../api.tsx";
 import { useDistrictOrigin } from "../AppContext.tsx";
 import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
+import { ArchiveDownload } from "../ArchiveDownload.tsx";
 import { CalendarSubscription } from "./CalendarSubscription.tsx";
 import { EmailSettings } from "./EmailSettings.tsx";
 
-/** The student's settings: which emails they get, and their calendar link. */
+/** The student's settings: which emails they get, their calendar link, and a copy of their work to keep. */
 export const SettingsPage = ({ origin }: { origin?: string }) => {
   const districtOrigin = useDistrictOrigin();
   const [preferences, reload] = useQuery("preferences", (api) => api.call("me.preferences"));
@@ -22,6 +23,10 @@ export const SettingsPage = ({ origin }: { origin?: string }) => {
       <section aria-labelledby="calendar-link" className="flex flex-col gap-3">
         <Text variant="heading" as="h2"><span id="calendar-link">Calendar link</span></Text>
         <CalendarSubscription origin={origin ?? districtOrigin} />
+      </section>
+      <section aria-labelledby="take-your-work" className="flex flex-col gap-3">
+        <Text variant="heading" as="h2"><span id="take-your-work">Take your work with you</span></Text>
+        <ArchiveDownload />
       </section>
     </div>
   );

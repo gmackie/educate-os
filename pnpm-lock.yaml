@@ -1282,6 +1282,9 @@ importers:
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy
+      '@educateos/portability':
+        specifier: workspace:*
+        version: link:../educateos-portability
       '@educateos/quizzes':
         specifier: workspace:*
         version: link:../educateos-quizzes
@@ -1604,6 +1607,9 @@ importers:
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy
+      '@educateos/portability':
+        specifier: workspace:*
+        version: link:../educateos-portability
       '@educateos/zip':
         specifier: workspace:*
         version: link:../educateos-zip
