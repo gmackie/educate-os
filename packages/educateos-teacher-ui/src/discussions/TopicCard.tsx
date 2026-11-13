@@ -35,8 +35,9 @@ export const TopicCard = ({ topic, posts, needsAttention, modules, assignments, 
   return (
     <section aria-label={topic.title} className="flex flex-col gap-3 rounded-lg border border-kumo-hairline p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h3>
-          <Button variant="ghost" aria-expanded={open} aria-controls={panelId} icon={open ? <CaretDown aria-hidden /> : <CaretRight aria-hidden />} onClick={() => setOpen(!open)}>
+        {/* A long title wraps rather than widening the page at 320px (WCAG 1.4.10); Kumo's Button is one line. */}
+        <h3 className="max-w-full">
+          <Button variant="ghost" className="h-auto min-h-9 w-auto max-w-full shrink py-1.5 text-left" aria-expanded={open} aria-controls={panelId} icon={open ? <CaretDown aria-hidden /> : <CaretRight aria-hidden />} onClick={() => setOpen(!open)}>
             {topic.title}
           </Button>
         </h3>

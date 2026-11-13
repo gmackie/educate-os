@@ -195,7 +195,7 @@ describe("classes and people", () => {
     await user.click(within(add).getByRole("button", { name: "Add person" }));
     await screen.findByRole("cell", { name: "Second Admin" });
     // A student cannot be offered administration.
-    expect(screen.queryByRole("button", { name: "Make Second Admin an administrator" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Make administrator: Second Admin" })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Edit Second Admin" }));
     const edit = screen.getByRole("form", { name: "Edit Second Admin" });
@@ -208,8 +208,8 @@ describe("classes and people", () => {
       body: { email: "second@coop.example", kind: "staff" },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Make Second Admin an administrator" }));
-    await screen.findByRole("button", { name: "Remove Second Admin as administrator" });
+    await user.click(await screen.findByRole("button", { name: "Make administrator: Second Admin" }));
+    await screen.findByRole("button", { name: "Remove administrator: Second Admin" });
     expect(screen.getAllByText("Administrator")).toHaveLength(2);
     expect(screen.getByTestId("announcer").textContent).toContain("now a district administrator");
   });
@@ -230,15 +230,15 @@ describe("classes and people", () => {
     // Avery is signed in and the only administrator: neither is offered on their row (SCHO-221).
     const avery = screen.getByRole("row", { name: /Avery Admin/ });
     expect(within(avery).getByText("You")).toBeTruthy();
-    expect(within(avery).queryByRole("button", { name: /Remove Avery Admin as administrator|Deactivate Avery Admin/ })).toBeNull();
+    expect(within(avery).queryByRole("button", { name: /Remove administrator: Avery Admin|Deactivate Avery Admin/ })).toBeNull();
     expect(screen.getByText(/You can't remove your own administration or deactivate yourself/)).toBeTruthy();
     expect(screen.getByText(/Avery Admin is the only administrator/)).toBeTruthy();
 
     // With a second administrator, the second can be removed; Avery, being the caller, still cannot.
-    await user.click(screen.getByRole("button", { name: "Make Blair an administrator" }));
-    await screen.findByRole("button", { name: "Remove Blair as administrator" });
+    await user.click(screen.getByRole("button", { name: "Make administrator: Blair" }));
+    await screen.findByRole("button", { name: "Remove administrator: Blair" });
     expect(screen.getByRole("button", { name: "Deactivate Blair" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Remove Avery Admin as administrator" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove administrator: Avery Admin" })).toBeNull();
     expect(screen.queryByText(/is the only administrator/)).toBeNull();
     expect(second.id).toMatch(/^prn_/);
   });

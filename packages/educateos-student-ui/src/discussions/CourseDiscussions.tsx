@@ -42,8 +42,10 @@ export const CourseDiscussions = ({ offeringId }: { offeringId: string }) => {
               <Surface as="section" aria-label={topic.title} className="flex flex-col gap-3 rounded-lg border border-kumo-hairline p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Text variant="heading" as="h3">
+                    {/* A long title wraps rather than widening the page at 320px (WCAG 1.4.10). */}
                     <Button
                       variant="ghost"
+                      className="h-auto min-h-9 w-auto max-w-full shrink py-1.5 text-left"
                       aria-expanded={open}
                       aria-controls={panelId}
                       icon={open ? <CaretDownIcon aria-hidden /> : <CaretRightIcon aria-hidden />}

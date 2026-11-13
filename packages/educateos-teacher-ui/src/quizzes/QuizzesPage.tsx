@@ -55,33 +55,35 @@ export const QuizzesPage = ({ teaching }: { teaching: TeachingOffering }) => {
           {listing.data.quizzes.length === 0
             ? <Empty icon={<ListChecks size={32} aria-hidden />} title="No quizzes yet" description="Create a quiz, add its questions, and publish it to the class." />
             : (
-              <Table>
-                <caption className="sr-only">Quizzes</caption>
-                <Table.Header>
-                  <Table.Row>
-                    <Table.Head>Quiz</Table.Head>
-                    <Table.Head>Status</Table.Head>
-                    <Table.Head>Submitted</Table.Head>
-                    <Table.Head>Needs grading</Table.Head>
-                    <Table.Head>Scores released</Table.Head>
-                    <Table.Head>Results</Table.Head>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {listing.data.quizzes.map(({ quiz, submitted, needsGrading, lastReleasedAt }) => (
-                    <Table.Row key={quiz.id}>
-                      <Table.Cell><a href={routeHref({ screen: "quiz", offeringId, quizId: quiz.id })}>{quiz.title}</a></Table.Cell>
-                      <Table.Cell>
-                        <Badge variant={quiz.status === "published" ? "success" : "neutral"}>{quiz.status === "published" ? "Published" : "Draft"}</Badge>
-                      </Table.Cell>
-                      <Table.Cell>{submitted}</Table.Cell>
-                      <Table.Cell>{needsGrading > 0 ? <Badge variant="warning">{String(needsGrading)}</Badge> : "0"}</Table.Cell>
-                      <Table.Cell>{lastReleasedAt === undefined ? <Text variant="secondary" as="span">Not yet</Text> : formatDateTime(lastReleasedAt)}</Table.Cell>
-                      <Table.Cell><a href={routeHref({ screen: "quiz-results", offeringId, quizId: quiz.id })}>{`Results for ${quiz.title}`}</a></Table.Cell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <caption className="sr-only">Quizzes</caption>
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.Head>Quiz</Table.Head>
+                      <Table.Head>Status</Table.Head>
+                      <Table.Head>Submitted</Table.Head>
+                      <Table.Head>Needs grading</Table.Head>
+                      <Table.Head>Scores released</Table.Head>
+                      <Table.Head>Results</Table.Head>
                     </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table>
+                  </Table.Header>
+                  <Table.Body>
+                    {listing.data.quizzes.map(({ quiz, submitted, needsGrading, lastReleasedAt }) => (
+                      <Table.Row key={quiz.id}>
+                        <Table.Cell><a href={routeHref({ screen: "quiz", offeringId, quizId: quiz.id })}>{quiz.title}</a></Table.Cell>
+                        <Table.Cell>
+                          <Badge variant={quiz.status === "published" ? "success" : "neutral"}>{quiz.status === "published" ? "Published" : "Draft"}</Badge>
+                        </Table.Cell>
+                        <Table.Cell>{submitted}</Table.Cell>
+                        <Table.Cell>{needsGrading > 0 ? <Badge variant="warning">{String(needsGrading)}</Badge> : "0"}</Table.Cell>
+                        <Table.Cell>{lastReleasedAt === undefined ? <Text variant="secondary" as="span">Not yet</Text> : formatDateTime(lastReleasedAt)}</Table.Cell>
+                        <Table.Cell><a href={routeHref({ screen: "quiz-results", offeringId, quizId: quiz.id })}>{`Results for ${quiz.title}`}</a></Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table>
+              </div>
             )}
         </>
       )}

@@ -7,6 +7,7 @@ import { useAnnounce } from "../app/Announcer.tsx";
 import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
 import { LoadState } from "../app/LoadState.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type Standards = RouteResponse<"admin.listStandards">[number];
 
@@ -65,7 +66,7 @@ export const LearningStandardsPage = () => {
       {error !== undefined && <Banner variant="error" icon={<Warning weight="fill" />} title="That change was not made" description={error} />}
       <LoadState loaded={standards} what="the learning standards" onRetry={standards.reload}>
         {(list) => (
-          <div className="overflow-x-auto">
+          <TableScroll label="Learning standards built into EducateOS">
             <Table>
               <caption className="sr-only">Learning standards built into EducateOS</caption>
               <Table.Header>
@@ -110,7 +111,7 @@ export const LearningStandardsPage = () => {
                 ))}
               </Table.Body>
             </Table>
-          </div>
+          </TableScroll>
         )}
       </LoadState>
       <ConfirmDialog

@@ -4,6 +4,7 @@ import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, type AuthoringDirectory, type Person } from "./authoring.ts";
 import { PersonEditor, type EditableKind } from "./PersonEditor.tsx";
 import { useAuthoringAction } from "./useAuthoringAction.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type Kind = EditableKind;
 // No kind is chosen until the administrator picks one: a default turned an intended administrator
@@ -48,58 +49,60 @@ export const PeopleSection = ({ directory, selfId, onChanged }: { directory: Aut
   return (
     <section aria-labelledby="people-heading" className="flex flex-col gap-3">
       <Text as="h3" variant="heading" id="people-heading">People</Text>
-      <Table>
-        <caption className="sr-only">Students and staff</caption>
-        <Table.Header>
-          <Table.Row><Table.Head>Name</Table.Head><Table.Head>Kind</Table.Head><Table.Head>Status</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {directory.principals.map((p) => (
-            <Table.Row key={p.id}>
-              <Table.Cell>{p.displayName}</Table.Cell>
-              <Table.Cell>
-                <span className="flex flex-wrap items-center gap-2">
-                  {p.kind === "staff" ? "Staff" : "Student"}
-                  {p.id === selfId && <Badge variant="neutral">You</Badge>}
-                  {p.districtAdmin && <Badge variant="info">Administrator</Badge>}
-                </span>
-              </Table.Cell>
-              <Table.Cell><Badge variant={p.status === "active" ? "success" : "neutral"}>{STATUS_LABEL[p.status]}</Badge></Table.Cell>
-              <Table.Cell>
-                <span className="flex flex-wrap gap-2">
-                  {local && (
-                    <Button size="sm" variant="secondary" aria-label={`Edit ${p.displayName}`} disabled={action.busy} onClick={() => setEditing(p.id)}>Edit</Button>
-                  )}
-                  {p.kind === "staff" && p.status === "active" && !(p.districtAdmin && keepsConsoleOpen(p)) && (
-                    <Button
-                      size="sm"
-                      variant={p.districtAdmin ? "secondary-destructive" : "secondary"}
-                      aria-label={p.districtAdmin ? `Remove ${p.displayName} as administrator` : `Make ${p.displayName} an administrator`}
-                      loading={action.running(`admin:${p.id}`)}
-                      disabled={action.busy}
-                      onClick={() => setAdmin(p, !p.districtAdmin)}
-                    >
-                      {p.districtAdmin ? "Remove administrator" : "Make administrator"}
-                    </Button>
-                  )}
-                  {local && !(p.status === "active" && keepsConsoleOpen(p)) && (
-                    <Button
-                      size="sm"
-                      variant={p.status === "active" ? "secondary-destructive" : "secondary"}
-                      aria-label={p.status === "active" ? `Deactivate ${p.displayName}` : `Reactivate ${p.displayName}`}
-                      loading={action.running(`status:${p.id}`)}
-                      disabled={action.busy}
-                      onClick={() => setStatus(p, p.status === "active" ? "inactive" : "active")}
-                    >
-                      {p.status === "active" ? "Deactivate" : "Reactivate"}
-                    </Button>
-                  )}
-                </span>
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table>
+      <TableScroll label="Students and staff">
+        <Table>
+          <caption className="sr-only">Students and staff</caption>
+          <Table.Header>
+            <Table.Row><Table.Head>Name</Table.Head><Table.Head>Kind</Table.Head><Table.Head>Status</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {directory.principals.map((p) => (
+              <Table.Row key={p.id}>
+                <Table.Cell>{p.displayName}</Table.Cell>
+                <Table.Cell>
+                  <span className="flex flex-wrap items-center gap-2">
+                    {p.kind === "staff" ? "Staff" : "Student"}
+                    {p.id === selfId && <Badge variant="neutral">You</Badge>}
+                    {p.districtAdmin && <Badge variant="info">Administrator</Badge>}
+                  </span>
+                </Table.Cell>
+                <Table.Cell><Badge variant={p.status === "active" ? "success" : "neutral"}>{STATUS_LABEL[p.status]}</Badge></Table.Cell>
+                <Table.Cell>
+                  <span className="flex flex-wrap gap-2">
+                    {local && (
+                      <Button size="sm" variant="secondary" aria-label={`Edit ${p.displayName}`} disabled={action.busy} onClick={() => setEditing(p.id)}>Edit</Button>
+                    )}
+                    {p.kind === "staff" && p.status === "active" && !(p.districtAdmin && keepsConsoleOpen(p)) && (
+                      <Button
+                        size="sm"
+                        variant={p.districtAdmin ? "secondary-destructive" : "secondary"}
+                        aria-label={`${p.districtAdmin ? "Remove administrator" : "Make administrator"}: ${p.displayName}`}
+                        loading={action.running(`admin:${p.id}`)}
+                        disabled={action.busy}
+                        onClick={() => setAdmin(p, !p.districtAdmin)}
+                      >
+                        {p.districtAdmin ? "Remove administrator" : "Make administrator"}
+                      </Button>
+                    )}
+                    {local && !(p.status === "active" && keepsConsoleOpen(p)) && (
+                      <Button
+                        size="sm"
+                        variant={p.status === "active" ? "secondary-destructive" : "secondary"}
+                        aria-label={p.status === "active" ? `Deactivate ${p.displayName}` : `Reactivate ${p.displayName}`}
+                        loading={action.running(`status:${p.id}`)}
+                        disabled={action.busy}
+                        onClick={() => setStatus(p, p.status === "active" ? "inactive" : "active")}
+                      >
+                        {p.status === "active" ? "Deactivate" : "Reactivate"}
+                      </Button>
+                    )}
+                  </span>
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
+      </TableScroll>
       {locked.length > 0 && (
         <Text variant="secondary" size="sm">
           {locked.some((p) => p.id === selfId) ? "You can't remove your own administration or deactivate yourself; another administrator can. " : ""}

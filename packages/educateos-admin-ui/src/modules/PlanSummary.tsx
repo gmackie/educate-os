@@ -4,6 +4,7 @@ import type { PolicySettings } from "@educateos/contracts";
 import type { ConfigurationPlan, DiffEntry } from "../app/useDistrictConfig.ts";
 import { count, packName, type DirectoryNames } from "../app/labels.ts";
 import { ENUMERATED_POLICIES, MONTHLY_CAP, formatCents } from "../policies/policySettings.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type PackChange = ConfigurationPlan["packs"][number];
 type OfferingImpact = ConfigurationPlan["offerings"][number];
@@ -152,7 +153,7 @@ export const PlanSummary = ({ plan, names }: { plan: ConfigurationPlan; names: D
       {plan.offerings.length > 0 && (
         <section aria-labelledby="plan-classes" className="flex flex-col gap-2">
           <Text as="h4" variant="heading" id="plan-classes">Classes affected</Text>
-          <div className="overflow-x-auto">
+          <TableScroll label="People reached in each affected class">
             <Table>
               <caption className="sr-only">People reached in each affected class</caption>
               <Table.Header>
@@ -182,7 +183,7 @@ export const PlanSummary = ({ plan, names }: { plan: ConfigurationPlan; names: D
                 ))}
               </Table.Body>
             </Table>
-          </div>
+          </TableScroll>
           <Text variant="secondary">
             {count(plan.offerings.reduce((n, o) => n + o.students, 0), "student")} and {count(plan.offerings.reduce((n, o) => n + o.staff, 0), "staff member")} in total.
           </Text>

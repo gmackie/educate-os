@@ -7,6 +7,7 @@ import { useAnnounce } from "../app/Announcer.tsx";
 import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
 import { LoadState } from "../app/LoadState.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type OpsKey = RouteResponse<"admin.opsKeys">["keys"][number];
 type Registration = RouteInput<"admin.enrollOpsKey">["body"]["registration"];
@@ -171,7 +172,7 @@ export const OperationsPage = () => {
           {({ keys: list }) => list.length === 0
             ? <Text variant="secondary">No admin is enrolled. Nobody can use this district's operations API.</Text>
             : (
-              <div className="overflow-x-auto">
+              <TableScroll label="Enrolled admins">
                 <Table>
                   <caption className="sr-only">Enrolled admins</caption>
                   <Table.Header>
@@ -213,7 +214,7 @@ export const OperationsPage = () => {
                     ))}
                   </Table.Body>
                 </Table>
-              </div>
+              </TableScroll>
             )}
         </LoadState>
         <EnrollForm onEnrolled={() => { keys.reload(); audit.reload(); }} />
@@ -224,7 +225,7 @@ export const OperationsPage = () => {
           {({ entries }) => entries.length === 0
             ? <Text variant="secondary">No admin has made a request yet.</Text>
             : (
-              <div className="overflow-x-auto">
+              <TableScroll label="Recent operations requests">
                 <Table>
                   <caption className="sr-only">Recent operations requests</caption>
                   <Table.Header>
@@ -250,7 +251,7 @@ export const OperationsPage = () => {
                     ))}
                   </Table.Body>
                 </Table>
-              </div>
+              </TableScroll>
             )}
         </LoadState>
       </section>

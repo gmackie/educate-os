@@ -74,7 +74,7 @@ export const NotificationsPage = () => {
                       size="sm"
                       variant="ghost"
                       disabled={marking === "running"}
-                      aria-label={`Mark "${notification.title}" as read`}
+                      aria-label={`Mark read: ${notification.title}`}
                       onClick={() => void markRead({ ids: [notification.id] }, "Marked as read")}
                     >
                       Mark read

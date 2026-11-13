@@ -6,6 +6,7 @@ import { useAdminClient } from "../app/AdminClientContext.tsx";
 import { useAnnounce } from "../app/Announcer.tsx";
 import { LoadState } from "../app/LoadState.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type LibraryCourse = RouteResponse<"admin.listLibraryCourses">[number];
 
@@ -97,7 +98,7 @@ export const CourseLibraryPage = () => {
           {(list) => list.length === 0
             ? <Text variant="secondary">No courses yet. Import a course bundle to offer it to your teachers.</Text>
             : (
-              <div className="overflow-x-auto">
+              <TableScroll label="Courses in the district's course library">
                 <Table>
                   <caption className="sr-only">Courses in the district's course library</caption>
                   <Table.Header>
@@ -131,7 +132,7 @@ export const CourseLibraryPage = () => {
                     ))}
                   </Table.Body>
                 </Table>
-              </div>
+              </TableScroll>
             )}
         </LoadState>
       </section>

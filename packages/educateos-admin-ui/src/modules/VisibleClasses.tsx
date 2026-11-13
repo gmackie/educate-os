@@ -4,6 +4,7 @@ import type { ConfigVersion } from "../app/useDistrictConfig.ts";
 import { documentFromDesired, withRolloutClasses } from "../configDocument.ts";
 import type { ProposedChange } from "./ChangeReview.tsx";
 import type { ClassSummary } from "./classSurvey.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 interface VisibleClassesProps {
   /** The version in force. */
@@ -36,7 +37,7 @@ export const VisibleClasses = ({ head, classes, names, onPreview }: VisibleClass
     <section aria-labelledby="visible-heading" className="flex flex-col gap-3">
       <Text as="h3" variant="heading" id="visible-heading">Classes with modules on</Text>
       {visible.length === 0 ? <Text variant="secondary">The configuration turns modules on for no class yet.</Text> : (
-        <div className="overflow-x-auto">
+        <TableScroll label="Classes the configuration turns modules on for">
           <Table>
             <caption className="sr-only">Classes the configuration turns modules on for</caption>
             <Table.Header>
@@ -64,7 +65,7 @@ export const VisibleClasses = ({ head, classes, names, onPreview }: VisibleClass
               ))}
             </Table.Body>
           </Table>
-        </div>
+        </TableScroll>
       )}
       <Text variant="secondary" size="sm">Turning a class off takes it out of the rollout. Nothing students made is deleted.</Text>
     </section>
