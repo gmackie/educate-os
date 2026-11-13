@@ -3,7 +3,9 @@
 // object, whose seed survives a restart and whose rerun adds nothing.
 import { env, evictDurableObject, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { DEMO_OPERATOR_TOKEN } from "./fixtures.ts";
+import { importJWK, SignJWT, type JWK } from "jose";
+import { ACCESS_AUDIENCE, DEMO_OPERATOR_TOKEN } from "./fixtures.ts";
+import { DEMO_ACCESS_ISSUER } from "@educateos/harness/demo-district";
 import type { OperatorSeedResult, OperatorStatus } from "../src/demo-operator.ts";
 
 type Target = { fetch(request: Request): Promise<Response> };
@@ -59,5 +61,35 @@ describe("the demo operator seeding riverbend's own object", () => {
     expect(again.problems).toStrictEqual([]);
     expect(again.log.join("\n")).toMatch(/middle-school-starter-pack 1\.0\.0 is already installed/);
     expect(again.before).toStrictEqual({ ...status.export, exportedAt: again.before.exportedAt });
+  }, 120_000);
+
+  it("requires a valid Access person assertion as well as the operator token and persists an audited persona link", async () => {
+    await call(riverbend(), "POST", "seed", DEMO_OPERATOR_TOKEN, {});
+    const status = (await call(riverbend(), "GET", "status")).body;
+    const person = status.export.authoring.principals.find((p: { kind: string }) => p.kind === "student");
+    const key = await importJWK(JSON.parse(env.TEST_ACCESS_PRIVATE_JWK) as JWK, "RS256");
+    const assertion = async (audience: string) => new SignJWT({ sub: "00000000-0000-4000-8000-000000000354", type: "app" })
+      .setIssuer(DEMO_ACCESS_ISSUER).setAudience(audience).setIssuedAt().setExpirationTime("5m")
+      .setProtectedHeader({ alg: "RS256", kid: "test-access-key" }).sign(key);
+    const link = async (token?: string) => {
+      const response = await riverbend().fetch(new Request("https://riverbend.example/api/demo/operator/identity-links", {
+        method: "POST", headers: { authorization: `Bearer ${DEMO_OPERATOR_TOKEN}`, "content-type": "application/json", ...(token === undefined ? {} : { "cf-access-jwt-assertion": token }) },
+        body: JSON.stringify({ principalId: person.id }),
+      }));
+      return { status: response.status, body: await response.json() };
+    };
+    expect((await link()).status).toBe(401);
+    expect((await link("not-signed")).status).toBe(401);
+    expect((await link(await assertion("another-app"))).status).toBe(401);
+    const token = await assertion(ACCESS_AUDIENCE);
+    expect(await link(token)).toMatchObject({ status: 200, body: { principalId: person.id, status: "linked" } });
+    await evictDurableObject(riverbend());
+    const me = await riverbend().fetch(new Request("https://riverbend.example/api/me", { headers: { "cf-access-jwt-assertion": token } }));
+    expect(me.status).toBe(200);
+    expect(await me.json()).toMatchObject({ principalId: person.id, kind: "student" });
+    expect((await link(token)).status).toBe(200);
+    const admin = await riverbend().fetch(new Request("https://riverbend.example/api/admin/authoring", { headers: { "cf-access-jwt-assertion": token } }));
+    expect(admin.status).toBe(403);
+    await admin.arrayBuffer();
   }, 120_000);
 });

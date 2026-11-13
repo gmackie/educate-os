@@ -406,6 +406,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     demoOperator: !demoOperatorEnabled(config.demo, settings.demoShowcase, settings.demoOperatorToken) ? undefined : startDemoOperator({
       app,
       token: settings.demoOperatorToken,
+      verifyRequest,
       ...(seams.onDemoOperatorEvent === undefined ? {} : { onEvent: seams.onDemoOperatorEvent }),
     }),
   };

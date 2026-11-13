@@ -29,8 +29,10 @@
 // own browser's would. The operator gains nothing an administrator lacks, and the seed only adds.
 import { z } from "zod";
 import { ERROR_STATUS } from "@educateos/academics";
-import { EducateOsError, roleAssignmentInForce, type DistrictDirectorySnapshot, type PrincipalId } from "@educateos/contracts";
-import type { DistrictApp } from "@educateos/district-app";
+import { EducateOsError, externalIdentityKey, PrincipalId, roleAssignmentInForce, type DistrictDirectorySnapshot } from "@educateos/contracts";
+import type { DistrictApp, RequestVerifier } from "@educateos/district-app";
+import { requestIdentityLink } from "@educateos/identity";
+import { recordPendingIdentityLink } from "@educateos/identity-links";
 import {
   DEMO_STARTER_PACK,
   demoForDistrictId,
@@ -95,6 +97,8 @@ export const OperatorSeedRequest = z.strictObject({
   admitSubject: z.uuid().optional(),
 });
 
+const OperatorIdentityLinkRequest = z.strictObject({ principalId: PrincipalId });
+
 /** What the seed route answers. */
 export interface OperatorSeedResult {
   districtId: string;
@@ -124,7 +128,7 @@ export interface OperatorStatus {
 
 /** What the operator routes log: outcomes by counts and IDs. Never the token, a header or a subject. */
 export interface DemoOperatorEvent {
-  event: "demo.operator.status" | "demo.operator.seeded" | "demo.operator.refused" | "demo.operator.failed";
+  event: "demo.operator.status" | "demo.operator.seeded" | "demo.operator.identity-linked" | "demo.operator.refused" | "demo.operator.failed";
   districtId: string;
   correlationId: string;
   /** The administrator served as. */
@@ -142,6 +146,8 @@ export interface DemoOperatorOptions {
   app: DistrictApp;
   /** `DEMO_OPERATOR_TOKEN`, without its leading and trailing whitespace. */
   token: string;
+  /** Verifies the presenter's actual Access assertion; identity linking is unavailable without it. */
+  verifyRequest?: RequestVerifier;
   /** The starter pack bundle to install; `DEMO_STARTER_PACK` (bundled into the Worker) by default. */
   pack?: unknown;
   /** Told what each request did, to log it. */
@@ -226,7 +232,7 @@ export function startDemoOperator(options: DemoOperatorOptions): DemoOperator {
       const route = `${request.method} ${url.pathname.slice(DEMO_OPERATOR_PREFIX.length)}`;
       let principalId: PrincipalId | undefined;
       try {
-        if (route !== "GET status" && route !== "POST seed") throw new EducateOsError("not-found", "No such route.");
+        if (route !== "GET status" && route !== "POST seed" && route !== "POST identity-links") throw new EducateOsError("not-found", "No such route.");
         await authenticate(request, correlationId);
         if (route === "GET status") {
           const { demo, adminPrincipalId } = await target();
@@ -241,7 +247,43 @@ export function startDemoOperator(options: DemoOperatorOptions): DemoOperator {
         if (!/^application\/json(;|$)/i.test(request.headers.get("content-type") ?? "")) {
           throw new EducateOsError("validation-failed", "Send the request as application/json.");
         }
-        const parsed = OperatorSeedRequest.safeParse(await request.json().catch(() => undefined));
+        const raw = await request.json().catch(() => undefined);
+        if (route === "POST identity-links") {
+          const parsed = OperatorIdentityLinkRequest.safeParse(raw);
+          if (!parsed.success) throw new EducateOsError("validation-failed", "Supply only a demo principalId.");
+          const identity = await options.verifyRequest?.(request);
+          if (identity === undefined || identity.credential !== "person") {
+            throw new EducateOsError("unauthenticated", "A verified person sign-in is required alongside the operator token.");
+          }
+          const { demo, adminPrincipalId } = await target();
+          principalId = adminPrincipalId;
+          const { snapshot } = await app.stores.directory.load();
+          const person = snapshot.principals.find((p) => p.id === parsed.data.principalId);
+          const fixturePeople = demo.directory.principals.filter((p) => p.kind === person?.kind && p.displayName === person?.displayName);
+          // Names select a synthetic fixture persona, never authenticate the signer. Imported
+          // rosters may use different IDs; an ambiguous match cannot select a persona.
+          if (person === undefined || person.status !== "active" || !["staff", "student"].includes(person.kind)
+            || fixturePeople.length !== 1
+            || snapshot.principals.filter((p) => p.kind === person.kind && p.displayName === person.displayName).length !== 1
+            || snapshot.roleAssignments.some((r) => r.principalId === person.id && (r.scope.level === "district" || r.role.endsWith("-admin")))
+            || demo.directory.roleAssignments.some((r) => r.principalId === fixturePeople[0]!.id && (r.scope.level === "district" || r.role.endsWith("-admin")))
+            || !snapshot.enrollments.some((e) => e.principalId === person.id && e.status === "active"
+              && (person.kind === "student" ? e.role === "student" : e.role !== "student"))) {
+            throw new EducateOsError("forbidden", "Only an active, enrolled synthetic teacher or student persona can be linked.");
+          }
+          const key = externalIdentityKey({ ...identity, districtId });
+          const owner = snapshot.principals.find((p) => p.externalIdentities.some((i) => externalIdentityKey(i) === key));
+          if (owner !== undefined && owner.id !== person.id) throw new EducateOsError("conflict", "This sign-in already belongs to another principal.");
+          const waiting = (await app.stores.identityLinks.read()).open().find((r) => r.kind === "identity-link"
+            && r.link.principalId === person.id && externalIdentityKey(r.link.identity) === key);
+          const requestId = waiting?.requestId ?? (owner === undefined ? await recordPendingIdentityLink(app.stores.identityLinks, requestIdentityLink(snapshot, {
+            principalId: person.id, identity, requestedAt: new Date(now()).toISOString(),
+          })) : undefined);
+          if (requestId !== undefined) await clientFor(adminPrincipalId, url.origin).post(`/api/admin/identity-requests/${requestId}/approve`, {});
+          emit({ event: "demo.operator.identity-linked", correlationId, principalId });
+          return json({ districtId, principalId: person.id, status: "linked" }, correlationId);
+        }
+        const parsed = OperatorSeedRequest.safeParse(raw);
         if (!parsed.success) {
           throw new EducateOsError("validation-failed", `The request body is invalid at: ${[...new Set(parsed.error.issues.map((i) => i.path.join(".") || "(body)"))].join(", ")}`);
         }
