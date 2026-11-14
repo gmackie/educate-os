@@ -3700,6 +3700,9 @@ importers:
       '@educateos/releases':
         specifier: workspace:*
         version: link:../educateos-releases
+      '@gadgets/mcp-shared':
+        specifier: workspace:*
+        version: link:../mcp-shared
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts

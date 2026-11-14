@@ -33,6 +33,7 @@ file, `package.json`, the README and the Apache-2.0 LICENSE.
 | `src/cloudflare.ts` | The installer's HTTP client plus account and zone listing, and the test bridge. |
 | `src/output.ts` | Human and `--json` output, with every known secret redacted. |
 | `src/connect/` | `connect` and `status` (SCHO-406): the LTI, Clever, Google Classroom and OneRoster flows, the district's HTTP surface, and the status report. |
+| `src/mcp/*.ts` | `mcp status`, `mcp clients` and `mcp add` (SCHO-407): the answers file's MCP facts, the live checks, the client guides. |
 
 The token permissions and the prefilled token-editor link moved from the control plane's `pages.ts`
 to `@educateos/installer` (`src/permissions.ts`), so the guided install and the CLI send operators to
@@ -108,6 +109,48 @@ Limits:
   answers registers with another registry.
 - **Gatekeepers beyond the preinstalled ones** are added by editing `gatekeepers` in the answers file.
   Their secrets are read from `EDUCATEOS_SECRET_<PKG>__<NAME>`, or asked for, hidden, on a terminal.
+
+## MCP setup (SCHO-407)
+
+`npx launch-educate-os mcp` guides district IT through MCP once EducateOS is installed. The guide is
+[mcp-setup.md](mcp-setup.md); this is how the commands work.
+
+| Command | Reads | Writes | Live checks |
+| --- | --- | --- | --- |
+| `mcp status` | the answers file; with `CLOUDFLARE_API_TOKEN`, the account's Worker list and the portal Worker's settings | nothing | the district's `/.well-known/oauth-protected-resource/mcp` and an unauthenticated `POST /mcp` |
+| `mcp clients` | the answers file, or `--url` | nothing | the same, then the authorization server's RFC 8414 (or OpenID) metadata |
+| `mcp add` | the answers file | the answers file, after showing the changes and asking (`--yes`) | the server: an MCP `initialize` with no credentials, its RFC 9728 metadata and its authorization server's metadata |
+
+- **Where the answers come from.** `src/mcp/facts.ts` reads the install config (the public origin,
+  `gatekeepers`) and, from the enabled service whose vars hold `DISTRICT_CONFIG`, only `mcp`,
+  `workshopPolicy.connectors`, `workshopPolicy.teacherConnectors` and the trusted issuers. It doesn't
+  bundle the district Worker, so the Worker still validates the whole `DISTRICT_CONFIG` when it starts.
+- **What `add` changes.** `gatekeepers` gains `gatekeeper-mcp`, and `DISTRICT_CONFIG.workshopPolicy.connectors`
+  gains `{"vendorId": "mcp", "access": "all"}`, the district Worker's vendor-wide grant (district
+  administrators only). The vendor ID is the install slug the backend derives from the
+  `GATEKEEPER_MCP` binding. Every other byte of `DISTRICT_CONFIG` is kept, re-serialized in the same
+  style. A `DISTRICT_CONFIG` without `workshopPolicy` is left alone and reported, since writing one
+  means deciding every other Workshop grant. `teacherConnectors` is never touched: it is for
+  connectors confined to a teacher's own teaching, and an arbitrary MCP server isn't.
+- **What it doesn't do.** It changes nothing in Cloudflare; `npx launch-educate-os --config <file>`
+  applies the answers. It can't read or write Workshop admin settings (which connectors are offered:
+  `AdminApi.setGatekeeperMode`) or connect a server for anyone (the connect flow is the Workshop's,
+  with the server's own OAuth), because both need a Workshop session behind Cloudflare Access. It
+  prints the pages and steps instead.
+- **Live checks.** `src/mcp/probe.ts` sends no token or cookie and follows no redirect: a redirect to
+  `<team>.cloudflareaccess.com` is reported as Access in front of the path. Bodies are read up to 64
+  KiB, each request times out after 10 seconds, and an address the Workshop's connector would refuse
+  (`isBlockedHost` from `@gadgets/mcp-shared/endpoint`, the same blocklist) is refused before any
+  request. The checks run from the operator's machine, not Cloudflare, and say so.
+- **Gaps** (SCHO-409): the installer can't set `MCP_PORTAL_URL` and the portal's other vars
+  (`gatekeeper-mcp-portal` declares no deploy inputs), so `mcp add --connector portal` exits 1 and
+  changes nothing; and `ACCESS_BYPASS_PATHS` has no `/mcp` or `/.well-known/oauth-protected-resource*`,
+  so `status` fails an endpoint that is on in `DISTRICT_CONFIG` but behind Access.
+- **The wizard** doesn't offer MCP setup at its end yet. The LMS connect offer (SCHO-406) owns that
+  hook; a "Set up MCP now?" offer can follow it.
+
+Not run against a live district: the district `/mcp` isn't deployed anywhere (NATH-6), and the
+commands are tested against a scripted fetch and the installer's simulated Cloudflare.
 
 ## Uninstall (SCHO-368)
 
@@ -205,6 +248,15 @@ use on a single-domain Canvas.
   changed, `--confirm` removing everything with `--json` events, and the terminal prompt stopping on
   a blank answer and deleting on the instance ID.
 
+- `mcp.test.ts`: in process, with a scripted fetch for the district endpoint, its authorization server
+  and outside MCP servers: usage; `status` offline, live with the connectors' Workers in the fake
+  account (the token never printed, no credential sent), an endpoint behind Access, an untrusted
+  issuer, an endpoint configured on but 404, and one off as configured; `clients` with every guide,
+  one guide as JSON, `--url` alone, an authorization server without metadata or registration, and a
+  refused address; `add` saving the gatekeeper and the policy grant then finding nothing to change,
+  refusing to save without `--yes`, asking on a terminal, following a 401 to an authorization server
+  without registration, leaving a missing `workshopPolicy` alone, refusing a metadata address before
+  any request, and the portal refused with nothing changed.
 - `release-source.test.ts`: the mirror read, a statement signed by an unpinned key, a tampered
   statement and manifest, a mirror serving another release's files, a substituted blob and asset, the
   URL rules, the downgrade rules, and that the pinned keys equal the site's.
