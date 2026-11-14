@@ -7,6 +7,12 @@ declare namespace Cloudflare {
     WORKSHOP_ASSESSMENT_RELEASES?: import("./district.ts").DistrictSeams["workshopReleases"];
     /** The district's configuration as JSON (see `DistrictWorkerConfig` in config.ts). */
     DISTRICT_CONFIG: string;
+    /**
+     * The Cloudflare jurisdiction the district's Durable Object is in (ADR-0015, jurisdiction.ts):
+     * `us`, set by the installer on a new install. Unset, the object is unpinned, as every district
+     * deployed before ADR-0015 is; setting it on such a district would start an empty one.
+     */
+    DATA_JURISDICTION?: string;
     /** The Access team domain assertions are verified against, as the kernel's `CF_ACCESS_ISS`. */
     CF_ACCESS_ISS?: string;
     /**

@@ -21,6 +21,10 @@ export default defineGadgetsWorker({
     // Service in the district's own account. Unrestricted: recipients are the district's own
     // principals, and the sender is `DISTRICT_CONFIG.email.from`.
     SEND_EMAIL: bindings.sendEmail(),
+    // Data jurisdiction (SCHO-374, ADR-0015): says this district reads DATA_JURISDICTION and can pin
+    // its Durable Object to these Cloudflare jurisdictions. The installer pins a new install only
+    // with a release that says so; DATA_JURISDICTION itself is set per install, never here.
+    DATA_JURISDICTIONS_SUPPORTED: bindings.text("us"),
   },
   // Communication (SCHO-189): the hourly notification sweep and the weekly family digest
   // (src/schedule.ts). The district installer does not apply Cron Triggers yet (SCHO-148).

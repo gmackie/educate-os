@@ -163,7 +163,17 @@ export interface WorkerDomain {
 export interface KvNamespace {
   id: string;
   title: string;
+  /** The jurisdiction it durably stores data in, as Cloudflare lists it; absent for one with none. */
+  jurisdiction?: string;
 }
+
+/**
+ * The Cloudflare data jurisdictions an install's storage can be kept in (ADR-0015). KV, R2 and D1
+ * take one at creation only, and it cannot be changed afterwards. EducateOS installs use `us`.
+ */
+export const DATA_JURISDICTIONS = ["us"] as const;
+/** A data jurisdiction. */
+export type DataJurisdiction = (typeof DATA_JURISDICTIONS)[number];
 
 /** An R2 bucket. */
 export interface R2Bucket {
@@ -174,6 +184,8 @@ export interface R2Bucket {
 export interface D1Database {
   uuid: string;
   name: string;
+  /** The jurisdiction it is restricted to, as Cloudflare lists it; absent for one with none. */
+  jurisdiction?: string;
 }
 
 /** The account's Zero Trust organization. */
@@ -318,11 +330,18 @@ export interface CloudflareApi {
   detachWorkerDomain(accountId: string, domainId: string): Promise<void>;
 
   listKvNamespaces(accountId: string): Promise<KvNamespace[]>;
-  createKvNamespace(accountId: string, title: string): Promise<KvNamespace>;
-  listR2Buckets(accountId: string): Promise<R2Bucket[]>;
-  createR2Bucket(accountId: string, name: string): Promise<R2Bucket>;
+  /** Creates a KV namespace, storing its data in `jurisdiction` when one is given. */
+  createKvNamespace(accountId: string, title: string, jurisdiction?: DataJurisdiction): Promise<KvNamespace>;
+  /**
+   * The account's R2 buckets in one jurisdiction: those with none (Cloudflare's `default`) when
+   * `jurisdiction` is undefined. R2 lists each jurisdiction separately.
+   */
+  listR2Buckets(accountId: string, jurisdiction?: DataJurisdiction): Promise<R2Bucket[]>;
+  /** Creates an R2 bucket, restricted to `jurisdiction` when one is given. */
+  createR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<R2Bucket>;
   listD1Databases(accountId: string): Promise<D1Database[]>;
-  createD1Database(accountId: string, name: string): Promise<D1Database>;
+  /** Creates a D1 database, restricted to `jurisdiction` when one is given. */
+  createD1Database(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<D1Database>;
   /** Runs SQL against a D1 database. The installer uses it only for migrations and their ledger. */
   queryD1(accountId: string, databaseId: string, sql: string, params?: string[]): Promise<Record<string, unknown>[]>;
 

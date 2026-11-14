@@ -49,17 +49,17 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
     const resource = step.resource;
     switch (resource.kind) {
       case "kv_namespace": {
-        const ns = await guarded(() => api.createKvNamespace(account, resource.title));
+        const ns = await guarded(() => api.createKvNamespace(account, resource.title, resource.jurisdiction));
         outputs.set(resource.key, { id: ns.id });
         break;
       }
       case "r2_bucket":
-        await guarded(() => api.createR2Bucket(account, resource.name));
+        await guarded(() => api.createR2Bucket(account, resource.name, resource.jurisdiction));
         break;
       case "d1_database": {
         let id = outputs.get(resource.key)?.id;
         if (!id) {
-          const db = await guarded(() => api.createD1Database(account, resource.name));
+          const db = await guarded(() => api.createD1Database(account, resource.name, resource.jurisdiction));
           id = db.uuid;
           outputs.set(resource.key, { id });
         }

@@ -14,6 +14,7 @@ import type {
   AccessPolicySpec,
   CloudflareApi,
   CustomHostname,
+  DataJurisdiction,
   DnsRecord,
   DnsRecordSpec,
   ObservedBinding,
@@ -92,9 +93,10 @@ export class FakeCloudflare {
   readonly #tokens = new Set<string>();
   readonly #scripts = new Map<string, Script>();
   readonly #domains = new Map<string, WorkerDomain>();
-  readonly #kv = new Map<string, string>();
+  readonly #kv = new Map<string, { id: string; jurisdiction?: string }>();
+  /** R2 buckets, as `<jurisdiction>/<name>`: R2 names buckets per jurisdiction (`default` for none). */
   readonly #r2 = new Set<string>();
-  readonly #d1 = new Map<string, { uuid: string; ledger: Set<string> | undefined; statements: string[] }>();
+  readonly #d1 = new Map<string, { uuid: string; jurisdiction?: string; ledger: Set<string> | undefined; statements: string[] }>();
   readonly #policies = new Map<string, AccessPolicy>();
   readonly #apps = new Map<string, AccessApplication>();
   readonly #gateways = new Set<string>();
@@ -239,6 +241,26 @@ export class FakeCloudflare {
   /** A Worker secret's value, for assertions about generated secrets. Cloudflare never returns one. */
   secretValue(name: string, secret: string): string | undefined {
     return this.#scripts.get(name)?.secrets.get(secret);
+  }
+
+  /** The jurisdictions of the R2 buckets of one name (`default` for none), for assertions. */
+  r2Jurisdictions(name: string): string[] {
+    return [...this.#r2].flatMap((key) => (key.endsWith(`/${name}`) ? [key.slice(0, key.indexOf("/"))] : [])).toSorted();
+  }
+
+  /** Adds an R2 bucket the installer did not create, in a jurisdiction or in none. */
+  seedR2Bucket(name: string, jurisdiction?: string): void {
+    this.#r2.add(r2Key(name, jurisdiction));
+  }
+
+  /** A KV namespace's jurisdiction, for assertions; undefined for none or no such namespace. */
+  kvJurisdiction(title: string): string | undefined {
+    return this.#kv.get(title)?.jurisdiction;
+  }
+
+  /** A D1 database's jurisdiction, for assertions; undefined for none or no such database. */
+  d1Jurisdiction(name: string): string | undefined {
+    return this.#d1.get(name)?.jurisdiction;
   }
 
   /** Statements a D1 database has run, in order. */
@@ -523,29 +545,31 @@ export class FakeCloudflare {
       this.#domains.set(domain.hostname, created);
       return created;
     },
-    kv: () => [...this.#kv].map(([title, id]) => ({ id, title })),
-    createKv: (title: string) => {
+    kv: () => [...this.#kv].map(([title, ns]) => ({ id: ns.id, title, ...(ns.jurisdiction ? { jurisdiction: ns.jurisdiction } : {}) })),
+    createKv: (title: string, jurisdiction?: string) => {
       if (this.#kv.has(title)) throw new CloudflareApiError("createKvNamespace", 400, [10014]);
       const id = `kv-${this.#id()}`;
-      this.#kv.set(title, id);
-      return { id, title };
+      this.#kv.set(title, { id, ...(jurisdiction ? { jurisdiction } : {}) });
+      return { id, title, ...(jurisdiction ? { jurisdiction } : {}) };
     },
-    r2: () => {
+    // As R2 does: listing and creating are scoped to one jurisdiction, `default` when none is given.
+    r2: (jurisdiction?: string) => {
       this.#requireR2("listR2Buckets");
-      return [...this.#r2].map((name) => ({ name }));
+      const prefix = `${jurisdiction ?? "default"}/`;
+      return [...this.#r2].flatMap((key) => (key.startsWith(prefix) ? [{ name: key.slice(prefix.length) }] : []));
     },
-    createR2: (name: string) => {
+    createR2: (name: string, jurisdiction?: string) => {
       this.#requireR2("createR2Bucket");
-      if (this.#r2.has(name)) throw new CloudflareApiError("createR2Bucket", 409, [10004]);
-      this.#r2.add(name);
+      if (this.#r2.has(r2Key(name, jurisdiction))) throw new CloudflareApiError("createR2Bucket", 409, [10004]);
+      this.#r2.add(r2Key(name, jurisdiction));
       return { name };
     },
-    d1: () => [...this.#d1].map(([name, db]) => ({ uuid: db.uuid, name })),
-    createD1: (name: string) => {
+    d1: () => [...this.#d1].map(([name, db]) => ({ uuid: db.uuid, name, ...(db.jurisdiction ? { jurisdiction: db.jurisdiction } : {}) })),
+    createD1: (name: string, jurisdiction?: string) => {
       if (this.#d1.has(name)) throw new CloudflareApiError("createD1Database", 400, [7502]);
       const uuid = `d1-${this.#id()}`;
-      this.#d1.set(name, { uuid, ledger: undefined, statements: [] });
-      return { uuid, name };
+      this.#d1.set(name, { uuid, ...(jurisdiction ? { jurisdiction } : {}), ledger: undefined, statements: [] });
+      return { uuid, name, ...(jurisdiction ? { jurisdiction } : {}) };
     },
     queryD1: (uuid: string, sql: string, params: string[]) => this.#queryD1(uuid, sql, params),
     organization: () => (this.#options.accessTeam ? { authDomain: `${this.#options.accessTeam}.cloudflareaccess.com` } : undefined),
@@ -597,8 +621,8 @@ export class FakeCloudflare {
     // A binding to a resource that does not exist fails the upload, as on Cloudflare.
     const dangling = metadata.bindings.some((binding) =>
       (binding.type === "service" && !this.#scripts.has(String(binding.service))) ||
-      (binding.type === "kv_namespace" && ![...this.#kv.values()].includes(String(binding.namespace_id))) ||
-      (binding.type === "r2_bucket" && !this.#r2.has(String(binding.bucket_name))) ||
+      (binding.type === "kv_namespace" && ![...this.#kv.values()].some((ns) => ns.id === binding.namespace_id)) ||
+      (binding.type === "r2_bucket" && !this.#r2.has(r2Key(String(binding.bucket_name), binding.jurisdiction as string | undefined))) ||
       (binding.type === "d1" && ![...this.#d1.values()].some((db) => db.uuid === binding.id)));
     if (dangling) throw new CloudflareApiError("uploadWorkerScript", 400, [10021]);
     if (metadata.assets && !this.#completions.has(metadata.assets.jwt)) throw new CloudflareApiError("uploadWorkerScript", 400, [10200]);
@@ -759,11 +783,11 @@ class FakeCloudflareApi implements CloudflareApi {
   attachWorkerDomain(a: string, d: Omit<WorkerDomain, "id">) { return this.#call(a, "attachWorkerDomain", () => this.#fake.op.attachDomain(d)); }
   detachWorkerDomain(a: string, id: string) { return this.#call(a, "detachWorkerDomain", () => this.#fake.op.detachDomain(id)); }
   listKvNamespaces(a: string) { return this.#call(a, "listKvNamespaces", () => this.#fake.op.kv()); }
-  createKvNamespace(a: string, t: string) { return this.#call(a, "createKvNamespace", () => this.#fake.op.createKv(t)); }
-  listR2Buckets(a: string) { return this.#call(a, "listR2Buckets", () => this.#fake.op.r2()); }
-  createR2Bucket(a: string, n: string) { return this.#call(a, "createR2Bucket", () => this.#fake.op.createR2(n)); }
+  createKvNamespace(a: string, t: string, j?: DataJurisdiction) { return this.#call(a, "createKvNamespace", () => this.#fake.op.createKv(t, j)); }
+  listR2Buckets(a: string, j?: DataJurisdiction) { return this.#call(a, "listR2Buckets", () => this.#fake.op.r2(j)); }
+  createR2Bucket(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "createR2Bucket", () => this.#fake.op.createR2(n, j)); }
   listD1Databases(a: string) { return this.#call(a, "listD1Databases", () => this.#fake.op.d1()); }
-  createD1Database(a: string, n: string) { return this.#call(a, "createD1Database", () => this.#fake.op.createD1(n)); }
+  createD1Database(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "createD1Database", () => this.#fake.op.createD1(n, j)); }
   queryD1(a: string, id: string, sql: string, params: string[] = []) { return this.#call(a, "queryD1", () => this.#fake.op.queryD1(id, sql, params)); }
   getAccessOrganization(a: string) { return this.#call(a, "getAccessOrganization", () => this.#fake.op.organization()); }
   listAccessIdentityProviders(a: string) { return this.#call(a, "listAccessIdentityProviders", () => this.#fake.op.idps()); }
@@ -775,4 +799,8 @@ class FakeCloudflareApi implements CloudflareApi {
   updateAccessApplication(a: string, id: string, spec: AccessApplicationSpec) { return this.#call(a, "updateAccessApplication", () => this.#fake.op.putApp(id, spec)); }
   listAiGateways(a: string) { return this.#call(a, "listAiGateways", () => this.#fake.op.gateways()); }
   createAiGateway(a: string, id: string) { return this.#call(a, "createAiGateway", () => this.#fake.op.createGateway(id)); }
+}
+
+function r2Key(name: string, jurisdiction: string | undefined): string {
+  return `${jurisdiction ?? "default"}/${name}`;
 }

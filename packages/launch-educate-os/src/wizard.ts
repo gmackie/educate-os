@@ -124,6 +124,7 @@ function summary(install: Record<string, unknown>, deps: WizardDeps): string[] {
     `  Zero Trust     ${config.access.teamName}.cloudflareaccess.com`,
     `  may sign in    ${[...config.access.allowedEmailDomains.map((d) => `@${d}`), ...config.access.allowedEmails].join(", ")}`,
     `  administrators ${config.admins.join(", ")}`,
+    `  data location  ${config.dataJurisdiction === "us" ? "Cloudflare's US jurisdiction (the district's records, R2 and D1)" : "not pinned to a jurisdiction"}`,
   ];
 }
 
@@ -244,6 +245,9 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
     ...(managedHostname ? { managedHostname } : {}),
     access: { teamName, allowedEmailDomains, allowedEmails },
     admins,
+    // A new install keeps its storage in Cloudflare's US jurisdiction (ADR-0015). Saved answers from
+    // an earlier install keep theirs as they were: Cloudflare can't move storage between jurisdictions.
+    dataJurisdiction: "us",
   };
   const district = districtPackage(deps.manifest);
   out.line();

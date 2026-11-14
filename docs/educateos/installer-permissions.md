@@ -66,6 +66,11 @@ guess.
 | `listAiGateways`, `createAiGateway` (optional) | `/accounts/{id}/ai-gateway/gateways` | AI Gateway: Edit (verified 2026-11-02, SCHO-66: list, create and delete; without it HTTP 403, code 10000) | `ai:write` | unverified |
 | (refresh tokens) | `https://dash.cloudflare.com/oauth2/token` | n/a | `offline_access` | wrangler-requested |
 
+A pinned install (`dataJurisdiction: "us"`, [ADR-0015](adr/0015-us-data-jurisdiction.md)) calls the
+same endpoints: KV and D1 creates carry `jurisdiction` in their body, and R2 calls carry the
+`cf-r2-jurisdiction: us` header. Cloudflare documents no extra permission for them; not yet verified
+live.
+
 The OSS admin (`admin.enabled`, SCHO-263) needs no permission beyond these: its Worker, secret and
 custom domain use the Workers Scripts rows, its database and migrations the D1 row, and its two
 Access applications the Access row. Its hostname must be in the base domain's zone, the one zone the
