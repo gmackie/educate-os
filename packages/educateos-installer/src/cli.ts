@@ -7,6 +7,8 @@
 //   plan        preflight, then observe and print the plan (changes nothing)
 //   apply       preflight, plan and apply; then register with the root if --registry-url is given
 //   rollback    return to a previous release: --previous-manifest <file>
+//   uninstall   plan the instance's removal (district offboarding, SCHO-368); with
+//               --confirm <instanceId>, delete it. Export the district first.
 //
 // The manifest must come with the root's signed statement for it, verified against the release
 // keys the config pins (`release.mode: "signed"`). The release pipeline writes the statement
@@ -34,6 +36,7 @@ import { DirectoryReleaseArtifacts } from "./directory-artifacts.ts";
 import { InstallerHaltedError } from "./errors.ts";
 import { httpRegistryEndpoint } from "./fleet-registration.ts";
 import { install, rollback } from "./installer.ts";
+import { describeUninstall, DISTRICT_EXPORT_REMINDER, uninstall } from "./uninstall.ts";
 import {
   loadPinnedManifest,
   type ReleaseManifest,
@@ -43,7 +46,7 @@ import {
 import type { PreflightReport } from "./preflight.ts";
 import { districtRunTokenProvider } from "./token.ts";
 
-const COMMANDS = ["preflight", "plan", "apply", "rollback"] as const;
+const COMMANDS = ["preflight", "plan", "apply", "rollback", "uninstall"] as const;
 
 function secretEnvName(pkg: string, name: string): string {
   return `EDUCATEOS_SECRET_${pkg.toUpperCase().replaceAll("-", "_")}__${name}`;
@@ -112,11 +115,12 @@ async function main(): Promise<number> {
       "previous-signed-manifest": { type: "string" },
       "previous-pin": { type: "string" },
       "insecure-pin": { type: "boolean" },
+      confirm: { type: "string" },
     },
   });
   const command = positionals[0] as (typeof COMMANDS)[number] | undefined;
   if (!command || !COMMANDS.includes(command) || !values.config || !values.manifest) {
-    console.error(`usage: cli.ts <${COMMANDS.join("|")}> --config <file> --manifest <file> [--signed-manifest <file>] [--release-dir <dir>] [--registry-url <url>]`);
+    console.error(`usage: cli.ts <${COMMANDS.join("|")}> --config <file> --manifest <file> [--signed-manifest <file>] [--release-dir <dir>] [--registry-url <url>] [--confirm <instanceId>]`);
     return 2;
   }
 
@@ -145,6 +149,20 @@ async function main(): Promise<number> {
     signedManifest === undefined ? {} : { signedManifest },
   );
   const api = new CloudflareHttpApi({ tokens: districtRunTokenProvider(process.env) });
+
+  if (command === "uninstall") {
+    console.log(DISTRICT_EXPORT_REMINDER);
+    const report = await uninstall({
+      api,
+      config,
+      manifest,
+      dryRun: values.confirm === undefined,
+      ...(values.confirm === undefined ? {} : { confirm: values.confirm }),
+      onStep: (step) => console.log(`done     delete  ${step.key}`),
+    });
+    for (const line of describeUninstall(report, "--confirm")) console.log(line);
+    return report.status === "planned" || report.status === "removed" ? 0 : 1;
+  }
 
   if (command === "rollback") {
     const previous = await previousManifest(config.release, values);

@@ -6,6 +6,9 @@
 import {
   adminHostname,
   type CostLine,
+  describeUninstall,
+  DISTRICT_EXPORT_REMINDER,
+  uninstall,
   type DesiredWorkerSecret,
   type DistrictInstallConfig,
   install,
@@ -330,6 +333,71 @@ export async function rollbackRelease(context: RunContext, request: RollbackRequ
   out.line(`Rolled back ${deployed.length} Worker(s) to ${plan.toReleaseId}.`);
   out.event({ event: "done", status: "rolled-back", urls: installUrls(request.config, request.previous.manifest), nextSteps: [] });
   return { exitCode: 0, applied: true };
+}
+
+/** What {@link uninstallInstance} is asked to do. */
+export interface UninstallRequest {
+  config: DistrictInstallConfig;
+  /** The release the instance runs, which names its Workers and storage. */
+  release: VerifiedRelease;
+  /** `--confirm`: the instance ID, typed to delete. Undefined plans only, or asks on a terminal. */
+  confirm?: string;
+}
+
+/**
+ * Plans the instance's removal and shows it; deletes only once the operator types the instance ID
+ * (`--confirm <instanceId>`, or at the prompt on a terminal). `--yes` alone never deletes anything.
+ */
+export async function uninstallInstance(context: RunContext, request: UninstallRequest): Promise<RunOutcome> {
+  const { out, cf } = context;
+  const { config, release } = request;
+  const base = { api: cf.api, config, manifest: release.manifest };
+  out.line();
+  out.line(`IMPORTANT: ${DISTRICT_EXPORT_REMINDER}`);
+  out.line();
+  const planned = await uninstall({ ...base, dryRun: true });
+  const view = (s: { action: string; key: string; reason: string }) => ({ action: s.action, key: s.key, reason: s.reason });
+  out.event({ event: "uninstall-plan", steps: planned.plan.steps.map(view), unclaimed: planned.plan.unclaimed, registered: planned.plan.registered });
+  const deleting = planned.plan.steps.filter((step) => step.action === "delete").length;
+  let confirm = request.confirm;
+  if (confirm === undefined && context.prompter !== undefined && deleting > 0) {
+    for (const line of describeUninstall(planned, "--confirm").slice(0, -1)) out.line(line);
+    out.line();
+    confirm = await context.prompter.text(
+      `This deletes ${deleting} resource(s) and the district's data with them, and can't be undone. Type the instance ID (${config.instanceId}) to delete, or leave blank to stop`,
+      { default: "" },
+    );
+    if (confirm === "") {
+      out.line("Nothing was changed.");
+      out.event({ event: "done", status: "planned", urls: {}, nextSteps: [] });
+      return { exitCode: 1, applied: false };
+    }
+  }
+  if (confirm === undefined) {
+    for (const line of describeUninstall(planned, "--confirm")) out.line(line);
+    out.event({ event: "done", status: "planned", urls: {}, nextSteps: [] });
+    return { exitCode: 0, applied: false };
+  }
+  let index = 0;
+  const report = await uninstall({
+    ...base,
+    dryRun: false,
+    confirm,
+    onStep: (step) => {
+      index++;
+      out.event({ event: "step", index, total: deleting, action: "delete", key: step.key });
+      out.line(`  [${String(index).padStart(String(deleting).length)}/${deleting}] delete  ${step.key}`);
+    },
+  });
+  for (const line of describeUninstall(report, "--confirm")) out.line(line);
+  out.event({
+    event: "done",
+    status: report.status,
+    urls: {},
+    nextSteps: [...(report.leftovers ?? []).map((key) => `check ${key}`), ...(report.result?.failed ?? []).map((f) => `${f.key}: ${f.reason}`)],
+  });
+  if (report.status === "refused") return { exitCode: 2, applied: false };
+  return { exitCode: report.status === "removed" ? 0 : 1, applied: report.status === "removed" };
 }
 
 /**

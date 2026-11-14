@@ -22,6 +22,7 @@ export * from "./preflight.ts";
 export * from "./rollback.ts";
 export * from "./fleet-registration.ts";
 export * from "./installer.ts";
+export * from "./uninstall.ts";
 export * from "./drift.ts";
 export * from "./slug.ts";
 export * from "./managed-hostname.ts";

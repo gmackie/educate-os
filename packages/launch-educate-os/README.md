@@ -176,9 +176,25 @@ needed and `--yes` wasn't given), 130 stopped by the operator.
 what it can't undo first: D1 migrations stay applied, and a Worker that ran a Durable Object
 migration since can't go back past it.
 
-To uninstall, delete the `educateos-<name>-*` Workers, KV namespaces, R2 bucket, D1 databases,
-AI Gateway, custom domains and Access applications in the Cloudflare dashboard. Deleting the
-Workers and storage deletes the district's data with them, so export anything you need first.
+`npx launch-educate-os uninstall` removes the install, for a district leaving EducateOS. Deleting
+the Workers and storage deletes the district's data with them, so export the district first (a
+district administrator: the admin console's **Export the district**). Then:
+
+```sh
+npx launch-educate-os uninstall                            # the plan: what would be deleted; changes nothing
+npx launch-educate-os uninstall --confirm ins_<name>       # deletes it
+```
+
+It deletes only what the installer made for this install: Workers carrying the install's marker,
+and the custom domains, Access applications and policies, AI Gateway, KV namespaces, R2 buckets and
+D1 databases with the install's exact names. Anything else named `educateos-<name>-*` is listed as
+`unclaimed` and left alone. On a terminal it asks you to type the instance ID; `--yes` never
+deletes. It never deletes objects in R2: empty a bucket that still holds files first (a lifecycle
+rule expiring every object does it for a large one), then run it again. It continues from whatever
+is left, so re-running after any failure is safe.
+
+Not yet run against a live Cloudflare account: it is tested against the installer's simulated one.
+Version 0.1.0 on npm does not have it yet.
 
 ## License
 

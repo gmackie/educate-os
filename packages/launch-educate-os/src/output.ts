@@ -18,6 +18,7 @@ export type LaunchEvent =
   | { event: "done"; status: string; urls: Record<string, string>; nextSteps: string[] }
   | { event: "rollback"; fromReleaseId: string; toReleaseId: string; steps: { action: string; scriptName: string; reason: string }[]; irreversible: string[] }
   | { event: "doctor"; check: string; ok: boolean; detail: string }
+  | { event: "uninstall-plan"; steps: { action: string; key: string; reason: string }[]; unclaimed: string[]; registered: boolean }
   | { event: "error"; code: string; message: string };
 
 /** A preflight finding. */

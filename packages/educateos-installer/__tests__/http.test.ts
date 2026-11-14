@@ -32,6 +32,31 @@ const ok = (result: unknown, resultInfo?: unknown) =>
   Response.json({ success: true, errors: [], messages: [], result, ...(resultInfo ? { result_info: resultInfo } : {}) });
 
 describe("Cloudflare HTTP client", () => {
+  it("deletes the uninstall's resources at their documented endpoints, an R2 bucket in its jurisdiction", async () => {
+    const { fetchImpl, requests } = stubFetch(() => ok(null));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    await api.deleteKvNamespace(ACCOUNT, "kv1");
+    await api.deleteR2Bucket(ACCOUNT, "educateos-northfield-files", "us");
+    await api.deleteR2Bucket(ACCOUNT, "educateos-northfield-old");
+    await api.deleteD1Database(ACCOUNT, "d1uuid");
+    await api.deleteAccessApplication(ACCOUNT, "app1");
+    await api.deleteAccessPolicy(ACCOUNT, "pol1");
+    await api.deleteAiGateway(ACCOUNT, "educateos-northfield");
+
+    const base = `/client/v4/accounts/${ACCOUNT}`;
+    expect(requests.map((r) => `${r.method} ${new URL(r.url).pathname}`)).toEqual([
+      `DELETE ${base}/storage/kv/namespaces/kv1`,
+      `DELETE ${base}/r2/buckets/educateos-northfield-files`,
+      `DELETE ${base}/r2/buckets/educateos-northfield-old`,
+      `DELETE ${base}/d1/database/d1uuid`,
+      `DELETE ${base}/access/apps/app1`,
+      `DELETE ${base}/access/policies/pol1`,
+      `DELETE ${base}/ai-gateway/gateways/educateos-northfield`,
+    ]);
+    expect(requests.map((r) => r.headers.get("cf-r2-jurisdiction"))).toEqual([null, "us", null, null, null, null, null]);
+  });
+
   it("sends the bearer token and walks every page of a paged list", async () => {
     const { fetchImpl, requests } = stubFetch((request) => {
       const page = Number(new URL(request.url).searchParams.get("page"));

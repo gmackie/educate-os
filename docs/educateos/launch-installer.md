@@ -23,12 +23,12 @@ file, `package.json`, the README and the Apache-2.0 LICENSE.
 
 | File | What it does |
 | --- | --- |
-| `src/cli.ts` | Commands (`install`, `plan`, `upgrade`, `rollback`, `doctor`) and flags. |
+| `src/cli.ts` | Commands (`install`, `plan`, `upgrade`, `rollback`, `doctor`, `uninstall`) and flags. |
 | `src/wizard.ts` | The interactive questions. |
 | `src/prompter.ts` | Terminal input, with hidden input in raw mode. |
 | `src/release-source.ts` | Fetching a release over HTTPS or from a directory, verifying it, and the downgrade check. |
 | `src/trust.ts` | The pinned release keys and the default mirror URL. |
-| `src/run.ts` | Preflight, plan, confirm, apply and rollback output, URLs and next steps. |
+| `src/run.ts` | Preflight, plan, confirm, apply, rollback and uninstall output, URLs and next steps. |
 | `src/answers.ts` | `educateos-install.json`: the saved, non-secret answers and the install history. |
 | `src/cloudflare.ts` | The installer's HTTP client plus account and zone listing, and the test bridge. |
 | `src/output.ts` | Human and `--json` output, with every known secret redacted. |
@@ -108,9 +108,44 @@ Limits:
 - **Gatekeepers beyond the preinstalled ones** are added by editing `gatekeepers` in the answers file.
   Their secrets are read from `EDUCATEOS_SECRET_<PKG>__<NAME>`, or asked for, hidden, on a terminal.
 
+## Uninstall (SCHO-368)
+
+`npx launch-educate-os uninstall` removes an instance, for district offboarding
+([runbooks/district-offboarding.md](runbooks/district-offboarding.md), step 5). It is the installer
+library's `uninstall` (`packages/educateos-installer/src/uninstall.ts`), the installer CLI's
+`uninstall` command too, and it needs the answers file and the install token, nothing else.
+
+- **The release.** `--release <id>`, else the release the account's backend marker names, else the
+  answers' last install, else the newest. The release only supplies the names of the install's
+  Workers and storage; anything with the prefix it doesn't name is reported as `unclaimed`.
+- **Plan by default.** Without `--confirm <instanceId>` it prints the plan and changes nothing. On a
+  terminal it shows the plan and asks for the instance ID; a blank answer stops. `--yes` never
+  deletes. A wrong ID exits 2 before any change.
+- **What it deletes.** Workers carrying the instance marker; the custom domains, managed hostname
+  and Worker routes routed to them; the Access applications (while they still front the install's
+  hostname) and policies (once nothing uses them), the AI Gateway, KV namespaces, R2 buckets and D1
+  databases by the exact names the config and release give them. Never a prefix match.
+- **Order.** Hostnames, Workers (each after the Workers that bind it), Access, storage. A failure in
+  a phase stops the next one, so storage never goes from under a running Worker.
+- **R2.** The installer has no object operation, so it never empties a bucket. A non-empty bucket is
+  refused by Cloudflare (code 10008) and reported with what to do; once the operator empties it,
+  running again finishes.
+- **Resumable.** Planning observes the account each run; a 404 on a delete counts as done.
+- **Output.** The plan, each delete as it lands, failures, and the leftovers found by observing the
+  account afterwards. With `--json`: `release`, `uninstall-plan` (steps, `unclaimed`, `registered`),
+  `step` events and `done` with `status` `planned`, `removed`, `incomplete` or `refused`. Exit 0 for a
+  plan or a clean removal, 1 for incomplete or a stopped prompt, 2 for a wrong confirmation.
+
+Not yet run against a live Cloudflare account (SCHO-378). It is not in 0.1.0 on npm; it ships in the
+next publish.
+
 ## Tests
 
 `packages/launch-educate-os/__tests__`:
+
+- `uninstall.test.ts`: in process: the plan by default, `--yes` and a wrong ID refused with nothing
+  changed, `--confirm` removing everything with `--json` events, and the terminal prompt stopping on
+  a blank answer and deleting on the instance ID.
 
 - `release-source.test.ts`: the mirror read, a statement signed by an unpinned key, a tampered
   statement and manifest, a mirror serving another release's files, a substituted blob and asset, the

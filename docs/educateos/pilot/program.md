@@ -149,9 +149,13 @@ and reviewed at weeks 5 and 10. The worksheet and examples are in
   and each student can download their own `.educateos` archive. Workshop gadgets and agents are not
   in either export yet. Harness-tested, not yet run in a live district
   ([maturity.md](../maturity.md)).
-- **Uninstall.** Delete everything named `educateos-<name>-*`, following
-  [district-offboarding.md](../runbooks/district-offboarding.md). There is no uninstall command yet
-  (SCHO-368). We help on a call if asked.
+- **Uninstall.** Export first, then `npx launch-educate-os uninstall` (in the next npm release)
+  ([district-offboarding.md](../runbooks/district-offboarding.md), step 5). It plans by default,
+  deletes only what the installer made for that instance (its marker or its exact names, never a
+  prefix match), deletes nothing until the operator types the instance ID, and reports what it
+  could not remove, such as a non-empty R2 bucket. Deregistering from educateos.io is a separate
+  step. Tested against the installer's Cloudflare fake, not yet run on a live account (SCHO-368,
+  SCHO-378). We help on a call if asked.
 
 Whatever the decision, we write up the end-of-pilot review and send it to the district sponsor.
 

@@ -78,6 +78,7 @@ const MUTATIONS = new Set([
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
   "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
+  "deleteKvNamespace", "deleteR2Bucket", "deleteD1Database", "deleteAccessPolicy", "deleteAccessApplication", "deleteAiGateway",
 ]);
 
 const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \('([0-9a-z_]+)', '[0-9a-f]{64}'\)\s*$/;
@@ -96,6 +97,8 @@ export class FakeCloudflare {
   readonly #kv = new Map<string, { id: string; jurisdiction?: string }>();
   /** R2 buckets, as `<jurisdiction>/<name>`: R2 names buckets per jurisdiction (`default` for none). */
   readonly #r2 = new Set<string>();
+  /** How many objects each R2 bucket holds, by the same key. Absent means empty. */
+  readonly #r2Objects = new Map<string, number>();
   readonly #d1 = new Map<string, { uuid: string; jurisdiction?: string; ledger: Set<string> | undefined; statements: string[] }>();
   readonly #policies = new Map<string, AccessPolicy>();
   readonly #apps = new Map<string, AccessApplication>();
@@ -251,6 +254,37 @@ export class FakeCloudflare {
   /** Adds an R2 bucket the installer did not create, in a jurisdiction or in none. */
   seedR2Bucket(name: string, jurisdiction?: string): void {
     this.#r2.add(r2Key(name, jurisdiction));
+  }
+
+  /**
+   * Puts `count` objects in an R2 bucket, as the district's own Workers would. The installer has no
+   * object operation, so only a test (standing in for the operator) can add or remove them.
+   */
+  putR2Objects(name: string, count: number, jurisdiction?: string): void {
+    if (!this.#r2.has(r2Key(name, jurisdiction))) throw new Error(`no R2 bucket ${name}`);
+    this.#r2Objects.set(r2Key(name, jurisdiction), count);
+  }
+
+  /** Empties an R2 bucket, as an operator's lifecycle rule or dashboard deletion would. */
+  emptyR2Bucket(name: string, jurisdiction?: string): void {
+    this.#r2Objects.delete(r2Key(name, jurisdiction));
+  }
+
+  /** Adds a KV namespace the installer did not create. */
+  seedKvNamespace(title: string): void {
+    this.#kv.set(title, { id: `kv-${this.#id()}` });
+  }
+
+  /** Adds an Access policy the installer did not create, admitting one email domain. */
+  seedAccessPolicy(name: string, domain = "example.org"): string {
+    const id = `pol-${this.#id()}`;
+    this.#policies.set(id, { id, name, decision: "allow", include: [{ email_domain: { domain } }] });
+    return id;
+  }
+
+  /** Every DNS record's name and comment, for assertions about what the installer leaves. */
+  dnsNames(): string[] {
+    return [...this.#dns.values()].map((r) => r.name).toSorted();
   }
 
   /** A KV namespace's jurisdiction, for assertions; undefined for none or no such namespace. */
@@ -546,6 +580,12 @@ export class FakeCloudflare {
       return created;
     },
     kv: () => [...this.#kv].map(([title, ns]) => ({ id: ns.id, title, ...(ns.jurisdiction ? { jurisdiction: ns.jurisdiction } : {}) })),
+    // Cloudflare's not-found codes for these deletes are unverified; the fake answers 404 with none.
+    deleteKv: (id: string) => {
+      const entry = [...this.#kv].find(([, ns]) => ns.id === id);
+      if (!entry) throw new CloudflareApiError("deleteKvNamespace", 404, []);
+      this.#kv.delete(entry[0]);
+    },
     createKv: (title: string, jurisdiction?: string) => {
       if (this.#kv.has(title)) throw new CloudflareApiError("createKvNamespace", 400, [10014]);
       const id = `kv-${this.#id()}`;
@@ -563,6 +603,19 @@ export class FakeCloudflare {
       if (this.#r2.has(r2Key(name, jurisdiction))) throw new CloudflareApiError("createR2Bucket", 409, [10004]);
       this.#r2.add(r2Key(name, jurisdiction));
       return { name };
+    },
+    deleteR2: (name: string, jurisdiction?: string) => {
+      this.#requireR2("deleteR2Bucket");
+      const key = r2Key(name, jurisdiction);
+      if (!this.#r2.has(key)) throw new CloudflareApiError("deleteR2Bucket", 404, [10006]);
+      // R2 refuses to delete a bucket that still holds objects: HTTP 409, code 10008 (BucketNotEmpty).
+      if ((this.#r2Objects.get(key) ?? 0) > 0) throw new CloudflareApiError("deleteR2Bucket", 409, [10008]);
+      this.#r2.delete(key);
+    },
+    deleteD1: (uuid: string) => {
+      const entry = [...this.#d1].find(([, db]) => db.uuid === uuid);
+      if (!entry) throw new CloudflareApiError("deleteD1Database", 404, [7404]);
+      this.#d1.delete(entry[0]);
     },
     d1: () => [...this.#d1].map(([name, db]) => ({ uuid: db.uuid, name, ...(db.jurisdiction ? { jurisdiction: db.jurisdiction } : {}) })),
     createD1: (name: string, jurisdiction?: string) => {
@@ -584,6 +637,15 @@ export class FakeCloudflare {
       const policy = { id: id ?? `pol-${this.#id()}`, name: spec.name, decision: spec.decision, include: structuredClone(spec.include) };
       this.#policies.set(policy.id, policy);
       return policy;
+    },
+    deletePolicy: (id: string) => {
+      if (!this.#policies.has(id)) throw new CloudflareApiError("deleteAccessPolicy", 404, []);
+      // Assumed: a reusable policy an application still uses can't be deleted (code unverified).
+      if ([...this.#apps.values()].some((a) => a.policyIds.includes(id))) throw new CloudflareApiError("deleteAccessPolicy", 400, []);
+      this.#policies.delete(id);
+    },
+    deleteApp: (id: string) => {
+      if (!this.#apps.delete(id)) throw new CloudflareApiError("deleteAccessApplication", 404, []);
     },
     apps: () => [...this.#apps.values()],
     putApp: (id: string | undefined, spec: AccessApplicationSpec) => {
@@ -609,6 +671,9 @@ export class FakeCloudflare {
       return app;
     },
     gateways: () => [...this.#gateways].map((id) => ({ id })),
+    deleteGateway: (id: string) => {
+      if (!this.#gateways.delete(id)) throw new CloudflareApiError("deleteAiGateway", 404, []);
+    },
     createGateway: (id: string) => {
       if (this.#gateways.has(id)) throw new CloudflareApiError("createAiGateway", 400, [7001]);
       this.#gateways.add(id);
@@ -784,21 +849,27 @@ class FakeCloudflareApi implements CloudflareApi {
   detachWorkerDomain(a: string, id: string) { return this.#call(a, "detachWorkerDomain", () => this.#fake.op.detachDomain(id)); }
   listKvNamespaces(a: string) { return this.#call(a, "listKvNamespaces", () => this.#fake.op.kv()); }
   createKvNamespace(a: string, t: string, j?: DataJurisdiction) { return this.#call(a, "createKvNamespace", () => this.#fake.op.createKv(t, j)); }
+  deleteKvNamespace(a: string, id: string) { return this.#call(a, "deleteKvNamespace", () => this.#fake.op.deleteKv(id)); }
   listR2Buckets(a: string, j?: DataJurisdiction) { return this.#call(a, "listR2Buckets", () => this.#fake.op.r2(j)); }
   createR2Bucket(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "createR2Bucket", () => this.#fake.op.createR2(n, j)); }
+  deleteR2Bucket(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "deleteR2Bucket", () => this.#fake.op.deleteR2(n, j)); }
   listD1Databases(a: string) { return this.#call(a, "listD1Databases", () => this.#fake.op.d1()); }
   createD1Database(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "createD1Database", () => this.#fake.op.createD1(n, j)); }
+  deleteD1Database(a: string, id: string) { return this.#call(a, "deleteD1Database", () => this.#fake.op.deleteD1(id)); }
   queryD1(a: string, id: string, sql: string, params: string[] = []) { return this.#call(a, "queryD1", () => this.#fake.op.queryD1(id, sql, params)); }
   getAccessOrganization(a: string) { return this.#call(a, "getAccessOrganization", () => this.#fake.op.organization()); }
   listAccessIdentityProviders(a: string) { return this.#call(a, "listAccessIdentityProviders", () => this.#fake.op.idps()); }
   listAccessPolicies(a: string) { return this.#call(a, "listAccessPolicies", () => this.#fake.op.policies()); }
   createAccessPolicy(a: string, spec: AccessPolicySpec) { return this.#call(a, "createAccessPolicy", () => this.#fake.op.putPolicy(undefined, spec)); }
   updateAccessPolicy(a: string, id: string, spec: AccessPolicySpec) { return this.#call(a, "updateAccessPolicy", () => this.#fake.op.putPolicy(id, spec)); }
+  deleteAccessPolicy(a: string, id: string) { return this.#call(a, "deleteAccessPolicy", () => this.#fake.op.deletePolicy(id)); }
   listAccessApplications(a: string) { return this.#call(a, "listAccessApplications", () => this.#fake.op.apps()); }
   createAccessApplication(a: string, spec: AccessApplicationSpec) { return this.#call(a, "createAccessApplication", () => this.#fake.op.putApp(undefined, spec)); }
   updateAccessApplication(a: string, id: string, spec: AccessApplicationSpec) { return this.#call(a, "updateAccessApplication", () => this.#fake.op.putApp(id, spec)); }
+  deleteAccessApplication(a: string, id: string) { return this.#call(a, "deleteAccessApplication", () => this.#fake.op.deleteApp(id)); }
   listAiGateways(a: string) { return this.#call(a, "listAiGateways", () => this.#fake.op.gateways()); }
   createAiGateway(a: string, id: string) { return this.#call(a, "createAiGateway", () => this.#fake.op.createGateway(id)); }
+  deleteAiGateway(a: string, id: string) { return this.#call(a, "deleteAiGateway", () => this.#fake.op.deleteGateway(id)); }
 }
 
 function r2Key(name: string, jurisdiction: string | undefined): string {
