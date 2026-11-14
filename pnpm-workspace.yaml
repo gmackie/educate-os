@@ -43,7 +43,7 @@ catalog:
   # Oxc's `decorator: { legacy: true }` does load them, but with TypeScript-legacy semantics that
   # differ from the Stage-3 lowering wrangler deploys, so it only works while capnweb-validate's
   # decorators ignore their `context` argument.
-  vite: 7.3.6
+  vite: 7.3.7
   vite-plus: ^1.4.0
   # Also a root devDependency. vite-plus pins this same vitest version for its own `vp test` (on its
   # bundled vite core) and has `@vitest/browser-playwright` as a peer, so with no vitest at the root

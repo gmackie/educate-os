@@ -138,3 +138,8 @@ owner's to triage within a week.
 The 13 high advisories are in the baseline. None of the vulnerable code runs in a Worker or the
 app binary: vite is a build tool, extract-zip and basic-ftp sit on `@puppeteer/browsers`' Node-only
 download and proxy paths, and node-forge and zod come with the Expo CLI.
+
+Since then, SCHO-386 and SCHO-387 cleared `pnpm-lock.yaml`: the vite catalog pin moved to 7.3.7,
+and `@cloudflare/puppeteer` 2.0 no longer depends on `@puppeteer/browsers`, so extract-zip,
+basic-ftp and ip-address left the lockfile. Their four baseline entries were removed, leaving the
+nine node-forge and zod entries for `apps/mobile/pnpm-lock.yaml` (SCHO-388).
