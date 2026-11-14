@@ -28,8 +28,7 @@
 /*
  * WCAG 1.4.11: an unchecked checkbox, radio or switch shows its state only by its ring, which Kumo
  * draws in kumo-line: 10% black (1.3:1) on light surfaces and oklch 32% (1.5:1) on dark ones. Raised
- * to 3:1 on the surfaces they sit on. Checked controls are filled and keep Kumo's colours. Text
- * fields' rings are the same kumo-line and are not changed here (SCHO-361's follow-up).
+ * to 3:1 on the surfaces they sit on. Checked controls are filled and keep Kumo's colours.
  */
 :root:not([data-mode="dark"]) :is([data-kumo-component="Checkbox"], [data-kumo-component="Radio"][data-kumo-part="item"], [data-kumo-component="Switch"]):not([data-checked]) {
   /* 3.6:1 on white, 3.2:1 on kumo-recessed. */
@@ -39,4 +38,21 @@
 [data-mode="dark"] :is([data-kumo-component="Checkbox"], [data-kumo-component="Radio"][data-kumo-part="item"], [data-kumo-component="Switch"]):not([data-checked]) {
   /* 4.2:1 on kumo-control, more on the darker surfaces. */
   --tw-ring-color: oklch(58% 0 0);
+}
+
+/*
+ * WCAG 1.4.11: a text field, text area or combobox is bounded only by its kumo-line ring, 1.24:1 on
+ * light surfaces and 1.4 to 1.6:1 on dark ones (SCHO-379). Kumo puts kumo-input-placeholder on every
+ * field it styles as an input (Input, InputArea, Combobox, SensitiveInput, InputGroup, TagInput), and
+ * data-kumo-part="trigger" on a Select's button. Only kumo-line is redefined on them, so the focus
+ * and error rings, which set the ring colour themselves, are unchanged.
+ */
+:root:not([data-mode="dark"]) :is(.kumo-input-placeholder, [data-kumo-component="Select"][data-kumo-part="trigger"]) {
+  /* The lightest grey at 3:1 on both: 3.23:1 on kumo-base (white), 3.05:1 on kumo-elevated. */
+  --color-kumo-line: oklch(65% 0 0);
+}
+
+[data-mode="dark"] :is(.kumo-input-placeholder, [data-kumo-component="Select"][data-kumo-part="trigger"]) {
+  /* The darkest grey at 3:1 on both: 3.05:1 on kumo-base, 3.22:1 on kumo-elevated. */
+  --color-kumo-line: oklch(49% 0 0);
 }
