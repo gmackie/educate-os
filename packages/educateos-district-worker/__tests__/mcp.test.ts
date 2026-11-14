@@ -88,6 +88,8 @@ async function changeMorgan(change: Record<string, unknown>) {
   await runInDurableObject(district(), (_instance, state) => {
     const row = state.storage.sql.exec<{ record_json: string }>("SELECT record_json FROM academic_principals WHERE id = ?", MORGAN.id).one();
     state.storage.sql.exec("UPDATE academic_principals SET record_json = ? WHERE id = ?", JSON.stringify({ ...JSON.parse(row.record_json), ...change }), MORGAN.id);
+    // A directory write outside the store moves its version, as a commit does (SCHO-390).
+    state.storage.sql.exec("UPDATE academic_directory SET version = version + 1 WHERE singleton = 1");
   });
 }
 const SEEDED_MORGAN = TEST_CONFIG.directory.principals.find((p) => p.id === MORGAN.id)!;

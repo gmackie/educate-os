@@ -61,6 +61,9 @@ async function signIn(principalId: string): Promise<string> {
     .sign(key);
 }
 
+const { principals, enrollments, roleAssignments, offerings, courses, schools, terms } = NORTHFIELD;
+/** Rows one full read of the directory's record tables costs. */
+const directoryRows = [principals, enrollments, roleAssignments, offerings, courses, schools, terms].reduce((sum, list) => sum + list.length, 0);
 const activeStudents = NORTHFIELD.principals.filter((p) => p.kind === "student" && p.status === "active");
 const eng9Students = new Set(NORTHFIELD.enrollments
   .filter((e) => e.offeringId === NF.eng9 && e.role === "student" && e.status === "active")
@@ -74,8 +77,6 @@ describe("the hourly notification sweep", () => {
     expect(warm.rowsWritten).toBe(0);
     expect(warm.audited).toStrictEqual([]);
     // The directory is read a couple of times a sweep, not once for every student and decision.
-    const { principals, enrollments, roleAssignments, offerings, courses, schools, terms } = NORTHFIELD;
-    const directoryRows = [principals, enrollments, roleAssignments, offerings, courses, schools, terms].reduce((sum, list) => sum + list.length, 0);
     expect(warm.rowsRead).toBeLessThan(3 * directoryRows + 10 * activeStudents.length);
     await evictDurableObject(stub);
     const cold = await sweep(stub);
@@ -95,6 +96,8 @@ describe("the hourly notification sweep", () => {
     const owed = await sweep(district());
     expect(owed.rowsWritten).toBeGreaterThan(0);
     expect(new Set(owed.audited)).toStrictEqual(eng9Students);
+    // SCHO-390: the owed students' syncs reuse the parsed directory (about 14,000 rows read before).
+    expect(owed.rowsRead).toBeLessThan(2 * directoryRows + 20 * eng9Students.size);
     expect((await sweep(district())).rowsWritten).toBe(0);
   });
 });

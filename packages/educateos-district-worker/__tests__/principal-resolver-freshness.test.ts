@@ -16,6 +16,8 @@ async function changePerson(change: Record<string, unknown>) {
     ).one();
     state.storage.sql.exec("UPDATE academic_principals SET record_json = ? WHERE id = ?",
       JSON.stringify({ ...JSON.parse(row.record_json), ...change }), person.id);
+    // A directory write outside the store moves its version, as a commit does (SCHO-390).
+    state.storage.sql.exec("UPDATE academic_directory SET version = version + 1 WHERE singleton = 1");
   });
 }
 

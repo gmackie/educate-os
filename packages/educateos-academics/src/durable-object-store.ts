@@ -45,6 +45,13 @@ const SCHEMA = [
 ];
 
 /**
+ * The directory last parsed from each storage, under the version it was read at (SCHO-390). Kept
+ * by storage object rather than by store, so stores opened over the same storage share it and a
+ * commit through any of them drops it; see `DurableObjectAcademicStore.#current` for why it is safe.
+ */
+const parsedDirectories = new WeakMap<DirectorySqlStorage, StoredDirectory>();
+
+/**
  * An {@link AcademicStore} in a SQLite-backed Durable Object's storage: one object per district.
  *
  * A commit reads the stored version and directory, checks the version, and writes only the rows
@@ -52,6 +59,12 @@ const SCHEMA = [
  * `await` in between, so two commits from the same version cannot both succeed. A load parses the
  * rows with the contract schema, so a row edited outside the store fails the load rather than
  * reaching a decision.
+ *
+ * A load reads the directory's one-row head and, while its version is the one last parsed, returns
+ * a copy of that parse instead of reading every record table again (SCHO-390): the policy
+ * information point loads the directory for every decision, several times a request. Anything that
+ * writes the directory's tables other than {@link DurableObjectAcademicStore.commit} must therefore
+ * also advance `academic_directory.version`, as a commit does.
  */
 export class DurableObjectAcademicStore implements AcademicStore {
   readonly #storage: DirectorySqlStorage;
@@ -77,6 +90,8 @@ export class DurableObjectAcademicStore implements AcademicStore {
         }
         return;
       }
+      // A storage emptied and seeded again starts at version 0, which a parse of what it held may carry.
+      parsedDirectories.delete(storage);
       const valid = validateDirectory(seed);
       storage.sql.exec(
         `INSERT INTO ${ACADEMIC_DIRECTORY_TABLE} (singleton, district_id, version, district_json) VALUES (1, ?, 0, ?)`,
@@ -92,12 +107,18 @@ export class DurableObjectAcademicStore implements AcademicStore {
   }
 
   async load(): Promise<StoredDirectory> {
-    return this.#storage.transactionSync(() => this.#read());
+    return this.#storage.transactionSync(() => {
+      const { version, snapshot } = this.#current();
+      // Callers own what they are given; the parse stays the store's.
+      return { version, snapshot: structuredClone(snapshot) };
+    });
   }
 
   async commit(next: DistrictDirectorySnapshot, expectedVersion: number): Promise<void> {
     this.#storage.transactionSync(() => {
-      const { version, snapshot: current } = this.#read();
+      const { version, snapshot: current } = this.#current();
+      // Before writing anything: whatever happens to this transaction, the parse is not reused.
+      parsedDirectories.delete(this.#storage);
       if (version !== expectedVersion) {
         throw new EducateOsError("conflict", "The directory changed while this request was in progress; retry it.");
       }
@@ -121,6 +142,35 @@ export class DurableObjectAcademicStore implements AcademicStore {
 
   #insert(list: RecordList, key: string, position: number, json: string): void {
     this.#storage.sql.exec(`INSERT INTO ${RECORD_TABLES[list]} (id, position, record_json) VALUES (?, ?, ?)`, key, position, json);
+  }
+
+  /**
+   * The stored directory, from the parse kept for this storage when the stored version is still
+   * the one it was parsed at, and read and parsed (and kept) otherwise. Run inside a transaction;
+   * the result is the store's own, so `load` copies it before handing it out.
+   *
+   * Why a kept parse is still what is stored. It is kept per storage object, so every store open
+   * over this Durable Object's storage shares it, and a Durable Object runs one JavaScript thread
+   * that reaches the version check and the parse below with no `await` in between. A parse is
+   * kept only as the full read made at the version it is kept under. Every commit drops it before
+   * writing, in its own transaction, so after any commit the next load reads the tables again. The
+   * one way storage can return to an earlier state is a rollback (a commit inside an enclosing
+   * transaction that later throws); a parse kept during that transaction carries the rolled-back
+   * version, one past the stored one, so it no longer matches, and the only way to reach that
+   * version number again is another commit, which drops it first. A seed (`open` on empty storage)
+   * drops it too. A row changed by any other writer is seen only once that writer advances the
+   * version.
+   */
+  #current(): StoredDirectory {
+    const [head] = this.#storage.sql.exec(`SELECT version FROM ${ACADEMIC_DIRECTORY_TABLE} WHERE singleton = 1`).toArray();
+    if (head === undefined || typeof head.version !== "number") {
+      throw new Error("the academic directory has not been seeded, or its head row is unreadable");
+    }
+    const kept = parsedDirectories.get(this.#storage);
+    if (kept?.version === head.version) return kept;
+    const read = this.#read();
+    parsedDirectories.set(this.#storage, read);
+    return read;
   }
 
   #read(): StoredDirectory {
