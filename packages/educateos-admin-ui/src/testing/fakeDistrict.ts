@@ -9,6 +9,37 @@ import { POLICY_ORDERINGS, type ConfigurationRevision, type PolicySettings } fro
 import type { ConfigurationPlan, DiffEntry } from "../app/useDistrictConfig.ts";
 import type { DesiredStateView } from "../configDocument.ts";
 
+// IT review (SCHO-376)
+type DecisionQuery = { before?: string; outcome?: "all" | "refused" | "held" | "allowed"; rule?: string; resourceKind?: string };
+
+/** The fake district's decision trail, oldest first: every fifth a refusal, every seventh an administrator's change. */
+const DECISIONS = Array.from({ length: 60 }, (_, i) => {
+  const seq = i + 1;
+  const at = new Date(Date.UTC(2026, 10, 1, 8, seq)).toISOString();
+  if (seq % 5 === 0) {
+    return { seq, decidedAt: at, correlationId: `req-${seq}`, principalId: "prn_fk-student-301", principalName: "Jonah Pike", action: "read", resourceKind: "official-grade", channel: "http", effect: "deny", reason: "owner-only", ruleId: "default.deny" };
+  }
+  if (seq % 7 === 0) {
+    return { seq, decidedAt: at, correlationId: `req-${seq}`, principalId: "prn_fk-admin", principalName: "Avery Admin", action: "update", resourceKind: "principal", resourceId: "prn_fk-student-302", channel: "http", effect: "allow", ruleId: "admin.district.directory" };
+  }
+  return { seq, decidedAt: at, correlationId: `req-${seq}`, principalId: "prn_fk-teacher-1", principalName: "Sam Rivera", action: "read", resourceKind: "submission", channel: "http", effect: "allow", ruleId: "course.instructor.review" };
+});
+
+const OUTCOME_EFFECT = { refused: "deny", held: "require-approval", allowed: "allow" } as const;
+
+/** A page of `trail` as the district answers it: newest first, 25 at a time. */
+function decisionPage(trail: typeof DECISIONS, query: DecisionQuery = {}) {
+  const before = query.before === undefined ? Infinity : Number(query.before);
+  const matching = trail
+    .filter((d) => d.seq < before)
+    .filter((d) => query.outcome === undefined || query.outcome === "all" || d.effect === OUTCOME_EFFECT[query.outcome])
+    .filter((d) => query.resourceKind === undefined || d.resourceKind === query.resourceKind)
+    .filter((d) => query.rule === undefined || (query.rule.endsWith(".") ? d.ruleId.startsWith(query.rule) : d.ruleId === query.rule))
+    .toReversed();
+  const entries = matching.slice(0, 25);
+  return { entries, ...(matching.length > 25 ? { nextBefore: String(entries.at(-1)!.seq) } : {}) };
+}
+
 /** A synthetic class. */
 export interface FakeClass {
   offeringId: string;
@@ -786,6 +817,24 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       return key as never;
     },
     "admin.opsAudit": () => ({ entries: opsAudit }) as never,
+    // IT review (SCHO-376): a decision trail of 60 decisions, paged 25 at a time, newest first.
+    "admin.decisionLog": (input) => decisionPage(DECISIONS, input.query as DecisionQuery | undefined) as never,
+    "admin.auditLog": (input) => decisionPage(DECISIONS.filter((d) => d.effect === "allow" && d.ruleId.startsWith("admin.") && d.action !== "read" && d.action !== "list"), input.query as DecisionQuery | undefined) as never,
+    "admin.screeningLog": () => ({
+      screening: "hall-monitor",
+      entries: [
+        { at: "2026-11-02T10:05:00.000Z", offeringId: "off_fk-eng9-b", offeringName: "English 9 · Section B", decision: "refused", reasonCodes: ["moderation.harassment"], authorId: "prn_fk-student-301", authorName: "Jonah Pike" },
+        { at: "2026-11-02T09:00:00.000Z", offeringId: "off_fk-eng9-b", offeringName: "English 9 · Section B", decision: "hold", reasonCodes: ["moderation.self-harm"], authorId: "prn_fk-student-302", authorName: "Lena Ortiz", postStatus: "pending" },
+      ],
+      truncated: false,
+    }) as never,
+    "admin.signInSettings": () => ({
+      provider: "cloudflare-access",
+      issuers: [{ issuer: "https://fake.cloudflareaccess.com", activePeople: 96, inactivePeople: 3 }],
+      activeWithoutSignIn: 2,
+      pendingLinks: 1,
+      deployment: { verifier: "cloudflare-access", teamDomain: "https://fake.cloudflareaccess.com", applications: 2 },
+    }) as never,
     // A route that names students. The aggregate screens must never call it.
     "teacher.roster": () => STUDENT_NAMES.map((displayName) => ({ displayName })) as never,
   };

@@ -17,6 +17,10 @@ export const SCREENS = [
   { path: "ai-budgets", label: "AI budgets" },
   { path: "term-rollover", label: "Term rollover" },
   { path: "operations", label: "Operations" },
+  // IT review (SCHO-376)
+  { path: "safety-decisions", label: "Safety decisions" },
+  { path: "audit-log", label: "Admin audit log" },
+  { path: "sign-in", label: "Sign-in" },
 ] as const;
 
 /** A screen's path. */
