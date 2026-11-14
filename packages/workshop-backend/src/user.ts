@@ -2751,7 +2751,11 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async reconnectAccount(accountId: number): Promise<ConnectFlowStart> {
     let record = this.storage.connectedAccounts.get(accountId);
     if (!record) throw new Error("No such account.");
-    await this.#assertCapability({ action: "gatekeeper.connect", vendorId: record.vendorId, accountId });
+    // A reconnect re-consents the account's own grant, so the policy judges that set (SCHO-393); an
+    // account that records none (every type granted) asks for no particular set, as before.
+    let granted = record.description?.grantedResourceUrlPatterns;
+    await this.#assertCapability({ action: "gatekeeper.connect", vendorId: record.vendorId, accountId,
+      ...(granted === undefined ? {} : { resourceUrlPatterns: granted }) });
     let { url } = await record.account.reconnect();
     return { url, nonce: await this.openConnectFlow(accountId) };
   }
