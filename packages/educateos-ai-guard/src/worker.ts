@@ -14,6 +14,7 @@ import type {
   AiCallOutputDecision,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { readGuardConfig, type GuardConfig } from "./config.ts";
+import { reportUnfundedOfferedModels } from "./coverage.ts";
 import { configuredGuardDirectory, DistrictGuardContextResolver, StaticGuardContextResolver, type GuardContextResolver } from "./context.ts";
 import { AiCallGuardService } from "./guard.ts";
 import { gatewayLogSource } from "./gateway-logs.ts";
@@ -42,6 +43,7 @@ export class EducateOsAiCallGuard extends WorkerEntrypoint<Cloudflare.Env> imple
 
   #service(): AiCallGuardService {
     const config = readGuardConfig(this.env.AI_GUARD_CONFIG);
+    reportUnfundedOfferedModels(config);
     return new AiCallGuardService({
       config,
       ledger: this.ctx.exports.DistrictAiLedger.getByName(config.districtId),
