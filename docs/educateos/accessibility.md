@@ -3,6 +3,7 @@
 - Status: Living document. Re-run the audit and update this page in the PR that changes its evidence.
 - Date: 2026-11-13 (audit run on branch `SCHO-361-accessibility`, rebased on main `ef94376e7`)
 - Issue: SCHO-361 (parent SCHO-358). 2.2.1 Timing Adjustable rated Partially supports on 2026-11-14 (SCHO-394).
+  1.4.11 Non-text Contrast rated Supports on 2026-11-14 after the audit was re-run on main `68aa3b21c` with SCHO-379's field boundaries.
 - Public report: [educateos.io/it/accessibility/](https://educateos.io/it/accessibility/), an ACR in VPAT layout built from this page
 
 ## Summary
@@ -17,12 +18,11 @@ found 14 distinct failures, all serious. All 14 are fixed in this change. After 
 - every one of 4,782 keyboard focus stops has a name and a visible focus change;
 - every action exercised announced its outcome through a live region.
 
-Three criteria remain **Partially supports**:
+Two criteria remain **Partially supports**:
 
 | Criterion | Why | Follow-up |
 |---|---|---|
 | 1.4.3 Contrast (Minimum) | Kumo's link hover colour is under 4.5:1 while hovered. | SCHO-380 |
-| 1.4.11 Non-text Contrast | Text field boundaries are 1.25 to 1.52:1. | SCHO-379, SCHO-380 |
 | 2.2.1 Timing Adjustable | A teacher can extend a timed quiz for one student (1.25× to 4×) or remove its limit, and the server enforces it (SCHO-383), but a student can't extend a limit themselves. | None open |
 
 **No screen reader or other assistive technology was used.** "Supports" in this report means the
@@ -107,12 +107,12 @@ criterion, so all are rated serious.
 | 12 | The quizzes table widens the page by 199 to 205px | 1.4.10 | Teacher Quizzes | It scrolls in its own region | Fixed |
 | 13 | Long discussion titles, which are one-line buttons, widen the page by 44 to 91px | 1.4.10 | Teacher Discussions; student course pages | The title buttons wrap | Fixed |
 | 14 | The submissions layout's single grid column sizes to its content, 16 to 60px too wide | 1.4.10 | Teacher assignment submissions | `grid-cols-1` below the md breakpoint | Fixed |
-| 15 | Text field, text area and combobox boundaries (Kumo's `kumo-line` ring) are 1.25 to 1.52:1 | 1.4.11 | 284 controls on 132 of 429 screen audits | Not changed: darkening every field is a design change | Open, SCHO-379 |
+| 15 | Text field, text area and combobox boundaries (Kumo's `kumo-line` ring) are 1.25 to 1.52:1 | 1.4.11 | 296 controls on 136 of 429 screen audits (re-run on 2026-11-14) | `kumo-line` redefined on Kumo's fields and Select triggers: oklch(65% 0 0) light, 3.23:1 on kumo-base and 3.05:1 on kumo-elevated; oklch(49% 0 0) dark, 3.05:1 and 3.22:1. Focus and error rings unchanged | Fixed, SCHO-379 |
 | 16 | Kumo Link's hover colour (`text-kumo-link/70`) is 4.23:1 light and 4.08:1 dark while hovered | 1.4.3 | Links in lists, such as notifications | Upstream | Open, SCHO-380 |
 | 17 | Every screen of an app has the same document title | 2.4.2 | All apps | Per-route titles, set by the shell's `PageHeading` and `useRouteTitle` (SCHO-382) | Fixed |
 | 18 | A teacher can't extend a timed quiz's limit for one student (IEP/504 extended time) | 2.2.1 | Student quizzes | Per-student extended time (1.25× to 4×, or no limit), set by the class's teachers or a district administrator and enforced by the district's clock | Fixed, SCHO-383 |
 
-Counts: 18 findings, all serious; 16 fixed, 2 open. Findings 1 to 4 are fixed in one stylesheet,
+Counts: 18 findings, all serious; 17 fixed, 1 open. Findings 1 to 4 and 15 are fixed in one stylesheet,
 `packages/educateos-shell/src/contrast.css`, which every app's stylesheet and the demo's import after
 Kumo's. They override Kumo's tokens until Kumo's own meet AA (SCHO-380).
 
@@ -134,7 +134,7 @@ district's install.
 | Text clipped by the 1.4.12 spacing | 0 of 143 screens |
 | Keyboard walks | 142 walks, 4,782 stops. Every stop has a name and a visible focus change, and each walk cycled back to its start. The exception is the four teachers' Modules screens, which have more than 120 stops: the walk still moved through 120 distinct elements, so nothing trapped it. Each app's skip link is its first stop after the demo banner. |
 | Status messages | 14 actions exercised, 14 announced (two more teachers had no discussion to pin) |
-| Form controls under 3:1 | 284 text fields, text areas and comboboxes (finding 15). No checkboxes, radios or switches. |
+| Form controls under 3:1 | 0 after finding 15's fix (re-run on 2026-11-14: 296 text fields, text areas and comboboxes before it). No checkboxes, radios or switches. |
 
 ## Conformance by criterion
 
@@ -188,7 +188,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 1.4.4 Resize Text | Supports | Layouts hold from 1280 down to 320 CSS px, the equivalent of 400% zoom. Text-only zoom was not tested. |
 | 1.4.5 Images of Text | Supports | All text is text. |
 | 1.4.10 Reflow | Supports | After findings 9 to 14, no screen scrolls sideways at 320px. Data tables scroll within their own region, which the criterion allows for two-dimensional content. |
-| 1.4.11 Non-text Contrast | Partially supports | Checkbox, radio and switch boundaries meet 3:1 (finding 4), and focus rings were checked visible. Text field, text area and combobox boundaries are 1.25 to 1.52:1 (SCHO-379). |
+| 1.4.11 Non-text Contrast | Supports | Text field, text area, combobox, checkbox, radio and switch boundaries meet 3:1 against the surface behind them in both themes (findings 4 and 15): the audit finds no form control under 3:1. Focus rings were checked visible. |
 | 1.4.12 Text Spacing | Supports | With the criterion's spacing applied, no text is cut off. |
 | 1.4.13 Content on Hover or Focus | Supports | No custom content appears on hover or focus: menus and popovers open on click. Browser title tooltips are the browser's own. |
 | 2.4.5 Multiple Ways | Supports | Each app has persistent navigation, and screens are also reached from lists, breadcrumbs, the calendar and notifications. |
@@ -201,13 +201,12 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 3.3.4 Error Prevention (Legal, Financial, Data) | Supports | Submitting a quiz asks for confirmation, and a term move confirms in a dialog. Not every submitting flow was reviewed. |
 | 4.1.3 Status Messages | Supports | Every action exercised announced its outcome in a live region, and loading states are status regions. Not yet confirmed with a screen reader. |
 
-Totals: 50 criteria. 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.
+Totals: 50 criteria. 40 Supports, 2 Partially supports, 0 Does not support, 8 Not applicable.
 
 ## Known gaps and follow-ups
 
 | Issue | Gap |
 |---|---|
-| SCHO-379 | Text field, text area and combobox boundaries under 3:1 (1.4.11) |
 | SCHO-380 | Kumo upstream: subtle, warning and placeholder text tokens, control rings and link hover colour, so `contrast.css` can go |
 | SCHO-381 | Screen-reader testing of the critical flows with NVDA, JAWS, VoiceOver and TalkBack |
 | SCHO-384 | Audit Cedar Valley's Clever portal, `/ai`, sign-in, LTI, invitations, the mobile app, Firefox and Safari. Run the audit in CI, and turn the pilot gate's accessibility todos into checks (they ask for WCAG 2.2 AA). |

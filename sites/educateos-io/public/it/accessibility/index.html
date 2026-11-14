@@ -83,7 +83,7 @@
     <div class="wrap doc">
       <div class="card" style="padding:20px">
         <h2 style="margin-top:0;font-size:1.15rem">The short version</h2>
-        <p>EducateOS <b class="strong">partially conforms</b> to WCAG 2.1 Level AA. Automated and programmatic checks of 143 screens found 14 failures, and all 14 are fixed. Of the 50 Level A and AA success criteria: 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.</p>
+        <p>EducateOS <b class="strong">partially conforms</b> to WCAG 2.1 Level AA. Automated and programmatic checks of 143 screens found 14 failures, and all 14 are fixed. Of the 50 Level A and AA success criteria: 40 Supports, 2 Partially supports, 0 Does not support, 8 Not applicable.</p>
         <p style="margin-bottom:0"><b class="strong">No screen reader or other assistive technology has been used to test EducateOS yet.</b> "Supports" below means our checks found no failure on the screens we audited. It is not a claim confirmed with assistive technology, and we will update this report when that testing is done.</p>
       </div>
 
@@ -168,7 +168,7 @@
           <tr><td>1.4.4 Resize Text <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>Layouts hold from 1280 down to 320 CSS px, the equivalent of 400% zoom. Text-only zoom was not tested.</td></tr>
           <tr><td>1.4.5 Images of Text <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>All text is text.</td></tr>
           <tr><td>1.4.10 Reflow <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>After the fixes, no screen scrolls sideways at 320px. Data tables scroll within their own region, which the criterion allows for two-dimensional content.</td></tr>
-          <tr><td>1.4.11 Non-text Contrast <span class="lvl">(Level AA)</span></td><td><span class="status validating">Partially supports</span></td><td>Checkbox, radio and switch boundaries meet 3:1, and focus rings were checked visible. Text field, text area and combobox boundaries are 1.25 to 1.52:1 (SCHO-379).</td></tr>
+          <tr><td>1.4.11 Non-text Contrast <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>Text field, text area, combobox, checkbox, radio and switch boundaries meet 3:1 against the surface behind them in both themes; the audit, re-run on November 14, 2026, finds no form control under 3:1. Focus rings were checked visible.</td></tr>
           <tr><td>1.4.12 Text Spacing <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>With the criterion's spacing applied, no text is cut off.</td></tr>
           <tr><td>1.4.13 Content on Hover or Focus <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>No custom content appears on hover or focus: menus and popovers open on click. Browser title tooltips are the browser's own.</td></tr>
           <tr><td>2.4.5 Multiple Ways <span class="lvl">(Level AA)</span></td><td><span class="status supported">Supports</span></td><td>Each app has persistent navigation, and screens are also reached from lists, breadcrumbs, the calendar and notifications.</td></tr>
@@ -192,7 +192,7 @@
       <p>Everything the audit found that was fixable in the apps themselves:</p>
       <ul>
         <li>Secondary, warning and placeholder text raised to at least 4.5:1 in both themes.</li>
-        <li>Checkbox, radio and switch boundaries raised to at least 3:1.</li>
+        <li>Text field, text area, combobox, checkbox, radio and switch boundaries raised to at least 3:1.</li>
         <li>Three buttons whose accessible names didn't include their visible labels.</li>
         <li>Wide tables that a keyboard couldn't scroll.</li>
         <li>Six layouts that made the page scroll sideways on a 320-pixel screen.</li>
@@ -201,12 +201,11 @@
 
       <h2>What is still open</h2>
       <ul>
-        <li>Text field boundaries are 1.25 to 1.52:1 against the page, under the 3:1 that 1.4.11 asks for.</li>
         <li>Links fade below 4.5:1 while the pointer is over them. This comes from the shared design system, so we're raising it upstream.</li>
         <li>Testing with NVDA, JAWS, VoiceOver and TalkBack hasn't been done.</li>
         <li>A teacher or district administrator can extend a timed quiz for one student, or remove its limit, but a student can't extend a limit themselves. So 2.2.1 Timing Adjustable is rated Partially supports.</li>
       </ul>
-      <p>Each of the first three has an open issue in the project tracker, and this report changes in the same update as a fix.</p>
+      <p>Each of the first two has an open issue in the project tracker, and this report changes in the same update as a fix.</p>
 
       <h2>Re-run it yourself</h2>
       <p>The audit is a script in the open-source repository. Build the demo, then run the audit:</p>
