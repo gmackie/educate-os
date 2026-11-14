@@ -109,7 +109,9 @@ export async function bootDistrict(
     // Product analytics (SCHO-350)
     | "productAnalytics"
     // IT review (SCHO-376)
-    | "signIn">> & { standards?: readonly string[] } = {},
+    | "signIn"
+    // From Google Classroom (SCHO-403)
+    | "classroomGrades" | "onClassroomGradesUnavailable">> & { standards?: readonly string[] } = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);

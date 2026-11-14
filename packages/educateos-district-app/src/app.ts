@@ -75,6 +75,8 @@ import { DistrictStudentRecordSource, StudentArchiveExporter } from "@educateos/
 import { decisionEntry, MAX_SCREENING_ENTRIES, OUTCOME_EFFECTS, screeningEntries, signInCoverage, type DecisionPageBody, type SignInDeployment } from "./admin-review.ts";
 import { WRITE_ACTIONS, type PolicyAuditPage } from "@educateos/policy";
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
+// From Google Classroom (SCHO-403)
+import { studentClassroomGrades, teacherClassroomGrades, type ClassroomGradeSource, type ClassroomGradesInput } from "./classroom-grades.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -241,6 +243,16 @@ export interface DistrictAppOptions {
    * Without it the console says the deployment did not say.
    */
   signIn?: SignInDeployment;
+
+  // From Google Classroom (SCHO-403)
+  /**
+   * Where class grades are read live from Google Classroom, when the deployment has a Classroom
+   * connection. Without it, or when the head configuration's roster is not Classroom, the
+   * `classroomGrades` routes answer `not-connected` and the panels show nothing.
+   */
+  classroomGrades?: ClassroomGradeSource;
+  /** Told why a Classroom grade read was unavailable, for the Worker to log. */
+  onClassroomGradesUnavailable?: (failure: { surface: "student" | "teacher"; error: unknown }) => void;
 
   // Operations (SCHO-263)
   /** What the district says about the release it runs, on `/api/ops/health` and `/api/ops/releases`. */
@@ -548,6 +560,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       ...(removalHold === undefined ? {} : { removalHold }),
     };
     return { provider, settings, source: built.source };
+  }
+
+  /** What a Classroom grade read needs (SCHO-403): the source, whether the roster is Classroom, and its source map. */
+  async function classroomGradesInput(): Promise<ClassroomGradesInput> {
+    const base = { source: options.classroomGrades, onUnavailable: options.onClassroomGradesUnavailable };
+    if (options.classroomGrades === undefined) return { ...base, classroomRostered: false, sources: oneroster.EMPTY_SOURCE_MAP };
+    const head = (await stores.config.list()).at(-1);
+    const desired = head === undefined ? undefined : DesiredState.safeParse(head.desired);
+    const classroomRostered = desired?.success === true && desired.data.rostering.provider === "google-classroom";
+    return { ...base, classroomRostered, sources: classroomRostered ? await stores.rosterSources.load() : oneroster.EMPTY_SOURCE_MAP };
   }
 
   /**
@@ -1590,6 +1612,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.setGradeMarker": (ctx, { params, body }) => ctx.gradebook().setMarker(ctx.caller, params.offeringId, body),
     "teacher.exportGradebookCsv": (ctx, { params }) => ctx.gradebook().exportCsv(ctx.caller, params.offeringId),
     "student.gradeSummary": (ctx, { params }) => ctx.gradebook().studentSummary(ctx.caller, params.offeringId),
+    // From Google Classroom (SCHO-403): authorized as the gradebook is, then read live.
+    "student.classroomGrades": async (ctx, { params }) => {
+      await ctx.gradebook().authorizeRead(ctx.caller, params.offeringId, "own-row");
+      return studentClassroomGrades(await classroomGradesInput(), params.offeringId, ctx.caller.principal.principalId);
+    },
+    "teacher.classroomGrades": async (ctx, { params }) => {
+      await ctx.gradebook().authorizeRead(ctx.caller, params.offeringId, "grid");
+      return teacherClassroomGrades(await classroomGradesInput(), params.offeringId, ctx.snapshot);
+    },
 
     // Communication (SCHO-189). Kept in one block, apart from the handlers above.
     "student.announcements": async (ctx) => (await communicationFor(ctx.decider, ctx.assessment()).studentAnnouncements(ctx.caller)),
