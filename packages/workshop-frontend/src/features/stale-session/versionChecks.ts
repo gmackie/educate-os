@@ -1,5 +1,6 @@
 import { VERSION_PATH } from '@gadgets/workshop-shared/api'
 import { getBackendHost } from '../../connectHandoff'
+import { workshopPath } from '../../workshopPath'
 
 const FETCH_TIMEOUT_MS = 5_000
 
@@ -9,7 +10,8 @@ const FETCH_TIMEOUT_MS = 5_000
  */
 export const fetchBackendVersion = async (): Promise<string | null | undefined> => {
   try {
-    const response = await fetch(`${window.location.protocol}//${getBackendHost()}${VERSION_PATH}`, {
+    // Under the Workshop's base (`/ai` on a one-origin district), as the WebSocket is (SCHO-402).
+    const response = await fetch(`${window.location.protocol}//${getBackendHost()}${workshopPath(VERSION_PATH)}`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
