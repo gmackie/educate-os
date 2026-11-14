@@ -106,6 +106,8 @@ async function setStatus(principalId: string, status: "active" | "inactive") {
   await runInDurableObject(district(), (_instance, state) => {
     const row = state.storage.sql.exec<{ record_json: string }>("SELECT record_json FROM academic_principals WHERE id = ?", principalId).one();
     state.storage.sql.exec("UPDATE academic_principals SET record_json = ? WHERE id = ?", JSON.stringify({ ...JSON.parse(row.record_json), status }), principalId);
+    // A directory write outside the store moves its version, as a commit does (SCHO-390).
+    state.storage.sql.exec("UPDATE academic_directory SET version = version + 1 WHERE singleton = 1");
   });
 }
 
