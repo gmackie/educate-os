@@ -101,6 +101,15 @@
     </div>
   </section>
 
+  <section class="tight" id="launcher">
+    <div class="wrap">
+      <h2>Set it up with the launcher</h2>
+      <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os connect google-classroom</code></div>
+      <p style="margin-top:12px">Run by your IT team after the install, it prints the scopes to delegate to your service account in the Google Admin console, gets a delegated token and reads Classroom as your Workspace administrator to prove the delegation, then stores the key as a secret on your district's Worker and applies the Classroom settings (term, schools, allowed domains) to the district.</p>
+      <p class="muted" style="font-size:.88rem"><span class="status unit" data-status="launcher.connect">Harness-tested</span> The launcher's setup is tested against simulated systems, not yet against a real one. <a href="/it/install/#connect">After install: connect your LMS →</a></p>
+    </div>
+  </section>
+
   <section>
     <div class="wrap">
       <div class="cta">

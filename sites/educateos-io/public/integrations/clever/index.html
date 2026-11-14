@@ -101,6 +101,15 @@
     </div>
   </section>
 
+  <section class="tight" id="launcher">
+    <div class="wrap">
+      <h2>Set it up with the launcher</h2>
+      <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os connect clever</code></div>
+      <p style="margin-top:12px">Run by your IT team after the install, it asks for your Clever district ID and district-app token (typed hidden), reads Clever's API with the token to confirm it reaches your district and its users, and stores it as a secret on your district's Worker in your own Cloudflare account. You then choose Clever as the roster in the admin console. <code>npx launch-educate-os status</code> shows whether the sync can run.</p>
+      <p class="muted" style="font-size:.88rem"><span class="status unit" data-status="launcher.connect">Harness-tested</span> The launcher's setup is tested against simulated systems, not yet against a real one. <a href="/it/install/#connect">After install: connect your LMS →</a></p>
+    </div>
+  </section>
+
   <section>
     <div class="wrap">
       <div class="cta">

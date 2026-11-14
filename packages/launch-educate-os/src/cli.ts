@@ -6,6 +6,8 @@
 //   launch-educate-os rollback    return to the previous release (or --to <id>)
 //   launch-educate-os doctor      check Node, the release source, the token and the account
 //   launch-educate-os uninstall   plan the instance's removal; --confirm <instanceId> deletes it
+//   launch-educate-os connect     connect the district's LMS and roster (src/connect/)
+//   launch-educate-os status      what the district is connected to, and whether it works
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EducateOsError } from "@educateos/contracts";
@@ -27,6 +29,7 @@ import {
 } from "./release-source.ts";
 import { deployedReleaseId, installRelease, LaunchSecrets, rollbackRelease, type RunContext, uninstallInstance } from "./run.ts";
 import { DEFAULT_RELEASE_URL, EDUCATEOS_RELEASE_TRUST } from "./trust.ts";
+import { CONNECT_OPTIONS, CONNECT_USAGE, connectCommand, type ConnectDeps, connectFlags, offerConnect, statusCommand, statusIfDistrict } from "./connect/cli.ts";
 import { runWizard } from "./wizard.ts";
 
 declare const __LAUNCH_VERSION__: string | undefined;
@@ -37,7 +40,7 @@ export const LAUNCH_VERSION = typeof __LAUNCH_VERSION__ === "string" ? __LAUNCH_
 /** The Node versions the launcher runs on. */
 export const MINIMUM_NODE = [22, 12] as const;
 
-const COMMANDS = ["install", "plan", "upgrade", "rollback", "doctor", "uninstall", "help"] as const;
+const COMMANDS = ["install", "plan", "upgrade", "rollback", "doctor", "uninstall", "connect", "status", "help"] as const;
 type Command = (typeof COMMANDS)[number];
 
 /** Everything the CLI touches outside itself, so tests can run it in process. */
@@ -63,6 +66,7 @@ Usage:
   npx launch-educate-os doctor      check Node, the release source, the token and the account
   npx launch-educate-os uninstall   show what removing this install deletes (district offboarding);
                                     --confirm <instanceId> deletes it. Export the district first.
+${CONNECT_USAGE}
 
 Options:
   --config <file>       answers file (default ./${ANSWERS_FILE}); written by the wizard, never holds secrets
@@ -110,6 +114,7 @@ function parse(argv: string[]) {
       confirm: { type: "string" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
+      ...CONNECT_OPTIONS,
     },
   });
 }
@@ -202,7 +207,7 @@ export async function main(io: CliIo): Promise<number> {
     io.stdout.write(`${USAGE}\n`);
     return 0;
   }
-  if (!COMMANDS.includes(command) || positionals.length > 1) {
+  if (!COMMANDS.includes(command) || positionals.length > (command === "connect" ? 2 : 1)) {
     io.stderr.write(`unknown command: ${positionals.join(" ")}\n\n${USAGE}\n`);
     return 2;
   }
@@ -216,9 +221,11 @@ export async function main(io: CliIo): Promise<number> {
       throw new EducateOsError("validation-failed", `launch-educate-os needs Node ${MINIMUM_NODE.join(".")} or later; this is ${process.versions.node}`);
     }
     if (io.env[TEST_CLOUDFLARE_RPC_ENV]) out.line(`NOTE: ${TEST_CLOUDFLARE_RPC_ENV} is set: talking to a test Cloudflare, not api.cloudflare.com.`);
-    if (command === "doctor") return await doctor(io, values, out);
+    if (command === "doctor") return Math.max(await doctor(io, values, out), await statusIfDistrict(connectDeps(io, values, out, undefined)));
     if (command === "rollback") return await rollbackCommand(io, values, out, prompter);
     if (command === "uninstall") return await uninstallCommand(io, values, out, prompter);
+    if (command === "connect") return await connectCommand(connectDeps(io, values, out, prompter), positionals[1]);
+    if (command === "status") return await statusCommand(connectDeps(io, values, out, prompter));
     return await installCommand(io, values, out, prompter, command);
   } catch (error) {
     if (error instanceof PromptCancelled) {
@@ -292,6 +299,7 @@ async function installCommand(io: CliIo, values: Values, out: Output, prompter: 
   if (outcome.applied) {
     const action = installed === undefined ? "install" : installed.releaseId === release.releaseId ? "install" : "upgrade";
     await writeAnswers(answersPath, record(answers, release, action, now()));
+    if (useWizard) await offerConnect({ ...connectDeps(io, values, out, prompter), cf, release: release.releaseId });
   }
   return outcome.exitCode;
 }
@@ -441,4 +449,20 @@ async function doctor(io: CliIo, values: Values, out: Output): Promise<number> {
     }
   }
   return failed === 0 ? 0 : 1;
+}
+
+/** What `connect` and `status` need: the answers file, the account, and a way to apply a changed answers file. */
+function connectDeps(io: CliIo, values: Values, out: Output, prompter: Prompter | undefined): ConnectDeps {
+  const answersPath = resolve(io.cwd, values.config ?? ANSWERS_FILE);
+  return {
+    out, prompter, yes: values.yes === true, env: io.env, answersPath, flags: connectFlags(values),
+    fetch: io.fetch ?? fetch.bind(globalThis),
+    connect: (token) => connect(io, token),
+    // Applies the changed answers with the release the account runs, so a connect never upgrades.
+    apply: async (token, releaseId) => await installCommand(
+      { ...io, env: { ...io.env, [DISTRICT_TOKEN_ENV]: token } },
+      { ...values, config: answersPath, ...(releaseId ? { release: releaseId } : {}) },
+      out, prompter, "install",
+    ),
+  };
 }

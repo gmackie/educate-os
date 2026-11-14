@@ -115,7 +115,8 @@ Durations are wall-clock for the tool to run, from the runs named. "Your time" i
 | 3. Fix anything preflight blocks on, run `plan` again | | | 0 to a day: see the checklist | |
 | 4. Install | `npx launch-educate-os` (answer "yes" to the plan) | about 35 s to apply | 5 min | 2026-10-26, owner account, the same installer through the guided install (13 resources and 171 file uploads). The 2026-11-04 `npx` install recorded no duration. |
 | 5. Verify | see [Verify](#verify) | | 10 min | |
-| 6. Delete the API token | Cloudflare dashboard | | 1 min | |
+| 6. Connect the LMS and roster | `npx launch-educate-os connect` (the wizard offers it) | seconds per call | 15 to 30 min per integration, plus the other system's administrator | Not yet timed: tested against simulated systems only |
+| 7. Delete the API token | Cloudflare dashboard | | 1 min | |
 
 With every prerequisite already in place, expect **under an hour** end to end, most of it reading
 the plan and verifying. If the domain's nameservers must move to Cloudflare or the identity provider
@@ -178,7 +179,32 @@ npx launch-educate-os install --config educateos-install.json --yes --json
 4. In the dashboard, Workers & Pages lists the `educateos-<name>-*` Workers, and Zero Trust, Access,
    Applications lists the EducateOS application.
 
-### 6. Delete the token
+### 6. Connect the LMS and roster
+
+With the district LMS installed, the wizard ends by offering to connect the district's LMS and
+roster; later, run `npx launch-educate-os connect` from the same directory (it reads
+`educateos-install.json`). Do this before deleting the token: Clever and Google Classroom store
+their credential as Worker secrets on the district Worker, which needs the token.
+
+| Choose | You need | It ends with |
+| --- | --- | --- |
+| `canvas` or `moodle` | The LMS's administrator, and your Access token for the district (`cloudflared access token --app https://<hostname>`) | The registration approved for a first course; teachers' next steps |
+| `clever` | The district's Clever ID and district-app token, from the Clever application's dashboard | `CLEVER_DISTRICT_TOKEN` set after a read of Clever with it; the roster settings to enter in the admin console |
+| `google-classroom` | A Workspace super administrator: a Cloud project with the Classroom API, a service account key, domain-wide delegation of the scopes it prints | The key stored, `DISTRICT_CONFIG.classroom` written and applied, after a delegated read of Classroom |
+| `oneroster` | A OneRoster 1.2 CSV export, and your Access token | The district's preview, then the roster applied if you agree |
+
+Schoology and ClassLink aren't available yet; the menu says so (use a OneRoster CSV export from
+ClassLink). Then check everything with:
+
+```sh
+EDUCATEOS_ACCESS_TOKEN=$(cloudflared access token --app https://<hostname>) npx launch-educate-os status
+```
+
+Each line is `ok`, not configured, or failing with the fix. These flows are tested against simulated
+LMSs, providers and districts; none has been run against a real one through the launcher yet (the
+Canvas and Moodle registrations themselves passed live runs by hand on 2026-10-26).
+
+### 7. Delete the token
 
 Delete the API token in My Profile, API Tokens. EducateOS keeps running; the installer has no
 other access to your account. Make a new short-lived token for each upgrade.

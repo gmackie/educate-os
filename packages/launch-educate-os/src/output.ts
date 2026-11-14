@@ -19,6 +19,8 @@ export type LaunchEvent =
   | { event: "rollback"; fromReleaseId: string; toReleaseId: string; steps: { action: string; scriptName: string; reason: string }[]; irreversible: string[] }
   | { event: "doctor"; check: string; ok: boolean; detail: string }
   | { event: "uninstall-plan"; steps: { action: string; key: string; reason: string }[]; unclaimed: string[]; registered: boolean }
+  | { event: "connect"; integration: string; status: string; checks: { name: string; ok: boolean; detail: string }[]; nextSteps: string[] }
+  | { event: "status"; rows: { area: string; state: string; detail: string; fix?: string }[] }
   | { event: "error"; code: string; message: string };
 
 /** A preflight finding. */

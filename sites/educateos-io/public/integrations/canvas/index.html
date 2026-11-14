@@ -101,6 +101,15 @@
 <p class="muted" style="font-size:.88rem;margin-top:16px">EducateOS claims no 1EdTech certification. "LTI 1.3" and "LTI Advantage services (Deep Linking, AGS, NRPS)" describe the specifications the code is written to, not certified conformance.</p>    </div>
   </section>
 
+  <section class="tight" id="launcher">
+    <div class="wrap">
+      <h2>Set it up with the launcher</h2>
+      <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os connect canvas</code></div>
+      <p style="margin-top:12px">Run by your IT team after the install, it checks the district's LTI tool is reachable, creates a one-time Dynamic Registration link, and tells your Canvas administrator where to paste it (Admin, Developer Keys, + Developer Key, LTI Registration) and how to install the key by its client ID. It then trusts your Canvas's issuer and approves the registration for a first course, and confirms it is approved. It needs a district administrator's Cloudflare Access token, and it prints the requests to make by hand without one.</p>
+      <p class="muted" style="font-size:.88rem"><span class="status unit" data-status="launcher.connect">Harness-tested</span> The launcher's setup is tested against simulated systems, not yet against a real one. <a href="/it/install/#connect">After install: connect your LMS →</a></p>
+    </div>
+  </section>
+
   <section>
     <div class="wrap">
       <div class="cta">

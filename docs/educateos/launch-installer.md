@@ -32,6 +32,7 @@ file, `package.json`, the README and the Apache-2.0 LICENSE.
 | `src/answers.ts` | `educateos-install.json`: the saved, non-secret answers and the install history. |
 | `src/cloudflare.ts` | The installer's HTTP client plus account and zone listing, and the test bridge. |
 | `src/output.ts` | Human and `--json` output, with every known secret redacted. |
+| `src/connect/` | `connect` and `status` (SCHO-406): the LTI, Clever, Google Classroom and OneRoster flows, the district's HTTP surface, and the status report. |
 
 The token permissions and the prefilled token-editor link moved from the control plane's `pages.ts`
 to `@educateos/installer` (`src/permissions.ts`), so the guided install and the CLI send operators to
@@ -139,9 +140,66 @@ library's `uninstall` (`packages/educateos-installer/src/uninstall.ts`), the ins
 Not yet run against a live Cloudflare account (SCHO-378). It is not in 0.1.0 on npm; it ships in the
 next publish.
 
+## Connect and status (SCHO-406)
+
+`npx launch-educate-os connect [<integration>]` takes a district from install to a working LMS and
+roster; the wizard offers it after a successful install of the district LMS. `status` reports what
+is connected and healthy, and `doctor` ends with the same report. Both read the answers file for the
+district's origin and Worker name, and need no release.
+
+Every flow stores what the product already reads, through the path the product already uses. Nothing
+new was added to the district:
+
+| Integration | Stored in | How | Live check |
+| --- | --- | --- | --- |
+| Canvas, Moodle | The district's LTI stores | `POST /api/lti/invitations`, then `GET /api/lti/registrations`, `POST /api/lti/trusted-issuers`, `POST /api/lti/pending/<id>/approve` ([lti.md](lti.md)) | `GET /lti/jwks` (public) has keys; the registration is approved |
+| Clever | `CLEVER_DISTRICT_TOKEN`, a Worker secret on the district Worker (district Worker README) | `putWorkerSecret` with the install token | `GET https://api.clever.com/v3.1/districts` reads the named district, then `users?limit=1` (roster scope) |
+| Google Classroom | `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY` (Worker secret) and `DISTRICT_CONFIG.classroom` plus `additionalTrustedIssuers` ([google-classroom.md](integrations/google-classroom.md#district-worker-connection-scho-255)) | `putWorkerSecret`; the answers file, applied with the installed release (never an upgrade) | A delegated token for the Workspace administrator at Google's token endpoint, then `GET /v1/courses` |
+| OneRoster CSV | The district directory | `POST /api/admin/roster/preview`, then `apply` | The preview: every change, blocking on any error |
+| Schoology | Not available | Schoology registers tools manually, and the district accepts only Dynamic Registration | |
+| ClassLink | Not available | The district Worker builds no ClassLink or OneRoster API roster source; use a OneRoster CSV export | |
+
+Credentials:
+
+- **The district's admin API** (`/api/lti/*`, `/api/admin/*`) sits behind the district's Access
+  application, and the district accepts only Access assertions there. The launcher sends a district
+  administrator's own Access token (`cloudflared access token --app <origin>`) as `cf-access-token`,
+  the way the runbooks' `curl` commands do, to the district's origin only, with redirects refused. A
+  redirect to the Access team means the token wasn't accepted. Without a token, the flows print the
+  requests to make. Access service tokens would need an identity link to a service principal, which
+  nothing sets up yet, so the launcher doesn't use them.
+- **Worker secrets** are set with the Cloudflare API token (`CLOUDFLARE_API_TOKEN`, asked for hidden
+  when needed). The installer uploads Workers with `keep_bindings: ["secret_text"]`, so the secrets
+  survive upgrades.
+- **Provider credentials** (the Clever token, the Google key) are read hidden or from
+  `EDUCATEOS_CLEVER_DISTRICT_TOKEN` and a file, registered for redaction, sent only to the provider
+  and Cloudflare, and never written to the answers file.
+
+Each flow returns `connected`, `pending` (a step remains in the other system or the admin console),
+`failed` (a live check failed), `skipped` or `unsupported`, with next steps; `--json` emits one
+`connect` event. Exit 0 for connected or pending, 1 otherwise. `status --json` emits one `status`
+event with a row per area (`ok`, `not configured`, `failing`, `unknown`, `not available`) and its
+fix; exit 1 when a row is failing.
+
+Not proven live: no flow has been run against a real LMS, provider or district through this
+command. The Canvas and Moodle registrations it drives passed live runs by hand (2026-10-26); Clever
+roster sync and Google Classroom district roster sync have never imported a real roster
+([maturity.md](maturity.md)). The Canvas click path ("Developer Keys > + Developer Key > LTI
+Registration") is Canvas's documented Dynamic Registration entry, which the 2026-10-26 run could not
+use on a single-domain Canvas.
+
 ## Tests
 
 `packages/launch-educate-os/__tests__`:
+
+- `connect.test.ts`: in process, against an installed district in the Cloudflare fake, a stand-in
+  for the district Worker's HTTP routes (`connect-harness.ts`), `CleverDataFake`,
+  `GoogleClassroomFake` and `GoogleServiceAccountTokenFake` (new in `@educateos/provider-fakes`):
+  Canvas registration over two non-interactive runs, Moodle on a terminal, Access in front of
+  `/lti/*`, no Access token, Schoology and ClassLink refused, Clever stored and refused (wrong
+  district, declined), Google Classroom stored, configured and applied with the installed release
+  (and refused without delegation), a OneRoster preview and apply, `status` healthy and failing, and
+  the help text. The wizard test covers the end-of-install offer.
 
 - `uninstall.test.ts`: in process: the plan by default, `--yes` and a wrong ID refused with nothing
   changed, `--confirm` removing everything with `--json` events, and the terminal prompt stopping on
