@@ -117,7 +117,7 @@ describe("the demo", () => {
     expect(banner().textContent).toContain("You're Avery Admin · Technology director review");
     // The Dashboard reads the district's health and re-plans its configuration, which is not reviewing either.
     expect(await findByText(container, "Nothing is blocking the configuration in force.", {}, BOOT)).toBeDefined();
-    const progress = (n: number) => findByRole(banner(), "button", { name: new RegExp(`Things to try ${n}/7`) }, BOOT);
+    const progress = (n: number) => findByRole(banner(), "button", { name: new RegExp(`Things to try ${n}/10`) }, BOOT);
     expect(await progress(0)).toBeDefined();
     const open = async (screen: string, heading: string) => {
       await userEvent.click(within(getByRole(container, "navigation", { name: "Admin sections" })).getByRole("link", { name: screen }));
@@ -153,6 +153,20 @@ describe("the demo", () => {
     await open("Operations", "Operations");
     expect(await findByText(container, "No admin is enrolled. Nobody can use this district's operations API.", {}, BOOT)).toBeDefined();
     expect(await progress(7)).toBeDefined();
+
+    // SCHO-376: the decision trail, the administrators' changes and how people sign in.
+    await open("Safety decisions", "Safety decisions");
+    expect(await findByRole(container, "table", { name: "Policy decisions, newest first" }, BOOT)).toBeDefined();
+    expect(await findByText(container, /student posts are published unscreened/, {}, BOOT)).toBeDefined();
+    expect(await progress(8)).toBeDefined();
+    await open("Admin audit log", "Admin audit log");
+    const changes = await findByRole(container, "table", { name: "Administrators' changes, newest first" }, BOOT);
+    // The policy change just applied is the newest.
+    expect(within(within(changes).getAllByRole("row")[1]!).getByText("Configure capability config")).toBeDefined();
+    expect(await progress(9)).toBeDefined();
+    await open("Sign-in", "Sign-in");
+    expect(await findByText(container, /Synthetic sign-ins/, {}, BOOT)).toBeDefined();
+    expect(await progress(10)).toBeDefined();
 
     // Becoming someone else drops the link's persona, so a reload does not bring them back.
     await switchPersona();

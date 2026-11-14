@@ -182,6 +182,22 @@ export const JOURNEYS: Readonly<Record<PersonaId, readonly JourneyStep[]>> = {
       label: "Open Operations: no EducateOS admin can reach the district unless you enroll one, and what it did is logged",
       done: { method: "GET", paths: ["/api/admin/ops/keys"] },
     },
+    // SCHO-376: the decision trail and the sign-in settings.
+    {
+      id: "it-director.safety",
+      label: "Open Safety decisions: every policy decision, allowed or refused, with the rule that made it, and Hall Monitor's screening of discussion posts (off in the demo, which says so)",
+      done: { method: "GET", paths: ["/api/admin/audit/decisions"] },
+    },
+    {
+      id: "it-director.audit",
+      label: "Open Admin audit log: every change an administrator made, the configuration you applied among them",
+      done: { method: "GET", paths: ["/api/admin/audit/admin-actions"] },
+    },
+    {
+      id: "it-director.sign-in",
+      label: "Open Sign-in: the sign-in provider, the issuers the district trusts and how many people each signs in, with no secret shown",
+      done: { method: "GET", paths: ["/api/admin/sign-in"] },
+    },
   ],
 };
 

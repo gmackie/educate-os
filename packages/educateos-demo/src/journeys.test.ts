@@ -54,6 +54,9 @@ describe("journey steps", () => {
     expect(await tick("POST", "/api/admin/config/apply", "#/policies")).toEqual(["it-director.apply"]);
     expect(await tick("GET", "/api/admin/ai/funding", "#/ai-budgets")).toEqual(["it-director.budgets"]);
     expect(await tick("GET", "/api/admin/ops/keys", "#/operations")).toEqual(["it-director.operations"]);
+    expect(await tick("GET", "/api/admin/audit/decisions", "#/safety-decisions")).toEqual(["it-director.safety"]);
+    expect(await tick("GET", "/api/admin/audit/admin-actions", "#/audit-log")).toEqual(["it-director.audit"]);
+    expect(await tick("GET", "/api/admin/sign-in", "#/sign-in")).toEqual(["it-director.sign-in"]);
     // The same requests as the plain administrator tick only their own journey.
     expect(await stepsDoneBy("admin", request("GET", "/api/admin/ai/funding"), answer(200), "#/ai-budgets")).toEqual([]);
   });
