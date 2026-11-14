@@ -21,6 +21,10 @@ export type LaunchEvent =
   | { event: "uninstall-plan"; steps: { action: string; key: string; reason: string }[]; unclaimed: string[]; registered: boolean }
   | { event: "connect"; integration: string; status: string; checks: { name: string; ok: boolean; detail: string }[]; nextSteps: string[] }
   | { event: "status"; rows: { area: string; state: string; detail: string; fix?: string }[] }
+  // `mcp` (SCHO-407): a check, a client's setup, and a change to the answers file.
+  | { event: "mcp"; check: string; status: "ok" | "info" | "warn" | "fail"; detail: string }
+  | { event: "mcp-client"; id: string; name: string; url: string; steps: string[]; snippet?: { file: string; text: string } }
+  | { event: "mcp-change"; change: string; saved: boolean }
   | { event: "error"; code: string; message: string };
 
 /** A preflight finding. */

@@ -121,6 +121,7 @@ npx launch-educate-os rollback   # return to the previous release (or --to <rele
 npx launch-educate-os doctor     # check Node, the release source, the token and the account, then `status`
 npx launch-educate-os connect    # connect the district's LMS and roster (see below)
 npx launch-educate-os status     # what the district is connected to, and whether it works
+npx launch-educate-os mcp ...    # set up MCP: status, clients, add (see "MCP" below)
 ```
 
 | Option | Meaning |
@@ -206,6 +207,61 @@ What is proven where: Canvas and Moodle registrations passed live runs (a self-h
 and Moodle 4.5, 2026-10-26), though not through this command. The Clever, Google Classroom and
 OneRoster flows, and `connect` itself, are tested against simulated providers and a simulated
 district only; no real roster has been imported through them yet.
+
+## MCP
+
+`npx launch-educate-os mcp` helps you set up MCP (the Model Context Protocol) after an install. There
+are two separate things:
+
+- **Your district's own MCP endpoint**, `https://<your hostname>/mcp`, which outside AI clients
+  (Claude, ChatGPT, Claude Code, VS Code, Cursor) call to reach school tools under district policy.
+  It is off by default; `DISTRICT_CONFIG.mcp` turns it on.
+- **The AI Workshop's MCP connectors**, which let Workshop agents call outside MCP servers: the
+  **MCP Server** connector (`gatekeeper-mcp`, for any server an administrator pastes the address
+  of) and the **MCP Server Portal** connector (`gatekeeper-mcp-portal`, for one portal).
+
+```sh
+npx launch-educate-os mcp status                  # what's set up, with live checks
+npx launch-educate-os mcp clients                 # connect AI clients to your district's /mcp
+npx launch-educate-os mcp clients --client claude # one client's steps
+npx launch-educate-os mcp add --server-url https://mcp.example.org/mcp   # add an MCP server to the Workshop
+```
+
+- **`mcp status`** reads the answers file: whether `DISTRICT_CONFIG.mcp` turns the endpoint on, its
+  issuer (and whether the district trusts it), which MCP connectors the answers install, and whether
+  `DISTRICT_CONFIG.workshopPolicy` lets district administrators connect them. Then it checks live:
+  the endpoint's OAuth metadata (`/.well-known/oauth-protected-resource/mcp`) and the 401 an
+  unauthenticated request gets. With `CLOUDFLARE_API_TOKEN` set, it also checks the connectors'
+  Workers in your account, and the portal's address. Which connectors the Workshop offers is a
+  Workshop setting (`/ai/admin?tab=gatekeepers`), which the launcher can't read.
+- **`mcp clients`** prints the endpoint's URL, how sign-in works, who may use it, a live check of
+  the authorization server (can clients register themselves, PKCE), and each client's steps and
+  config snippet. `--url <endpoint>` works without an answers file.
+- **`mcp add`** checks a server the way the Workshop's connector will (an MCP `initialize` with no
+  credentials, then its OAuth metadata and whether the connector can register there), then adds
+  `gatekeeper-mcp` to `gatekeepers` and a `{"vendorId": "mcp", "access": "all"}` grant to
+  `DISTRICT_CONFIG.workshopPolicy.connectors` (district administrators may connect MCP servers;
+  teachers may not). It shows the changes and asks first (`--yes` without a terminal). Apply them
+  with `npx launch-educate-os --config educateos-install.json`, then connect the server in the
+  Workshop: it prints the steps.
+
+Every MCP command reads and changes only the answers file and never Cloudflare. Live checks send
+no token or cookie. `--offline` skips them; `--json` prints `mcp`, `mcp-client` and `mcp-change`
+events.
+
+What isn't ready yet:
+
+- **The district endpoint has no live sign-in yet.** It is built and tested with the official MCP
+  client against a simulated authorization server, but the district's authorization server (Nathan)
+  doesn't issue tokens for it yet, no outside client has connected, and the installer doesn't exempt
+  `/mcp` from Cloudflare Access yet. Each person's delegation to a client is issued through the
+  district API; there is no page for it yet.
+- **The MCP Server Portal can't be configured by the installer yet**: it has no setting for the
+  portal's address, so `mcp add --connector portal` explains that and changes nothing.
+- **Not run against a live district.** The commands are tested against simulated endpoints and the
+  installer's simulated Cloudflare.
+
+The full guide is `docs/educateos/mcp-setup.md` in the EducateOS repository.
 
 ## Security
 
