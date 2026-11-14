@@ -437,6 +437,11 @@ Set `DISTRICT_CONFIG.classroom` to `{ admin, roster, rosterScopes }`, where `ros
 still makes only roster reads, and never requests coursework scopes.
 
 Keep the service-account JSON key in `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a Worker secret.
+`npx launch-educate-os connect google-classroom` (SCHO-406) does both for a district installed with
+the launcher: it prints the scopes to delegate, checks the delegation with a delegated token and a
+Classroom read, stores the key, and writes and applies `DISTRICT_CONFIG.classroom` with
+`https://accounts.google.com` in `additionalTrustedIssuers`. It is tested against the provider fakes
+only.
 Missing connection settings or credentials report why sync cannot run. Existing sync history,
 removal holds, scheduling and administrator authorization remain the authority for applying it.
 This wiring does not implement Google sign-in or establish a person's identity link: deployed

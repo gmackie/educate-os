@@ -118,7 +118,9 @@ npx launch-educate-os            # the wizard (same as `install`)
 npx launch-educate-os plan       # preflight and plan only; changes nothing
 npx launch-educate-os upgrade    # install the newest release, with your saved answers
 npx launch-educate-os rollback   # return to the previous release (or --to <release-id>)
-npx launch-educate-os doctor     # check Node, the release source, the token and the account
+npx launch-educate-os doctor     # check Node, the release source, the token and the account, then `status`
+npx launch-educate-os connect    # connect the district's LMS and roster (see below)
+npx launch-educate-os status     # what the district is connected to, and whether it works
 ```
 
 | Option | Meaning |
@@ -153,6 +155,57 @@ npx launch-educate-os upgrade --config educateos-install.json --yes --json
 
 Exit codes: 0 done, 1 blocked or failed (nothing further changed), 2 usage (or a confirmation was
 needed and `--yes` wasn't given), 130 stopped by the operator.
+
+## Connect your LMS and roster
+
+With the district LMS installed, the wizard ends by offering **Connect your LMS and roster now?**,
+which is the same as running:
+
+```sh
+npx launch-educate-os connect              # a menu
+npx launch-educate-os connect canvas       # or name one
+```
+
+Each integration says what it gives the district and what you need first, shows the exact steps
+and values for the other system, stores what the district reads, and ends with a live check and
+what teachers do next. Nothing changes in your account without a confirmation (or `--yes`).
+
+| Integration | What the launcher does | Where it is stored | Live check |
+| --- | --- | --- | --- |
+| `canvas`, `moodle` | Creates a single-use LTI 1.3 Dynamic Registration invitation, gives the click path in Canvas or Moodle, then trusts the LMS's issuer and approves its registration for a course. | In the district (its admin API, `/api/lti/*`). | The Tool's keys at `/lti/jwks`, and the registration approved. |
+| `clever` | Asks for your Clever district ID and district-app token (hidden). | The district Worker's secret `CLEVER_DISTRICT_TOKEN`. | Reads Clever's API v3.1 with the token: your district, then its users. |
+| `google-classroom` | Asks for the service account's JSON key file, a Workspace administrator, and a term and school; prints the domain-wide delegation scopes. | The district Worker's secret `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, and `DISTRICT_CONFIG.classroom` in your answers file, applied for you. | A delegated token as the administrator, then a Classroom read. |
+| `oneroster` | Reads a OneRoster 1.2 CSV export directory. | In the district (`/api/admin/roster/preview`, then `apply`). | The district's preview of every change; it applies only if you agree. |
+| `schoology`, `classlink` | Not available yet: says why and what to use instead. | | |
+
+The steps in the district run as a district administrator, so they need your own Cloudflare Access
+token for the district (`cloudflared access login https://<district>` then
+`cloudflared access token --app https://<district>`), pasted hidden or set as
+`EDUCATEOS_ACCESS_TOKEN`. Without it, the launcher prints the requests to make instead. Worker
+secrets are set with the Cloudflare API token (`CLOUDFLARE_API_TOKEN`; Workers Scripts: Edit).
+
+`npx launch-educate-os status` reads everything and changes nothing: the district answers, Access
+asks people to sign in, the LTI Tool publishes its keys, which LMSs are registered, which roster
+credentials are set, and whether the roster sync can run, each with the fix when it isn't working.
+Exit code 1 when something is failing.
+
+In CI (`--json` gives one `connect` or `status` event):
+
+```sh
+EDUCATEOS_ACCESS_TOKEN=... npx launch-educate-os connect canvas --json        # prints the invitation
+EDUCATEOS_ACCESS_TOKEN=... npx launch-educate-os connect canvas --yes --issuer https://<district>.instructure.com \
+  --context-id <lti_context_id> --offering-id off_... --deployment-id <id>     # approves it
+EDUCATEOS_CLEVER_DISTRICT_TOKEN=... npx launch-educate-os connect clever --clever-district-id <id> --yes
+npx launch-educate-os connect google-classroom --service-account-key key.json --workspace-admin admin@district.org \
+  --classroom-roster classroom-roster.json --yes
+EDUCATEOS_ACCESS_TOKEN=... npx launch-educate-os connect oneroster --csv-dir ./oneroster-export --yes
+npx launch-educate-os status --json
+```
+
+What is proven where: Canvas and Moodle registrations passed live runs (a self-hosted current Canvas
+and Moodle 4.5, 2026-10-26), though not through this command. The Clever, Google Classroom and
+OneRoster flows, and `connect` itself, are tested against simulated providers and a simulated
+district only; no real roster has been imported through them yet.
 
 ## Security
 

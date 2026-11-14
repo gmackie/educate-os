@@ -112,6 +112,12 @@ Dynamic Registration names each message's placements. Canvas gives a message wit
 `link_selection` and keeps the first message per placement, so a resource link message with none
 would take `link_selection` from Deep Linking (SCHO-240).
 
+`npx launch-educate-os connect canvas` (SCHO-406) runs the Dynamic Registration path for a district
+installed with the launcher: the invitation, the Canvas click path, then trusting the issuer and
+approving the registration with a course mapping and the deployment ID. `connect moodle` does the
+same for Moodle. Both are tested against a stand-in for the district's API only (see
+[launch-installer.md](launch-installer.md#connect-and-status-scho-406)).
+
 ## Moodle setup
 
 The Tool has also passed a live run against Moodle 4.5 (2026-10-26), recorded in

@@ -176,7 +176,8 @@
           <tr><td>3. Fix<small>if the check blocks</small></td><td>Each blocking item says what to do. Run the plan again; it reuses your answers.</td><td>0 to a day</td></tr>
           <tr><td>4. Install<small><code>npx launch-educate-os</code></small></td><td>Shows the plan again, asks you to confirm, then creates everything with live progress. About 35 seconds of tool time for 13 resources and 171 file uploads (owner account, 2026-10-26). A run that stops partway continues from where it stopped when you run the command again.</td><td>5 min</td></tr>
           <tr><td>5. Verify</td><td>Run the plan once more: it should show nothing to change. Open your hostname in a private window: you should be sent to your district sign-in, then EducateOS. Someone outside the admitted domains should be refused.</td><td>10 min</td></tr>
-          <tr><td>6. Delete the token</td><td>In Cloudflare, My Profile, API Tokens. Make a new short-lived one for each upgrade.</td><td>1 min</td></tr>
+          <tr><td>6. Connect<small><code>npx launch-educate-os connect</code></small></td><td>The installer offers it at the end: your LMS and your roster, one at a time, each ending with a live check. <a href="#connect">See below.</a> Not yet timed against a real LMS.</td><td>15 to 30 min each</td></tr>
+          <tr><td>7. Delete the token</td><td>In Cloudflare, My Profile, API Tokens. Make a new short-lived one for each upgrade.</td><td>1 min</td></tr>
         </tbody>
       </table>
       </div>
@@ -185,7 +186,29 @@
     </div>
   </section>
 
-  <section class="band tight" id="uninstall">
+  <section class="band tight" id="connect">
+    <div class="wrap">
+      <div class="eyebrow">After install</div>
+      <h2>Connect your LMS and roster.</h2>
+      <p class="lede">The installer ends by asking <b>Connect your LMS and roster now?</b> You can also run it any time from the same folder. For each system it says what it gives the district and what you need first, shows the exact steps and values for the other system, stores what the district reads in your own account, and ends with a live check and the next steps for teachers.</p>
+      <div class="cmd" style="margin-top:8px"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os connect</code></div>
+      <div class="table-scroll" style="margin-top:20px">
+      <table class="spec">
+        <thead><tr><th>Choose</th><th>What you need</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>Canvas or Moodle<small>LTI 1.3</small></td><td>The LMS administrator, and a district administrator's sign-in token (<code>cloudflared access token</code>)</td><td>Creates a one-time registration link to paste into the LMS, then approves the registration for a first course. Checks the tool's keys are published and the registration is approved.</td></tr>
+          <tr><td>Clever</td><td>Your Clever district ID and district-app token</td><td>Reads Clever with the token, then stores it as a secret on your district's Worker. You then choose Clever as the roster in the admin console.</td></tr>
+          <tr><td>Google Classroom</td><td>A Workspace super administrator, a Cloud project and a service account key</td><td>Prints the domain-wide delegation scopes, checks the delegation with a Classroom read, stores the key and applies the Classroom settings.</td></tr>
+          <tr><td>OneRoster CSV<small>from your SIS or ClassLink</small></td><td>A OneRoster 1.2 CSV export</td><td>Shows the district's preview of every change, then applies it if you agree.</td></tr>
+          <tr><td>Schoology, ClassLink sync</td><td></td><td>Not available yet, and the menu says so. Use a OneRoster CSV export from ClassLink.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="muted" style="margin-top:12px;font-size:.9rem">Then <code>npx launch-educate-os status</code> shows the district, sign-in, the LTI tool and each integration as working, not set up, or failing with the fix. <span class="status unit" data-status="launcher.connect">Harness-tested</span> These flows are tested against simulated LMSs, providers and districts; none has run against a real one through the installer yet. The Canvas and Moodle registrations themselves passed live runs by hand on 2026-10-26.</p>
+    </div>
+  </section>
+
+  <section class="tight" id="uninstall">
     <div class="wrap">
       <div class="eyebrow">Upgrade, roll back, uninstall</div>
       <h2>You can leave the way you came in.</h2>
@@ -197,7 +220,7 @@
     </div>
   </section>
 
-  <section class="tight" id="guided">
+  <section class="band tight" id="guided">
     <div class="wrap">
       <div class="eyebrow">Guided install</div>
       <h2>We can do it with you.</h2>
@@ -216,7 +239,7 @@
     </div>
   </section>
 
-  <section class="band tight" id="troubleshooting">
+  <section class="tight" id="troubleshooting">
     <div class="wrap">
       <div class="eyebrow">Troubleshooting</div>
       <h2>What the installer may stop on</h2>

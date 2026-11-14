@@ -9,6 +9,7 @@
     "planned": { "label": "Planned", "class": "planned" }
   },
   "features": {
+    "launcher.connect": "harness-tested",
     "summary.lti": "supported",
     "summary.canvas": "supported",
     "summary.google-classroom": "unit-tested",
