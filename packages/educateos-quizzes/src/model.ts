@@ -337,6 +337,40 @@ export const QuizAttempt = z.strictObject({
 /** A quiz attempt. */
 export type QuizAttempt = z.infer<typeof QuizAttempt>;
 
+/**
+ * A student's extended time on a quiz's attempts (SCHO-383), as an IEP or Section 504 plan sets it:
+ * a multiplier of the time limit (1.25× to 4×, in quarter steps), or `unlimited` for no time limit.
+ * Only the time limit is extended: the quiz's close and its assignment's still end every attempt.
+ */
+export const ExtendedTime = z.union([z.number().min(1.25).max(4).multipleOf(0.25), z.literal("unlimited")]);
+/** An extended time. */
+export type ExtendedTime = z.infer<typeof ExtendedTime>;
+
+/**
+ * One student's timing accommodation on one quiz (SCHO-383). It is `restricted`: disability-related
+ * information that the offering's staff and district administrators read and set, that its
+ * student is shown only as their own time, and that no other student ever sees.
+ */
+export const QuizAccommodation = z.strictObject({
+  quizId: QuizId,
+  studentId: PrincipalId,
+  extendedTime: ExtendedTime,
+  setBy: PrincipalId,
+  setAt: Timestamp,
+});
+/** A quiz accommodation. */
+export type QuizAccommodation = z.infer<typeof QuizAccommodation>;
+
+/** Setting or clearing (`null`) one student's extended time on a quiz. */
+export const AccommodationInput = z.strictObject({ studentId: PrincipalId, extendedTime: ExtendedTime.nullable() });
+/** An accommodation input. */
+export type AccommodationInput = z.infer<typeof AccommodationInput>;
+
+/** A quiz's accommodations for the staff who may read them, and whether the reader may change them. */
+export const QuizAccommodations = z.strictObject({ canManage: z.boolean(), accommodations: z.array(QuizAccommodation) });
+/** Quiz accommodations. */
+export type QuizAccommodations = z.infer<typeof QuizAccommodations>;
+
 /** One student's grade in a release, and what recording it did. */
 export const ReleasedGrade = z.strictObject({
   studentId: PrincipalId,
@@ -363,7 +397,7 @@ export const QuizRelease = z.strictObject({
 /** A quiz release. */
 export type QuizRelease = z.infer<typeof QuizRelease>;
 
-/** One offering's quizzes as stored: its quizzes, attempts and releases. */
+/** One offering's quizzes as stored: its quizzes, attempts, releases and students' accommodations. */
 export const QuizBook = z.strictObject({
   offeringId: OfferingId,
   /** 0 before anything is stored; each commit adds one. */
@@ -371,6 +405,8 @@ export const QuizBook = z.strictObject({
   quizzes: z.array(Quiz).max(500),
   attempts: z.array(QuizAttempt).max(100_000),
   releases: z.array(QuizRelease),
+  /** Students' timing accommodations, at most one per quiz and student (SCHO-383). Kept apart from the quiz, so no view of a quiz carries them. */
+  accommodations: z.array(QuizAccommodation).max(100_000).default([]),
 });
 /** A quiz book. */
 export type QuizBook = z.infer<typeof QuizBook>;
@@ -461,7 +497,10 @@ export const StudentQuizView = z.strictObject({
   questionCount: z.int().nonnegative(),
   totalPoints: z.number().nonnegative(),
   attemptsAllowed: z.int().positive(),
+  /** The class's time limit per attempt. */
   timeLimitMinutes: z.int().positive().optional(),
+  /** This student's own extended time on a timed quiz, when their teacher set one (SCHO-383). Never another student's. */
+  extendedTime: ExtendedTime.optional(),
   availableFrom: z.string().optional(),
   availableUntil: z.string().optional(),
   showAnswers: ShowAnswers,
@@ -592,6 +631,8 @@ export const StudentResultRow = z.strictObject({
   score: z.strictObject({ points: z.number(), maxPoints: z.number() }).optional(),
   /** Whether a submitted attempt still waits for a teacher. */
   needsGrading: z.boolean(),
+  /** The student's extended time on this quiz (SCHO-383), for readers who may see accommodations. */
+  extendedTime: ExtendedTime.optional(),
   /** The score last released for the student, and whether it still matches. */
   released: z.strictObject({ points: z.number(), maxPoints: z.number(), outcome: ReleasedGrade.shape.outcome, at: z.string(), current: z.boolean() }).optional(),
 });

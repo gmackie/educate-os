@@ -12,7 +12,7 @@ import { AttemptResultView } from "./AttemptResultView.tsx";
 import { QuizTaking } from "./QuizTaking.tsx";
 import { useClassGradeBand, useClassTitle } from "../useClassTitle.ts";
 import { isElementaryBand, isYoungLearnerBand } from "../gradeBand.ts";
-import { AVAILABILITY_LABEL, formatPoints, quizFacts } from "./quizText.ts";
+import { AVAILABILITY_LABEL, formatPoints, isTimed, quizFacts } from "./quizText.ts";
 
 const ATTEMPT_STATUS = { "in-progress": "In progress", submitted: "Submitted", expired: "Time ran out" } as const;
 
@@ -114,7 +114,7 @@ export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: s
         <QuizTaking
           offeringId={offeringId}
           attempt={stage.attempt}
-          timed={quiz.data.timeLimitMinutes !== undefined}
+          timed={isTimed(quiz.data)}
           presentation={{ young: isYoungLearnerBand(gradeBand), readAloud: isElementaryBand(gradeBand) }}
           onSubmitted={(result) => {
             setStage({ stage: "submitted", result });

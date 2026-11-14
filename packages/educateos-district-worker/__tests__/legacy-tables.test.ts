@@ -70,6 +70,15 @@ function restore(storage: Storage, { schema, rows }: Dump, rename: (text: string
 /** The DDL the rename rewrote: every name and message, as the code before it wrote them. */
 const asLegacy = (text: string) => text.replaceAll("educateos_", "schoolos_"); // rename-educateos: keep
 
+/** Tables the stores create that the code before the rename never had, so production holds no legacy twin of them. */
+const ADDED_SINCE_RENAME = new Set(["educateos_quiz_accommodations"]); // SCHO-383
+
+/** `dump` without the tables the code before the rename never created. */
+const beforeRename = ({ schema, rows }: Dump): Dump => ({
+  schema: schema.filter((entry) => !ADDED_SINCE_RENAME.has(entry.name)),
+  rows: Object.fromEntries(Object.entries(rows).filter(([table]) => !ADDED_SINCE_RENAME.has(table))),
+});
+
 const tablesOf = (storage: Storage, pattern: string) =>
   storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE ? ESCAPE '\\' ORDER BY name", pattern).toArray().map((r) => String(r.name));
 
@@ -88,7 +97,7 @@ async function renamedDistrict(target: Stub, before: (storage: Storage) => Promi
     return dump(state.storage);
   });
   await runInDurableObject(target, async (_instance, state) => {
-    restore(state.storage, legacy, asLegacy);
+    restore(state.storage, beforeRename(legacy), asLegacy);
     restore(state.storage, current);
   });
   await evictDurableObject(target);

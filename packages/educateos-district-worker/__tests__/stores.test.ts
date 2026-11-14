@@ -605,6 +605,33 @@ describe("DurableObjectQuizStorage", () => {
     });
   });
 
+  it("keeps students' accommodations, replacing and clearing them, and loads a book stored before they existed (SCHO-383)", async () => {
+    const object = fresh();
+    const accommodation = (quizId: string, studentId: string, extendedTime: number | "unlimited") => ({ quizId, studentId, extendedTime, setBy: "prn_nf-morgan-lee", setAt: at });
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      await store.commit(BIO, write(1, { quizzes: [quiz("qz_a"), quiz("qz_b")] }), 0);
+      // A district Durable Object from before SCHO-383 has no accommodations table.
+      state.storage.sql.exec("DROP TABLE educateos_quiz_accommodations");
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      expect((await store.load(BIO))!.accommodations).toStrictEqual([]);
+      await store.commit(BIO, write(2, { accommodations: [accommodation("qz_a", "prn_nf-student-amara", 1.5), accommodation("qz_a", "prn_nf-student-elena", 2), accommodation("qz_b", "prn_nf-student-amara", "unlimited")] }), 1);
+      await store.commit(BIO, write(3, { accommodations: [accommodation("qz_a", "prn_nf-student-amara", 2)], clearedAccommodations: [{ quizId: "qz_a", studentId: "prn_nf-student-elena" }] }), 2);
+      // Deleting a quiz deletes its accommodations; an invalid one is refused whole.
+      await store.commit(BIO, write(4, { deletedQuizIds: ["qz_b"] }), 3);
+      await expect(store.commit(BIO, write(5, { accommodations: [accommodation("qz_a", "prn_nf-student-amara", 9)] }), 4)).rejects.toThrow();
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const book = await new DurableObjectQuizStorage(state.storage).load(BIO);
+      expect(book!.revision).toBe(4);
+      expect(book!.accommodations.map((a) => [a.quizId, a.studentId, a.extendedTime])).toStrictEqual([["qz_a", "prn_nf-student-amara", 2]]);
+    });
+  });
+
   it("refuses a record that does not match its schema or names another offering, and stores nothing of the write", async () => {
     await runInDurableObject(fresh(), async (_instance, state) => {
       const store = new DurableObjectQuizStorage(state.storage);

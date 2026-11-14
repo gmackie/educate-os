@@ -116,9 +116,11 @@ import {
 } from "@educateos/discussions";
 // Quizzes (SCHO-191)
 import {
+  AccommodationInput,
   ItemGradeInput,
   NewQuiz,
   Quiz,
+  QuizAccommodations,
   QuizAnswer,
   QuizAttemptId,
   QuizId,
@@ -973,6 +975,11 @@ export const QuizStudentsBody = z.array(z.strictObject({ principalId: PrincipalI
 export const QuizResultsBody = QuizResults.extend({ names: QuizStudentsBody });
 /** Quiz results. */
 export type QuizResultsBody = z.infer<typeof QuizResultsBody>;
+
+/** A quiz's students' extended time (SCHO-383), with their names. */
+export const QuizAccommodationsBody = QuizAccommodations.extend({ names: QuizStudentsBody });
+/** Quiz accommodations. */
+export type QuizAccommodationsBody = z.infer<typeof QuizAccommodationsBody>;
 
 /** A student's attempt as staff grade it, with the student's name. */
 export const StaffAttemptBody = StaffAttemptView.extend({ studentName: z.string() });
@@ -2137,6 +2144,15 @@ export const ROUTES = {
   "teacher.releaseQuizScores": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/release", surface: "teacher",
     params: params({ offeringId: OfferingId, quizId: QuizId }), body: NoBody, response: ReleaseOutcome,
+  }),
+  // Extended time (SCHO-383): restricted, so only the class's staff and district administrators.
+  "teacher.quizAccommodations": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/accommodations", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), response: QuizAccommodationsBody,
+  }),
+  "teacher.setQuizAccommodation": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/accommodations", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: AccommodationInput, response: QuizAccommodationsBody,
   }),
   "teacher.quizAttempt": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/quiz-attempts/:attemptId", surface: "teacher",

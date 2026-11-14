@@ -136,6 +136,10 @@ export interface ShowcaseQuiz {
   attempts: Readonly<Record<string, readonly ShowcaseQuizAnswer[]>>;
   /** Whether the teacher has released its scores, which makes them official grades. */
   releaseScores: boolean;
+  /** Minutes each attempt has, if the quiz is timed. */
+  timeLimitMinutes?: number;
+  /** Students' extended time on it (SCHO-383): a multiple of the time limit, or `unlimited`. */
+  extendedTime?: Readonly<Record<string, number | "unlimited">>;
 }
 
 /** A discussion topic and its posts, in order. A post may reply to an earlier one. */

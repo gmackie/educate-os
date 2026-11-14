@@ -85,6 +85,26 @@ describe("quizzes (SCHO-191)", () => {
     expect(await effect(P.dmitri, "read", attempt(ENG9, DMITRI), engine)).toBe("allow");
   });
 
+  it("lets only the offering's staff and district administrators read and set extended time, as people (SCHO-383)", async () => {
+    const { engine, audit } = engineFor();
+    const accommodations = (offeringId: string) => quiz(offeringId, "restricted");
+    for (const who of [P.morgan, P.nfAdmin]) {
+      for (const action of ["read", "list", "update"] as const) {
+        expect(await effect(who, action, accommodations(BIO), engine), action).toBe("allow");
+        expect(audit.events.at(-1)?.ruleId).toBe("quiz.accommodations.manage");
+      }
+    }
+    // Students (the accommodated one included), a school administrator and another class's teacher never see them.
+    for (const who of [P.amara, P.elena, P.highPrincipal, P.rivera, P.kai, P.rbAdmin]) {
+      for (const action of ["read", "list", "update"] as const) {
+        expect(await effect(who, action, accommodations(BIO), engine), `${who.principalId} ${action}`).toBe("deny");
+      }
+    }
+    // Not through an agent or tool, and not in a completed term.
+    expect((await engine.decide(req(P.morgan, "read", accommodations(BIO), "agent"))).decision.effect).toBe("deny");
+    expect((await engine.decide(req(P.morgan, "update", accommodations(BIO_SPRING)))).decision).toMatchObject({ effect: "deny", reason: "term-not-active" });
+  });
+
   it("freezes a completed term's quizzes and attempts", async () => {
     const { engine } = engineFor();
     expect((await engine.decide(req(P.amara, "submit", attempt(BIO_SPRING, AMARA)))).decision).toMatchObject({ effect: "deny", reason: "term-not-active" });

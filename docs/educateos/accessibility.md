@@ -17,13 +17,12 @@ found 14 distinct failures, all serious. All 14 are fixed in this change. After 
 - every one of 4,782 keyboard focus stops has a name and a visible focus change;
 - every action exercised announced its outcome through a live region.
 
-Four criteria remain **Partially supports**:
+Three criteria remain **Partially supports**:
 
 | Criterion | Why | Follow-up |
 |---|---|---|
 | 1.4.3 Contrast (Minimum) | Kumo's link hover colour is under 4.5:1 while hovered. | SCHO-380 |
 | 1.4.11 Non-text Contrast | Text field boundaries are 1.25 to 1.52:1. | SCHO-379, SCHO-380 |
-| 2.2.1 Timing Adjustable | A timed quiz can't be extended for one student. | SCHO-383 |
 | 2.4.2 Page Titled | Each app keeps one title on every screen. | SCHO-382 |
 
 **No screen reader or other assistive technology was used.** "Supports" in this report means the
@@ -111,9 +110,9 @@ criterion, so all are rated serious.
 | 15 | Text field, text area and combobox boundaries (Kumo's `kumo-line` ring) are 1.25 to 1.52:1 | 1.4.11 | 284 controls on 132 of 429 screen audits | Not changed: darkening every field is a design change | Open, SCHO-379 |
 | 16 | Kumo Link's hover colour (`text-kumo-link/70`) is 4.23:1 light and 4.08:1 dark while hovered | 1.4.3 | Links in lists, such as notifications | Upstream | Open, SCHO-380 |
 | 17 | Every screen of an app has the same document title | 2.4.2 | All apps | Per-route titles | Open, SCHO-382 |
-| 18 | A teacher can't extend a timed quiz's limit for one student (IEP/504 extended time) | 2.2.1 | Student quizzes | Per-student extended time | Open, SCHO-383 |
+| 18 | A teacher can't extend a timed quiz's limit for one student (IEP/504 extended time) | 2.2.1 | Student quizzes | Per-student extended time (1.25× to 4×, or no limit), set by the class's teachers or a district administrator and enforced by the district's clock | Fixed, SCHO-383 |
 
-Counts: 18 findings, all serious; 14 fixed, 4 open. Findings 1 to 4 are fixed in one stylesheet,
+Counts: 18 findings, all serious; 15 fixed, 3 open. Findings 1 to 4 are fixed in one stylesheet,
 `packages/educateos-shell/src/contrast.css`, which every app's stylesheet and the demo's import after
 Kumo's. They override Kumo's tokens until Kumo's own meet AA (SCHO-380).
 
@@ -158,7 +157,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 2.1.1 Keyboard | Supports | Every control on every screen is reachable by Tab. Wide tables scroll by keyboard (finding 8). Freehand drawing needs a pointer, which is path-dependent input the criterion exempts, and the step offers a photo upload. The audit reaches controls by Tab but doesn't operate composite widgets (radio groups, comboboxes, the gradebook grid) by their arrow keys. |
 | 2.1.2 No Keyboard Trap | Supports | No walk was trapped (see Results). |
 | 2.1.4 Character Key Shortcuts | Not applicable | The apps have no single-character shortcuts. The demo's presenter keys are demo-only and work only with `?presenter`. |
-| 2.2.1 Timing Adjustable | Partially supports | The apps set no session time limits; sign-in sessions are the district's Cloudflare Access policy. A teacher can give a quiz a time limit, but can't extend it for one student (SCHO-383). |
+| 2.2.1 Timing Adjustable | Supports | The apps set no session time limits; sign-in sessions are the district's Cloudflare Access policy. A quiz's time limit is one its teacher sets for the assessment. A teacher of the class, or a district administrator, can give one student 1.25 to 4 times that limit, or no time limit, as an IEP or Section 504 plan sets it. The district's clock enforces each student's own deadline, extends an attempt already in progress, and shows the student only their own time; API and UI tests check this (SCHO-383). A student can't extend the limit themselves during an attempt: for that we rely on the criterion's essential exception for a timed assessment. The quiz's close date still ends every attempt. |
 | 2.2.2 Pause, Stop, Hide | Supports | No moving, blinking or auto-updating content other than loading indicators and a timed quiz's countdown, which is essential to the quiz. |
 | 2.3.1 Three Flashes or Below Threshold | Supports | Nothing flashes. |
 | 2.4.1 Bypass Blocks | Supports | Each app's first control is "Skip to content", and every screen has landmarks. |
@@ -202,7 +201,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 3.3.4 Error Prevention (Legal, Financial, Data) | Supports | Submitting a quiz asks for confirmation, and a term move confirms in a dialog. Not every submitting flow was reviewed. |
 | 4.1.3 Status Messages | Supports | Every action exercised announced its outcome in a live region, and loading states are status regions. Not yet confirmed with a screen reader. |
 
-Totals: 50 criteria. 38 Supports, 4 Partially supports, 0 Does not support, 8 Not applicable.
+Totals: 50 criteria. 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.
 
 ## Known gaps and follow-ups
 
@@ -212,7 +211,6 @@ Totals: 50 criteria. 38 Supports, 4 Partially supports, 0 Does not support, 8 No
 | SCHO-380 | Kumo upstream: subtle, warning and placeholder text tokens, control rings and link hover colour, so `contrast.css` can go |
 | SCHO-381 | Screen-reader testing of the critical flows with NVDA, JAWS, VoiceOver and TalkBack |
 | SCHO-382 | A document title per screen (2.4.2) |
-| SCHO-383 | Extended time on timed quizzes for IEP/504 accommodations (2.2.1) |
 | SCHO-384 | Audit Cedar Valley's Clever portal, `/ai`, sign-in, LTI, invitations, the mobile app, Firefox and Safari. Run the audit in CI, and turn the pilot gate's accessibility todos into checks (they ask for WCAG 2.2 AA). |
 | SCHO-385 | Link this report from the IT evaluation packet at /it |
 | SCHO-125 | Kumo `Radio.Group` accessible name (upstream) |
