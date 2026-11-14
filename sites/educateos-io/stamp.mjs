@@ -41,7 +41,7 @@ export function stamp(html, path) {
   // journey.js adds the funnel events a link attribute cannot express (SCHO-400).
   // Exclude demos, intake, operator and district surfaces even if a shared layout is reused.
   html = html.replace(/<!-- site:analytics -->[\s\S]*?<!-- \/site:analytics -->\n?/g, "");
-  if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|it(?:\/.*)?$|pricing\/?$|pilot\/?$|privacy\/?$)/.test(path)) {
+  if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|it(?:\/.*)?$|pricing\/?$|pilot\/?$|pilot\/brief(?:\/.*)?$|privacy\/?$)/.test(path)) {
     html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->\n</body>');
   }
   html = html.replace(/<span class="status[^"]*" data-status="([^"]+)">[^<]*<\/span>/g, (_, key) => chip(key, path));

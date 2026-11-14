@@ -1,0 +1,66 @@
+/* The one-page leave-behinds under /pilot/brief/ (SCHO-405). On screen they read as a normal page;
+   printed (or saved as PDF by build.mjs --pdf) each fits one US Letter page with the site's header,
+   footer and screen-only controls hidden. */
+.brief .sheet { max-width: 920px; }
+.brief .brief-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--color-kumo-line); padding-bottom: 12px; }
+.brief .brief-top .meta { font-size: .85rem; color: var(--text-color-kumo-subtle); text-align: right; }
+.brief .print-logo { display: none; }
+.brief h1 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); line-height: 1.1; margin-top: 18px; max-width: 30ch; }
+.brief .lede { margin-top: 12px; max-width: 70ch; }
+.brief h2 { font-size: 1.02rem; margin: 0 0 8px; }
+.brief .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.brief .box { border: 1px solid var(--color-kumo-line); border-radius: var(--eo-radius); padding: 14px 16px; background: var(--color-kumo-base); }
+.brief .box p { margin: 0 0 6px; }
+.brief .box p:last-child { margin-bottom: 0; }
+.brief .box ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; list-style: disc; }
+.brief .evidence { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .92rem; }
+.brief .evidence td:first-child { width: 26%; color: var(--text-color-kumo-strong); font-weight: 500; }
+.brief .evidence-title { margin: 20px 0 0; }
+.brief .evidence th, .brief .evidence td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-kumo-hairline); vertical-align: top; }
+.brief .evidence th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-color-kumo-subtle); font-weight: 600; }
+.brief .evidence td:last-child { white-space: nowrap; width: 1%; }
+.brief .next { margin-top: 18px; padding: 14px 16px; border-radius: var(--eo-radius); background: var(--color-kumo-tint); border: 1px solid var(--color-kumo-line); }
+.brief .next p { margin: 0 0 6px; }
+.brief .next p:last-child { margin-bottom: 0; }
+.brief .fine { margin-top: 14px; font-size: .78rem; color: var(--text-color-kumo-subtle); }
+.brief .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.brief .others { margin-top: 18px; font-size: .9rem; color: var(--text-color-kumo-subtle); }
+@media (max-width: 640px) {
+  .brief .cols { grid-template-columns: minmax(0, 1fr); }
+  .brief .brief-top .meta { text-align: left; }
+  .brief .evidence, .brief .evidence tbody, .brief .evidence tr, .brief .evidence td { display: block; width: 100% !important; }
+  .brief .evidence thead { display: none; }
+  .brief .evidence tr { padding: 8px 0; border-bottom: 1px solid var(--color-kumo-hairline); }
+  .brief .evidence td { border-bottom: 0; padding: 2px 0; }
+}
+
+@media print {
+  @page { size: Letter; margin: 0.3in 0.45in; }
+  html, body { background: #fff; }
+  body { font-size: 8.5pt; line-height: 1.32; }
+  header.nav, footer, .skip-link, .screen-only { display: none !important; }
+  section.tight { padding: 0; }
+  .wrap { max-width: none !important; padding: 0 !important; }
+  .brief .print-logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12pt; color: var(--text-color-kumo-strong); }
+  .brief .print-logo svg { width: 20px; height: 20px; }
+  .brief .brief-top { padding-bottom: 6px; flex-wrap: nowrap; }
+  .brief .brief-top .meta { font-size: 7.6pt; }
+  .brief .eyebrow { margin-bottom: 0; font-size: 7.4pt; }
+  .brief h1 { font-size: 16pt; margin-top: 6px; max-width: none; }
+  .brief .lede { font-size: 9.2pt; margin-top: 4px; max-width: none; }
+  .brief h2 { font-size: 9.8pt; margin-bottom: 3px; }
+  .brief .cols { gap: 7px; margin-top: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .brief .box { padding: 7px 10px; border-radius: 6px; break-inside: avoid; }
+  .brief .box p { margin-bottom: 3px; }
+  .brief .box ul { gap: 1px; padding-left: 13px; }
+  .brief .evidence { margin-top: 2px; font-size: 7.9pt; }
+  .brief .evidence-title { margin-top: 8px; }
+  .brief .evidence th, .brief .evidence td { padding: 2.5px 6px; }
+  .brief .evidence th { font-size: 6.8pt; }
+  .brief .evidence tr { break-inside: avoid; }
+  .brief .next { margin-top: 8px; padding: 7px 10px; border-radius: 6px; }
+  .brief .next p { margin-bottom: 2px; }
+  .brief .fine { margin-top: 4px; font-size: 6.3pt; line-height: 1.25; }
+  .status { font-size: 6.8pt; padding: 0 6px 0 5px; border: 1px solid currentColor; }
+  a { color: inherit; text-decoration: none; }
+}
