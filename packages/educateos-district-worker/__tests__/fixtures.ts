@@ -49,6 +49,7 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
     classBlueprints: [{ blueprintId: "english-authoring", offeringId: "off_nf-eng9-fall-p3" as never }],
     models: [{ provider: "cloudflare", modelId: "synthetic-model" }],
     connectors: [{ vendorId: "educateos", accountId: 7, resourceUrlPatterns: ["school://approved"], resources: ["SchoolTools"] }],
+    teacherConnectors: [{ vendorId: "google", resourceUrlPatterns: ["https://classroom.googleapis.com/courses/:courseId"] }],
   },
   fundingPools: [{
     id: "fpl_courses" as never,
