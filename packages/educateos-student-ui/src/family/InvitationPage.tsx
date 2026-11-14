@@ -6,6 +6,7 @@ import { DistrictApiError } from "@educateos/api-client";
 import { messageFor, useApi } from "../api.tsx";
 import { useAnnounce } from "../AppContext.tsx";
 import { INVITATION_PATH } from "../router.tsx";
+import { PageHeading } from "../PageHeading.tsx";
 
 type Redeeming =
   | { status: "idle" }
@@ -67,7 +68,7 @@ export const InvitationPage = () => {
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
-      <Text variant="heading" size="lg" as="h1">{preview === undefined ? "Connect to your child's classes" : `Connect to ${preview.studentDisplayName}'s classes`}</Text>
+      <PageHeading>{preview === undefined ? "Connect to your child's classes" : `Connect to ${preview.studentDisplayName}'s classes`}</PageHeading>
       {token === undefined ? (
         <Text>Open the invitation link your school gave you. It works once.</Text>
       ) : state.status === "done" ? (

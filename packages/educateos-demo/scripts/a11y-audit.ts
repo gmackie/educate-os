@@ -86,6 +86,8 @@ interface ScreenResult {
   /** Rules axe couldn't decide, with why (contrast over images or gradients, mostly), for manual review. */
   incomplete: { id: string; nodes: number; reasons: string[] }[];
   h1: number;
+  /** The document title, which names the screen (WCAG 2.4.2). */
+  title: string;
   liveRegions: number;
   /** At 320px: how far the page scrolls sideways, and what sticks out. */
   overflow?: { scrollWidth: number; offenders: string[] };
@@ -262,6 +264,7 @@ const audit = async (page: Page, base: Pick<ScreenResult, "persona" | "screen" |
       violations: r.violations.map((v) => ({ id: v.id, impact: v.impact, help: v.help, tags: v.tags, nodes: v.nodes.map((n) => ({ target: n.target.join(" "), summary: (n.failureSummary ?? "").split("\n").slice(0, 3).join(" ") })) })),
       incomplete: r.incomplete.map((i) => ({ id: i.id, nodes: i.nodes.length, reasons: [...new Set(i.nodes.map((n) => n.any[0]?.data?.messageKey ?? "unspecified"))] })),
       h1: document.querySelectorAll("h1, [role=heading][aria-level='1']").length,
+      title: document.title,
       liveRegions: document.querySelectorAll("[role=status], [role=alert], [role=log], [aria-live]:not([aria-live=off])").length,
     };
   }, WCAG_TAGS);
@@ -499,9 +502,22 @@ const lines = [
   ``,
   `## Screens`,
   ``,
-  `| Persona | Screen | Pass | Violations | h1 | Live regions | Sideways scroll at 320px |`,
-  `|---|---|---|---|---|---|---|`,
-  ...results.map((r) => `| ${r.persona} | ${r.screen} | ${r.pass} | ${r.violations.map((v) => `${v.id} (${v.nodes.length})`).join(", ") || "none"} | ${r.h1} | ${r.liveRegions} | ${r.overflow === undefined ? "" : r.overflow.scrollWidth > 0 ? `${r.overflow.scrollWidth}px: ${r.overflow.offenders.join("; ")}` : "none"} |`),
+  `| Persona | Screen | Title | Pass | Violations | h1 | Live regions | Sideways scroll at 320px |`,
+  `|---|---|---|---|---|---|---|---|`,
+  ...results.map((r) => `| ${r.persona} | ${r.screen} | ${r.title} | ${r.pass} | ${r.violations.map((v) => `${v.id} (${v.nodes.length})`).join(", ") || "none"} | ${r.h1} | ${r.liveRegions} | ${r.overflow === undefined ? "" : r.overflow.scrollWidth > 0 ? `${r.overflow.scrollWidth}px: ${r.overflow.offenders.join("; ")}` : "none"} |`),
+  ``,
+  `## Page titles`,
+  ``,
+  `Screens of one persona that share a document title (WCAG 2.4.2), from the light pass. None is the goal.`,
+  ``,
+  `| Persona | Title | Screens |`,
+  `|---|---|---|`,
+  ...[...results.filter((r) => r.pass === "light").reduce((acc, r) => {
+    const key = `${r.persona}|${r.title}`;
+    acc.set(key, [...acc.get(key) ?? [], r.screen]);
+    return acc;
+  }, new Map<string, string[]>())].filter(([, screens]) => screens.length > 1)
+    .map(([key, screens]) => `| ${key.split("|")[0]} | ${key.split("|").slice(1).join("|")} | ${screens.join("; ")} |`),
   ``,
   `## Keyboard`,
   ``,

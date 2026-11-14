@@ -83,7 +83,7 @@
     <div class="wrap doc">
       <div class="card" style="padding:20px">
         <h2 style="margin-top:0;font-size:1.15rem">The short version</h2>
-        <p>EducateOS <b class="strong">partially conforms</b> to WCAG 2.1 Level AA. Automated and programmatic checks of 143 screens found 14 failures, and all 14 are fixed. Of the 50 Level A and AA success criteria: 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.</p>
+        <p>EducateOS <b class="strong">partially conforms</b> to WCAG 2.1 Level AA. Automated and programmatic checks of 143 screens found 14 failures, and all 14 are fixed. Of the 50 Level A and AA success criteria: 40 Supports, 2 Partially supports, 0 Does not support, 8 Not applicable.</p>
         <p style="margin-bottom:0"><b class="strong">No screen reader or other assistive technology has been used to test EducateOS yet.</b> "Supports" below means our checks found no failure on the screens we audited. It is not a claim confirmed with assistive technology, and we will update this report when that testing is done.</p>
       </div>
 
@@ -136,8 +136,8 @@
           <tr><td>2.2.2 Pause, Stop, Hide <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>No moving, blinking or auto-updating content other than loading indicators and a timed quiz's countdown, which is essential to the quiz.</td></tr>
           <tr><td>2.3.1 Three Flashes or Below Threshold <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Nothing flashes.</td></tr>
           <tr><td>2.4.1 Bypass Blocks <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Each app's first control is "Skip to content", and every screen has landmarks.</td></tr>
-          <tr><td>2.4.2 Page Titled <span class="lvl">(Level A)</span></td><td><span class="status validating">Partially supports</span></td><td>Each app has a title (Learning Home, Teacher Studio, EducateOS district admin), but it stays the same on every screen (SCHO-382).</td></tr>
-          <tr><td>2.4.3 Focus Order <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Focus follows the layout. Teacher Studio moves focus to the new page's heading when you navigate, and dialogs keep focus inside. Not yet confirmed with a screen reader.</td></tr>
+          <tr><td>2.4.2 Page Titled <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Every screen sets its own document title: its name, then its class or child where it has one, then the app, such as "Gradebook · English 9 · Period 3 · Teacher Studio" or "My grades · Learning Home". While a screen loads or can't load, its route's name stands in ("Activity · Learning Home"). The apps' tests check a unique title on each route, and the audit records every screen's title (SCHO-382).</td></tr>
+          <tr><td>2.4.3 Focus Order <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Focus follows the layout. Teacher Studio and the Learning Home move focus to the new page's heading when you navigate, the admin console moves it to the new screen's content, and dialogs keep focus inside. Not yet confirmed with a screen reader.</td></tr>
           <tr><td>2.4.4 Link Purpose (In Context) <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>axe's link-name rule passes. Icon-only links, such as Settings and Notifications, have names.</td></tr>
           <tr><td>2.5.1 Pointer Gestures <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>No multipoint or path-based gesture is needed to operate anything. Drawing is the exempt path-based case and has an upload alternative.</td></tr>
           <tr><td>2.5.2 Pointer Cancellation <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Controls are native or Base UI buttons that act on release.</td></tr>
@@ -203,7 +203,6 @@
       <ul>
         <li>Text field boundaries are 1.25 to 1.52:1 against the page, under the 3:1 that 1.4.11 asks for.</li>
         <li>Links fade below 4.5:1 while the pointer is over them. This comes from the shared design system, so we're raising it upstream.</li>
-        <li>Each app keeps one page title on every screen.</li>
         <li>Testing with NVDA, JAWS, VoiceOver and TalkBack hasn't been done.</li>
       </ul>
       <p>Each of these has an open issue in the project tracker, and this report changes in the same update as the fix.</p>

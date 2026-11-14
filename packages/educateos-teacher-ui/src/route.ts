@@ -90,6 +90,28 @@ export const parseRoute = (hash: string): Route => {
 };
 
 
+const SCREEN_NAMES: Record<Exclude<Route["screen"], "classes">, string> = {
+  roster: "Roster",
+  modules: "Modules",
+  resources: "Resources",
+  resource: "Resource",
+  create: "Create activity",
+  submissions: "Submissions",
+  review: "Student work",
+  gradebook: "Gradebook",
+  announcements: "Announcements",
+  discussions: "Discussions",
+  quizzes: "Quizzes",
+  quiz: "Quiz",
+  "quiz-results": "Quiz results",
+};
+
+/**
+ * What a route is called before its screen has loaded what it shows: the document title while it
+ * loads or fails. The screen's heading then names it fully, with its class (WCAG 2.4.2).
+ */
+export const routeName = (route: Route): string => (route.screen === "classes" ? "My classes" : SCREEN_NAMES[route.screen]);
+
 /** The current route, kept in the URL hash so the back button and bookmarks work. */
 export const useRoute = (): Route => parseRoute(useSyncExternalStore(subscribeToHash, readHash));
 

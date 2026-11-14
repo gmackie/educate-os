@@ -24,7 +24,8 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
   const chosen = list.find((a) => a.id === assignmentId);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeading>{`Submissions · ${classLabel(teaching)}`}</PageHeading>
+      {/* Each activity's submissions is a route of its own, so its title names the activity. */}
+      <PageHeading title={chosen === undefined ? undefined : `${chosen.title} · Submissions · ${classLabel(teaching)}`}>{`Submissions · ${classLabel(teaching)}`}</PageHeading>
       {assignments.status === "loading" && <Loading label="Loading activities…" />}
       {assignments.status === "error" && <Problem error={assignments.error} onRetry={assignments.reload} />}
       {assignments.status === "ready" && list.length === 0 && (

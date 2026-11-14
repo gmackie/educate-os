@@ -10,6 +10,7 @@ import { classTitleIn, formatDateTime } from "./labels.ts";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { GradeMarker, GradeSummary, OfficialGrade } from "./model.ts";
 import { activityPath, coursePath, quizPath } from "./router.tsx";
+import { PageHeading } from "./PageHeading.tsx";
 
 /** One graded piece of work in a class: an activity, a quiz, or anything else the gradebook counts. */
 interface GradeRow {
@@ -163,9 +164,7 @@ export const GradesPage = () => {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-1">
-        <Text variant="heading" size="lg" as="h1">
-          My grades
-        </Text>
+        <PageHeading>My grades</PageHeading>
         <Text variant="secondary">The official grades your teachers have recorded, newest version of each, and each class's running total.</Text>
       </div>
       {courses.length === 0 ? (

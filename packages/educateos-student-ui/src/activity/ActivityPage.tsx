@@ -24,6 +24,7 @@ import { SubmitSection, type SubmittableWork } from "./SubmitSection.tsx";
 import { WorkItem } from "./WorkItem.tsx";
 import { workModeFor } from "./workMode.ts";
 import { YoungActivityView } from "./YoungActivityView.tsx";
+import { PageHeading } from "../PageHeading.tsx";
 
 const Section = ({ id, title, children }: { id: string; title: string; children: ReactNode }) => (
   <section aria-labelledby={id} className="flex flex-col gap-3">
@@ -72,9 +73,7 @@ const StandardActivityView = ({ offeringId, courseName, entry, work }: { offerin
       </Breadcrumbs>
 
       <div className="flex flex-col gap-1">
-        <Text variant="heading" size="lg" as="h1">
-          {assignment.title}
-        </Text>
+        <PageHeading title={`${assignment.title} · ${courseName}`}>{assignment.title}</PageHeading>
         <Text variant="secondary">
           Due <time dateTime={assignment.dueAt}>{formatDateTime(assignment.dueAt)}</time>
         </Text>

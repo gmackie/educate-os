@@ -1,10 +1,11 @@
 import { createContext, use, useEffect, useRef, type ReactNode } from "react";
 import { Loader, Text } from "@cloudflare/kumo";
 import { DistrictApiError, unlinkedSignInOf } from "@educateos/api-client";
-import { SchoolShell, navigationFor, shellRoleOf, type NavGroup, type NavIcon, type SchoolManifest, type ShellFeatures } from "@educateos/shell";
+import { SchoolShell, documentTitle, navigationFor, useRouteTitle, shellRoleOf, type NavGroup, type NavIcon, type SchoolManifest, type ShellFeatures } from "@educateos/shell";
 import { AdminClientProvider, type AdminClient } from "./app/AdminClientContext.tsx";
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./app/Announcer.tsx";
+import { APP_NAME } from "./app/consoleTitle.ts";
 import { NotAddedYet } from "./app/NotAddedYet.tsx";
 import { NotAnAdministrator } from "./app/NotAnAdministrator.tsx";
 import { SCREENS, useHashRoute, useSchoolRoute, type ScreenPath } from "./app/useHashRoute.ts";
@@ -112,6 +113,9 @@ const Console = () => {
   const first = useRef(true);
   const gate = accessGate(config);
   const announce = useAnnounce();
+  // Each screen names itself in the document title; a school's page refines it with the school's name.
+  const screenLabel = SCREENS.find((screen) => screen.path === path)!.label;
+  useRouteTitle(documentTitle(schoolId === undefined ? screenLabel : "School", APP_NAME), `${path}/${schoolId ?? ""}`);
 
   // Moving between screens moves focus to the new screen, as a page load would, so keyboard and
   // screen-reader users start at its top. Not on first load, where focus belongs to the browser.

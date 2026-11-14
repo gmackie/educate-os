@@ -13,6 +13,7 @@ import { QuizTaking } from "./QuizTaking.tsx";
 import { useClassGradeBand, useClassTitle } from "../useClassTitle.ts";
 import { isElementaryBand, isYoungLearnerBand } from "../gradeBand.ts";
 import { AVAILABILITY_LABEL, formatPoints, isTimed, quizFacts } from "./quizText.ts";
+import { PageHeading } from "../PageHeading.tsx";
 
 const ATTEMPT_STATUS = { "in-progress": "In progress", submitted: "Submitted", expired: "Time ran out" } as const;
 
@@ -106,7 +107,7 @@ export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: s
         <Breadcrumbs.Current>{quiz.data.title}</Breadcrumbs.Current>
       </Breadcrumbs>
       <div className="flex flex-wrap items-center gap-2">
-        <Text variant="heading" size="lg" as="h1">{quiz.data.title}</Text>
+        <PageHeading>{quiz.data.title}</PageHeading>
         <Badge variant="neutral">{AVAILABILITY_LABEL[quiz.data.availability]}</Badge>
       </div>
       {stage.stage === "overview" ? <QuizOverview quiz={quiz.data} onStart={() => void start()} starting={starting} startError={startError} /> : null}

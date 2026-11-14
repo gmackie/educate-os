@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import { Text } from "@cloudflare/kumo";
 import { ChalkboardTeacher } from "@phosphor-icons/react";
 import { unlinkedSignInOf, type RouteResponse } from "@educateos/api-client";
-import { SchoolShell, shellRoleOf } from "@educateos/shell";
+import { SchoolShell, documentTitle, shellRoleOf, useRouteTitle } from "@educateos/shell";
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./Announcer.tsx";
 import { ClassPage } from "./classes/ClassPage.tsx";
 import { MyClassesPage } from "./classes/MyClassesPage.tsx";
 import { NotAddedYet } from "./NotAddedYet.tsx";
+import { APP_NAME } from "./PageHeading.tsx";
 import { RubricShelfProvider } from "./activities/RubricShelf.tsx";
-import { routeHref, useRoute } from "./route.ts";
+import { routeHref, routeName, useRoute } from "./route.ts";
 import { ShellContext, type DistrictShell } from "./shell.tsx";
 import { useLoad, type LoadState } from "./useLoad.ts";
 
@@ -45,6 +46,7 @@ export interface AppProps {
 /** Teacher Studio: the landmarks every screen shares, and the screen the URL names. */
 export const App = ({ shell }: AppProps = {}) => {
   const route = useRoute();
+  useRouteTitle(documentTitle(routeName(route), APP_NAME), routeHref(route));
   const me = useLoad("me", (client) => client.call("me.get"));
   const unlinked = me.status === "error" ? unlinkedSignInOf(me.error) : undefined;
   const screen = unlinked !== undefined ? <NotAddedYet signIn={unlinked} /> : route.screen === "classes" ? <MyClassesPage /> : <ClassPage route={route} />;
