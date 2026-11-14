@@ -16,7 +16,7 @@
     // Path prefixes that are never collected: no SDK, no events. End an entry with $ for one exact path.
     exclude: ['/admin', '/api'],
     // When non-empty, ONLY these paths are collected ("/" means the home page only; "/pricing$" exactly /pricing).
-    only: ['/', '/teachers$', '/leaders$', '/families$', '/developers', '/gadgets', '/connectors', '/it', '/pricing$', '/privacy$'],
+    only: ['/', '/teachers$', '/leaders$', '/families$', '/developers', '/gadgets', '/connectors', '/it', '/pricing$', '/pilot$', '/privacy$'],
     // "localStorage" links a visitor's pages into sessions and journeys.
     // "cookieless" stores nothing on the device (child- or privacy-sensitive sites).
     persistence: 'cookieless',
