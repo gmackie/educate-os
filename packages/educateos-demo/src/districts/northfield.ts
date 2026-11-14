@@ -143,8 +143,8 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
     section: "district",
     name: "Avery Admin",
     role: "Technology director review",
-    description: "Review what IT signs off on, signed in as the district administrator: the directory, the roster source, policy floors, AI budgets, vendor access, and a configuration change previewed before it applies.",
-    lookFor: "Roster, Policies, AI budgets and Operations, and the dry-run preview before Apply",
+    description: "Review what IT signs off on, signed in as the district administrator: the directory, the roster source, policy floors, AI budgets, vendor access, a configuration change previewed before it applies, the safety decision and admin audit logs, and sign-in.",
+    lookFor: "Roster, Policies, AI budgets, Operations, Safety decisions, Admin audit log and Sign-in, and the dry-run preview before Apply",
     subject: "nf-0001",
   },
 ];
@@ -192,6 +192,8 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
     courseLibraryTrust: COURSE_LIBRARY_TRUST,
+    // The console's Sign-in screen says the personas' sign-ins are synthetic (SCHO-376).
+    signIn: { verifier: "demo" },
   });
   // The bundles are their own chunks, fetched while the showcase is seeded.
   const bundles = loadSampleCourseBundles();

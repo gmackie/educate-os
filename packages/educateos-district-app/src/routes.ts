@@ -9,6 +9,8 @@ import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "
 // Operations (SCHO-263)
 import { KeyId } from "@educateos/fleet/ops";
 import { EnrollOpsKeyInput, GrantedOpsScopes, OpsAuditBody, OpsKeyBody } from "./ops.ts";
+// IT review (SCHO-376)
+import { AdminAuditLogQuery, DecisionLogQuery, DecisionPageBody, ScreeningLogBody, SignInSettingsBody } from "./admin-review.ts";
 import {
   AcademicTerm,
   ActivityDefinitionId,
@@ -2216,6 +2218,20 @@ export const ROUTES = {
       grantId: z.string().optional(),
     }),
   }),
+  // IT review (SCHO-376): what a district technology director reads before signing off, each a
+  // district administrator's alone (`admin.district.audit-log`, `admin.district.sign-in`). Read-only.
+  /** The safety decision log: the policy engine's decisions, newest first, filtered. */
+  "admin.decisionLog": route({ method: "GET", path: "/api/admin/audit/decisions", surface: "admin", query: DecisionLogQuery, response: DecisionPageBody }),
+  /**
+   * The admin audit log: the changes administrators were allowed to make (an `admin.*` rule's
+   * allowed writes and exports), newest first. It records each authorization, so a change that then
+   * failed validation is listed too.
+   */
+  "admin.auditLog": route({ method: "GET", path: "/api/admin/audit/admin-actions", surface: "admin", query: AdminAuditLogQuery, response: DecisionPageBody }),
+  /** Hall Monitor's decisions on students' discussion posts, across the district's classes. */
+  "admin.screeningLog": route({ method: "GET", path: "/api/admin/audit/screening", surface: "admin", response: ScreeningLogBody }),
+  /** How the district signs people in, read-only. */
+  "admin.signInSettings": route({ method: "GET", path: "/api/admin/sign-in", surface: "admin", response: SignInSettingsBody }),
 } as const satisfies Record<string, RouteSpec>;
 
 /** The routes. */

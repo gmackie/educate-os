@@ -264,9 +264,10 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       await stores.directory.commit(next, version);
     }
   }
+  const audiences = accessAudiences(settings.accessAudiences);
   const verifyRequest = accessRequestVerifier({
     issuer: settings.accessIssuer ?? "",
-    audiences: accessAudiences(settings.accessAudiences),
+    audiences,
     ...(seams.accessKeys === undefined ? {} : { keys: seams.accessKeys }),
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
@@ -289,6 +290,14 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const app = await createDistrictApp({
     stores,
     verifyRequest,
+    // IT review (SCHO-376): how sign-ins are verified, for the console's read-only settings. The
+    // audience tags themselves are not passed, only how many there are.
+    signIn: {
+      verifier: "cloudflare-access",
+      teamDomain: settings.accessIssuer!,
+      applications: audiences.length,
+      ...(config.cleverSso === undefined ? {} : { cleverDistrictId: config.cleverSso.districtId }),
+    },
     ...(ltiPlatform
       ? { policySources: platformToolPolicySources(new TablePlatformToolStore(new DurableObjectRecordTable(storage)), new TablePlatformAgsStore(new DurableObjectRecordTable(storage))) }
       : {}),

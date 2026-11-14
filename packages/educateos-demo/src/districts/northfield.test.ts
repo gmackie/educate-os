@@ -124,4 +124,21 @@ describe("the demo district", () => {
     await expect(student.call("teacher.listSubmissions", { params: { assignmentId } })).rejects.toMatchObject({ status: 403 });
     await expect(as("guardian").call("guardian.childCourse", { params: { studentId: "prn_nf-student-amara", offeringId } })).rejects.toMatchObject({ status: 404 });
   });
+
+  it("shows the technology director its decision trail, admin changes and sign-in settings (SCHO-376)", async () => {
+    const director = as("it-director");
+    const decisions = await director.call("admin.decisionLog", { query: {} });
+    expect(decisions.entries.length).toBeGreaterThan(0);
+    expect(decisions.nextBefore).toBeDefined();
+    const changes = await director.call("admin.auditLog", { query: {} });
+    expect(changes.entries.every((e) => e.effect === "allow" && e.ruleId.startsWith("admin."))).toBe(true);
+    // The configuration the district runs under, applied by its administrator at boot.
+    expect(changes.entries.some((e) => e.action === "configure" && e.principalName === "Avery Admin")).toBe(true);
+    expect(await director.call("admin.screeningLog")).toStrictEqual({ screening: "published-unscreened", entries: [], truncated: false });
+    const signIn = await director.call("admin.signInSettings");
+    expect(signIn).toMatchObject({ provider: "district-sso", deployment: { verifier: "demo" }, pendingLinks: 0 });
+    expect(signIn.issuers[0]!.activePeople).toBeGreaterThan(0);
+    // A teacher reads none of it.
+    await expect(as("g912-teacher").call("admin.decisionLog", { query: {} })).rejects.toMatchObject({ status: 403 });
+  });
 });

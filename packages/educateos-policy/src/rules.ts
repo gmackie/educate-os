@@ -613,6 +613,34 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
   },
 
   // Administration.
+  // What an IT reviewer reads (SCHO-376): the decision trail, as the safety decision log and the
+  // admin audit log, and how the district signs people in. A district administrator, as a person
+  // over http, and nobody else: each allow is followed by a refusal for everyone it did not match,
+  // so the broader administrator rules below never reach these.
+  {
+    id: "admin.district.audit-log",
+    description: "A district admin, as a person rather than an agent, searches the district's content-free decision trail: the safety decision log and the admin audit log (SCHO-376).",
+    when: { kinds: ["audit-event"], roles: ["district-admin"], classifications: ["restricted"], actions: ["list"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.district.audit-log.others",
+    description: "Nobody else searches the district's decision trail: not a school admin, not an agent, not another district.",
+    when: { kinds: ["audit-event"], classifications: ["restricted"], actions: ["list"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
+  {
+    id: "admin.district.sign-in",
+    description: "A district admin, as a person rather than an agent, reads how the district signs people in: its sign-in provider, trusted issuers and how many people each one signs in. Never a secret (SCHO-376).",
+    when: { kinds: ["district"], roles: ["district-admin"], classifications: ["restricted"], actions: ["read"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.district.sign-in.others",
+    description: "Nobody else reads the district's sign-in settings: not a school admin, not an agent, not another district.",
+    when: { kinds: ["district"], classifications: ["restricted"], actions: ["read"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
   {
     id: "admin.district.directory",
     description: "A district admin manages the district's schools, terms, catalog courses, offerings and enrollments, and moves principals between lifecycle statuses.",

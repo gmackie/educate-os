@@ -116,6 +116,8 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     authority: "clever",
     rosterSource,
     rosterServicePrincipalId: SERVICE,
+    // The console's Sign-in screen says the personas' sign-ins are synthetic (SCHO-376).
+    signIn: { verifier: "demo" },
   });
 
   const fixture = demoDistrict("cedarvalley");

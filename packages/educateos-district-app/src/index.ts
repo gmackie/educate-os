@@ -25,3 +25,5 @@ export * from "./ops-analytics.ts";
 export * from "./course-library.ts";
 // District export (SCHO-364)
 export * from "./district-export.ts";
+// IT review (SCHO-376)
+export * from "./admin-review.ts";

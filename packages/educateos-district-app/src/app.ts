@@ -71,6 +71,9 @@ import { buildDistrictExport } from "./district-export.ts";
 // Student archive (SCHO-371)
 import { DistrictStudentRecordSource, StudentArchiveExporter } from "@educateos/portability";
 // Operations (SCHO-263)
+// IT review (SCHO-376)
+import { decisionEntry, MAX_SCREENING_ENTRIES, OUTCOME_EFFECTS, screeningEntries, signInCoverage, type DecisionPageBody, type SignInDeployment } from "./admin-review.ts";
+import { WRITE_ACTIONS, type PolicyAuditPage } from "@educateos/policy";
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
 /**
@@ -232,6 +235,13 @@ export interface DistrictAppOptions {
    */
   productAnalytics?: ProductAnalyticsDeployment;
 
+  // IT review (SCHO-376)
+  /**
+   * How this deployment verifies sign-ins, for the admin console's read-only sign-in settings.
+   * Without it the console says the deployment did not say.
+   */
+  signIn?: SignInDeployment;
+
   // Operations (SCHO-263)
   /** What the district says about the release it runs, on `/api/ops/health` and `/api/ops/releases`. */
   release?: OpsReleaseInfo;
@@ -370,6 +380,20 @@ const seedReleasesOnly: VerifyRelease = async (release) => {
     return false;
   }
 };
+
+// IT review (SCHO-376)
+/** How many decisions one page of the console's audit screens lists. */
+const AUDIT_PAGE = 50;
+/** What the admin audit log counts as a change: every write, and exports. */
+const ADMIN_CHANGES = [...WRITE_ACTIONS, "export"] as const;
+
+/** A page of the decision trail as the console lists it. */
+function decisionPage(page: PolicyAuditPage, snapshot: DistrictDirectorySnapshot): DecisionPageBody {
+  return {
+    entries: page.entries.map((stored) => decisionEntry(stored, snapshot)),
+    ...(page.nextBefore === undefined ? {} : { nextBefore: String(page.nextBefore) }),
+  };
+}
 
 /**
  * Composes one district's EducateOS domain services into one application behind a typed `/api`
@@ -1652,6 +1676,58 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         ...(decision.effect === "allow" ? {} : { reason: decision.reason }),
         ruleId,
         ...(grantId === undefined ? {} : { grantId }),
+      };
+    },
+    // IT review (SCHO-376): each a district administrator's alone, as a person (see the rules).
+    "admin.decisionLog": async (ctx, { query }) => {
+      await ctx.require("list", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read the decision log.");
+      const effects = OUTCOME_EFFECTS[query.outcome ?? "all"];
+      return decisionPage(await stores.audit.search({
+        limit: AUDIT_PAGE,
+        ...(query.before === undefined ? {} : { before: query.before }),
+        ...(effects === undefined ? {} : { effects: [...effects] }),
+        ...(query.rule === undefined ? {} : { rule: query.rule }),
+        ...(query.principalId === undefined ? {} : { principalId: query.principalId }),
+        ...(query.resourceKind === undefined ? {} : { resourceKind: query.resourceKind }),
+      }), ctx.snapshot);
+    },
+    "admin.auditLog": async (ctx, { query }) => {
+      await ctx.require("list", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read the audit log.");
+      return decisionPage(await stores.audit.search({
+        limit: AUDIT_PAGE,
+        effects: ["allow"],
+        rule: "admin.",
+        actions: [...ADMIN_CHANGES],
+        ...(query.before === undefined ? {} : { before: query.before }),
+        ...(query.principalId === undefined ? {} : { principalId: query.principalId }),
+        ...(query.resourceKind === undefined ? {} : { resourceKind: query.resourceKind }),
+      }), ctx.snapshot);
+    },
+    "admin.screeningLog": async (ctx) => {
+      await ctx.require("list", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read Hall Monitor's decisions.");
+      const boards = (await Promise.all(ctx.snapshot.offerings.map((o) => stores.discussions.load(o.id)))).filter((b) => b !== undefined);
+      const entries = screeningEntries(boards, ctx.snapshot);
+      return {
+        screening: options.discussionScreening !== undefined ? "hall-monitor" as const
+          : options.unscreenedStudentPosts === "publish" ? "published-unscreened" as const : "held-for-teachers" as const,
+        entries: entries.slice(0, MAX_SCREENING_ENTRIES),
+        truncated: entries.length > MAX_SCREENING_ENTRIES,
+      };
+    },
+    "admin.signInSettings": async (ctx) => {
+      await ctx.require("read", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read the sign-in settings.");
+      const head = (await stores.config.list()).at(-1);
+      const desired = head === undefined ? undefined : DesiredState.safeParse(head.desired);
+      const identity = desired?.success === true ? desired.data.identity : undefined;
+      const pendingLinks = (await stores.identityLinks.read()).open().filter((request) => request.status === "pending").length;
+      return {
+        ...(identity === undefined ? {} : { provider: identity.provider }),
+        ...(identity?.classlink === undefined ? {} : {
+          classlink: { tenantId: identity.classlink.tenantId, issuer: identity.classlink.issuer, clientId: identity.classlink.clientId, subjectClaim: identity.classlink.subjectClaim },
+        }),
+        ...signInCoverage(ctx.snapshot),
+        pendingLinks,
+        ...(options.signIn === undefined ? {} : { deployment: options.signIn }),
       };
     },
     "admin.previewDigest": async (ctx, { params }) => {
