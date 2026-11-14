@@ -7,7 +7,7 @@ import {
   type DistrictDirectorySnapshot,
 } from "@educateos/contracts";
 import { InMemoryAcademicStore, type AcademicStore } from "@educateos/academics";
-import type { PolicyAuditEvent, PolicyAuditSink } from "@educateos/policy";
+import { searchAuditEvents, type PolicyAuditEvent, type PolicyAuditPage, type PolicyAuditQuery, type PolicyAuditReader, type PolicyAuditSink } from "@educateos/policy";
 import { InMemoryWorkspaceStore, type WorkspaceStore } from "@educateos/workspaces";
 import {
   BackendArtifactStore,
@@ -218,11 +218,15 @@ export class InMemoryWorkshopUserLinkStore implements WorkshopUserLinkStore {
 }
 
 /** A {@link PolicyAuditSink} that keeps events in memory, for tests and the local harness. */
-export class InMemoryPolicyAuditLog implements PolicyAuditSink {
+export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReader {
   readonly #events: PolicyAuditEvent[] = [];
 
   async record(event: PolicyAuditEvent): Promise<void> {
     this.#events.push(structuredClone(event));
+  }
+
+  async search(query: PolicyAuditQuery): Promise<PolicyAuditPage> {
+    return searchAuditEvents(this.#events, query);
   }
 
   /** Every recorded event, oldest first. */
@@ -275,8 +279,11 @@ export interface DistrictAppStores {
   fundingAllocations: FundingAllocationStore;
   /** Administrator-confirmed Workshop user links (F04), which the AI call guard resolves through. */
   workshopUserLinks: WorkshopUserLinkStore;
-  /** The policy decision audit trail (A02). Every decision every service makes lands here. */
-  audit: PolicyAuditSink;
+  /**
+   * The policy decision audit trail (A02). Every decision every service makes lands here, and the
+   * admin console's audit screens search it (SCHO-376).
+   */
+  audit: PolicyAuditSink & PolicyAuditReader;
   // Guardians (ADR-0012, SCHO-188)
   /** Guardian relationships and their change history. */
   guardianRelationships: GuardianRelationshipStore;

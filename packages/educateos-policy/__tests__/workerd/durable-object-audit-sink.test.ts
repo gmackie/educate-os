@@ -6,7 +6,7 @@ import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { InMemoryAcademicStore } from "@educateos/academics";
 import { NORTHFIELD } from "@educateos/fixtures";
-import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent } from "../../src/index.ts";
+import { directoryPolicyInformation, PolicyEngine, searchAuditEvents, type PolicyAuditEvent } from "../../src/index.ts";
 import {
   DurableObjectPolicyAuditSink,
   POLICY_AUDIT_TABLE,
@@ -98,5 +98,25 @@ describe("DurableObjectPolicyAuditSink", () => {
       );
       await expect(sink.forCorrelation("cor-3")).rejects.toThrow(PolicyAuditCorruptionError);
     });
+  });
+
+  it("searches newest first, filtered, a page at a time, as the in-memory trail does (SCHO-376)", async () => {
+    const trail = fresh();
+    const events: PolicyAuditEvent[] = [];
+    for (let i = 1; i <= 7; i++) {
+      const recorded: PolicyAuditEvent = { ...event(`cor-s${i}`), ...(i % 2 === 0 ? { effect: "deny", reason: "no-matching-grant", ruleId: "default.deny" } : {}) };
+      events.push(recorded);
+      await trail.record(recorded);
+    }
+    const first = await trail.search({ limit: 2, rule: "admin." });
+    expect(first.entries.map((e) => e.event.correlationId)).toStrictEqual(["cor-s7", "cor-s5"]);
+    const second = await trail.search({ limit: 2, rule: "admin.", before: first.nextBefore! });
+    expect(second.entries.map((e) => e.event.correlationId)).toStrictEqual(["cor-s3", "cor-s1"]);
+    const denials = await trail.search({ limit: 10, effects: ["deny"] });
+    expect(denials.entries.map((e) => e.event.correlationId)).toStrictEqual(["cor-s6", "cor-s4", "cor-s2"]);
+    expect(denials.nextBefore).toBeUndefined();
+    // The in-memory search pages the same trail the same way.
+    expect(searchAuditEvents(events, { limit: 2, rule: "admin." })).toStrictEqual(first);
+    expect(searchAuditEvents(events, { limit: 2, rule: "admin.", before: first.nextBefore! })).toStrictEqual(second);
   });
 });
