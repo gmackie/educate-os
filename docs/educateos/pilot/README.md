@@ -15,6 +15,11 @@ pilot lead runs it with.
 | [playbook.md](playbook.md) | How we run a pilot: the kickoff agenda, the weekly 20-minute check-in, the issue log, and the mid-point and end-of-pilot reviews. | The EducateOS pilot lead |
 | [success-criteria.md](success-criteria.md) | A worksheet for the criteria agreed at kickoff, with example measurable criteria for teacher-facing AI and where each number comes from. | District sponsor, school lead, pilot lead |
 | [surveys.md](surveys.md) | The champion teachers' baseline and exit surveys. | Champion teachers |
+| [teacher-quickstart.md](teacher-quickstart.md) | The teacher quickstart, published at <https://educateos.io/pilot/teachers/>. | Champion teachers |
+| [teacher-training.md](teacher-training.md) | The 60-minute kickoff training, published at <https://educateos.io/pilot/teachers/training/>. | The trainer |
+| [family-letter.md](family-letter.md), [family-letter.es.md](family-letter.es.md) | The family letter in English and Spanish (Spanish pending native-speaker review), published at <https://educateos.io/pilot/families/>. | School lead |
+| [student-ai-guidelines.md](student-ai-guidelines.md) | Student AI guidelines by grade band, published at <https://educateos.io/pilot/students/>. | Teachers, students |
+| [staff-ai-guidance.md](staff-ai-guidance.md) | Staff AI use guidance, published at <https://educateos.io/pilot/staff-ai-guidance/>. | All staff |
 
 ## Keeping things consistent
 
