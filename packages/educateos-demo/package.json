@@ -8,7 +8,8 @@
     "dev": "vite",
     "preview": "vite preview",
     "mobile-district": "node src/mobile-dev-district.ts",
-    "a11y": "node scripts/a11y-audit.ts"
+    "a11y": "node scripts/a11y-audit.ts",
+    "a11y:site": "node scripts/site-a11y-audit.ts"
   },
   "dependencies": {
     "@cloudflare/kumo": "^2.14.0",
