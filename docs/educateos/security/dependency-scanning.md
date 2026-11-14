@@ -143,3 +143,8 @@ Since then, SCHO-386 and SCHO-387 cleared `pnpm-lock.yaml`: the vite catalog pin
 and `@cloudflare/puppeteer` 2.0 no longer depends on `@puppeteer/browsers`, so extract-zip,
 basic-ftp and ip-address left the lockfile. Their four baseline entries were removed, leaving the
 nine node-forge and zod entries for `apps/mobile/pnpm-lock.yaml` (SCHO-388).
+
+SCHO-388 then cleared `apps/mobile/pnpm-lock.yaml`: the app moved to Expo SDK 58.0.25 and its
+matching module patches, whose `@expo/cli` 58.1.20 no longer depends on zod or glob, and node-forge
+(still `^1.4.0` under `@expo/code-signing-certificates`) resolves to 1.4.3. The baseline is empty;
+one moderate advisory remains (minimatch 10.2.6, GHSA-g3hv-75wg-m249).
