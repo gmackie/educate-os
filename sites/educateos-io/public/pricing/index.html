@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cost to run · EducateOS</title>
-<meta name="description" content="What a school district pays Cloudflare to run EducateOS in its own account, by enrollment size, with every figure labeled measured or projected, plus the founding pilot terms.">
+<meta name="description" content="What a school district pays Cloudflare to run EducateOS in its own account, by enrollment size, from measured usage, with every figure labeled measured or projected, plus Access sign-in seats and the founding pilot terms.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
 <!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
@@ -26,7 +26,7 @@
   <div class="wrap">
     <a class="logo" href="/" aria-label="EducateOS home">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
-      EducateOS
+      <span class="wordmark">EducateOS</span>
     </a>
     <nav class="links" aria-label="Primary">
       <a href="/tour/">Product tour</a>
@@ -74,7 +74,7 @@
     <div class="wrap">
       <div class="eyebrow rise">Cost to run</div>
       <h1 class="rise" style="--d:1">What EducateOS costs your district to run.</h1>
-      <p class="lede rise" style="--d:2">EducateOS runs in your district's own Cloudflare account, so you pay Cloudflare directly for what it uses. This page shows that bill by enrollment size: the Cloudflare usage, the sign-in seats, and the AI spending cap you set. Every figure is labeled as measured or projected, and the method is public.</p>
+      <p class="lede rise" style="--d:2">EducateOS runs in your district's own Cloudflare account, so you pay Cloudflare directly for what it uses. This page shows the running cost by enrollment size, then the two things outside it: Cloudflare Access sign-in seats, which many districts already have, and the AI spending cap you set. Every figure is labeled as measured or projected, and the method is public.</p>
       <div class="legend rise" style="--d:3">
         <span class="status avail">Measured</span>
         <span class="status planned">Projected</span>
@@ -100,22 +100,22 @@
     <div class="wrap">
       <div class="eyebrow">Monthly Cloudflare bill <span class="status planned">Projected</span></div>
       <h2>By enrollment size, at Cloudflare list prices.</h2>
-      <p class="muted" style="max-width:72ch">A busy school month. Usage is everything the district Worker, its database and the teachers' AI workspace use, including the Workers Paid plan's $5 base fee. Sign-in seats are Cloudflare Access, priced per person who signs in (see below). The per-person activity behind these figures is in the table under <a href="#method">Where the numbers come from</a>.</p>
+      <p class="muted" style="max-width:72ch">A busy school month. The running cost is everything the district Worker, its database and the teachers' AI workspace use, including the Workers Paid plan's $5 base fee. Cloudflare Access sign-in seats are a separate line, not added into the running cost: many districts already have Cloudflare Zero Trust, and a sign-in that takes no seat per student is planned (<a href="#seats">see below</a>). The per-person activity behind these figures is in the table under <a href="#method">Where the numbers come from</a>.</p>
       <div class="table-scroll" style="margin-top:24px">
         <table class="gb">
-          <thead><tr><th>Students</th><th>Teachers</th><th>Cloudflare usage</th><th>Usage per student</th><th>Access seats, if everyone signs in</th><th>Total at list price</th></tr></thead>
+          <thead><tr><th>Students</th><th>Teachers</th><th>Running cost</th><th>Running cost per student</th><th>Separately: Access seats at list price, if everyone signs in</th></tr></thead>
           <tbody>
-            <tr><td class="n" data-cost="500.students">500</td><td class="n" data-cost="500.teachers">34</td><td class="n"><b data-cost="500.usage">$8.09</b></td><td class="n" data-cost="500.perStudent">$0.016</td><td class="n" data-cost="500.access">$5,488</td><td class="n" data-cost="500.total">$5,496</td></tr>
-            <tr><td class="n" data-cost="2500.students">2,500</td><td class="n" data-cost="2500.teachers">167</td><td class="n"><b data-cost="2500.usage">$37.29</b></td><td class="n" data-cost="2500.perStudent">$0.015</td><td class="n" data-cost="2500.access">$27,419</td><td class="n" data-cost="2500.total">$27,456</td></tr>
-            <tr><td class="n" data-cost="10000.students">10,000</td><td class="n" data-cost="10000.teachers">667</td><td class="n"><b data-cost="10000.usage">$340</b></td><td class="n" data-cost="10000.perStudent">$0.034</td><td class="n" data-cost="10000.access">$109,669</td><td class="n" data-cost="10000.total">$110,009</td></tr>
-            <tr><td class="n" data-cost="50000.students">50,000</td><td class="n" data-cost="50000.teachers">3,334</td><td class="n"><b data-cost="50000.usage">$2,048</b></td><td class="n" data-cost="50000.perStudent">$0.041</td><td class="n" data-cost="50000.access">$548,338</td><td class="n" data-cost="50000.total">$550,386</td></tr>
+            <tr><td class="n" data-cost="500.students">500</td><td class="n" data-cost="500.teachers">34</td><td class="n"><b data-cost="500.usage">$8.09</b></td><td class="n" data-cost="500.perStudent">$0.016</td><td class="n" data-cost="500.access">$5,488</td></tr>
+            <tr><td class="n" data-cost="2500.students">2,500</td><td class="n" data-cost="2500.teachers">167</td><td class="n"><b data-cost="2500.usage">$37.29</b></td><td class="n" data-cost="2500.perStudent">$0.015</td><td class="n" data-cost="2500.access">$27,419</td></tr>
+            <tr><td class="n" data-cost="10000.students">10,000</td><td class="n" data-cost="10000.teachers">667</td><td class="n"><b data-cost="10000.usage">$340</b></td><td class="n" data-cost="10000.perStudent">$0.034</td><td class="n" data-cost="10000.access">$109,669</td></tr>
+            <tr><td class="n" data-cost="50000.students">50,000</td><td class="n" data-cost="50000.teachers">3,334</td><td class="n"><b data-cost="50000.usage">$2,048</b></td><td class="n" data-cost="50000.perStudent">$0.041</td><td class="n" data-cost="50000.access">$548,338</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="muted" style="font-size:.85rem;margin-top:10px">USD per month. Not a quote: your bill depends on how your people use EducateOS, and Cloudflare sets its prices. AI model usage is not included; it is <a href="#ai">your AI cap</a>.</p>
+      <p class="muted" style="font-size:.85rem;margin-top:10px">USD per month. The running cost and the seats are not added together; what seats cost your district depends on your Zero Trust plan. Not a quote: your bill depends on how your people use EducateOS, and Cloudflare sets its prices. AI model usage is not included; it is <a href="#ai">your AI cap</a>.</p>
       <div class="grid3">
-        <div class="card feat"><h3>Usage is small</h3><p>Most usage fits in what the Workers Paid plan includes: about <span data-cost="500.usage">$8.09</span> a month at 500 students and <span data-cost="2500.usage">$37.29</span> at 2,500, the $5 base fee included.</p><span class="status planned">Projected</span></div>
-        <div class="card feat"><h3>Sign-in seats are not</h3><p>Today every person who signs in takes a Cloudflare Access seat. Past 50 people that is $7 each per month, which outweighs everything else.</p><span class="status planned">Projected</span></div>
+        <div class="card feat"><h3>The running cost is small</h3><p>Most usage fits in what the Workers Paid plan includes: about <span data-cost="500.usage">$8.09</span> a month at 500 students and <span data-cost="2500.usage">$37.29</span> at 2,500, the $5 base fee included.</p><span class="status planned">Projected</span></div>
+        <div class="card feat"><h3>Sign-in seats are a separate line</h3><p>Today every person who signs in takes a Cloudflare Access seat. Many districts already have Cloudflare Zero Trust; at list price it is $7 a person a month past 50 people. A sign-in that takes no seat per student is planned.</p><span class="status planned">Projected</span></div>
         <div class="card feat"><h3>Large districts are untested</h3><p>No district has run EducateOS at 10,000 students. Those rows are the cost of the current design if it held at that size, not a promise that it does.</p><span class="status planned">Projected</span></div>
       </div>
     </div>
@@ -124,13 +124,14 @@
   <section class="tight" id="seats">
     <div class="wrap">
       <div class="eyebrow">Sign-in seats</div>
-      <h2>The cost that matters today is who signs in.</h2>
-      <p class="muted" style="max-width:72ch">People sign in to EducateOS through Cloudflare Access, with your district's own identity provider behind it. Cloudflare's Zero Trust Free plan covers 50 people. Above that, the pay-as-you-go plan is $7 per person per month, for everyone, and a person holds a seat from their first sign-in until you remove them. The table counts every student and teacher, and a guardian for half of the students.</p>
+      <h2>Access seats: separate from the running cost.</h2>
+      <p class="muted" style="max-width:72ch">People sign in to EducateOS through Cloudflare Access, with your district's own identity provider behind it. Many districts already have Cloudflare Zero Trust, and when EducateOS is installed in the account that holds that plan, sign-ins use its seats, so we show seats apart from the running cost rather than adding them in. Cloudflare's Zero Trust Free plan covers 50 people. Above that, the published pay-as-you-go price is $7 per person per month, for everyone, and a person holds a seat from their first sign-in until you remove them. The seats column in the table above counts every student and teacher, and a guardian for half of the students.</p>
       <table class="spec">
         <thead><tr><th>What it means for a pilot</th><th>Detail</th><th>Status</th></tr></thead>
         <tbody>
+          <tr><td>You may already have the seats</td><td>If your district already has a Cloudflare Zero Trust plan and installs EducateOS in the same Cloudflare account, the people who sign in to EducateOS take seats under that plan. Check how many seats it has and how many are in use.</td><td><span class="status planned">Projected</span></td></tr>
           <tr><td>A teachers-first pilot can stay free</td><td>The founding pilot starts with teachers and staff, with student AI off. Up to 50 people signing in fits Zero Trust Free, so the pilot's Cloudflare bill is the Workers Paid plan plus the small usage above.</td><td><span class="status planned">Projected</span></td></tr>
-          <tr><td>Students at scale need a different sign-in</td><td>Seat pricing does not fit a whole district. We plan a sign-in that does not take an Access seat per person, before any pilot opens EducateOS to all its students. Until it ships, this page shows the seat cost at list price.</td><td><span class="status planned">Planned</span></td></tr>
+          <tr><td>Seat-free student sign-in is planned</td><td>Seat pricing does not fit a whole district. We plan a student sign-in that does not take an Access seat per person (SCHO-369), before any pilot opens EducateOS to all its students. Until it ships, this page shows the seat cost at list price.</td><td><span class="status planned">Planned</span></td></tr>
           <tr><td>Your Cloudflare contract may differ</td><td>Districts with a Cloudflare contract may pay a different seat price. The figures here are the published pay-as-you-go price.</td><td><span class="status planned">Projected</span></td></tr>
         </tbody>
       </table>

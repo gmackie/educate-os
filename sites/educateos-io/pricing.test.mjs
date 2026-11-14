@@ -16,22 +16,28 @@ test("the page carries the figures the data file gives (run build.mjs after chan
   for (const [, key, shown] of page.matchAll(/\sdata-cost="([^"]+)"[^>]*>([^<]*)</g)) assert.equal(shown, figures.get(key), key);
 });
 
-test("the table has a row for every enrollment size, with each total split into usage and seats", () => {
+test("the table has a row for every enrollment size, with usage and seats in separate columns", () => {
   for (const size of COST_DATA.sizes) {
-    for (const field of ["students", "teachers", "usage", "perStudent", "access", "total"]) {
+    for (const field of ["students", "teachers", "usage", "perStudent", "access"]) {
       assert.match(page, new RegExp(`data-cost="${size}\\.${field}"`), `${size}.${field}`);
     }
   }
 });
 
-test("usage is the sum of its lines, and the total adds the seats", () => {
+test("usage is the sum of its lines, and Access seats are not one of them", () => {
   for (const size of COST_DATA.sizes) {
     const cost = monthlyCost(size);
     const lines = Object.values(cost.lines).reduce((sum, value) => sum + value, 0);
     assert.ok(Math.abs(cost.usage - lines) < 1e-9);
-    assert.ok(Math.abs(cost.total - cost.usage - cost.access) < 1e-9);
+    assert.ok(!("total" in cost) && !("access" in cost.lines), "seats stay a separate line");
     assert.equal(cost.lines.base, COST_DATA.prices.workersBase.usd);
   }
+});
+
+test("the page shows no total that adds seats to usage, and says why seats are apart", () => {
+  assert.doesNotMatch(page, /data-cost="\d+\.total"/);
+  assert.match(page, /already (?:have|license|use) Cloudflare Zero Trust/);
+  assert.match(page, /SCHO-369/);
 });
 
 test("a 500-student district, worked by hand as in cost-to-run.md", () => {

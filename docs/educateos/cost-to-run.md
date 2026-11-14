@@ -1,6 +1,6 @@
 # Cost to run: what a district pays Cloudflare
 
-- Status: Living document. Figures last computed 2026-11-13.
+- Status: Living document. Figures last computed 2026-11-13; seat presentation decided 2026-11-14.
 - Issue: SCHO-362 (parent SCHO-358)
 - Page: [educateos.io/pricing](https://educateos.io/pricing/) (`sites/educateos-io/public/pricing/index.html`)
 - Inputs: `sites/educateos-io/public/assets/cost-to-run.json`. Model: `sites/educateos-io/cost-to-run.mjs`.
@@ -11,6 +11,12 @@ This note is the method behind the page: what a district install deploys, what w
 live demo districts, the assumptions we added, the prices we used and the calculation. Every
 figure is **measured** (read from Cloudflare analytics), **published** (a Cloudflare list price) or
 **assumed** (our choice, stated), and every result is **projected**.
+
+How the page presents it (owner decision, 2026-11-14): it leads with the measured **running cost**
+(Cloudflare usage plus the Workers Paid base fee). Cloudflare Access seats are a **separate line**,
+never added into the running cost or into any total, because many districts already have
+Cloudflare Zero Trust (an install in the account that holds that plan uses its seats) and a student
+sign-in that takes no seat is planned (SCHO-369). The model has no combined total.
 
 To change a price or an assumption, edit `cost-to-run.json` and run `node sites/educateos-io/build.mjs`.
 
@@ -179,16 +185,20 @@ W = 27,200; R = 1,509,949, under 10 million, so $0. CPU = 4,448,247 + 2,475,200 
 under 30 million, $0. DO requests 1,509,949: 509,949 over, × $0.15/M = $0.08. DO GB-s =
 334,800 + 306,000 = 640,800: 240,800 over, × $12.50/M = $3.01. Rows read 2.24 billion and written
 12.7 million, both included. Storage 0.49 GB, logs 3.0 million: included. **Usage $8.09.**
-Seats: 784 × $7 = **$5,488**.
+Separately, Access seats at list price: 784 × $7 = **$5,488**.
 
 Results (projected, USD per month):
 
-| Students | Teachers | Usage | Largest usage lines | Usage per student | Access seats (all sign in) | Total at list price |
-| ---: | ---: | ---: | --- | ---: | ---: | ---: |
-| 500 | 34 | $8.09 | base $5, DO duration $3.01 | $0.016 | $5,488 | $5,496 |
-| 2,500 | 167 | $37.29 | DO duration $17.97, rows written $13.25 | $0.015 | $27,419 | $27,456 |
-| 10,000 | 667 | $339.58 | rows written $202.96, DO duration $74.22 | $0.034 | $109,669 | $110,009 |
-| 50,000 | 3,334 | $2,048 | rows written $1,214.79, DO duration $374.26, rows read $199.17, logs $168.41 | $0.041 | $548,338 | $550,386 |
+| Students | Teachers | Running cost (usage) | Largest usage lines | Running cost per student | Separately: Access seats at list price (all sign in) |
+| ---: | ---: | ---: | --- | ---: | ---: |
+| 500 | 34 | $8.09 | base $5, DO duration $3.01 | $0.016 | $5,488 |
+| 2,500 | 167 | $37.29 | DO duration $17.97, rows written $13.25 | $0.015 | $27,419 |
+| 10,000 | 667 | $339.58 | rows written $202.96, DO duration $74.22 | $0.034 | $109,669 |
+| 50,000 | 3,334 | $2,048 | rows written $1,214.79, DO duration $374.26, rows read $199.17, logs $168.41 | $0.041 | $548,338 |
+
+The seats column is not added to the running cost. What seats cost a district depends on its Zero
+Trust plan: a district that already has one, in the account it installs EducateOS in, uses seats
+it holds; at the published pay-as-you-go price they cost the figures above.
 
 `node -e 'import("./sites/educateos-io/cost-to-run.mjs").then(m => console.log(m.monthlyCost(2500)))'`
 prints any size, line by line.
@@ -203,10 +213,12 @@ and Hall Monitor moderation are in [hall-monitor/source/03-PRICING-AND-SCENARIOS
 
 ## 7. Findings and limits
 
-- **Access seats dominate.** Every person who signs in through Access takes a Zero Trust seat.
-  Past 50 people, list price is $7 per person per month for everyone, which outweighs all usage
-  by two orders of magnitude. A teachers-first pilot of up to 50 people stays on Zero Trust Free.
-  A sign-in that does not take a seat per person is SCHO-369.
+- **Access seats are a separate line, and at list price they are large.** Every person who signs
+  in through Access takes a Zero Trust seat. Past 50 people, the published pay-as-you-go price is
+  $7 per person per month for everyone, two orders of magnitude above the running cost. The page
+  shows seats apart from the running cost because many districts already have Cloudflare Zero
+  Trust, and a teachers-first pilot of up to 50 people stays on Zero Trust Free. A student sign-in
+  that does not take a seat per person is planned (SCHO-369).
 - **The notification sweep writes every hour.** At 10,000 students and above, rows written are the
   largest usage line, and about half of them are the sweep's. Making it write only what changed is
   SCHO-370.

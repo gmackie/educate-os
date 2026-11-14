@@ -15,7 +15,7 @@ const partials = {
 };
 
 const costs = costFigures();
-const statuses =JSON.parse(readFileSync(join(publicDir, "assets/integration-status.json"), "utf8"));
+const statuses = JSON.parse(readFileSync(join(publicDir, "assets/integration-status.json"), "utf8"));
 
 function chip(key, path) {
   const level = statuses.levels[statuses.features[key]];

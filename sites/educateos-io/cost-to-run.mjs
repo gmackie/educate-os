@@ -10,7 +10,7 @@ export const COST_DATA = JSON.parse(readFileSync(new URL("./public/assets/cost-t
 /** Cost of `quantity` units of a metered product: what exceeds `included`, at `perMillion` USD per million. */
 const overage = (quantity, {included, perMillion}) => (Math.max(0, quantity - included) / 1e6) * perMillion;
 
-/** The monthly bill, line by line, for a district with `students` enrolled. */
+/** The monthly running cost, line by line, for a district with `students` enrolled, and its Access seats apart. */
 export function monthlyCost(students, data = COST_DATA) {
   const a = Object.fromEntries(Object.entries(data.assumptions).filter(([key]) => !key.startsWith("$")).map(([key, {value}]) => [key, value]));
   const p = data.prices;
@@ -48,12 +48,14 @@ export function monthlyCost(students, data = COST_DATA) {
     logs: overage(logEvents, p.workersLogEvents),
   };
   const usage = Object.values(lines).reduce((sum, value) => sum + value, 0);
+  // Access seats are a separate figure, never added into `usage`: many districts already license
+  // Cloudflare Zero Trust, and a sign-in that takes no seat per student is planned (SCHO-369).
   const seats = students + teachers + guardians;
   const access = seats <= p.accessSeat.freeUsers ? 0 : seats * p.accessSeat.perUserMonth;
   return {
     students, teachers, guardians, seats,
     quantities: {requests, cpuMs, objectRequests, gbSeconds, rowsRead, rowsWritten, storageGb, logEvents},
-    lines, usage, perStudent: usage / students, access, total: usage + access,
+    lines, usage, perStudent: usage / students, access,
   };
 }
 
@@ -71,7 +73,7 @@ export function costFigures(data = COST_DATA) {
   for (const students of data.sizes) {
     const cost = monthlyCost(students, data);
     for (const key of ["students", "teachers", "guardians", "seats"]) figures.set(`${students}.${key}`, whole.format(cost[key]));
-    for (const key of ["usage", "perStudent", "access", "total"]) figures.set(`${students}.${key}`, usd(cost[key]));
+    for (const key of ["usage", "perStudent", "access"]) figures.set(`${students}.${key}`, usd(cost[key]));
     for (const [line, value] of Object.entries(cost.lines)) figures.set(`${students}.line.${line}`, usd(value));
   }
   for (const [key, entry] of Object.entries(data.assumptions)) if (!key.startsWith("$")) figures.set(`a.${key}`, entry.value >= 1000 ? whole.format(entry.value) : String(entry.value));
