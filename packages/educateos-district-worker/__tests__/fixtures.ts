@@ -74,3 +74,6 @@ export const HALL_MONITOR_URL = "https://hall-monitor.example";
 
 /** The demo operator's token as the tests deploy it (SCHO-326): `DEMO_OPERATOR_TOKEN`. */
 export const DEMO_OPERATOR_TOKEN = "test-demo-operator-token-0123456789-abcdef";
+
+/** The point-in-time recovery routes' token as the tests deploy it (SCHO-373): `RECOVERY_TOKEN`. */
+export const RECOVERY_TOKEN = "test-recovery-token-0123456789-abcdefghij";

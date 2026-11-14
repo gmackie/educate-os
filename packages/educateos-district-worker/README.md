@@ -178,6 +178,18 @@ caller brings `authorization: Bearer <DEMO_OPERATOR_TOKEN>`, and the district ru
 more characters) is set. See
 [demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#seeding-without-a-sign-in-operator-token).
 
+## Point-in-time recovery (SCHO-373)
+
+`src/recovery.ts` serves `GET /api/recovery/bookmark[?at=<time>]` and `POST /api/recovery/restore`
+(`{ districtId, bookmark }`), which restore the district object's SQLite storage to any moment in
+the last 30 days with the platform's bookmarks (`getBookmarkForTime`, `onNextSessionRestoreBookmark`,
+then `ctx.abort()` 250 ms after answering). The restore answers the bookmark that undoes it. The
+routes are served before the district application starts, so a district that no longer starts can
+still be restored. They are 404 unless the `RECOVERY_TOKEN` secret (32 or more characters) is set,
+and each request needs that token and a verified Access assertion. Local workerd hands out the
+current bookmark but refuses the rest (it keeps no history), so the tests drive the restore over a
+recording storage. See [backup-and-restore.md](../../docs/educateos/runbooks/backup-and-restore.md).
+
 ## Entrypoints
 
 | Entrypoint | For | Contract |
