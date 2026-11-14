@@ -76,10 +76,12 @@ const EXPECTED: Record<string, ExpectedArea> = {
   "packages/configurator-ui": {
     injected: ["NODE_ENV"],
   },
-  // EDUCATEOS_MOBILE_DISTRICT_PORT is read by the mobile dev district (`pnpm educateos:mobile-district`), never by a task.
+  // EDUCATEOS_MOBILE_DISTRICT_PORT is read by the mobile dev district (`pnpm educateos:mobile-district`),
+  // and CHROME by the accessibility audit (`scripts/a11y-audit.ts`, the `a11y` script; SCHO-361),
+  // never by a task.
   "packages/educateos-demo": {
     injected: ["NODE_ENV"],
-    external: ["EDUCATEOS_MOBILE_DISTRICT_PORT"],
+    external: ["CHROME", "EDUCATEOS_MOBILE_DISTRICT_PORT"],
   },
   // `src/worker-inputs.ts` resolves BUNDLED_BLUEPRINTS_DIR only to name a directory for the watcher
   // and `forceRerunTriggers`. The `test` task is cached and strips it; `vitest run` never reads
@@ -163,6 +165,9 @@ const EXPECTED: Record<string, ExpectedArea> = {
       "CF_AI_GATEWAY_API_TOKEN", "CF_AI_GATEWAY_PROVIDERS", "CF_AI_GATEWAY_USE_BINDING",
       "CI_COMMIT_SHA", "CI_PIPELINE_IID", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN",
       // School dev reads this directly before launching workers; it is not a cached task input.
+      // The Canvas demo scripts (`demo/canvas-*.ts`, SCHO-377) take the `rails runner` command
+      // from CANVAS_RAILS_RUNNER; they are run directly.
+      "CANVAS_RAILS_RUNNER",
       "CLOUDFLARE_OS_DEPLOYMENT", "DISTRICT_CONFIG", "GITHUB_REPOSITORY", "GITHUB_TOKEN", "PREVIEW_ADMIN_CONFIG_SEED", "PREVIEW_ADMINS", "PREVIEW_AI_GUARD",
       "PREVIEW_GITHUB_CLIENT_ID", "PREVIEW_GITHUB_CLIENT_SECRET", "PREVIEW_NAME", "PREVIEW_PR_NUMBER",
       "PREVIEW_WORKERS_DEV_HOST", "PREVIEW_WRANGLER", "VITE_BACKEND_HOST",
