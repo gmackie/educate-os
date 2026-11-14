@@ -3,7 +3,7 @@
 - Status: Living document. Answers follow [maturity.md](maturity.md); when a maturity row changes,
   change the matching answer here and on the public page in the same PR.
 - Date: 2026-11-14
-- Issue: SCHO-360 (parent SCHO-358)
+- Issue: SCHO-360 (parent SCHO-358); security contact, disclosure and incident response: SCHO-372
 - Public copy: `sites/educateos-io/public/it/security-questionnaire/index.html`
   (educateos.io/it/security-questionnaire/), printable to PDF from the browser.
 
@@ -159,9 +159,9 @@ Every answer names the document or code path it rests on. Paths are relative to 
 
 | Question | Answer | Status | Source |
 | --- | --- | --- | --- |
-| Do you have an incident response plan? | No written incident response plan exists yet. | Not done | Not yet documented |
-| Who do we contact about a security issue? | hello@educateos.io is the only published contact. There is no dedicated security address or vulnerability disclosure policy yet. | Not done | `sites/educateos-io/public/security/index.html`; not yet documented |
-| How fast will you notify us of a breach? | For student data Gmacko Ventures LLC holds or accessed (only under Support Access), the draft DPA says within 72 hours. For the installation itself, the district operates it and runs its own response; Gmacko Ventures LLC will help on request. | Not done (DPA draft) | DPA template §10 |
+| Do you have an incident response plan? | Yes, a published outline: receive and log, triage, contain, fix with a signed release and advisory, notify, review. The district leads the response inside its own account; Gmacko Ventures LLC leads it for the code, releases and keys, educateos.io and any data it holds under Support Access. It has not been exercised in a real incident or a tabletop exercise. | In place (outline) | [security/incident-response.md](security/incident-response.md); educateos.io/security/incident-response/ |
+| Who do we contact about a security issue? | security@educateos.io, also published in `/.well-known/security.txt` (RFC 9116). The vulnerability disclosure policy covers scope, what to include, response targets (acknowledgement within 3 business days, a triage update within 10), safe harbor for good-faith research and coordinated disclosure. There is no bug bounty. | In place | [security/vulnerability-disclosure.md](security/vulnerability-disclosure.md); educateos.io/security/disclosure/; `sites/educateos-io/public/.well-known/security.txt` |
+| How fast will you notify us of a breach? | If Gmacko Ventures LLC confirms an incident affecting your installation's data (for example an exploited flaw in EducateOS, a misused release key, or data it holds or accessed under Support Access), it notifies your named contact without undue delay and within 72 hours of confirming it, and supports your own notification duties under state law, including Texas and Michigan. The district operates its installation and determines which records and people are affected. The draft DPA also says 72 hours for data Gmacko Ventures LLC holds. | In place (published commitment) | [security/incident-response.md](security/incident-response.md#our-breach-notification-commitment-to-districts); DPA template §10 |
 | What if your release key is compromised? | Releases are signed and the district verifies them offline against keys it pinned. A stolen online release key cannot change the district's trust; only a key set signed by a threshold of offline root keys can. Until a new set lands, the district's approval of each release is the defence. | Built, not proven in a district | [threat-model.md](threat-model.md) T12; [release-signing.md](release-signing.md) |
 
 ## 12. Vulnerability management and secure development
@@ -180,10 +180,6 @@ Every answer names the document or code path it rests on. Paths are relative to 
 
 These answers are marked unknown or not done because no repository document settles them:
 
-- A dedicated security contact and a vulnerability
-  disclosure policy.
-- A written incident response plan and a breach notification commitment for the installation
-  (the DPA's 72 hours covers only data Gmacko Ventures LLC holds).
 - Cyber liability insurance, if any.
 - Background checks for anyone who would do Support Access.
 - Whether to offer any recovery commitment beyond the runbook's targets, once a live restore has

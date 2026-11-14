@@ -312,9 +312,9 @@
       <table class="spec">
         <thead><tr><th>Question</th><th>Answer and source</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td>Do you have an incident response plan?</td><td>No written incident response plan exists yet.<small>Source: Not yet documented</small></td><td><span class="status planned">Not done</span></td></tr>
-          <tr><td>Who do we contact about a security issue?</td><td>hello@educateos.io is the only published contact. There is no dedicated security address or vulnerability disclosure policy yet.<small>Source: <a href="/security/"><code>sites/educateos-io/public/security/index.html</code></a>; not yet documented</small></td><td><span class="status planned">Not done</span></td></tr>
-          <tr><td>How fast will you notify us of a breach?</td><td>For student data Gmacko Ventures LLC holds or accessed (only under Support Access), the draft DPA says within 72 hours. For the installation itself, the district operates it and runs its own response; Gmacko Ventures LLC will help on request.<small>Source: DPA template §10</small></td><td><span class="status planned">Not done (DPA draft)</span></td></tr>
+          <tr><td>Do you have an incident response plan?</td><td>Yes, a published outline: receive and log, triage, contain, fix with a signed release and advisory, notify, review. The district leads the response inside its own account; Gmacko Ventures LLC leads it for the code, releases and keys, educateos.io and any data it holds under Support Access. It has not been exercised in a real incident or a tabletop exercise.<small>Source: <a href="/security/incident-response/">educateos.io/security/incident-response/</a>; <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/security/incident-response.md">security/incident-response.md</a></small></td><td><span class="status supported">In place (outline)</span></td></tr>
+          <tr><td>Who do we contact about a security issue?</td><td><a href="mailto:security@educateos.io">security@educateos.io</a>, also published in <a href="/.well-known/security.txt">/.well-known/security.txt</a> (RFC 9116). The vulnerability disclosure policy covers scope, what to include, response targets (acknowledgement within 3 business days, a triage update within 10), safe harbor for good-faith research and coordinated disclosure. There is no bug bounty.<small>Source: <a href="/security/disclosure/">educateos.io/security/disclosure/</a>; <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/security/vulnerability-disclosure.md">security/vulnerability-disclosure.md</a></small></td><td><span class="status supported">In place</span></td></tr>
+          <tr><td>How fast will you notify us of a breach?</td><td>If Gmacko Ventures LLC confirms an incident affecting your installation's data (for example an exploited flaw in EducateOS, a misused release key, or data it holds or accessed under Support Access), it notifies your named contact without undue delay and within 72 hours of confirming it, and supports your own notification duties under state law, including Texas and Michigan. The district operates its installation and determines which records and people are affected. The draft DPA also says 72 hours for data Gmacko Ventures LLC holds.<small>Source: <a href="/security/incident-response/#notification">educateos.io/security/incident-response/</a>; DPA template §10</small></td><td><span class="status supported">In place (published commitment)</span></td></tr>
           <tr><td>What if your release key is compromised?</td><td>Releases are signed and the district verifies them offline against keys it pinned. A stolen online release key cannot change the district's trust; only a key set signed by a threshold of offline root keys can. Until a new set lands, the district's approval of each release is the defence.<small>Source: <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/threat-model.md">threat-model.md</a> T12; <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/release-signing.md">release-signing.md</a></small></td><td><span class="status validating">Built, not proven in a district</span></td></tr>
         </tbody>
       </table>
@@ -344,14 +344,12 @@
       <h2>Open items</h2>
       <p>These answers are marked not done or unknown because no EducateOS document settles them yet. We'll update this page as each is settled.</p>
       <ul>
-        <li>A dedicated security contact and a vulnerability disclosure policy.</li>
-        <li>A written incident response plan and a breach notification commitment for the installation (the DPA's 72 hours covers only data Gmacko Ventures LLC holds).</li>
         <li>Cyber liability insurance, if any.</li>
         <li>Background checks for anyone who would do Support Access.</li>
         <li>Whether to offer any recovery commitment beyond the runbook's targets, once a live restore has been rehearsed (SCHO-395).</li>
         <li>Counsel's review of the DPA (SCHO-229).</li>
       </ul>
-      <p>Questions about an answer? Email <a href="mailto:hello@educateos.io?subject=EducateOS%20security%20questionnaire">hello@educateos.io</a>. See also <a href="/security/">Security</a> and <a href="/student-privacy/">Student privacy</a>.</p>
+      <p>Questions about an answer? Email <a href="mailto:hello@educateos.io?subject=EducateOS%20security%20questionnaire">hello@educateos.io</a>. To report a security problem, email <a href="mailto:security@educateos.io">security@educateos.io</a>. See also <a href="/security/">Security</a> and <a href="/student-privacy/">Student privacy</a>.</p>
     </div>
   </section>
 </main>
@@ -395,6 +393,8 @@
         <h4>Trust</h4>
         <ul>
           <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
           <li><a href="/it/">IT evaluation packet</a></li>
           <li><a href="/student-privacy/">Student privacy</a></li>
           <li><a href="/privacy/">Privacy Policy</a></li>
@@ -406,6 +406,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
           <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>

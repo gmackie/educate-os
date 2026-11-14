@@ -316,7 +316,7 @@ section.tight { padding: 56px 0; }
 .doc h2 { font-size: 1.35rem; margin-top: 40px; }
 .doc h3 { margin-top: 22px; }
 .doc p, .doc li { color: var(--text-color-kumo-default); }
-.doc ul { padding-left: 20px; display: grid; gap: 6px; }
+.doc ul, .doc ol { padding-left: 20px; display: grid; gap: 6px; }
 .doc .updated { font-size: .88rem; color: var(--text-color-kumo-subtle); }
 
 /* ---- Landing page links into the sub-pages ---- */
