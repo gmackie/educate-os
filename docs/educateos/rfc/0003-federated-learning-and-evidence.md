@@ -88,11 +88,11 @@ The source of truth for the existing implementation is the repository code and t
 | **@educateos/fixtures / harness / pilot-gate** | Six isolated synthetic districts and failure injection | End-to-end federation invariants and a transfer/acceptance test matrix |
 
 Relevant source:
-- [Registry associations](../../packages/educateos-registry/src/framework.ts)
-- [Evidence contracts](../../packages/educateos-registry/src/evidence-contract.ts)
-- [Catalog mirror](../../packages/educateos-catalog/src/mirror.ts)
-- [Assessment](../../packages/educateos-assessment/src/model.ts)
-- [Portability consent](../../packages/educateos-portability/src/consent.ts)
+- [Registry associations](../../../packages/educateos-registry/src/framework.ts)
+- [Evidence contracts](../../../packages/educateos-registry/src/evidence-contract.ts)
+- [Catalog mirror](../../../packages/educateos-catalog/src/mirror.ts)
+- [Assessment](../../../packages/educateos-assessment/src/model.ts)
+- [Portability consent](../../../packages/educateos-portability/src/consent.ts)
 - [Curriculum authoring](../../../curriculum/README.md)
 - [Capability maturity](../maturity.md)
 
