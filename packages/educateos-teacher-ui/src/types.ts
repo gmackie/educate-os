@@ -124,3 +124,13 @@ export type ExtendedTime = QuizAccommodations["accommodations"][number]["extende
 export type LibraryCourse = RouteResponse<"teacher.libraryCourses">[number];
 /** What installing a library course in a class does, or has done (SCHO-331). */
 export type CourseInstallPlan = RouteResponse<"teacher.previewCourseInstall">;
+
+// From Google Classroom (SCHO-403)
+/** A class's grades read live from Google Classroom, or why there are none. */
+export type ClassroomGrades = RouteResponse<"teacher.classroomGrades">;
+/** The grades Classroom answered with. */
+export type ReadyClassroomGrades = Extract<ClassroomGrades, { status: "ready" }>;
+/** A piece of Classroom coursework. */
+export type ClassroomGradeColumn = ReadyClassroomGrades["courseWork"][number];
+/** One student's submission to one piece of Classroom coursework. */
+export type ClassroomGradeCell = ReadyClassroomGrades["rows"][number]["cells"][number];
