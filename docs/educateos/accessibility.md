@@ -2,7 +2,7 @@
 
 - Status: Living document. Re-run the audit and update this page in the PR that changes its evidence.
 - Date: 2026-11-13 (audit run on branch `SCHO-361-accessibility`, rebased on main `ef94376e7`)
-- Issue: SCHO-361 (parent SCHO-358)
+- Issue: SCHO-361 (parent SCHO-358). 2.2.1 Timing Adjustable rated Partially supports on 2026-11-14 (SCHO-394).
 - Public report: [educateos.io/it/accessibility/](https://educateos.io/it/accessibility/), an ACR in VPAT layout built from this page
 
 ## Summary
@@ -17,12 +17,13 @@ found 14 distinct failures, all serious. All 14 are fixed in this change. After 
 - every one of 4,782 keyboard focus stops has a name and a visible focus change;
 - every action exercised announced its outcome through a live region.
 
-Two criteria remain **Partially supports**:
+Three criteria remain **Partially supports**:
 
 | Criterion | Why | Follow-up |
 |---|---|---|
 | 1.4.3 Contrast (Minimum) | Kumo's link hover colour is under 4.5:1 while hovered. | SCHO-380 |
 | 1.4.11 Non-text Contrast | Text field boundaries are 1.25 to 1.52:1. | SCHO-379, SCHO-380 |
+| 2.2.1 Timing Adjustable | A teacher can extend a timed quiz for one student (1.25× to 4×) or remove its limit, and the server enforces it (SCHO-383), but a student can't extend a limit themselves. | None open |
 
 **No screen reader or other assistive technology was used.** "Supports" in this report means the
 checks below found no failure on the screens audited. It is not a claim verified with assistive
@@ -156,7 +157,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 2.1.1 Keyboard | Supports | Every control on every screen is reachable by Tab. Wide tables scroll by keyboard (finding 8). Freehand drawing needs a pointer, which is path-dependent input the criterion exempts, and the step offers a photo upload. The audit reaches controls by Tab but doesn't operate composite widgets (radio groups, comboboxes, the gradebook grid) by their arrow keys. |
 | 2.1.2 No Keyboard Trap | Supports | No walk was trapped (see Results). |
 | 2.1.4 Character Key Shortcuts | Not applicable | The apps have no single-character shortcuts. The demo's presenter keys are demo-only and work only with `?presenter`. |
-| 2.2.1 Timing Adjustable | Supports | The apps set no session time limits; sign-in sessions are the district's Cloudflare Access policy. A quiz's time limit is one its teacher sets for the assessment. A teacher of the class, or a district administrator, can give one student 1.25 to 4 times that limit, or no time limit, as an IEP or Section 504 plan sets it. The district's clock enforces each student's own deadline, extends an attempt already in progress, and shows the student only their own time; API and UI tests check this (SCHO-383). A student can't extend the limit themselves during an attempt: for that we rely on the criterion's essential exception for a timed assessment. The quiz's close date still ends every attempt. |
+| 2.2.1 Timing Adjustable | Partially supports | The apps set no session time limits; sign-in sessions are the district's Cloudflare Access policy. A quiz's time limit is one its teacher sets for the assessment. A teacher of the class, or a district administrator, can give one student 1.25 to 4 times that limit, or no time limit, as an IEP or Section 504 plan sets it. The district's clock, on the server, enforces each student's own deadline, extends an attempt already in progress, and shows the student only their own time; API and UI tests check this (SCHO-383). A student can't extend or turn off a limit themselves, before or during an attempt, so a student whose plan isn't entered gets no adjustment. The quiz's close date still ends every attempt. |
 | 2.2.2 Pause, Stop, Hide | Supports | No moving, blinking or auto-updating content other than loading indicators and a timed quiz's countdown, which is essential to the quiz. |
 | 2.3.1 Three Flashes or Below Threshold | Supports | Nothing flashes. |
 | 2.4.1 Bypass Blocks | Supports | Each app's first control is "Skip to content", and every screen has landmarks. |
@@ -200,7 +201,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 3.3.4 Error Prevention (Legal, Financial, Data) | Supports | Submitting a quiz asks for confirmation, and a term move confirms in a dialog. Not every submitting flow was reviewed. |
 | 4.1.3 Status Messages | Supports | Every action exercised announced its outcome in a live region, and loading states are status regions. Not yet confirmed with a screen reader. |
 
-Totals: 50 criteria. 40 Supports, 2 Partially supports, 0 Does not support, 8 Not applicable.
+Totals: 50 criteria. 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.
 
 ## Known gaps and follow-ups
 
