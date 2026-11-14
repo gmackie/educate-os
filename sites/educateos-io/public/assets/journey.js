@@ -17,6 +17,8 @@
    */
 
   const OVERVIEW_PDF = '/educateos-district-overview.pdf';
+  // The one-page leave-behinds (SCHO-405): /pilot/brief/<audience>/ and the PDF beside each.
+  const BRIEF = /^\/pilot\/brief\/(superintendents|principals|teachers|it)\/(?:educateos-brief-\1\.pdf)?$/;
 
   /** The page's first path segment as a small enum: "/" is "home", "/it/install/" is "it". */
   function pageKey() {
@@ -50,13 +52,18 @@
         return;
       }
       if (path === OVERVIEW_PDF) track('overview_downloaded', {page: pageKey()});
+      const brief = BRIEF.exec(path);
+      if (brief && path.endsWith('.pdf')) track('overview_downloaded', {page: pageKey(), brief: brief[1]});
     },
     {capture: true},
   );
 
-  // The founding pilot page offers "Print or save as PDF"; a district printing it is a strong signal.
+  // The founding pilot page offers "Print or save as PDF"; a district printing it, or one of the
+  // leave-behinds under it, is a strong signal.
   window.addEventListener('beforeprint', () => {
-    if (pageKey() === 'pilot') track('pilot_kit_printed', {page: 'pilot'});
+    const brief = BRIEF.exec(location.pathname);
+    if (brief) track('pilot_kit_printed', {page: 'pilot', brief: brief[1]});
+    else if (pageKey() === 'pilot') track('pilot_kit_printed', {page: 'pilot'});
   });
 
   /** @type {any} */ (window).educateosJourney = {track, pageKey};

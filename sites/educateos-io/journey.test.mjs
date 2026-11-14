@@ -49,6 +49,17 @@ test('printing the founding pilot page is recorded, printing other pages is not'
   assert.deepEqual(pricing.tracked, []);
 });
 
+test('a leave-behind PDF download or print is recorded with its audience (SCHO-405)', () => {
+  const {tracked, listeners} = load('/pilot/');
+  listeners.click({target: new Element('/pilot/brief/it/educateos-brief-it.pdf')});
+  listeners.click({target: new Element('/pilot/brief/it/')});
+  listeners.click({target: new Element('/pilot/brief/it/educateos-brief-teachers.pdf')});
+  assert.deepEqual(tracked, [['overview_downloaded', {page: 'pilot', brief: 'it'}]]);
+  const brief = load('/pilot/brief/principals/');
+  brief.listeners.beforeprint();
+  assert.deepEqual(brief.tracked, [['pilot_kit_printed', {page: 'pilot', brief: 'principals'}]]);
+});
+
 test('the page prop is a small enum, never a free-form path', () => {
   assert.equal(load('/').journey.pageKey(), 'home');
   assert.equal(load('/it/install/').journey.pageKey(), 'it');
