@@ -104,6 +104,13 @@ declare namespace Cloudflare {
      */
     DEMO_OPERATOR_TOKEN?: string;
     /**
+     * Point-in-time recovery (SCHO-373): the bearer token of the recovery routes
+     * (`/api/recovery/*`, recovery.ts), a Worker secret of at least 32 characters, required together
+     * with an Access sign-in. Unset or shorter, those routes are 404. Set only for the length of a
+     * recovery (docs/educateos/runbooks/backup-and-restore.md), then deleted.
+     */
+    RECOVERY_TOKEN?: string;
+    /**
      * Product analytics (SCHO-350): the analytics service this district's pages may send usage
      * events to, as JSON (`ProductAnalyticsDeployment` from `@educateos/district-app`: an https
      * `host` origin and a `project`). Set only by the generated demo district and Northfield (schoolos.gmac.io)

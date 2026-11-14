@@ -2,7 +2,7 @@
 
 - Status: Living document. Answers follow [maturity.md](maturity.md); when a maturity row changes,
   change the matching answer here and on the public page in the same PR.
-- Date: 2026-11-13
+- Date: 2026-11-14
 - Issue: SCHO-360 (parent SCHO-358)
 - Public copy: `sites/educateos-io/public/it/security-questionnaire/index.html`
   (educateos.io/it/security-questionnaire/), printable to PDF from the browser.
@@ -149,9 +149,9 @@ Every answer names the document or code path it rests on. Paths are relative to 
 
 | Question | Answer | Status | Source |
 | --- | --- | --- | --- |
-| Is data backed up? | The district's data lives in its own account, so backups are the district's. Cloudflare offers 30-day point-in-time recovery for SQLite Durable Objects; EducateOS has no restore procedure or tooling that uses it yet. | Not done | <https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/>; [pilot-gate.md](pilot-gate.md), "Restore rehearsal" |
-| Has restore been tested? | Only in memory: a district's stores are snapshotted and restored into fresh stores, and the views compare equal. The rehearsal found items that a durable backup must still cover. A real restore of deployed storage has not been rehearsed. | Not done | [pilot-gate.md](pilot-gate.md), "Restore rehearsal" (SCHO-108) |
-| What are your RTO and RPO? | None committed. | Not done | This document |
+| Is data backed up? | The district's data lives in its own Cloudflare account, so its backups are the district's. Every district record, files included, is in one SQLite Durable Object, for which Cloudflare keeps 30 days of point-in-time history. EducateOS adds operator routes that restore that object to any moment in those 30 days, and undo the restore (SCHO-373); they are off unless the district sets a recovery token, and need the token and an Access sign-in. The optional operations database is D1, which Cloudflare's Time Travel restores to any minute in 30 days. Not covered yet: anything older than 30 days, a deleted Worker or Cloudflare account (the district export is a copy of the records but has no importer, SCHO-396), and the AI Workshop's, AI guard's and integrations' data and its KV and R2 content (SCHO-397). | Built, not proven in a district | [runbooks/backup-and-restore.md](runbooks/backup-and-restore.md); `packages/educateos-district-worker/src/recovery.ts`; <https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/>; <https://developers.cloudflare.com/d1/reference/time-travel/> |
+| Has restore been tested? | Not against Cloudflare's storage. On 2026-11-14 a local rehearsal ran the restore routes in the Workers runtime over a real district object (bookmarks, both credentials, refusals, the order of restore and restart), the in-memory whole-district snapshot and restore, and a district export of a seeded district; local storage keeps no history, so the restore itself and its undo were not exercised. A live rehearsal on a test district is planned (SCHO-395). | Not done | [runbooks/backup-and-restore.md](runbooks/backup-and-restore.md), "Rehearsal log"; [pilot-gate.md](pilot-gate.md), "Restore rehearsal" |
+| What are your RTO and RPO? | Targets, not commitments, for the district's operator following the runbook: for district records damaged and found within 30 days, an RPO of 5 minutes before the damaging event and an RTO of 4 business hours from the decision to restore; a restore takes the whole district back, so writes after the restore point are lost. For the optional operations database, 1 minute and 4 business hours. No target for the AI Workshop's and integrations' data, or for loss beyond 30 days or of the account. Gmacko Ventures LLC does not operate the installation and makes no recovery commitment. | Built, not proven in a district | [runbooks/backup-and-restore.md](runbooks/backup-and-restore.md), "Recovery targets" |
 | What if educateos.io goes down? | Classroom activity continues: no classroom path calls educateos.io. This is a required pilot-gate test. | Built, not proven in a district | [ADR-0001](adr/0001-district-data-ownership.md) rule 4; [ADR-0013](adr/0013-educateos-open-core-control-plane.md) |
 | Can a bad update be rolled back? | Yes. The installer redeploys the previous Worker versions. Database migrations are listed as irreversible, and the district acknowledges each before approving a release. | Built, not proven in a district | [installer-permissions.md](installer-permissions.md); [release-signing.md](release-signing.md) |
 
@@ -186,6 +186,7 @@ These answers are marked unknown or not done because no repository document sett
   (the DPA's 72 hours covers only data Gmacko Ventures LLC holds).
 - Cyber liability insurance, if any.
 - Background checks for anyone who would do Support Access.
-- Whether to pin the district Durable Object to Cloudflare's `us` jurisdiction, and a backup and
-  restore procedure with committed RTO and RPO.
+- Whether to pin the district Durable Object to Cloudflare's `us` jurisdiction (SCHO-374).
+- Whether to offer any recovery commitment beyond the runbook's targets, once a live restore has
+  been rehearsed (SCHO-395).
 - Counsel's review of the DPA (SCHO-229).

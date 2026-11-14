@@ -80,7 +80,9 @@ then equal. The rehearsal also found what a durable backup must add. The Content
 items and the catalog mirror's revisioned states cannot be written back through their interfaces,
 and the CI run store cannot be listed. The rehearsal re-approves the catalog seeds and omits the
 other two. A real D1 and R2 restore waits on the durable stores (SCHO-108), which have to close
-that gap.
+that gap. The deployed district keeps every store in one SQLite Durable Object instead, which is
+restored with Cloudflare's point-in-time recovery; see [the backup and restore runbook](runbooks/backup-and-restore.md)
+(SCHO-373).
 
 ### Load
 
