@@ -31,8 +31,11 @@ The current EducateOS integration is more mature than an abstract design:
 - packages/educateos-teacher-ui/src/modules/CoursePanel.tsx: teacher preview and explicit install.
 - docs/educateos/course-library.md: implementation evidence and outstanding gaps.
 
-Existing installed unit matching may skip an item by title. **Title cannot become the identity
-used for updates.** The current library cannot upgrade a class from one course version to the next;
+InstalledCourse already pins package ID, version and digest; InstalledUnit records unitKey,
+moduleId and some item mappings; InstalledDefinition records portable activity import keys and
+local definitions. This is a valuable starting point, not a blank slate. However, initial
+installation may still mark an unrelated preexisting module as present by matching its title.
+**Title cannot become the identity used for upgrades.** The current library cannot upgrade a class from one course version to the next;
 a new version installs as another course and preexisting titles are skipped. No live deployed
 course-library import acceptance is recorded by the existing document.
 
