@@ -7,7 +7,7 @@
 // as the deploy-side renderer must.
 import { EducateOsError } from "@educateos/contracts";
 import { toBase64Url } from "@educateos/fleet";
-import type { AccessPolicySpec } from "./cloudflare-api.ts";
+import type { AccessPolicySpec, DataJurisdiction } from "./cloudflare-api.ts";
 import {
   adminHostname,
   type DistrictInstallConfig,
@@ -52,12 +52,16 @@ interface ResourceBase {
 export interface DesiredKvNamespace extends ResourceBase {
   kind: "kv_namespace";
   title: string;
+  /** The jurisdiction it durably stores data in (ADR-0015); none when the install is unpinned. */
+  jurisdiction?: DataJurisdiction;
 }
 
 /** An R2 bucket, named by its binding. */
 export interface DesiredR2Bucket extends ResourceBase {
   kind: "r2_bucket";
   name: string;
+  /** The jurisdiction it is created in, and bound in (ADR-0015); none when the install is unpinned. */
+  jurisdiction?: DataJurisdiction;
 }
 
 /** A D1 database and the release's migrations for it, in order. */
@@ -65,6 +69,8 @@ export interface DesiredD1Database extends ResourceBase {
   kind: "d1_database";
   name: string;
   migrations: D1Migration[];
+  /** The jurisdiction it is created in (ADR-0015); none when the install is unpinned. */
+  jurisdiction?: DataJurisdiction;
 }
 
 /** The optional AI Gateway. */
@@ -229,6 +235,8 @@ export interface DesiredState {
   inputs: DesiredInput[];
   /** Every resource, in an order where each comes after everything it depends on. */
   resources: DesiredResource[];
+  /** The jurisdiction the install's storage is kept in (ADR-0015), or undefined when it is unpinned. */
+  dataJurisdiction?: DataJurisdiction;
 }
 
 /** Plain-text vars the installer adds to every Worker it owns. */
@@ -306,6 +314,20 @@ export const RESOURCE_KEYS = {
  * at `/lti/*` on that origin (or the config's `ltiToolOrigin`).
  */
 export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_ACCESS_AUD", "LTI_TOOL_ORIGIN"];
+
+/**
+ * The var the installer pins a Worker's Durable Objects with (ADR-0015): set to the config's
+ * `dataJurisdiction` on every Worker whose release entry declares {@link DATA_JURISDICTIONS_SUPPORTED_VAR}
+ * (the district Worker), and absent otherwise.
+ */
+export const DATA_JURISDICTION_VAR = "DATA_JURISDICTION";
+
+/**
+ * The release var by which a Worker says it reads {@link DATA_JURISDICTION_VAR}: the jurisdictions it
+ * can be pinned to, comma-separated. A release whose district lacks it ignores the var, so its
+ * district would keep its data unpinned while the install says otherwise; planning refuses that.
+ */
+export const DATA_JURISDICTIONS_SUPPORTED_VAR = "DATA_JURISDICTIONS_SUPPORTED";
 
 /** The resource key of a release package's Worker. */
 export function workerKey(pkgName: string): ResourceKey {
@@ -465,6 +487,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
     const entry = manifest.workers[name];
     if (!entry || entry.kind !== "service") invalid(`release has no service ${name}`);
+    if (config.dataJurisdiction && (name === districtPkg || name === DISTRICT_PACKAGE) && !pinsTo(entry, config.dataJurisdiction)) {
+      invalid(`${name} in release ${manifest.releaseId} can't keep its Durable Object in the ${config.dataJurisdiction} jurisdiction: install a release whose district can (ADR-0015)`);
+    }
     if (!entry.installable) invalid(`${name} is not installable on district instances`);
     if (!entry.backendBinding) invalid(`service ${name} has no backendBinding`);
     const declared = new Map((entry.inputs ?? []).map((input) => [input.name, input]));
@@ -515,6 +540,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   }
 
   const storage = new Map<ResourceKey, DesiredResource>();
+  // Storage the install creates is created in its jurisdiction, if it has one (ADR-0015).
+  const jurisdiction = config.dataJurisdiction ? { jurisdiction: config.dataJurisdiction } : {};
   const workers: DesiredResource[] = [];
   const secrets: DesiredResource[] = [];
   const schedules: DesiredWorkerSchedules[] = [];
@@ -611,7 +638,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         if (r2) {
           const key = storageKey("r2", r2[1]!);
           const name = storageName(r2[1]!);
-          storage.set(key, { kind: "r2_bucket", key, dependsOn: [], name });
+          storage.set(key, { kind: "r2_bucket", key, dependsOn: [], name, ...jurisdiction });
           dependsOn.add(key);
           return name;
         }
@@ -625,9 +652,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
           if (token !== value) invalid(`${pkgName}: ${token} must be a whole value`);
           const binding = (kv ?? d1)![1]!;
           const key = storageKey(kv ? "kv" : "d1", binding);
-          if (kv) storage.set(key, { kind: "kv_namespace", key, dependsOn: [], title: storageName(binding) });
+          if (kv) storage.set(key, { kind: "kv_namespace", key, dependsOn: [], title: storageName(binding), ...jurisdiction });
           else if (!storage.has(key)) {
-            storage.set(key, { kind: "d1_database", key, dependsOn: [], name: storageName(binding), migrations: [] });
+            storage.set(key, { kind: "d1_database", key, dependsOn: [], name: storageName(binding), migrations: [], ...jurisdiction });
           }
           dependsOn.add(key);
           ref = { ref: key, output: "id" };
@@ -662,7 +689,12 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         });
         continue;
       }
-      bindings.push(resolveDeep(binding) as DesiredBinding);
+      const resolved = resolveDeep(binding) as DesiredBinding;
+      // A bucket in a jurisdiction is bound by name and jurisdiction, as R2 names buckets per jurisdiction.
+      if (binding.type === "r2_bucket" && /^\$R2_[A-Z0-9_]+_NAME$/.test(binding.bucket_name) && config.dataJurisdiction) {
+        resolved.jurisdiction = config.dataJurisdiction;
+      }
+      bindings.push(resolved);
     }
 
     // Gatekeepers are reached through GATEKEEPER_<SLUG> service bindings on the backend and router.
@@ -738,6 +770,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       vars.LTI_TOOL_ORIGIN = config.ltiToolOrigin ?? publicBaseUrl;
       if (config.marketplaceTrust) vars.MARKETPLACE_TRUST = JSON.stringify(config.marketplaceTrust);
       dependsOn.add(accessApplication.key);
+    }
+    if (config.dataJurisdiction && Object.hasOwn(entry.vars, DATA_JURISDICTIONS_SUPPORTED_VAR)) {
+      if (!pinsTo(entry, config.dataJurisdiction)) invalid(`${pkgName} can't be pinned to the ${config.dataJurisdiction} jurisdiction`);
+      vars[DATA_JURISDICTION_VAR] = config.dataJurisdiction;
     }
     if (isAdmin) {
       // EDITION=oss, managing only this install's origin, behind its own Access application.
@@ -883,7 +919,19 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     releaseManaged,
     ...(attachManaged ? [attachManaged] : []),
   ]);
-  return { instanceId: config.instanceId, accountId: config.accountId, releaseId: manifest.releaseId, hostname, inputs, resources };
+  return {
+    instanceId: config.instanceId, accountId: config.accountId, releaseId: manifest.releaseId, hostname, inputs, resources,
+    ...(config.dataJurisdiction ? { dataJurisdiction: config.dataJurisdiction } : {}),
+  };
+}
+
+/** The district Worker's package, which a release that wires no one origin may still ship. */
+const DISTRICT_PACKAGE = "educateos-district-worker";
+
+/** Whether a release Worker reads {@link DATA_JURISDICTION_VAR} and can be pinned to `jurisdiction`. */
+function pinsTo(entry: WorkerEntry, jurisdiction: DataJurisdiction): boolean {
+  const supported = entry.vars[DATA_JURISDICTIONS_SUPPORTED_VAR];
+  return typeof supported === "string" && supported.split(",").map((j) => j.trim()).includes(jurisdiction);
 }
 
 /** Orders resources so each follows its dependencies, keeping input order otherwise. Rejects cycles. */

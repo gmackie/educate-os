@@ -39,6 +39,9 @@ import { LTI_API_PREFIX, type DistrictLti } from "./lti.ts";
 import { readSchoolManifestSettings } from "./school-manifest.ts";
 import { DEMO_API_PREFIX, type ShowcaseEvent } from "./showcase.ts";
 import { DEMO_OPERATOR_PREFIX, type DemoOperatorEvent } from "./demo-operator.ts";
+import { RECOVERY_PREFIX, serveRecovery, type RecoveryEvent, type RecoveryStorage } from "./recovery.ts";
+import { accessAudiences, accessRequestVerifier } from "./access.ts";
+import { configuredDistrictId } from "./district.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -71,6 +74,12 @@ const showcaseLogger = createLogger<Omit<ShowcaseEvent, "event" | "error">>({ co
 const operatorLogger = createLogger<Omit<DemoOperatorEvent, "event" | "error">>({ component: "educateos.district.demo-operator" });
 
 const logger = createLogger<DistrictLogFields>({ component: "educateos.district" });
+
+// Point-in-time recovery (SCHO-373): which bookmark, who asked; never the token.
+const recoveryLogger = createLogger<Omit<RecoveryEvent, "event" | "error"> & { districtId: string }>({ component: "educateos.district.recovery" });
+
+/** How long the object waits after answering a restore before it restarts, so the answer reaches the operator. */
+const RESTORE_RESTART_DELAY_MS = 250;
 
 /** One district's state and application. */
 export class DistrictObject extends DurableObject<Cloudflare.Env> {
@@ -151,6 +160,51 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return release ?? (typeof tag === "string" && tag !== "" ? tag : undefined);
   }
 
+  /**
+   * The storage point-in-time recovery reads bookmarks from and restores (SCHO-373). Local workerd
+   * hands out bookmarks but keeps no history, so it refuses a restore; the tests replace it.
+   */
+  protected recoveryStorage(): RecoveryStorage {
+    return this.ctx.storage;
+  }
+
+  /** Restarts the object so a scheduled restore takes effect (SCHO-373). The tests record it instead. */
+  protected restartForRestore(): void {
+    setTimeout(() => {
+      try {
+        this.ctx.abort("restoring the district to a point-in-time bookmark");
+      } catch {
+        // abort() resets the object and may throw in the calling context; the reset is what counts.
+      }
+    }, RESTORE_RESTART_DELAY_MS);
+  }
+
+  /** Serves the recovery routes, before and without the district application, which may not start. */
+  #serveRecovery(request: Request): Promise<Response> {
+    const config = readDistrictWorkerConfig(this.env.DISTRICT_CONFIG);
+    const districtId = configuredDistrictId(this.env.DISTRICT_CONFIG);
+    const keys = this.accessKeys();
+    const log = recoveryLogger.with({ districtId });
+    return serveRecovery(request, {
+      districtId,
+      token: this.env.RECOVERY_TOKEN,
+      verifyAccess: (incoming) => accessRequestVerifier({
+        issuer: this.env.CF_ACCESS_ISS ?? "",
+        audiences: accessAudiences(this.env.CF_ACCESS_AUD),
+        ...(keys === undefined ? {} : { keys }),
+        ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
+      })(incoming),
+      storage: this.recoveryStorage(),
+      restart: () => this.restartForRestore(),
+      onEvent: ({ event, error, ...fields }) => {
+        if (event === "district.recovery.failed") log.error("a point-in-time recovery request failed", { event, error, ...fields });
+        else if (event === "district.recovery.refused") log.warn("a point-in-time recovery request was refused", { event, ...fields });
+        else if (event === "district.recovery.restore") log.warn("the district is restoring to a point-in-time bookmark", { event, ...fields });
+        else log.info("a point-in-time bookmark was read", { event, ...fields });
+      },
+    });
+  }
+
   /** The running application, for subclasses that drive it directly (the tests). */
   protected async districtApp(): Promise<DistrictApp> {
     return (await this.#boot()).app;
@@ -166,6 +220,9 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * the LTI Tool's `/lti/` routes (SCHO-177), which are 404 when the deployment runs no LTI Tool.
    */
   override async fetch(request: Request): Promise<Response> {
+    // Point-in-time recovery (SCHO-373) runs before the application starts, so a district that no
+    // longer starts can still be restored. 404 unless the Worker has a RECOVERY_TOKEN.
+    if (new URL(request.url).pathname.startsWith(RECOVERY_PREFIX)) return this.#serveRecovery(request);
     const { app, lti, mcp, showcase, demoOperator } = await this.#boot();
     const { pathname } = new URL(request.url);
     // The demo operator's seed routes (SCHO-326): their own bearer token, no Access sign-in; 404

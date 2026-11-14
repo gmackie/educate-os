@@ -178,6 +178,18 @@ caller brings `authorization: Bearer <DEMO_OPERATOR_TOKEN>`, and the district ru
 more characters) is set. See
 [demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#seeding-without-a-sign-in-operator-token).
 
+## Point-in-time recovery (SCHO-373)
+
+`src/recovery.ts` serves `GET /api/recovery/bookmark[?at=<time>]` and `POST /api/recovery/restore`
+(`{ districtId, bookmark }`), which restore the district object's SQLite storage to any moment in
+the last 30 days with the platform's bookmarks (`getBookmarkForTime`, `onNextSessionRestoreBookmark`,
+then `ctx.abort()` 250 ms after answering). The restore answers the bookmark that undoes it. The
+routes are served before the district application starts, so a district that no longer starts can
+still be restored. They are 404 unless the `RECOVERY_TOKEN` secret (32 or more characters) is set,
+and each request needs that token and a verified Access assertion. Local workerd hands out the
+current bookmark but refuses the rest (it keeps no history), so the tests drive the restore over a
+recording storage. See [backup-and-restore.md](../../docs/educateos/runbooks/backup-and-restore.md).
+
 ## Entrypoints
 
 | Entrypoint | For | Contract |
@@ -310,6 +322,14 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   on; a malformed value fails the start. Only the demo districts set it, Northfield
   (schoolos.gmac.io) included (`DEMO_PRODUCT_ANALYTICS` in `scripts/production/demo-districts.ts`);
   no customer district until the student-data legal review (DATFLR-3). Not a deploy input.
+- `DATA_JURISDICTION` (optional var, SCHO-374): `us` names the district's Durable Object in
+  Cloudflare's US jurisdiction (`src/jurisdiction.ts`,
+  [ADR-0015](../../docs/educateos/adr/0015-us-data-jurisdiction.md)). The installer sets it on a new
+  install; no ForgeGraph config does. Unset, the object is unpinned, as every district deployed before
+  ADR-0015 is. Never set it on an existing district: the same name in `us` is a different, empty
+  object. Local workerd doesn't implement jurisdictions, so a district with it set can't run in
+  `pnpm dev-server` or the tests. `DATA_JURISDICTIONS_SUPPORTED` (`us`, in the config) tells the
+  installer this release reads it.
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
 - `LTI_PLATFORM` (optional): `on` also serves the district as an LTI 1.3 Platform for third-party tools (SCHO-179, `src/lti-platform.ts`), at `LTI_TOOL_ORIGIN`. Any other value, or unset, leaves it off, as every production configuration does. See [docs/educateos/lti.md](../../docs/educateos/lti.md#educateos-as-an-lti-platform-scho-179-if-10).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production

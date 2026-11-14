@@ -7,6 +7,12 @@ declare namespace Cloudflare {
     WORKSHOP_ASSESSMENT_RELEASES?: import("./district.ts").DistrictSeams["workshopReleases"];
     /** The district's configuration as JSON (see `DistrictWorkerConfig` in config.ts). */
     DISTRICT_CONFIG: string;
+    /**
+     * The Cloudflare jurisdiction the district's Durable Object is in (ADR-0015, jurisdiction.ts):
+     * `us`, set by the installer on a new install. Unset, the object is unpinned, as every district
+     * deployed before ADR-0015 is; setting it on such a district would start an empty one.
+     */
+    DATA_JURISDICTION?: string;
     /** The Access team domain assertions are verified against, as the kernel's `CF_ACCESS_ISS`. */
     CF_ACCESS_ISS?: string;
     /**
@@ -103,6 +109,13 @@ declare namespace Cloudflare {
      * shorter, or on a Worker without `DEMO_SHOWCASE`, those routes are 404. Set only while seeding.
      */
     DEMO_OPERATOR_TOKEN?: string;
+    /**
+     * Point-in-time recovery (SCHO-373): the bearer token of the recovery routes
+     * (`/api/recovery/*`, recovery.ts), a Worker secret of at least 32 characters, required together
+     * with an Access sign-in. Unset or shorter, those routes are 404. Set only for the length of a
+     * recovery (docs/educateos/runbooks/backup-and-restore.md), then deleted.
+     */
+    RECOVERY_TOKEN?: string;
     /**
      * Product analytics (SCHO-350): the analytics service this district's pages may send usage
      * events to, as JSON (`ProductAnalyticsDeployment` from `@educateos/district-app`: an https

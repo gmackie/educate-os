@@ -16,6 +16,16 @@
       "name": "SEND_EMAIL"
     }
   ],
+  "vars": {
+    "DATA_JURISDICTIONS_SUPPORTED": "us",
+    "LTI_TOOL_ORIGIN": "https://district.schoolos.gmac.io",
+    "SCHOOL_MANIFEST": "{\"origin\":\"https://northfield.educateos.io\",\"signIn\":[{\"id\":\"google\",\"label\":\"Google\"}],\"features\":{\"ai\":true}}",
+    "HALL_MONITOR_ISSUER": "educateos",
+    "HALL_MONITOR_AUDIENCE": "hall-monitor",
+    "DEMO_SHOWCASE": "northfield",
+    "PRODUCT_ANALYTICS": "{\"host\":\"https://glass-educateos-district.educateos-demo.workers.dev\",\"project\":\"educateos-district\"}",
+    "COURSE_LIBRARY_TRUST": "{\"localDomains\":[],\"publishers\":[{\"domain\":\"educateos.io\",\"keys\":[{\"keyId\":\"ed25519-71yD_H7OvXca1DCaK5pp8PV-vIbDw9K2H3ZARqsNiWo\",\"publicKey\":\"7TQKh8xhmsc6yI2MUmIiuntUli4NyGU4Sr2v10P-dPk\"}]}]}"
+  },
   "triggers": {
     "crons": [
       "7 * * * *",
@@ -47,15 +57,6 @@
       "/.well-known/educateos.json",
       "/connect-phone"
     ]
-  },
-  "vars": {
-    "LTI_TOOL_ORIGIN": "https://district.schoolos.gmac.io",
-    "SCHOOL_MANIFEST": "{\"origin\":\"https://northfield.educateos.io\",\"signIn\":[{\"id\":\"google\",\"label\":\"Google\"}],\"features\":{\"ai\":true}}",
-    "HALL_MONITOR_ISSUER": "educateos",
-    "HALL_MONITOR_AUDIENCE": "hall-monitor",
-    "DEMO_SHOWCASE": "northfield",
-    "PRODUCT_ANALYTICS": "{\"host\":\"https://glass-educateos-district.educateos-demo.workers.dev\",\"project\":\"educateos-district\"}",
-    "COURSE_LIBRARY_TRUST": "{\"localDomains\":[],\"publishers\":[{\"domain\":\"educateos.io\",\"keys\":[{\"keyId\":\"ed25519-71yD_H7OvXca1DCaK5pp8PV-vIbDw9K2H3ZARqsNiWo\",\"publicKey\":\"7TQKh8xhmsc6yI2MUmIiuntUli4NyGU4Sr2v10P-dPk\"}]}]}"
   },
   "services": [
     {

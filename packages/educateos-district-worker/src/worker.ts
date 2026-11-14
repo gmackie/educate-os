@@ -29,15 +29,17 @@ import { configuredDistrictId, MCP_PATHS } from "./district.ts";
 import { readDistrictWorkerConfig } from "./config.ts";
 import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
 import { aiDisabledResponse, isAiPath } from "./ai-disabled.ts";
+import { inJurisdiction, readDataJurisdiction } from "./jurisdiction.ts";
 
 /** The pairing relay's page for a phone with no computer nearby (SCHO-261), behind Access like the LMS. */
 const CONNECT_PHONE_PATH = "/connect-phone";
 
 export { DistrictObject } from "./district-object.ts";
 
-/** The district's object. */
+/** The district's object, in the district's data jurisdiction when it has one (ADR-0015). */
 function districtObject(env: Cloudflare.Env, exports: Cloudflare.Exports) {
-  return exports.DistrictObject.getByName(configuredDistrictId(env.DISTRICT_CONFIG));
+  return inJurisdiction(exports.DistrictObject, readDataJurisdiction(env.DATA_JURISDICTION))
+    .getByName(configuredDistrictId(env.DISTRICT_CONFIG));
 }
 
 /** Backend-only WORKSHOP_CAPABILITY_POLICY target; never expose this binding to gadgets. */

@@ -5,7 +5,7 @@ import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
 import { defineConfig } from "vitest/config";
 import deployed from "./cloudflare.config.ts";
-import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEMO_OPERATOR_TOKEN, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
+import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEMO_OPERATOR_TOKEN, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, RECOVERY_TOKEN, TEST_CONFIG } from "./__tests__/fixtures.ts";
 
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
@@ -86,6 +86,8 @@ export default defineConfig({
           DEMO_SHOWCASE: "northfield",
           // The demo operator's seed routes (SCHO-326): a test-only token.
           DEMO_OPERATOR_TOKEN,
+          // Point-in-time recovery (SCHO-373): a test-only token; a district sets one only during a recovery.
+          RECOVERY_TOKEN,
           TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),
         },
         durableObjects: {
