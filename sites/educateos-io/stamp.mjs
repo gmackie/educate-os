@@ -38,10 +38,11 @@ export function stamp(html, path) {
     html = html.replace(marked, () => `<!-- site:${name} -->\n${current}\n<!-- /site:${name} -->`);
   }
   // educateos.io/_glass is verified; enable cookieless collection on reviewed marketing paths.
+  // journey.js adds the funnel events a link attribute cannot express (SCHO-400).
   // Exclude demos, intake, operator and district surfaces even if a shared layout is reused.
   html = html.replace(/<!-- site:analytics -->[\s\S]*?<!-- \/site:analytics -->\n?/g, "");
   if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|it(?:\/.*)?$|pricing\/?$|pilot\/?$|privacy\/?$)/.test(path)) {
-    html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><!-- /site:analytics -->\n</body>');
+    html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->\n</body>');
   }
   html = html.replace(/<span class="status[^"]*" data-status="([^"]+)">[^<]*<\/span>/g, (_, key) => chip(key, path));
   // The cost figures on /pricing (SCHO-362), computed by cost-to-run.mjs from assets/cost-to-run.json.
