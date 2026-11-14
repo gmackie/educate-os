@@ -39,6 +39,10 @@ export type FeedbackComment = Feedback["comments"][number];
 export type OfficialGrade = RouteResponse<"student.officialGrades">[number];
 /** The student's own gradebook row in a class: course totals and letter grade (SCHO-187). */
 export type GradeSummary = RouteResponse<"student.gradeSummary">;
+/** The student's own returned grades in a class, read live from Google Classroom (SCHO-403). */
+export type ClassroomGrades = RouteResponse<"student.classroomGrades">;
+/** One piece of work returned in Google Classroom, with its grade if it had one. */
+export type ClassroomGrade = Extract<ClassroomGrades, { status: "ready" }>["grades"][number];
 /** What the teacher marked on one of the student's assignments. */
 export type GradeMarker = NonNullable<GradeSummary["row"]["cells"][number]["marker"]>;
 /** A class's published modules and their pages, as a student sees them. */

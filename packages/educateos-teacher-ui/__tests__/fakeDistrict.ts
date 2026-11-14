@@ -122,6 +122,11 @@ export interface FakeDistrictOptions {
    * already has a module for, and the problems that stop it installing. Without it the library is empty.
    */
   courseLibrary?: { problems?: string[] };
+  /**
+   * What the class's "From Google Classroom" panel reads (SCHO-403), one answer per call, the last
+   * repeated. Defaults to `not-connected`, as for a district with no Classroom.
+   */
+  classroomGrades?: unknown[];
 }
 
 /** A fake district and the client the app talks to it through. */
@@ -567,6 +572,10 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
         return body!.marker === null ? rest : { ...rest, marker: body!.marker };
       });
       return row;
+    },
+    "teacher.classroomGrades": () => {
+      const answers = options.classroomGrades ?? [{ status: "not-connected" }];
+      return answers[Math.min(calls.filter((c) => c.name === "teacher.classroomGrades").length - 1, answers.length - 1)];
     },
     "teacher.exportGradebookCsv": () => ({
       fileName: "english-9-period-3-gradebook.csv",

@@ -54,6 +54,8 @@ export const ClassroomCourseWorkRecord = z.object({
   maxPoints: z.number().nonnegative().finite().optional(),
   // Google omits a boolean at its default, so absent means false.
   associatedWithDeveloper: z.boolean().default(false),
+  /** The coursework's page in Classroom. One that is not an https URL is dropped, not the record. */
+  alternateLink: z.url({ protocol: /^https$/ }).max(2048).optional().catch(undefined),
 });
 /** A Classroom coursework record. */
 export type ClassroomCourseWorkRecord = z.infer<typeof ClassroomCourseWorkRecord>;
@@ -61,6 +63,8 @@ export type ClassroomCourseWorkRecord = z.infer<typeof ClassroomCourseWorkRecord
 /** A student's submission to coursework. */
 export const ClassroomSubmissionRecord = z.object({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  /** The coursework it answers. Google always sends it; a list across coursework needs it. */
+  courseWorkId: NumericId.optional(),
   userId: NumericId,
   state: z.string().max(64),
   assignedGrade: z.number().optional(),
@@ -93,6 +97,8 @@ export interface ListRead<T> {
   records: T[];
   /** One entry per invalid record: its position in the list and what was wrong. */
   invalid: { index: number; message: string }[];
+  /** Set when a read capped at `maxItems` stopped before the list's end. */
+  truncated?: boolean;
 }
 
 /** Limits on what the client reads. */
@@ -196,9 +202,13 @@ export class GoogleClassroomClient {
     return this.#parse("teacher", ClassroomMember, await this.#call("GET", `courses/${id(courseId)}/teachers/${id(userId)}`, "get teacher", this.#admin));
   }
 
-  /** A course's published coursework, as `actAs` sees it. */
-  listCourseWork(courseId: string, actAs: string): Promise<ListRead<ClassroomCourseWorkRecord>> {
-    return this.#list(`courses/${id(courseId)}/courseWork`, "courseWork", ClassroomCourseWorkRecord, actAs);
+  /**
+   * A course's published coursework, as `actAs` sees it, most recently updated first. With
+   * `maxItems`, paging stops on the page that reaches that many (so up to a page more may be
+   * returned) and the read says it was `truncated`.
+   */
+  listCourseWork(courseId: string, actAs: string, maxItems?: number): Promise<ListRead<ClassroomCourseWorkRecord>> {
+    return this.#list(`courses/${id(courseId)}/courseWork`, "courseWork", ClassroomCourseWorkRecord, actAs, {}, maxItems);
   }
 
   /** One piece of coursework, as `actAs` sees it. */
@@ -224,6 +234,25 @@ export class GoogleClassroomClient {
     );
   }
 
+  /**
+   * Submissions to every piece of a course's coursework in one list (`courseWork/-`), as `actAs`
+   * sees them: only `userId`'s when given, and only those in `states` when any are named. With
+   * `maxItems`, paging stops as {@link listCourseWork} describes.
+   */
+  listCourseSubmissions(
+    courseId: string, actAs: string,
+    filter: { userId?: string; states?: readonly string[]; maxItems?: number } = {},
+  ): Promise<ListRead<ClassroomSubmissionRecord>> {
+    return this.#list(
+      `courses/${id(courseId)}/courseWork/-/studentSubmissions`,
+      "studentSubmissions",
+      ClassroomSubmissionRecord,
+      actAs,
+      { ...(filter.userId === undefined ? {} : { userId: id(filter.userId) }), ...(filter.states === undefined ? {} : { states: filter.states }) },
+      filter.maxItems,
+    );
+  }
+
   /** Sets a submission's grade fields, named in `updateMask`, as `actAs`, a teacher of the course. */
   async patchSubmission(
     courseId: string, courseWorkId: string, submissionId: string,
@@ -243,7 +272,7 @@ export class GoogleClassroomClient {
   }
 
   /** Reads every page of a list. Invalid items are reported, not thrown, so one bad record is an issue. */
-  async #list<T>(path: string, key: string, schema: z.ZodType<T>, actAs = this.#admin, params: Query = {}): Promise<ListRead<T>> {
+  async #list<T>(path: string, key: string, schema: z.ZodType<T>, actAs = this.#admin, params: Query = {}, maxItems?: number): Promise<ListRead<T>> {
     const records: T[] = [];
     const invalid: ListRead<T>["invalid"] = [];
     const seenTokens = new Set<string>();
@@ -266,6 +295,10 @@ export class GoogleClassroomClient {
       }
       // An empty token, like an absent one, ends the list.
       pageToken = page.data.nextPageToken || undefined;
+      // A capped read stops after the page that reached the cap, which it may overshoot.
+      if (maxItems !== undefined && index >= maxItems && (index > maxItems || pageToken !== undefined)) {
+        return { records, invalid, truncated: true };
+      }
       if (pageToken !== undefined) {
         if (seenTokens.has(pageToken)) throw new ClassroomRequestError("inconsistent-paging", `list ${key} repeated a page token`);
         seenTokens.add(pageToken);

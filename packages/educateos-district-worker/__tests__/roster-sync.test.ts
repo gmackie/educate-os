@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { readDistrictWorkerConfig } from "../src/config.ts";
 import { TEST_CONFIG } from "./fixtures.ts";
-import { workerRosterSource } from "../src/district.ts";
+import { workerClassroomGrades, workerRosterSource } from "../src/district.ts";
 import { NOTIFICATION_CRON } from "../src/schedule.ts";
 
 const district = () => env.DISTRICT.getByName(NORTHFIELD.district.id);
@@ -91,5 +91,55 @@ describe("the Classroom roster source", () => {
     const batch = await built.source.read({ mode: "complete" });
     expect(batch.issues?.filter((issue) => issue.severity === "error")).toEqual([]);
     expect(calls).toEqual(["/token", "/v1/courses", "/v1/courses/123/teachers", "/v1/courses/123/students"]);
+  });
+});
+
+// SCHO-403: the read-only "From Google Classroom" panel reads over the same connection.
+describe("the Classroom grade source", () => {
+  const connection = (rosterScopes: "readonly" | "read-write") => readDistrictWorkerConfig(JSON.stringify({ ...TEST_CONFIG, classroom: {
+    admin: "admin@example.edu", rosterScopes,
+    roster: { term: { sourcedId: "fall", title: "Fall", startDate: "2026-09-01", endDate: "2026-12-31" }, schools: [{ sourcedId: "school", name: "School", grades: ["08"] }] },
+  } })).classroom!;
+
+  it("is absent without a Classroom connection or its key, so the panel's routes answer not-connected", () => {
+    expect(workerClassroomGrades(undefined, unused)).toBeUndefined();
+    expect(workerClassroomGrades({ config: connection("readonly"), key: undefined }, unused)).toBeUndefined();
+    expect(workerClassroomGrades({ config: connection("readonly"), key: "" }, unused)).toBeUndefined();
+  });
+
+  it("reads as the course owner with the delegated scope form, and only reads", async () => {
+    const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+    const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+    const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der))}\n-----END PRIVATE KEY-----\n`;
+    const scopes: string[] = [];
+    const calls: string[] = [];
+    const fetcher: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      expect(init?.method ?? "GET").toMatch(/^(GET|POST)$/);
+      if (url.hostname === "oauth2.googleapis.com") {
+        const claims = JSON.parse(atob(new URLSearchParams(String(init?.body)).get("assertion")!.split(".")[1]!.replaceAll("-", "+").replaceAll("_", "/")));
+        scopes.push(`${claims.sub} ${claims.scope}`);
+        return Response.json({ access_token: `token-${claims.sub}`, token_type: "Bearer", expires_in: 3600 });
+      }
+      expect(init?.method ?? "GET").toBe("GET");
+      calls.push(`${new Headers(init?.headers).get("authorization")} ${url.pathname}${url.search}`);
+      if (url.pathname === "/v1/courses/123") return Response.json({ id: "123", name: "Science", courseState: "ACTIVE", ownerId: "111", alternateLink: "https://classroom.google.com/c/MTIz" });
+      if (url.pathname === "/v1/courses/123/teachers/111") return Response.json({ userId: "111", profile: { emailAddress: "owner@example.edu" } });
+      if (url.pathname === "/v1/courses/123/courseWork") return Response.json({ courseWork: [{ id: "9", title: "Quiz", state: "PUBLISHED", maxPoints: 10 }] });
+      if (url.pathname === "/v1/courses/123/courseWork/-/studentSubmissions") {
+        return Response.json({ studentSubmissions: [{ id: "s1", courseWorkId: "9", userId: "222", state: "RETURNED", assignedGrade: 8 }] });
+      }
+      throw new Error(`unexpected request ${url.pathname}`);
+    };
+    const key = JSON.stringify({ type: "service_account", client_email: "sync@example.iam.gserviceaccount.com", private_key: pem });
+    const source = workerClassroomGrades({ config: connection("read-write"), key }, fetcher)!;
+    const read = await source.student("123", "222");
+    expect(read).toMatchObject({ courseLink: "https://classroom.google.com/c/MTIz", courseWork: [{ id: "9", maxPoints: 10 }], submissions: [{ userId: "222", assignedGrade: 8 }], truncated: false });
+    // The read-write scopes the demo tenant delegated, never their `.readonly` forms.
+    for (const granted of scopes) {
+      expect(granted).toContain("classroom.coursework.students");
+      expect(granted).not.toContain(".readonly");
+    }
+    expect(calls.filter((c) => c.includes("studentSubmissions"))).toEqual(["Bearer token-owner@example.edu /v1/courses/123/courseWork/-/studentSubmissions?userId=222&states=RETURNED&pageSize=100"]);
   });
 });

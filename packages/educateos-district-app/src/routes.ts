@@ -164,6 +164,8 @@ import type { GuardianDigest } from "./communication/digest.ts";
 // Student archive (SCHO-371): the manifest's type only, so this browser-safe module carries no exporter.
 import type { StudentArchiveManifest } from "@educateos/portability";
 import { ProductAnalyticsAdminBody, ProductAnalyticsClientBody } from "./product-analytics.ts";
+// From Google Classroom (SCHO-403)
+import { StudentClassroomGrades, TeacherClassroomGrades } from "./classroom-grades.ts";
 
 /**
  * Which part of EducateOS a route belongs to. Student routes answer only student principals,
@@ -1911,6 +1913,18 @@ export const ROUTES = {
   "student.gradeSummary": route({
     method: "GET", path: "/api/student/offerings/:offeringId/grade-summary", surface: "student",
     params: params({ offeringId: OfferingId }), response: StudentGradeSummary,
+  }),
+
+  // From Google Classroom (SCHO-403): grades read live from Classroom, never stored or written.
+  /** The student's own returned Classroom grades in a class; `not-connected` where there is no Classroom. */
+  "student.classroomGrades": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/classroom-grades", surface: "student",
+    params: params({ offeringId: OfferingId }), response: StudentClassroomGrades,
+  }),
+  /** The class's Classroom grades, for those who may read its gradebook; `not-connected` where there is no Classroom. */
+  "teacher.classroomGrades": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/classroom-grades", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: TeacherClassroomGrades,
   }),
 
   // Communication (SCHO-189). Kept in one block, apart from the routes above.

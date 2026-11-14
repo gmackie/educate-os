@@ -117,6 +117,28 @@ These are provider-side workflows by each actual synthetic account, through the 
 calls the Google connector makes. They are not a Workshop approval flow (see
 [Classroom verification](classroom-verification.md)).
 
+### Harbor's "From Google Classroom" panel
+
+Grades teachers return in Classroom show in EducateOS read-only (SCHO-403). A student's class
+page has a "From Google Classroom" section listing their own returned work: the assignment
+(linked to Classroom), its grade out of the coursework's points, and "Returned". A teacher's or
+co-teacher's gradebook for a class has the same section below the official grid: each enrolled
+student against the class's 50 most recent coursework, with any assigned grade and whether the
+work is turned in, returned or not yet turned in.
+
+Grades are read live on each page load through the district Worker's Classroom connection
+(`DISTRICT_CONFIG.classroom` and the `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY` secret), acting as the
+course owner with the delegated scopes in their `rosterScopes` form plus
+`classroom.coursework.students` (`.readonly` for a read-only delegation). Nothing is stored in
+EducateOS and nothing is written to Classroom. A student's read asks Classroom only for their own
+returned submissions; neither panel shows anyone the roster did not import. Offerings and people
+are matched through the roster's source map (Classroom course ID and user ID), so the panel shows
+only where the head configuration's roster is `google-classroom`. Without the connection or its
+key, the routes (`/api/student|teacher/offerings/:offeringId/classroom-grades`) answer
+`not-connected` and the panel is hidden. If Classroom does not answer within about 15 seconds or
+refuses, the panel says "Google Classroom can't be reached right now", the rest of the page loads,
+and the Worker logs `district.classroom-grades.unavailable` with Google's error codes only.
+
 ### Signing presenters in as Harbor personas
 
 Harbor's roster comes from Classroom, so its teachers and students have no Access sign-in of

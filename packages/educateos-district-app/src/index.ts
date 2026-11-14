@@ -27,3 +27,5 @@ export * from "./course-library.ts";
 export * from "./district-export.ts";
 // IT review (SCHO-376)
 export * from "./admin-review.ts";
+// From Google Classroom (SCHO-403)
+export * from "./classroom-grades.ts";

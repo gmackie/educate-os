@@ -65,6 +65,8 @@ interface DistrictLogFields {
   /** A student archive's item and withheld counts (SCHO-371). */
   items?: number;
   withheld?: number;
+  /** Which panel a Classroom grade read was for (SCHO-403). */
+  surface?: "student" | "teacher";
 }
 
 // The demo showcase's routes (SCHO-326): who did what, by counts and IDs.
@@ -461,6 +463,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         onStudentArchiveExported: ({ items, withheld, bytes }) => logger.info("a student exported their archive", { event: "student.archive.export", items, withheld, bytes }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
+        // From Google Classroom (SCHO-403): Google's error codes only, never a body or token.
+        onClassroomGradesUnavailable: ({ surface, error }) => logger.warn("a Classroom grade read was unavailable", { event: "district.classroom-grades.unavailable", surface, error }),
         discussionHallMonitor: (screening) => discussionHallMonitor({
           ...(this.env.HALL_MONITOR === undefined ? {} : { binding: { fetch: (request: Request) => this.hallMonitorFetch(request) } }),
           url: this.env.HALL_MONITOR_URL,
