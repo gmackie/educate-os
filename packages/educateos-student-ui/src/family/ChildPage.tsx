@@ -10,6 +10,7 @@ import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { childCoursePath } from "../router.tsx";
 import { scoreText } from "./familyText.ts";
 import { ChildSwitcher } from "./ChildSwitcher.tsx";
+import { PageHeading } from "../PageHeading.tsx";
 
 /** One of a child's classes. */
 type ChildClass = RouteResponse<"guardian.childOfferings">[number];
@@ -89,7 +90,7 @@ export const ChildPage = ({ studentId }: { studentId: string }) => {
     <div className="flex flex-col gap-8">
       <ChildSwitcher family={children} currentId={studentId} />
       <div className="flex flex-col gap-1">
-        <Text variant="heading" size="lg" as="h1">{`${child.displayName}'s classes`}</Text>
+        <PageHeading>{`${child.displayName}'s classes`}</PageHeading>
         <FamilyPrivacyNote childName={child.displayName} />
       </div>
       <section aria-labelledby="current-classes" className="flex flex-col gap-3">

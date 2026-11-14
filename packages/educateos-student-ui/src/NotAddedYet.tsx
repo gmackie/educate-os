@@ -2,6 +2,7 @@ import { ClipboardText, Link, Text } from "@cloudflare/kumo";
 import { SignOutIcon } from "@phosphor-icons/react";
 import type { UnlinkedSignIn } from "@educateos/api-client";
 import { accessLogoutHref } from "./signIn.ts";
+import { PageHeading } from "./PageHeading.tsx";
 
 const SignOutLink = () => (
   <Link href={accessLogoutHref()} className="flex items-center gap-2 self-start py-2">
@@ -19,18 +20,14 @@ const SignOutLink = () => (
 export const NotAddedYet = ({ signIn }: { signIn: UnlinkedSignIn }) =>
   signIn.awaitingApproval === true ? (
     <section aria-labelledby="not-added-heading" className="flex max-w-xl flex-col gap-4">
-      <Text variant="heading" size="lg" as="h1">
-        <span id="not-added-heading">Waiting for your school to confirm you</span>
-      </Text>
+      <PageHeading id="not-added-heading">Waiting for your school to confirm you</PageHeading>
       <Text>You've accepted your invitation. Your school checks your sign-in and confirms you as a guardian; then your child's classes show up here.</Text>
       <Text>There's nothing more you need to do. Come back later, or reload this page.</Text>
       <SignOutLink />
     </section>
   ) : (
     <section aria-labelledby="not-added-heading" className="flex max-w-xl flex-col gap-4">
-      <Text variant="heading" size="lg" as="h1">
-        <span id="not-added-heading">You're signed in, but you haven't been added to this school yet</span>
-      </Text>
+      <PageHeading id="not-added-heading">You're signed in, but you haven't been added to this school yet</PageHeading>
       <Text>Your sign-in worked. Before you can see your classes, someone at your school needs to add you to EducateOS.</Text>
       <div role="group" aria-labelledby="sign-in-id-label" className="flex flex-col gap-2">
         <Text bold as="span">

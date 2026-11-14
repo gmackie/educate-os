@@ -16,6 +16,7 @@ import { messageFor } from "../api.tsx";
 import { useAnnounce } from "../AppContext.tsx";
 import { DEVICES_PATH } from "./paths.ts";
 import { useDistrictShell, usePairing } from "../shell.tsx";
+import { PageHeading } from "../PageHeading.tsx";
 
 /** How often the page asks the district where the room is, while the page is visible. */
 export const PAIRING_POLL_MS = 1500;
@@ -215,7 +216,7 @@ export const ConnectPhonePage = () => {
     }
   };
 
-  const heading = <Text variant="heading" size="lg" as="h1">Connect your phone</Text>;
+  const heading = <PageHeading>Connect your phone</PageHeading>;
   if (pairing === undefined) {
     return (
       <div className="flex flex-col gap-6">

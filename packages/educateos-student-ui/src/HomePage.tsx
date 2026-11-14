@@ -10,6 +10,7 @@ import type { StudentOffering } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
 import { RecentAnnouncements } from "./communication/RecentAnnouncements.tsx";
 import { PhoneBanner } from "./devices/PhoneBanner.tsx";
+import { PageHeading } from "./PageHeading.tsx";
 
 const CourseList = ({ courses, offerings, past }: { courses: CourseEntry[]; offerings: readonly StudentOffering[]; past: boolean }) => (
   <ul className="grid gap-3 sm:grid-cols-2">
@@ -34,9 +35,7 @@ export const HomePage = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <Text variant="heading" size="lg" as="h1">
-        Hi, {me.displayName}
-      </Text>
+      <PageHeading title="Home">{`Hi, ${me.displayName}`}</PageHeading>
 
       <PhoneBanner />
 

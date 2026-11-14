@@ -17,13 +17,12 @@ found 14 distinct failures, all serious. All 14 are fixed in this change. After 
 - every one of 4,782 keyboard focus stops has a name and a visible focus change;
 - every action exercised announced its outcome through a live region.
 
-Three criteria remain **Partially supports**:
+Two criteria remain **Partially supports**:
 
 | Criterion | Why | Follow-up |
 |---|---|---|
 | 1.4.3 Contrast (Minimum) | Kumo's link hover colour is under 4.5:1 while hovered. | SCHO-380 |
 | 1.4.11 Non-text Contrast | Text field boundaries are 1.25 to 1.52:1. | SCHO-379, SCHO-380 |
-| 2.4.2 Page Titled | Each app keeps one title on every screen. | SCHO-382 |
 
 **No screen reader or other assistive technology was used.** "Supports" in this report means the
 checks below found no failure on the screens audited. It is not a claim verified with assistive
@@ -109,10 +108,10 @@ criterion, so all are rated serious.
 | 14 | The submissions layout's single grid column sizes to its content, 16 to 60px too wide | 1.4.10 | Teacher assignment submissions | `grid-cols-1` below the md breakpoint | Fixed |
 | 15 | Text field, text area and combobox boundaries (Kumo's `kumo-line` ring) are 1.25 to 1.52:1 | 1.4.11 | 284 controls on 132 of 429 screen audits | Not changed: darkening every field is a design change | Open, SCHO-379 |
 | 16 | Kumo Link's hover colour (`text-kumo-link/70`) is 4.23:1 light and 4.08:1 dark while hovered | 1.4.3 | Links in lists, such as notifications | Upstream | Open, SCHO-380 |
-| 17 | Every screen of an app has the same document title | 2.4.2 | All apps | Per-route titles | Open, SCHO-382 |
+| 17 | Every screen of an app has the same document title | 2.4.2 | All apps | Per-route titles, set by the shell's `PageHeading` and `useRouteTitle` (SCHO-382) | Fixed |
 | 18 | A teacher can't extend a timed quiz's limit for one student (IEP/504 extended time) | 2.2.1 | Student quizzes | Per-student extended time (1.25× to 4×, or no limit), set by the class's teachers or a district administrator and enforced by the district's clock | Fixed, SCHO-383 |
 
-Counts: 18 findings, all serious; 15 fixed, 3 open. Findings 1 to 4 are fixed in one stylesheet,
+Counts: 18 findings, all serious; 16 fixed, 2 open. Findings 1 to 4 are fixed in one stylesheet,
 `packages/educateos-shell/src/contrast.css`, which every app's stylesheet and the demo's import after
 Kumo's. They override Kumo's tokens until Kumo's own meet AA (SCHO-380).
 
@@ -161,8 +160,8 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 2.2.2 Pause, Stop, Hide | Supports | No moving, blinking or auto-updating content other than loading indicators and a timed quiz's countdown, which is essential to the quiz. |
 | 2.3.1 Three Flashes or Below Threshold | Supports | Nothing flashes. |
 | 2.4.1 Bypass Blocks | Supports | Each app's first control is "Skip to content", and every screen has landmarks. |
-| 2.4.2 Page Titled | Partially supports | Each app has a title (Learning Home, Teacher Studio, EducateOS district admin), but it stays the same on every screen (SCHO-382). |
-| 2.4.3 Focus Order | Supports | Focus follows the layout. Teacher Studio moves focus to the new page's heading when you navigate, and dialogs keep focus inside. Not yet confirmed with a screen reader. |
+| 2.4.2 Page Titled | Supports | Every screen sets its own document title: its name, then its class or child where it has one, then the app, such as "Gradebook · English 9 · Period 3 · Teacher Studio" or "My grades · Learning Home". While a screen loads or can't load, its route's name stands in ("Activity · Learning Home"). The apps' tests check a unique title on each route. In the audit, no two of a persona's screens share a title, apart from its Home, which is the screen its app opens on (SCHO-382). |
+| 2.4.3 Focus Order | Supports | Focus follows the layout. Teacher Studio and the Learning Home move focus to the new page's heading when you navigate, the admin console moves it to the new screen's content, and dialogs keep focus inside. Not yet confirmed with a screen reader. |
 | 2.4.4 Link Purpose (In Context) | Supports | axe's link-name rule passes. Icon-only links, such as Settings and Notifications, have names. |
 | 2.5.1 Pointer Gestures | Supports | No multipoint or path-based gesture is needed to operate anything. Drawing is the exempt path-based case and has an upload alternative. |
 | 2.5.2 Pointer Cancellation | Supports | Controls are native or Base UI buttons that act on release. |
@@ -201,7 +200,7 @@ screen reader would confirm are marked "not yet confirmed with a screen reader" 
 | 3.3.4 Error Prevention (Legal, Financial, Data) | Supports | Submitting a quiz asks for confirmation, and a term move confirms in a dialog. Not every submitting flow was reviewed. |
 | 4.1.3 Status Messages | Supports | Every action exercised announced its outcome in a live region, and loading states are status regions. Not yet confirmed with a screen reader. |
 
-Totals: 50 criteria. 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.
+Totals: 50 criteria. 40 Supports, 2 Partially supports, 0 Does not support, 8 Not applicable.
 
 ## Known gaps and follow-ups
 
@@ -210,7 +209,6 @@ Totals: 50 criteria. 39 Supports, 3 Partially supports, 0 Does not support, 8 No
 | SCHO-379 | Text field, text area and combobox boundaries under 3:1 (1.4.11) |
 | SCHO-380 | Kumo upstream: subtle, warning and placeholder text tokens, control rings and link hover colour, so `contrast.css` can go |
 | SCHO-381 | Screen-reader testing of the critical flows with NVDA, JAWS, VoiceOver and TalkBack |
-| SCHO-382 | A document title per screen (2.4.2) |
 | SCHO-384 | Audit Cedar Valley's Clever portal, `/ai`, sign-in, LTI, invitations, the mobile app, Firefox and Safari. Run the audit in CI, and turn the pilot gate's accessibility todos into checks (they ask for WCAG 2.2 AA). |
 | SCHO-385 | Link this report from the IT evaluation packet at /it |
 | SCHO-125 | Kumo `Radio.Group` accessible name (upstream) |

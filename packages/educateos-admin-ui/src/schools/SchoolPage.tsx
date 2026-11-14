@@ -11,6 +11,7 @@ import { bandsOf, draftOf, isComplete, SchoolFields, type SchoolDraft } from "..
 import { STATE_LABEL } from "../classes/TermsSection.tsx";
 import { useAuthoringAction } from "../classes/useAuthoringAction.ts";
 import { TableScroll } from "../app/TableScroll.tsx";
+import { useConsoleTitle } from "../app/consoleTitle.ts";
 
 type DistrictClass = RouteResponse<"admin.listOfferings">[number];
 
@@ -65,6 +66,7 @@ const SchoolHeading = ({ view, onChanged }: { view: SchoolView; onChanged: () =>
   const action = useAuthoringAction(onChanged);
   const [editing, setEditing] = useState<SchoolDraft>();
   const { school } = view;
+  useConsoleTitle(school.name);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">

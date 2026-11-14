@@ -34,6 +34,8 @@ describe("the class list", () => {
     const opened = await screen.findByRole("button", { name: "Hide people" });
     expect(opened.getAttribute("aria-expanded")).toBe("true");
     expect(opened.closest("li")!.id).toBe("section-off_fk-eng9-b");
+    // The section's link is a route of its own, named for the section (WCAG 2.4.2).
+    expect(document.title).toBe("English 9 · Section B · Manage classes and people · EducateOS district admin");
   });
 
   it("narrows to the classes a search matches, by teacher or school", async () => {

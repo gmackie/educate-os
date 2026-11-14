@@ -18,9 +18,11 @@ import {
   UploadSimpleIcon,
   type Icon,
 } from "@phosphor-icons/react";
+import { documentTitle, focusOnMount, useScreenTitle } from "@educateos/shell";
 import { AskAi } from "../AskAi.tsx";
 import { formatDateTime } from "../labels.ts";
 import type { ActivityStep, AssignedActivity } from "../model.ts";
+import { APP_NAME } from "../PageHeading.tsx";
 import { PrivacyNote } from "../PrivacyNote.tsx";
 import { ReadAloudButton } from "../readAloud/ReadAloudButton.tsx";
 import { SpokenText } from "../readAloud/SpokenText.tsx";
@@ -100,6 +102,8 @@ export const YoungActivityView = ({ offeringId, courseName, entry, work }: {
   const steps = content.steps;
   const last = steps.length + 1;
   const [page, setPage] = useState(0);
+  // The large-type heading below is the screen's PageHeading, drawn for young readers.
+  useScreenTitle(documentTitle(assignment.title, courseName, APP_NAME));
   const headings = useRef(new Map<number, HTMLHeadingElement>());
   const headingRef = (index: number) => (element: HTMLHeadingElement | null) => {
     if (element === null) headings.current.delete(index);
@@ -128,7 +132,7 @@ export const YoungActivityView = ({ offeringId, courseName, entry, work }: {
       </Breadcrumbs>
 
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold">{assignment.title}</h1>
+        <h1 tabIndex={-1} ref={focusOnMount} className="rounded text-4xl font-bold outline-none focus-visible:ring-2 focus-visible:ring-kumo-brand">{assignment.title}</h1>
         <p className="text-kumo-subtle">
           Due <time dateTime={assignment.dueAt}>{formatDateTime(assignment.dueAt)}</time>
         </p>

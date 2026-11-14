@@ -11,7 +11,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { unlinkedSignInOf } from "@educateos/api-client";
-import { shellRoleOf } from "@educateos/shell";
+import { documentTitle, shellRoleOf, useRouteTitle } from "@educateos/shell";
 import { useQuery } from "./api.tsx";
 import { ActivityPage } from "./activity/ActivityPage.tsx";
 import { CoursePage } from "./CoursePage.tsx";
@@ -22,6 +22,8 @@ import { Layout } from "./Layout.tsx";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import { MySpacePage } from "./MySpacePage.tsx";
 import { NotAddedYet } from "./NotAddedYet.tsx";
+import { APP_NAME } from "./PageHeading.tsx";
+import { routeName } from "./routeName.ts";
 import { useDistrictShell } from "./shell.tsx";
 import { ShellLayout } from "./ShellLayout.tsx";
 // Your devices and Connect phone (SCHO-260)
@@ -111,6 +113,7 @@ const Root = () => {
   // The location the rendered matches belong to: during a navigation `location` already names the
   // next page while the previous one is still what an outlet would render.
   const pathname = useRouterState({ select: (state) => (state.resolvedLocation ?? state.location).pathname });
+  useRouteTitle(documentTitle(routeName(pathname), APP_NAME), pathname);
   return pathname === INVITATION_PATH ? <Layout studentName={undefined} audience={undefined}><Outlet /></Layout> : <SignedIn pathname={pathname} />;
 };
 

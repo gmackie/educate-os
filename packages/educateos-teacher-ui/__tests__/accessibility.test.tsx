@@ -98,6 +98,9 @@ describe("roles and labels", () => {
     const user = await renderApp(district.client);
     await screen.findByText("1 student");
     expectWellFormed();
+    expect(document.title).toBe("My classes · Teacher Studio");
+    // Every screen names itself in the document title, uniquely (WCAG 2.4.2).
+    const titles = new Set([document.title]);
 
     const screens = [
       { section: "Roster", heading: /^Roster/ },
@@ -119,12 +122,19 @@ describe("roles and labels", () => {
       const sections = screen.getByRole("navigation", { name: "Class sections" });
       expect(within(sections).getByRole("link", { name: section }).getAttribute("aria-current")).toBe("page");
       expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeTruthy();
+      expect(document.title).toBe(`${section} · English 9 · Period 3 · Teacher Studio`);
+      titles.add(document.title);
     }
 
     await user.click(screen.getByRole("link", { name: /Persuasive paragraph/ }));
+    await waitFor(() => expect(document.title).toBe("Persuasive paragraph · Submissions · English 9 · Period 3 · Teacher Studio"));
+    titles.add(document.title);
     await user.click(await screen.findByRole("link", { name: "Review Amara Okafor’s work" }));
     await screen.findByRole("group", { name: "argument" });
     expectWellFormed();
+    expect(document.title).toBe("Amara Okafor’s work · Persuasive paragraph · Teacher Studio");
+    titles.add(document.title);
+    expect(titles.size).toBe(screens.length + 3);
     expect(screen.getByRole("region", { name: "Submitted work: Draft" }).getAttribute("tabindex")).toBe("0");
     // Assistive technology hears what each action changed.
     expect(screen.getAllByRole("status").some((s) => s.getAttribute("aria-live") === "polite")).toBe(true);
