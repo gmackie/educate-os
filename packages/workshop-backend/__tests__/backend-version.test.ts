@@ -15,10 +15,10 @@ function envWith(vars: object): Cloudflare.Env {
   return { ...env, ...vars } as Cloudflare.Env;
 }
 
-async function fetchVersion(vars: object, method = "GET"): Promise<Response> {
+async function fetchVersion(vars: object, method = "GET", path = VERSION_PATH): Promise<Response> {
   const ctx = createExecutionContext();
   const response = await worker.fetch(
-      new Request(`https://workshop.example${VERSION_PATH}`, { method }), envWith(vars), ctx);
+      new Request(`https://workshop.example${path}`, { method }), envWith(vars), ctx);
   await waitOnExecutionContext(ctx);
   return response;
 }
@@ -39,6 +39,12 @@ describe("the version endpoint", () => {
   it("answers null without a version id", async () => {
     expect(await (await fetchVersion(EMPTY_ID)).json()).toEqual({ version: null });
     expect(await (await fetchVersion(UNBOUND)).json()).toEqual({ version: null });
+  });
+
+  it("answers under the /ai mount of a one-origin district too (SCHO-402)", async () => {
+    const response = await fetchVersion(WITH_ID, "GET", `/ai${VERSION_PATH}`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ version: "version-id" });
   });
 
   it("answers only GET", async () => {
