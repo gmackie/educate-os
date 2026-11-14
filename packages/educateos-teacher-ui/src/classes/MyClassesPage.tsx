@@ -24,24 +24,31 @@ export const MyClassesPage = () => {
       {classes.status === "loading" && <Loading label="Loading your classes…" />}
       {classes.status === "error" && <Problem error={classes.error} onRetry={classes.reload} />}
       {classes.status === "ready" && classes.data.length === 0 && (
-        <Empty icon={<UsersThree size={32} aria-hidden />} title="No classes yet" description="When your district adds you to a class, it appears here." />
+        <Empty icon={<UsersThree size={32} aria-hidden />} title="No classes yet" description="Ask your school administrator to add your class and roster. Then you can bring over your materials and prepare your first activity." />
       )}
       {classes.status === "ready" && classes.data.length > 0 && (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {classes.data.map(({ teaching, students }) => (
-            <li key={teaching.offering.id}>
-              <LayerCard className="p-4">
-                <a href={routeHref({ screen: "roster", offeringId: teaching.offering.id })} className="flex flex-col gap-2 rounded text-kumo-default no-underline focus-visible:ring-2 focus-visible:ring-kumo-brand">
-                  <Text variant="heading" as="span">{classLabel(teaching)}</Text>
-                  <span className="flex flex-wrap items-center gap-2">
-                    <Badge variant="neutral" icon={<Student aria-hidden />}>{students === 1 ? "1 student" : `${students} students`}</Badge>
-                    {teaching.role === "co-teacher" && <Badge variant="secondary">Co-teacher</Badge>}
-                  </span>
-                </a>
-              </LayerCard>
-            </li>
-          ))}
-        </ul>
+        <>
+          <LayerCard className="flex flex-col gap-2 p-4">
+            <h2><Text variant="heading" as="span">Bring your classroom with you</Text></h2>
+            <Text variant="secondary">Keep using what works. Choose Classroom setup on a class to bring over materials, prepare an activity, or explore connections to the tools you already use.</Text>
+          </LayerCard>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {classes.data.map(({ teaching, students }) => (
+              <li key={teaching.offering.id}>
+                <LayerCard className="flex flex-col gap-3 p-4">
+                  <a href={routeHref({ screen: "roster", offeringId: teaching.offering.id })} className="flex flex-col gap-2 rounded text-kumo-default no-underline focus-visible:ring-2 focus-visible:ring-kumo-brand">
+                    <Text variant="heading" as="span">{classLabel(teaching)}</Text>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Badge variant="neutral" icon={<Student aria-hidden />}>{students === 1 ? "1 student" : `${students} students`}</Badge>
+                      {teaching.role === "co-teacher" && <Badge variant="secondary">Co-teacher</Badge>}
+                    </span>
+                  </a>
+                  <a href={routeHref({ screen: "setup", offeringId: teaching.offering.id })} className="rounded focus-visible:ring-2 focus-visible:ring-kumo-brand">Set up this class</a>
+                </LayerCard>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
