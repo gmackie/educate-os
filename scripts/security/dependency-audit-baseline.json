@@ -2,46 +2,6 @@
   "$comment": "Accepted high and critical advisories in production dependencies. See docs/educateos/security/dependency-scanning.md before adding an entry; every entry needs a reason and an issue or expiry, and is reviewed in the pull request that adds it.",
   "advisories": [
     {
-      "id": "GHSA-c475-qrg2-pj4r",
-      "lockfile": "pnpm-lock.yaml",
-      "package": "basic-ftp",
-      "severity": "high",
-      "title": "basic-ftp: Quadratic-time CPU denial of service in Client.list() Unix directory-listing parser (RE_LINE backtracking)",
-      "reason": "Reached only through @cloudflare/puppeteer > @puppeteer/browsers > proxy-agent > get-uri, a Node-only proxy path the Worker never takes; nothing in EducateOS speaks FTP.",
-      "issue": "SCHO-387",
-      "expires": "2027-02-13"
-    },
-    {
-      "id": "GHSA-7pqw-9j4j-h8q3",
-      "lockfile": "pnpm-lock.yaml",
-      "package": "extract-zip",
-      "severity": "high",
-      "title": "extract-zip allows arbitrary file writes through symlink archive entries",
-      "reason": "Reached only through @cloudflare/puppeteer > @puppeteer/browsers, whose browser download and unzip code is Node-only and never runs in the Worker (Browser Rendering supplies the browser).",
-      "issue": "SCHO-387",
-      "expires": "2027-02-13"
-    },
-    {
-      "id": "GHSA-jmr9-qjv8-65gv",
-      "lockfile": "pnpm-lock.yaml",
-      "package": "extract-zip",
-      "severity": "high",
-      "title": "extract-zip unvalidated symlink path traversal",
-      "reason": "Reached only through @cloudflare/puppeteer > @puppeteer/browsers, whose browser download and unzip code is Node-only and never runs in the Worker (Browser Rendering supplies the browser).",
-      "issue": "SCHO-387",
-      "expires": "2027-02-13"
-    },
-    {
-      "id": "GHSA-587h-7wmj-h5pm",
-      "lockfile": "pnpm-lock.yaml",
-      "package": "vite",
-      "severity": "high",
-      "title": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
-      "reason": "Dev server and build tool only; Vite is not bundled into any Worker. The advisory needs a Windows dev machine opening files through launch-editor. Fixed by bumping the exact catalog pin to 7.3.7.",
-      "issue": "SCHO-386",
-      "expires": "2027-02-13"
-    },
-    {
       "id": "GHSA-5x38-2vff-x55p",
       "lockfile": "apps/mobile/pnpm-lock.yaml",
       "package": "node-forge",

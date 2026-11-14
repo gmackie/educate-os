@@ -14,7 +14,7 @@
     "import:bundled-blueprint": "node scripts/import-bundled-blueprint.ts"
   },
   "dependencies": {
-    "@cloudflare/puppeteer": "^1.4.0",
+    "@cloudflare/puppeteer": "^2.0.0",
     "@earendil-works/pi-agent-core": "1.5.0",
     "@earendil-works/pi-ai": "1.5.0",
     "@gadgets/error-reporting": "workspace:*",
