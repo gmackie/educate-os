@@ -6904,7 +6904,7 @@ class OverseerImpl implements AgentHooks {
     }
     if (refused) {
       this.#revokeStanding("a principal's Workshop access changed");
-    } else if (Object.values(this.#liveSessions).every(n => n === 0) &&
+    } else if (this.#liveSessions.size === 0 &&
         this.#runningAgents.size === 0 && this.#pendingCallDrains.size === 0 &&
         Array.from(this.storage.pendingAgentCalls.list({ limit: 1 })).length === 0) {
       this.#revokeStanding(STANDING_IDLE_REASON);
