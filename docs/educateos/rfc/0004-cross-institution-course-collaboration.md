@@ -118,6 +118,22 @@ Do NOT alter OCS 1.1 package semantics to include these records. The experimenta
 lives under packages/ocs/src/experiments in the independent standard repo; it is deliberately
 not exported as a stable library API.
 
+## 5a. Prior art and interoperability
+
+The important product differentiator is NOT that teachers can share or override lesson
+content. Open edX Content Libraries already support reusable components, preserved local
+text overrides, side-by-side update review and teacher-selected synchronization
+(https://docs.openedx.org/en/latest/educators/concepts/instructional_design/content_libraries.html).
+H5P's OER Hub supports educator reuse with automatic attribution
+(https://h5p.org/h5p-oer-hub-jan-2026).
+
+The missing interoperable layer is independently hosted publishers proposing reviewed
+improvements to one another and retaining exact cross-institution attribution and
+version history. For binary media, use Common Cartridge as an established transport
+where suitable (https://www.1edtech.org/standards/cc). OCS should add signed,
+digest-pinned identities, collaboration provenance and local adoption policy,
+not compete with Common Cartridge's existing educational file packaging.
+
 ## 6. Access-control boundaries (proposed capabilities, not routes)
 
 | Capability | Required principal and decision |
