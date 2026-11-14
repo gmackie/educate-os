@@ -12,6 +12,10 @@ test('marketing mount defaults off and is idempotent', () => {
   assert.match(result, /dataflare.js" data-enabled="true"/);
   assert.equal(stamp(result, '/teachers/'), result);
 });
+test('the founding pilot page is collected, and only that page under /pilot/ (SCHO-366)', () => {
+  assert.match(stamp(html, '/pilot/'), /dataflare.js/);
+  assert.doesNotMatch(stamp(html, '/pilot/teachers/'), /dataflare.js/);
+});
 test('restricted pages never receive an analytics mount', () => {
   for (const path of ['/demo/', '/app', '/interest/demo/', '/registry/abc', '/district/student', '/clever/launch']) {
     assert.doesNotMatch(stamp(html, path), /dataflare.js/);
@@ -32,10 +36,10 @@ test('the loader collects only the reviewed marketing paths, cookieless and with
     runInNewContext(source, browser(path, () => { loaded = true; return {addEventListener() {}}; }));
     return loaded;
   };
-  for (const path of ['/', '/teachers/', '/leaders', '/families/', '/developers/', '/developers/mcp', '/gadgets/', '/connectors/x', '/it/', '/it/install/', '/it/security-questionnaire/', '/it/accessibility/', '/pricing', '/privacy/']) {
+  for (const path of ['/', '/teachers/', '/leaders', '/families/', '/developers/', '/developers/mcp', '/gadgets/', '/connectors/x', '/it/', '/it/install/', '/it/security-questionnaire/', '/it/accessibility/', '/pricing', '/pilot/', '/privacy/']) {
     assert.equal(loads(path), true, path);
   }
-  for (const path of ['/teachers/demo', '/interest/', '/tour/', '/demo/', '/privacy/extra', '/app', '/items/']) {
+  for (const path of ['/teachers/demo', '/pilot/teachers/', '/interest/', '/tour/', '/demo/', '/privacy/extra', '/app', '/items/']) {
     assert.equal(loads(path), false, path);
   }
   assert.match(source, /project: 'educateos-site'/);

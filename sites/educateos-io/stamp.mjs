@@ -40,7 +40,7 @@ export function stamp(html, path) {
   // educateos.io/_glass is verified; enable cookieless collection on reviewed marketing paths.
   // Exclude demos, intake, operator and district surfaces even if a shared layout is reused.
   html = html.replace(/<!-- site:analytics -->[\s\S]*?<!-- \/site:analytics -->\n?/g, "");
-  if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|it(?:\/.*)?$|pricing\/?$|privacy\/?$)/.test(path)) {
+  if (/^\/(?:$|teachers\/?$|leaders\/?$|families\/?$|developers(?:\/.*)?$|gadgets(?:\/.*)?$|connectors(?:\/.*)?$|it(?:\/.*)?$|pricing\/?$|pilot\/?$|privacy\/?$)/.test(path)) {
     html = html.replace("</body>", '<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><!-- /site:analytics -->\n</body>');
   }
   html = html.replace(/<span class="status[^"]*" data-status="([^"]+)">[^<]*<\/span>/g, (_, key) => chip(key, path));
