@@ -22,12 +22,13 @@ export const useRouteTitle = (title: string, route: string): void => {
 };
 
 /**
- * Sets the title of the screen on show, over its route's. It is reasserted on every render, so a
- * route change that keeps the screen mounted (and so reruns `useRouteTitle`) still ends on it.
- * Call it from the screen itself, never from a component that wraps other screens.
+ * Sets the title of the screen on show, over its route's; undefined leaves the route's. It is
+ * reasserted on every render, so a route change that keeps the screen mounted (and so reruns
+ * `useRouteTitle`) still ends on it. Call it from the screen itself, never from a component that
+ * wraps other screens.
  */
-export const useScreenTitle = (title: string): void => {
+export const useScreenTitle = (title: string | undefined): void => {
   useEffect(() => {
-    document.title = title;
+    if (title !== undefined) document.title = title;
   });
 };

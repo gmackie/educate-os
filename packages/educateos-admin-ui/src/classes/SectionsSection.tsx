@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Input, LayerCard, Radio, Text } from "@cloudflare/kumo";
+import { documentTitle } from "@educateos/shell";
+import { useConsoleTitle } from "../app/consoleTitle.ts";
 import { useSectionRoute } from "../app/useHashRoute.ts";
 import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, sectionLabel, type AuthoringDirectory } from "./authoring.ts";
@@ -17,6 +19,9 @@ const choiceOf = (chosen: string, options: readonly { id: string }[]): string =>
 export const SectionsSection = ({ directory, onChanged }: { directory: AuthoringDirectory; onChanged: () => void }) => {
   const action = useAuthoringAction(onChanged);
   const linked = useSectionRoute();
+  // A link to one section is a route of its own, so its title names the section.
+  const linkedOffering = directory.offerings.find((o) => o.id === linked);
+  useConsoleTitle(linkedOffering === undefined ? undefined : documentTitle(sectionLabel(directory, linkedOffering), "Manage classes and people"));
   const [open, setOpen] = useState<string | undefined>(linked);
   useEffect(() => {
     if (linked === undefined) return;

@@ -508,7 +508,7 @@ const lines = [
   ``,
   `## Page titles`,
   ``,
-  `Screens of one persona that share a document title (WCAG 2.4.2), from the light pass. None is the goal.`,
+  `Screens of one persona that share a document title (WCAG 2.4.2), from the light pass. A persona's Home is the screen its app opens on (the admin Dashboard, a guardian's first child), so it shares that screen's title; any other row is a failure.`,
   ``,
   `| Persona | Title | Screens |`,
   `|---|---|---|`,
