@@ -3,10 +3,11 @@
 // running again, and a second machine (the district's own CI after the root's OAuth grant is
 // revoked) reconciles exactly as the first would.
 import { EducateOsError } from "@educateos/contracts";
-import type { AccessRule, CloudflareApi, KvNamespace, ObservedBinding } from "./cloudflare-api.ts";
+import { type AccessRule, type CloudflareApi, DATA_JURISDICTIONS, type KvNamespace, type ObservedBinding } from "./cloudflare-api.ts";
 import { stableStringify } from "./digest.ts";
 import type { SecretSource } from "./config.ts";
 import {
+  DATA_JURISDICTION_VAR,
   type DesiredResource,
   type DesiredState,
   type DesiredWorker,
@@ -95,7 +96,9 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
   const [scripts, kv, r2, d1, policies, apps, gateways, domains, zone] = await Promise.all([
     guarded(() => api.listWorkerScripts(account)),
     list<KvNamespace>(kinds.has("kv_namespace"), () => api.listKvNamespaces(account)),
-    list(kinds.has("r2_bucket"), () => api.listR2Buckets(account)),
+    // R2 lists each jurisdiction apart, so a bucket is looked for in all of them (ADR-0015).
+    list(kinds.has("r2_bucket"), async () => (await Promise.all([undefined, ...DATA_JURISDICTIONS].map(async (jurisdiction) =>
+      (await api.listR2Buckets(account, jurisdiction)).map((b) => ({ ...b, ...(jurisdiction ? { jurisdiction } : {}) }))))).flat()),
     list(kinds.has("d1_database"), () => api.listD1Databases(account)),
     guarded(() => api.listAccessPolicies(account)),
     guarded(() => api.listAccessApplications(account)),
@@ -118,19 +121,32 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
     switch (resource.kind) {
       case "kv_namespace": {
         const found = kv.find((ns) => ns.title === resource.title);
+        if (found && found.jurisdiction !== resource.jurisdiction) {
+          step("refuse", `KV namespace ${resource.title} is in ${found.jurisdiction ?? "no jurisdiction"}, not ${resource.jurisdiction ?? "none"}, and Cloudflare can't move it (ADR-0015)`);
+          break;
+        }
         if (found) outputs.set(resource.key, { id: found.id });
-        step(found ? "noop" : "create", found ? "namespace exists" : "namespace missing");
+        step(found ? "noop" : "create", found ? "namespace exists" : `namespace missing${inJurisdiction(resource.jurisdiction)}`);
         break;
       }
       case "r2_bucket": {
-        const found = r2.some((b) => b.name === resource.name);
-        step(found ? "noop" : "create", found ? "bucket exists" : "bucket missing");
+        const named = r2.filter((b) => b.name === resource.name);
+        const found = named.some((b) => b.jurisdiction === resource.jurisdiction);
+        if (!found && named.length > 0) {
+          step("refuse", `R2 bucket ${resource.name} is in ${named[0]!.jurisdiction ?? "no jurisdiction"}, not ${resource.jurisdiction ?? "none"}, and Cloudflare can't move it (ADR-0015)`);
+          break;
+        }
+        step(found ? "noop" : "create", found ? "bucket exists" : `bucket missing${inJurisdiction(resource.jurisdiction)}`);
         break;
       }
       case "d1_database": {
         const found = d1.find((db) => db.name === resource.name);
         if (!found) {
-          step("create", "database missing", { pendingMigrations: resource.migrations.map((m) => m.id) });
+          step("create", `database missing${inJurisdiction(resource.jurisdiction)}`, { pendingMigrations: resource.migrations.map((m) => m.id) });
+          break;
+        }
+        if (found.jurisdiction !== resource.jurisdiction) {
+          step("refuse", `D1 database ${resource.name} is in ${found.jurisdiction ?? "no jurisdiction"}, not ${resource.jurisdiction ?? "none"}, and Cloudflare can't move it (ADR-0015)`);
           break;
         }
         outputs.set(resource.key, { id: found.uuid });
@@ -186,7 +202,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         const settings = await guarded(() => api.getWorkerSettings(account, resource.scriptName));
         const marker = settings.bindings.find((b) => b.type === "plain_text" && b.name === MARKER_VARS.instance)?.text;
         if (marker === undefined && resource.adoptable) {
-          const refusal = adoptionRefusal(resource, found.migrationTag);
+          const refusal = adoptionRefusal(resource, found.migrationTag) ?? jurisdictionChange(resource, settings.bindings);
           if (refusal) {
             step("refuse", refusal);
             break;
@@ -199,6 +215,11 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
           step("refuse", marker
             ? `Worker ${resource.scriptName} belongs to instance ${marker}`
             : `Worker ${resource.scriptName} exists but was not created by the EducateOS installer`);
+          break;
+        }
+        const moved = jurisdictionChange(resource, settings.bindings);
+        if (moved) {
+          step("refuse", moved);
           break;
         }
         workerOwned.set(resource.key, true);
@@ -290,6 +311,25 @@ async function planWorker(
   return serviceChanges.length > 0
     ? { ...base, action: "update", reason: `drift: ${serviceChanges.join("; ")}` }
     : { ...base, action: "noop", reason: "deployed version matches the release" };
+}
+
+/** What a create step's reason adds for storage made in a jurisdiction; nothing for unpinned storage. */
+function inJurisdiction(jurisdiction: string | undefined): string {
+  return jurisdiction ? `; created in the ${jurisdiction} jurisdiction` : "";
+}
+
+/**
+ * Why a deployed Worker can't take the desired {@link DATA_JURISDICTION_VAR}, or undefined if it can.
+ * The jurisdiction is part of each Durable Object's ID, so changing it starts the Worker on new,
+ * empty objects and leaves its data where it was (ADR-0015).
+ */
+function jurisdictionChange(worker: DesiredWorker, observed: ObservedBinding[]): string | undefined {
+  const pin = (b: { type: string; name: string }) => b.type === "plain_text" && b.name === DATA_JURISDICTION_VAR;
+  const want = worker.bindings.find(pin)?.text as string | undefined;
+  const have = observed.find(pin)?.text;
+  if (want === have) return undefined;
+  return `Worker ${worker.scriptName} keeps its Durable Objects in ${have ? `the ${have} jurisdiction` : "no jurisdiction"}; ` +
+    `${want ? `pinning it to ${want}` : "unpinning it"} would start it on empty objects, leaving its data behind (ADR-0015)`;
 }
 
 /**

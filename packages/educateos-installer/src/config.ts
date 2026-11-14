@@ -3,6 +3,7 @@ import { ContactRole } from "@educateos/fleet";
 import { ReleaseTrust } from "@educateos/releases";
 import { z } from "zod";
 import { ReleasePin } from "./manifest.ts";
+import { DATA_JURISDICTIONS } from "./cloudflare-api.ts";
 import { DistrictSlug, MANAGED_ZONE, managedHostname } from "./slug.ts";
 
 const DnsLabel = z.string().regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/, "expected a DNS label");
@@ -130,6 +131,14 @@ export const DistrictInstallConfig = z.strictObject({
     .default({}),
   /** Creates an AI Gateway named after the instance and points the backend at it. */
   aiGateway: z.boolean().default(false),
+  /**
+   * The Cloudflare jurisdiction the install's storage is kept in (ADR-0015). `us` creates its R2
+   * buckets and D1 databases in Cloudflare's US jurisdiction and pins the district's Durable Object
+   * there (the district Worker's `DATA_JURISDICTION`). New installs set it. Unset, nothing is pinned,
+   * as on every install made before ADR-0015. Cloudflare can't move existing storage between
+   * jurisdictions, so planning refuses to add, change or remove it where the storage already exists.
+   */
+  dataJurisdiction: z.enum(DATA_JURISDICTIONS).optional(),
   /**
    * The AI workspace at `/ai` on a one-origin install (ADR-0014): one that installs the district
    * service, whose router then serves the district at the root of the public hostname. Off, the

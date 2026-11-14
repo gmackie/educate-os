@@ -88,6 +88,12 @@ instance ID `ins_<name>`, the Zero Trust team read from the account, the admitte
 addresses, the administrators, an optional AI Gateway, and optionally the district service with its
 `DISTRICT_CONFIG` (one origin: the LMS at `/`, the Workshop at `/ai`) and the OSS admin.
 
+A new install's answers also carry `"dataJurisdiction": "us"`: the district's Durable Object and the
+install's KV namespaces, R2 buckets and D1 databases are created in Cloudflare's US jurisdiction
+([ADR-0015](adr/0015-us-data-jurisdiction.md)). Answers saved before that have none, and stay
+unpinned: Cloudflare can't move existing storage, so the installer refuses to add, change or remove
+`dataJurisdiction` where the install's storage or district already exists.
+
 Limits:
 
 - **The district LMS needs a `DISTRICT_CONFIG` file.** Its seed directory names the administrators by

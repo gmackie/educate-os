@@ -86,12 +86,17 @@ describe("the wizard", () => {
     expect(result.stdout).toContain("Delete the Cloudflare API token");
     expect(result.stdout).not.toContain(cloudflare.token);
     expect(cloudflare.fake.serving("educateos.northfield.example")?.releaseId).toBe("r000001-aaaaaaa");
+    // A new install keeps its storage in Cloudflare's US jurisdiction (ADR-0015).
+    expect(result.stdout).toContain("data location  Cloudflare's US jurisdiction");
+    expect(cloudflare.fake.worker("educateos-northfield-educateos-district-worker")?.bindings)
+      .toContainEqual({ type: "plain_text", name: "DATA_JURISDICTION", text: "us" });
+    expect(cloudflare.fake.d1Jurisdiction("educateos-northfield-admin-db")).toBe("us");
 
     const saved = readFileSync(answersPath, "utf8");
     expect(saved).not.toContain(cloudflare.token);
     expect(JSON.parse(saved)).toMatchObject({
       format: "launch-educate-os/1",
-      install: { instanceId: "ins_northfield", baseDomain: "northfield.example", subdomain: "educateos", admin: { enabled: true } },
+      install: { instanceId: "ins_northfield", baseDomain: "northfield.example", subdomain: "educateos", admin: { enabled: true }, dataJurisdiction: "us" },
       history: [{ releaseId: "r000001-aaaaaaa", action: "install" }],
     });
 
