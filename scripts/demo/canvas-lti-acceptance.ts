@@ -67,6 +67,9 @@ export function acceptedLaunch(page: string): AcceptedLaunch | undefined {
     ...(activity === undefined ? {} : { activityId: activity }), services: [...text.matchAll(/\((AGS|NRPS)\)/g)].map((m) => m[1]!) };
 }
 
+/** Failures to open a connection, which sent no request and may be retried. */
+const CONNECT_FAILURES = new Set(["ETIMEDOUT", "ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "UND_ERR_CONNECT_TIMEOUT"]);
+
 /** A minimal browser: cookies per host, manual redirects within LAUNCH_HOSTS, form posts. */
 export class LaunchBrowser {
   readonly #cookies = new Map<string, Map<string, string>>();
@@ -78,14 +81,21 @@ export class LaunchBrowser {
   async #send(url: URL, init: { method: string; body?: string }): Promise<{ url: URL; status: number; page: string; location?: string }> {
     if (!LAUNCH_HOSTS.includes(url.hostname) || url.protocol !== "https:") throw new Error(`Refusing to visit ${url.hostname}`);
     const jar = this.#cookies.get(url.hostname) ?? new Map<string, string>();
-    const response = await this.#fetch(url, { method: init.method, redirect: "manual", headers: {
+    const send = () => this.#fetch(url, { method: init.method, redirect: "manual", headers: {
       "user-agent": "EducateOS-Demo-Verification/1.0",
       ...(jar.size === 0 ? {} : { cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; ") }),
       ...(init.body === undefined ? {} : { "content-type": "application/x-www-form-urlencoded" }),
-    }, ...(init.body === undefined ? {} : { body: init.body }) }).catch((error: unknown) => {
-      const cause = (error as { cause?: { code?: string } }).cause?.code ?? "transport failed";
-      throw new Error(`${init.method} ${url.hostname}${url.pathname}: ${cause}`);
-    });
+    }, ...(init.body === undefined ? {} : { body: init.body }) });
+    let response: Response | undefined;
+    for (let attempt = 1; response === undefined; attempt++) {
+      try {
+        response = await send();
+      } catch (error) {
+        const cause = (error as { cause?: { code?: string } }).cause?.code ?? "transport failed";
+        // A connection that never opened sent nothing, so even a form post is safe to try again.
+        if (attempt >= 3 || !CONNECT_FAILURES.has(cause)) throw new Error(`${init.method} ${url.hostname}${url.pathname}: ${cause}`, { cause: error });
+      }
+    }
     for (const header of response.headers.getSetCookie()) {
       const [pair] = header.split(";");
       const at = pair!.indexOf("=");
@@ -195,7 +205,9 @@ export async function deepLinkAcceptance(admin: CanvasClient, actors: CanvasActo
   let items = await toolItems();
   let outcome = "reused";
   if (items.length === 0) {
-    const { reached } = await browse(course.teacherId, picker, (p) => /deep_linking|content_items|New Content From App/i.test(p) && !pageForms(p).some((f) => f.fields.some(([n]) => n === "JWT")),
+    // Done once the teacher has chosen and Canvas has answered the signed response: not before the
+    // picker (Canvas's own launch page mentions deep linking too), nor at the response's auto-post.
+    const { reached } = await browse(course.teacherId, picker, (p) => selected.length > 0 && !pageForms(p).some((f) => f.fields.some(([n]) => n === "JWT")),
       (form) => { const chosen = form.boxes.slice(0, 2); selected = chosen.map((b) => ({ activityId: b.value, title: b.label })); return chosen; });
     if (selected.length === 0) problems.push(`${course.teacherId}: the picker offered no activities`);
     items = await toolItems();

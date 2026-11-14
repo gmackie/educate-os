@@ -67,3 +67,23 @@ test("fills the content picker with the chosen activities and posts the session"
   assert.ok(reached);
   assert.equal(posted, "session=s1&activity=a1&activity=a2");
 });
+
+test("retries a connection that never opened, but not a failure after the request was sent", async () => {
+  const failing = (code: string, times: number) => {
+    let calls = 0;
+    const transport: typeof fetch = async () => {
+      calls++;
+      if (calls <= times) throw Object.assign(new TypeError("fetch failed"), { cause: { code } });
+      return new Response("<p>done</p>");
+    };
+    return { transport, calls: () => calls };
+  };
+  const flaky = failing("ETIMEDOUT", 2);
+  assert.ok((await new LaunchBrowser("c", flaky.transport).follow("https://canvas.mackie.house/x", (p) => p.includes("done"))).reached);
+  assert.equal(flaky.calls(), 3);
+  const down = failing("UND_ERR_CONNECT_TIMEOUT", 3);
+  await assert.rejects(new LaunchBrowser("c", down.transport).follow("https://canvas.mackie.house/x", () => true), /UND_ERR_CONNECT_TIMEOUT/);
+  const reset = failing("ECONNRESET", 1);
+  await assert.rejects(new LaunchBrowser("c", reset.transport).follow("https://canvas.mackie.house/x", () => true), /ECONNRESET/);
+  assert.equal(reset.calls(), 1);
+});
