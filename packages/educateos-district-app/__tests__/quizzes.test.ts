@@ -112,6 +112,66 @@ describe("quizzes over HTTP (SCHO-191)", () => {
     expect((await district.ok(amara, "student.getQuiz", { params: { offeringId: NF.eng9, quizId: quiz.id } })).attempts.map((a) => a.status)).toEqual(["expired"]);
   });
 
+  it("runs an accommodated student's attempt to their extended deadline, and only theirs (SCHO-383)", async () => {
+    const { district, clock, rivera, quiz } = await classWithQuiz({ timeLimitMinutes: 30, attemptsAllowed: 1 });
+    const at = { offeringId: NF.eng9, quizId: quiz.id };
+    const set = await district.ok(rivera, "teacher.setQuizAccommodation", { params: at, body: { studentId: NF.amara, extendedTime: 1.5 } });
+    expect(set).toMatchObject({ canManage: true, accommodations: [{ quizId: quiz.id, studentId: NF.amara, extendedTime: 1.5, setBy: NF.rivera }], names: [{ principalId: NF.amara }] });
+
+    const amara = district.tokenFor(NF.amara);
+    const elena = district.tokenFor(NF.elena);
+    const amaraAttempt = await district.ok(amara, "student.startQuizAttempt", { params: at });
+    const elenaAttempt = await district.ok(elena, "student.startQuizAttempt", { params: at });
+    expect(amaraAttempt.deadline).toBe("2026-10-23T12:45:00.000Z");
+    expect(elenaAttempt.deadline).toBe("2026-10-23T12:30:00.000Z");
+    // Amara is shown her own extended time; Elena is shown nothing of it.
+    expect(await district.ok(amara, "student.getQuiz", { params: at })).toMatchObject({ timeLimitMinutes: 30, extendedTime: 1.5 });
+    const elenaView = await district.ok(elena, "student.getQuiz", { params: at });
+    expect(elenaView).not.toHaveProperty("extendedTime");
+    for (const body of [elenaView, elenaAttempt, await district.ok(elena, "student.listQuizzes", { params: { offeringId: NF.eng9 } })]) {
+      expect(JSON.stringify(body)).not.toMatch(/extendedTime|accommodation/);
+    }
+
+    // Past the class's 30 minutes: Elena's time is up, Amara's is not.
+    clock.now = new Date("2026-10-23T12:40:00Z");
+    expectError(await district.call(elena, "student.saveQuizAnswers", { params: { offeringId: NF.eng9, attemptId: elenaAttempt.attemptId }, body: { answers: [] } }), 403, "forbidden");
+    expectError(await district.call(elena, "student.submitQuizAttempt", { params: { offeringId: NF.eng9, attemptId: elenaAttempt.attemptId }, body: { answers: [] } }), 403, "forbidden");
+    await district.ok(amara, "student.saveQuizAnswers", { params: { offeringId: NF.eng9, attemptId: amaraAttempt.attemptId }, body: { answers: answersFor(quiz, "b", "x").slice(0, 1) as never } });
+    clock.now = new Date("2026-10-23T12:44:59Z");
+    expect(await district.ok(amara, "student.submitQuizAttempt", { params: { offeringId: NF.eng9, attemptId: amaraAttempt.attemptId }, body: { answers: [] } })).toMatchObject({ status: "submitted" });
+
+    // The teacher sees who had extended time in the results.
+    const results = await district.ok(rivera, "teacher.quizResults", { params: at });
+    expect(results.students.map((row) => [row.studentId, row.extendedTime])).toEqual([[NF.amara, 1.5], [NF.elena, undefined]]);
+  });
+
+  it("extends an attempt in progress, and lets only the class's staff and district administrators see or set extended time (SCHO-383)", async () => {
+    const { district, clock, rivera, quiz } = await classWithQuiz({ timeLimitMinutes: 10, attemptsAllowed: 1 });
+    const at = { offeringId: NF.eng9, quizId: quiz.id };
+    const elena = district.tokenFor(NF.elena);
+    const attempt = await district.ok(elena, "student.startQuizAttempt", { params: at });
+    expect(attempt.deadline).toBe("2026-10-23T12:10:00.000Z");
+    clock.now = new Date("2026-10-23T12:05:00Z");
+    // A district administrator gives Elena no time limit while she is taking it.
+    const admin = district.tokenFor(NF.admin);
+    await district.ok(admin, "teacher.setQuizAccommodation", { params: at, body: { studentId: NF.elena, extendedTime: "unlimited" } });
+    const resumed = await district.ok(elena, "student.quizAttempt", { params: { offeringId: NF.eng9, attemptId: attempt.attemptId } });
+    expect(resumed.deadline === undefined || Date.parse(resumed.deadline) > Date.parse("2026-10-23T13:00:00Z")).toBe(true);
+    clock.now = new Date("2026-10-23T13:00:00Z");
+    expect(await district.ok(elena, "student.submitQuizAttempt", { params: { offeringId: NF.eng9, attemptId: attempt.attemptId }, body: { answers: [] } })).toMatchObject({ status: "submitted" });
+
+    // A co-teacher of the class reads and clears it; nobody else sees it.
+    const chen = district.tokenFor(NF.chen);
+    expect((await district.ok(chen, "teacher.quizAccommodations", { params: at })).accommodations.map((a) => [a.studentId, a.extendedTime, a.setBy])).toEqual([[NF.elena, "unlimited", NF.admin]]);
+    expect((await district.ok(chen, "teacher.setQuizAccommodation", { params: at, body: { studentId: NF.elena, extendedTime: null } })).accommodations).toEqual([]);
+    expectError(await district.call(elena, "teacher.quizAccommodations", { params: at }), 403, "forbidden");
+    expectError(await district.call(district.tokenFor(NF.morgan), "teacher.quizAccommodations", { params: at }), 404, "not-found");
+    expectError(await district.call(district.tokenFor(NF.morgan), "teacher.setQuizAccommodation", { params: at, body: { studentId: NF.amara, extendedTime: 2 } }), 404, "not-found");
+    // Only for a student enrolled in the class, and only in quarter steps from 1.25× to 4×.
+    expectError(await district.call(rivera, "teacher.setQuizAccommodation", { params: at, body: { studentId: NF.dmitri, extendedTime: 2 } }), 400, "validation-failed");
+    expectError(await district.call(rivera, "teacher.setQuizAccommodation", { params: at, body: { studentId: NF.amara, extendedTime: 1.1 } }), 400, "validation-failed");
+  });
+
   it("keeps attempts to their student and quizzes to their class and district", async () => {
     const { district, quiz } = await classWithQuiz();
     const { attempt } = await take(district, district.tokenFor(NF.amara), quiz.id, answersFor(quiz, "b", "x"));

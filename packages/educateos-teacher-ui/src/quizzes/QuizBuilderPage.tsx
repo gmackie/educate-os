@@ -9,6 +9,7 @@ import { useAction } from "../modules/useAction.ts";
 import { navigate, routeHref } from "../route.ts";
 import type { Assignment, CourseModule, Quiz, QuizItemDraft, QuizSettings, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
+import { ExtendedTimeSection } from "./ExtendedTimeSection.tsx";
 import { blankItem, ItemEditor } from "./ItemEditor.tsx";
 import { TypedInput } from "./TypedInput.tsx";
 import { ITEM_TYPE_LABEL } from "./quizText.ts";
@@ -252,6 +253,7 @@ export const QuizBuilderPage = ({ teaching, quizId }: { teaching: TeachingOfferi
             started={data.data.started}
             onSaved={data.reload}
           />
+          <ExtendedTimeSection quiz={data.data.quiz} />
         </>
       )}
     </div>

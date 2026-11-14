@@ -10,7 +10,7 @@ import { routeHref } from "../route.ts";
 import { Loading } from "../Loading.tsx";
 import type { QuizResults, ReleaseOutcome, TeachingOffering } from "../types.ts";
 import { AttemptGrader } from "./AttemptGrader.tsx";
-import { formatPoints } from "./quizText.ts";
+import { extendedTimeLabel, formatPoints } from "./quizText.ts";
 import { formatDateTime } from "../dates.ts";
 
 type Row = QuizResults["students"][number];
@@ -131,7 +131,14 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
                       const name = names.get(row.studentId) ?? "A student";
                       return (
                         <Table.Row key={row.studentId}>
-                          <Table.Cell>{name}</Table.Cell>
+                          <Table.Cell>
+                            <span className="flex flex-col gap-1">
+                              <span>{name}</span>
+                              {row.extendedTime !== undefined && (
+                                <Text variant="secondary" size="sm" as="span">{`Extended time: ${extendedTimeLabel(row.extendedTime, data.quiz.settings.timeLimitMinutes)}`}</Text>
+                              )}
+                            </span>
+                          </Table.Cell>
                           <Table.Cell>
                             <ul className="flex flex-col gap-1">
                               {row.attempts.map((a) => (

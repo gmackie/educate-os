@@ -1744,6 +1744,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return { ...results, names: ctx.namesOf(results.students.map((row) => row.studentId)) };
     },
     "teacher.releaseQuizScores": (ctx, { params }) => ctx.quizzes().release(ctx.subject, params.offeringId, params.quizId),
+    "teacher.quizAccommodations": async (ctx, { params }) => {
+      const view = await ctx.quizzes().accommodations(ctx.subject, params.offeringId, params.quizId);
+      return { ...view, names: ctx.namesOf(view.accommodations.map((a) => a.studentId)) };
+    },
+    "teacher.setQuizAccommodation": async (ctx, { params, body }) => {
+      const view = await ctx.quizzes().setAccommodation(ctx.subject, params.offeringId, params.quizId, body);
+      return { ...view, names: ctx.namesOf(view.accommodations.map((a) => a.studentId)) };
+    },
     "teacher.quizAttempt": async (ctx, { params }) => {
       const view = await ctx.quizzes().staffAttempt(ctx.subject, params.offeringId, params.attemptId);
       return { ...view, studentName: ctx.namesOf([view.attempt.studentId])[0]?.displayName ?? "" };

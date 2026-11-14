@@ -83,7 +83,7 @@
     <div class="wrap doc">
       <div class="card" style="padding:20px">
         <h2 style="margin-top:0;font-size:1.15rem">The short version</h2>
-        <p>EducateOS <b class="strong">partially conforms</b> to WCAG 2.1 Level AA. Automated and programmatic checks of 143 screens found 14 failures, and all 14 are fixed. Of the 50 Level A and AA success criteria: 38 Supports, 4 Partially supports, 0 Does not support, 8 Not applicable.</p>
+        <p>EducateOS <b class="strong">partially conforms</b> to WCAG 2.1 Level AA. Automated and programmatic checks of 143 screens found 14 failures, and all 14 are fixed. Of the 50 Level A and AA success criteria: 39 Supports, 3 Partially supports, 0 Does not support, 8 Not applicable.</p>
         <p style="margin-bottom:0"><b class="strong">No screen reader or other assistive technology has been used to test EducateOS yet.</b> "Supports" below means our checks found no failure on the screens we audited. It is not a claim confirmed with assistive technology, and we will update this report when that testing is done.</p>
       </div>
 
@@ -132,7 +132,7 @@
           <tr><td>2.1.1 Keyboard <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Every control on every screen is reachable by Tab. Wide tables scroll by keyboard. Freehand drawing needs a pointer, which is path-dependent input the criterion exempts, and the step offers a photo upload. The audit reaches controls by Tab but doesn't operate composite widgets (radio groups, comboboxes, the gradebook grid) by their arrow keys.</td></tr>
           <tr><td>2.1.2 No Keyboard Trap <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>No walk was trapped (see the full report).</td></tr>
           <tr><td>2.1.4 Character Key Shortcuts <span class="lvl">(Level A)</span></td><td><span class="status na">Not applicable</span></td><td>The apps have no single-character shortcuts. The demo's presenter keys are demo-only and work only with <code>?presenter</code>.</td></tr>
-          <tr><td>2.2.1 Timing Adjustable <span class="lvl">(Level A)</span></td><td><span class="status validating">Partially supports</span></td><td>The apps set no session time limits; sign-in sessions are the district's Cloudflare Access policy. A teacher can give a quiz a time limit, but can't extend it for one student (SCHO-383).</td></tr>
+          <tr><td>2.2.1 Timing Adjustable <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>The apps set no session time limits; sign-in sessions are the district's Cloudflare Access policy. A quiz's time limit is one its teacher sets for the assessment. A teacher of the class, or a district administrator, can give one student 1.25 to 4 times that limit, or no time limit, as an IEP or Section 504 plan sets it. The district's clock enforces each student's own deadline, extends an attempt already in progress, and shows the student only their own time; API and UI tests check this (SCHO-383). A student can't extend the limit themselves during an attempt: for that we rely on the criterion's essential exception for a timed assessment. The quiz's close date still ends every attempt.</td></tr>
           <tr><td>2.2.2 Pause, Stop, Hide <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>No moving, blinking or auto-updating content other than loading indicators and a timed quiz's countdown, which is essential to the quiz.</td></tr>
           <tr><td>2.3.1 Three Flashes or Below Threshold <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Nothing flashes.</td></tr>
           <tr><td>2.4.1 Bypass Blocks <span class="lvl">(Level A)</span></td><td><span class="status supported">Supports</span></td><td>Each app's first control is "Skip to content", and every screen has landmarks.</td></tr>
@@ -196,6 +196,7 @@
         <li>Three buttons whose accessible names didn't include their visible labels.</li>
         <li>Wide tables that a keyboard couldn't scroll.</li>
         <li>Six layouts that made the page scroll sideways on a 320-pixel screen.</li>
+        <li>A teacher can now give one student extended time, or no time limit, on a timed quiz, as IEP and 504 plans often require.</li>
       </ul>
 
       <h2>What is still open</h2>
@@ -203,7 +204,6 @@
         <li>Text field boundaries are 1.25 to 1.52:1 against the page, under the 3:1 that 1.4.11 asks for.</li>
         <li>Links fade below 4.5:1 while the pointer is over them. This comes from the shared design system, so we're raising it upstream.</li>
         <li>Each app keeps one page title on every screen.</li>
-        <li>A teacher can't yet extend a timed quiz for one student, as IEP and 504 plans often require.</li>
         <li>Testing with NVDA, JAWS, VoiceOver and TalkBack hasn't been done.</li>
       </ul>
       <p>Each of these has an open issue in the project tracker, and this report changes in the same update as the fix.</p>

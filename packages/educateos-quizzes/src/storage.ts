@@ -2,7 +2,7 @@
 // the book revision it was made against, so a student's autosave cannot lose a teacher's edit or
 // another student's submission.
 import { EducateOsError, type OfferingId } from "@educateos/contracts";
-import { QuizBook, type Quiz, type QuizAttempt, type QuizRelease } from "./model.ts";
+import { QuizBook, type Quiz, type QuizAccommodation, type QuizAttempt, type QuizRelease } from "./model.ts";
 
 /** What one change writes to a book: the quizzes and attempts it added or changed, and the releases it appended. */
 export interface QuizBookWrite {
@@ -16,6 +16,10 @@ export interface QuizBookWrite {
   attempts: readonly QuizAttempt[];
   /** Releases appended. */
   releases: readonly QuizRelease[];
+  /** Accommodations set, each replacing any for the same quiz and student (SCHO-383). */
+  accommodations?: readonly QuizAccommodation[];
+  /** Accommodations cleared, by quiz and student. A deleted quiz's are cleared with it. */
+  clearedAccommodations?: readonly Pick<QuizAccommodation, "quizId" | "studentId">[];
 }
 
 /**
@@ -46,17 +50,22 @@ export function applyQuizBookWrite(book: QuizBook, write: QuizBookWrite): QuizBo
   for (const quiz of write.quizzes) quizzes.set(quiz.id, quiz);
   const attempts = new Map(book.attempts.map((a) => [a.id, a]));
   for (const attempt of write.attempts) attempts.set(attempt.id, attempt);
+  const key = (a: Pick<QuizAccommodation, "quizId" | "studentId">) => `${a.quizId} ${a.studentId}`;
+  const cleared = new Set((write.clearedAccommodations ?? []).map(key));
+  const accommodations = new Map(book.accommodations.filter((a) => !deleted.has(a.quizId) && !cleared.has(key(a))).map((a) => [key(a), a]));
+  for (const accommodation of write.accommodations ?? []) accommodations.set(key(accommodation), accommodation);
   return QuizBook.parse({
     offeringId: book.offeringId,
     revision: write.revision,
     quizzes: [...quizzes.values()],
     attempts: [...attempts.values()],
     releases: [...book.releases, ...write.releases],
+    accommodations: [...accommodations.values()],
   });
 }
 
 /** An offering's book before anything is stored. */
-export const emptyQuizBook = (offeringId: OfferingId): QuizBook => ({ offeringId, revision: 0, quizzes: [], attempts: [], releases: [] });
+export const emptyQuizBook = (offeringId: OfferingId): QuizBook => ({ offeringId, revision: 0, quizzes: [], attempts: [], releases: [], accommodations: [] });
 
 /** {@link QuizStorage} in memory, for tests and development. Stores copies, never references. */
 export class InMemoryQuizStorage implements QuizStorage {

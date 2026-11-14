@@ -101,6 +101,9 @@ export const BIOLOGY: ShowcaseCourse = {
         [LUCIA]: [{ type: "multiple-choice", choiceId: "a" }, { type: "multiple-select", choiceIds: ["a", "b"] }, { type: "short-answer", text: "osmosis" }, { type: "essay", text: "The cell would swell up and could pop because water rushes in.", points: 3 }],
       },
       releaseScores: true,
+      timeLimitMinutes: 15,
+      // An accommodation from a 504 plan: time and a half, which only Elena and her teachers see.
+      extendedTime: { [ELENA]: 1.5 },
     },
   ],
   discussions: [],

@@ -116,6 +116,10 @@ export type QuizResults = RouteResponse<"teacher.quizResults">;
 export type StaffAttempt = RouteResponse<"teacher.quizAttempt">;
 /** What releasing a quiz's scores did. */
 export type ReleaseOutcome = RouteResponse<"teacher.releaseQuizScores">;
+/** A quiz's students' extended time, with whether the reader may change it (SCHO-383). */
+export type QuizAccommodations = RouteResponse<"teacher.quizAccommodations">;
+/** One student's extended time on a quiz: a multiplier of the time limit, or no time limit. */
+export type ExtendedTime = QuizAccommodations["accommodations"][number]["extendedTime"];
 /** A course in the district's course library, as offered for one class (SCHO-331). */
 export type LibraryCourse = RouteResponse<"teacher.libraryCourses">[number];
 /** What installing a library course in a class does, or has done (SCHO-331). */

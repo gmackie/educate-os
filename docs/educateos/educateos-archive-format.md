@@ -411,7 +411,7 @@ Every record is JSON in the shape the district's stores keep it (the Zod schemas
 | `rubrics.json` | The signed rubric release every assignment names |
 | `course-library.json` | The course library's index (each imported course version, its publisher and units) and each class's course installs |
 | `marketplace-packs.json` | The curriculum packs installed from signed marketplace listings |
-| `offerings/<offering>/course-content.json`, `discussions.json`, `quizzes.json`, `gradebook.json`, `announcements.json`, `weekly-notes.json` | Each class's modules and pages, discussion board, quiz book, gradebook settings and markers, announcements, and its teachers' weekly notes to families, where the class has any |
+| `offerings/<offering>/course-content.json`, `discussions.json`, `quizzes.json`, `gradebook.json`, `announcements.json`, `weekly-notes.json` | Each class's modules and pages, discussion board, quiz book (students' extended time on its quizzes included, SCHO-383), gradebook settings and markers, announcements, and its teachers' weekly notes to families, where the class has any |
 | `content/<sha256 hex>` | The bytes of every revision and starter material the district holds inline or in R2, and every Content Studio snapshot, once per digest. The name is the content's SHA-256, so a reader verifies each file against the records that name it |
 
 Content held outside the district (an approved external link, a registered content provider) is

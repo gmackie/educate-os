@@ -225,7 +225,10 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   key. An attempt is a `course` record its student owns: they start, save and submit it while
  *   enrolled, and read it even after a drop; the offering's staff read and grade every attempt.
  *   Administrators do not read attempts (student work), and guardians are not given quizzes: a
- *   released score reaches them as the official grade they already read.
+ *   released score reaches them as the official grade they already read. A student's extended
+ *   time on a quiz (SCHO-383) is a `restricted` record at the quiz: its staff and district
+ *   administrators read and set it as people over http; the quiz service shows a student only
+ *   their own time.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
@@ -955,6 +958,19 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "quiz.instructor.grade-attempts",
     description: "Course staff grade students' attempts in their offering: essay answers, and any item they rescore.",
     when: { kinds: ["quiz-attempt"], ownership: ["others"], roles: [...INSTRUCTORS], classifications: ["course"], actions: ["review"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.accommodations.manage",
+    description: "Course staff and district administrators, as people over http, read and set students' extended time on the offering's quizzes (IEP and Section 504 accommodations). It is restricted: school administrators, guardians and students are never shown anyone's.",
+    when: {
+      kinds: ["quiz"],
+      ownership: ["unowned"],
+      roles: [...INSTRUCTORS, "district-admin"],
+      classifications: ["restricted"],
+      channels: ["http"],
+      actions: [...READS, "update"],
+    },
     effect: { effect: "allow" },
   },
   {

@@ -507,7 +507,10 @@ async function seedQuiz(
         description: quiz.description,
         ...(moduleId === undefined ? {} : { moduleId }),
         items: writable(quiz.items),
-        settings: { attemptsAllowed: 2, shuffleQuestions: false, shuffleChoices: false, showAnswers: "after-release", scorePolicy: "best" },
+        settings: {
+          attemptsAllowed: 2, shuffleQuestions: false, shuffleChoices: false, showAnswers: "after-release", scorePolicy: "best",
+          ...(quiz.timeLimitMinutes === undefined ? {} : { timeLimitMinutes: quiz.timeLimitMinutes }),
+        },
       },
     });
     counts.quizzes++;
@@ -519,6 +522,10 @@ async function seedQuiz(
     await teacher.call("teacher.updateAssignment", { params: { assignmentId: made.assignmentId }, body: { dueAt: dueAt(QUIZ_DUE_IN_DAYS) } });
   }
   const itemIds = made.items.map((i) => i.id);
+  // Students' extended time (SCHO-383), set before anyone starts, as a teacher would from their plans.
+  for (const [studentId, extendedTime] of Object.entries(quiz.extendedTime ?? {})) {
+    await teacher.call("teacher.setQuizAccommodation", { params: { ...params, quizId: made.id }, body: { studentId, extendedTime } });
+  }
 
   for (const [studentId, answers] of Object.entries(quiz.attempts)) {
     const student = await as(studentId);

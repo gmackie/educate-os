@@ -49,10 +49,22 @@ export const isAnswered = (response: QuizResponse | undefined): boolean => {
   return true;
 };
 
+/** Whether the student's attempts are timed: the quiz has a time limit and their extended time doesn't lift it. */
+export const isTimed = (quiz: QuizView): boolean => quiz.timeLimitMinutes !== undefined && quiz.extendedTime !== "unlimited";
+
+/** The student's own time per attempt, in words, with their extended time when they have it (SCHO-383). */
+export const timeLabel = (quiz: QuizView): string => {
+  if (quiz.timeLimitMinutes === undefined) return "No time limit";
+  if (quiz.extendedTime === "unlimited") return "No time limit for you (extended time)";
+  const minutes = Math.round(quiz.timeLimitMinutes * (quiz.extendedTime ?? 1) * 2) / 2;
+  const perAttempt = `${formatPoints(minutes)} minute${minutes === 1 ? "" : "s"} per attempt`;
+  return quiz.extendedTime === undefined ? perAttempt : `${perAttempt} (your extended time: ${formatPoints(quiz.extendedTime)}×)`;
+};
+
 /** What a quiz asks of the student, in one line: questions, points, time and attempts. */
 export const quizFacts = (quiz: QuizView): string => [
   `${quiz.questionCount} question${quiz.questionCount === 1 ? "" : "s"}`,
   pointsLabel(quiz.totalPoints),
-  quiz.timeLimitMinutes === undefined ? "No time limit" : `${quiz.timeLimitMinutes} minute${quiz.timeLimitMinutes === 1 ? "" : "s"} per attempt`,
+  timeLabel(quiz),
   `${quiz.attempts.length} of ${quiz.attemptsAllowed} attempt${quiz.attemptsAllowed === 1 ? "" : "s"} used`,
 ].join(" · ");

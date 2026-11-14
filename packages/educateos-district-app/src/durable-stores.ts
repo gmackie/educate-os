@@ -109,7 +109,7 @@ import {
   type DiscussionStorage,
 } from "@educateos/discussions";
 // Quizzes (SCHO-191)
-import { QUIZ_CONFLICT, Quiz, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
+import { QUIZ_CONFLICT, Quiz, QuizAccommodation, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
 import { FundingAllocationRevision } from "./routes.ts";
 import { MAX_ROSTER_SYNC_RUNS, RosterSyncRecord } from "./stores.ts";
 // Devices (SCHO-261)
@@ -214,6 +214,8 @@ export const DISTRICT_TABLES = {
   quizzes: "educateos_quizzes",
   quizAttempts: "educateos_quiz_attempts",
   quizReleases: "educateos_quiz_releases",
+  // Quiz accommodations (SCHO-383)
+  quizAccommodations: "educateos_quiz_accommodations",
   // Devices (SCHO-261)
   devices: "educateos_devices",
   deviceRefreshTokens: "educateos_device_refresh_tokens",
@@ -1701,7 +1703,9 @@ export class DurableObjectDiscussionStorage implements DiscussionStorage {
  * one row per quiz, one per attempt and one per release, so a student's autosave writes only their
  * attempt's row and no single value approaches SQLite's row limit. Rows are read in the order they
  * were first written (an upsert keeps its row). A commit checks the revision and applies its write
- * in one transaction.
+ * in one transaction. Students' accommodations (SCHO-383) are one row per quiz and student, in a
+ * table added after the others: it is created where it is missing, and a book stored before it
+ * simply has none. It never had a pre-rename twin, so it has no legacy plan.
  */
 export class DurableObjectQuizStorage implements QuizStorage {
   readonly #tables: Tables;
@@ -1715,6 +1719,9 @@ export class DurableObjectQuizStorage implements QuizStorage {
         offering_id TEXT NOT NULL, attempt_id TEXT NOT NULL, quiz_id TEXT NOT NULL, attempt_json TEXT NOT NULL, PRIMARY KEY (offering_id, attempt_id)
       )`,
       `CREATE TABLE IF NOT EXISTS ${t.quizReleases} (offering_id TEXT NOT NULL, position INTEGER NOT NULL, release_json TEXT NOT NULL, PRIMARY KEY (offering_id, position))`,
+      `CREATE TABLE IF NOT EXISTS ${t.quizAccommodations} (
+        offering_id TEXT NOT NULL, quiz_id TEXT NOT NULL, student_id TEXT NOT NULL, accommodation_json TEXT NOT NULL, PRIMARY KEY (offering_id, quiz_id, student_id)
+      )`,
     ], [
       { table: t.quizBooks, merge: { kind: "revision", key: ["offering_id"], revision: "revision" } },
       t.quizzes,
@@ -1732,6 +1739,7 @@ export class DurableObjectQuizStorage implements QuizStorage {
     const quizzes = write.quizzes.map((quiz) => Quiz.parse(quiz));
     const attempts = write.attempts.map((attempt) => QuizAttempt.parse(attempt));
     const releases = write.releases.map((release) => QuizRelease.parse(release));
+    const accommodations = (write.accommodations ?? []).map((accommodation) => QuizAccommodation.parse(accommodation));
     if ([...quizzes, ...attempts].some((record) => record.offeringId !== offeringId)) throw new Error("a quiz write names another offering");
     this.#tables.transaction((sql) => {
       const [head] = sql.exec(`SELECT revision FROM ${t.quizBooks} WHERE offering_id = ?`, offeringId).toArray();
@@ -1740,6 +1748,17 @@ export class DurableObjectQuizStorage implements QuizStorage {
         const [{ count }] = sql.exec(`SELECT COUNT(*) AS count FROM ${t.quizAttempts} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId).toArray() as [{ count: number }];
         if (Number(count) > 0) throw new EducateOsError("conflict", "A quiz students have started can't be deleted.");
         sql.exec(`DELETE FROM ${t.quizzes} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId);
+        sql.exec(`DELETE FROM ${t.quizAccommodations} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId);
+      }
+      for (const { quizId, studentId } of write.clearedAccommodations ?? []) {
+        sql.exec(`DELETE FROM ${t.quizAccommodations} WHERE offering_id = ? AND quiz_id = ? AND student_id = ?`, offeringId, quizId, studentId);
+      }
+      for (const accommodation of accommodations) {
+        sql.exec(
+          `INSERT INTO ${t.quizAccommodations} (offering_id, quiz_id, student_id, accommodation_json) VALUES (?, ?, ?, ?)
+           ON CONFLICT (offering_id, quiz_id, student_id) DO UPDATE SET accommodation_json = excluded.accommodation_json`,
+          offeringId, accommodation.quizId, accommodation.studentId, JSON.stringify(accommodation),
+        );
       }
       for (const quiz of quizzes) {
         sql.exec(
@@ -1782,6 +1801,8 @@ export class DurableObjectQuizStorage implements QuizStorage {
       attempts: sql.exec(`SELECT attempt_json FROM ${t.quizAttempts} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
         .map((row) => parseStored(QuizAttempt, row.attempt_json, what)),
       releases: releases.map((row) => parseStored(QuizRelease, row.release_json, what)),
+      accommodations: sql.exec(`SELECT accommodation_json FROM ${t.quizAccommodations} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
+        .map((row) => parseStored(QuizAccommodation, row.accommodation_json, what)),
     });
     if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
     return parsed.data;
