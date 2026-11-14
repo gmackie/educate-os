@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student AI guidelines · EducateOS</title>
+<meta name="description" content="Plain-language AI use guidelines for students in grades K–2, 3–5, 6–8 and 9–12, each printable as a classroom poster, for EducateOS founding pilot schools.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+  /* Classroom posters (SCHO-399). Editable source: docs/educateos/pilot/student-ai-guidelines.md. */
+  .poster { padding: 32px; margin-top: 28px; }
+  .poster .grade { font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-color-kumo-brand); }
+  .poster h2 { font-size: 1.7rem; margin: 6px 0 0; }
+  .poster ol { margin: 22px 0 0; padding-left: 0; list-style: none; counter-reset: rule; display: grid; gap: 14px; }
+  .poster li { counter-increment: rule; display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 10px; font-size: 1.08rem; line-height: 1.5; color: var(--text-color-kumo-default); }
+  .poster li::before { content: counter(rule); display: inline-flex; align-items: center; justify-content: center; width: 1.9em; height: 1.9em; border-radius: 50%; background: var(--color-kumo-tint); color: var(--text-color-kumo-link); font-weight: 600; }
+  .poster li b { color: var(--text-color-kumo-strong); }
+  .poster.k2 li { font-size: 1.3rem; }
+  .poster .foot { margin-top: 22px; font-size: .85rem; color: var(--text-color-kumo-subtle); }
+  .jump { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+  @media (max-width: 560px) { .poster { padding: 20px; } .poster h2 { font-size: 1.4rem; } }
+  @media print {
+    @page { margin: 14mm; }
+    .jump, .teacher-notes, .page-hero { display: none !important; }
+    .wrap { max-width: none !important; padding: 0 !important; }
+    .poster { border: 0; padding: 0; margin: 0; break-after: page; }
+    .poster h2 { font-size: 26pt; }
+    .poster li { font-size: 15pt; break-inside: avoid; }
+    .poster.k2 li { font-size: 19pt; }
+    .poster li::before { border: 1.5px solid currentColor; }
+  }
+</style>
+<script>
+  // Print in light mode whatever the reader's theme, so each poster is dark text on white.
+  addEventListener("beforeprint", () => { document.documentElement.dataset.mode = "light"; });
+  addEventListener("afterprint", () => { document.documentElement.dataset.mode = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; });
+</script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+  <section class="hero page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow">Founding pilot · For classrooms</div>
+      <h1>Student AI guidelines</h1>
+      <p class="lede">Short, plain rules for using AI, written for four grade bands. Each band prints as one classroom poster. Teach them before students use any AI tool.</p>
+      <div class="jump">
+        <a class="btn" href="#k-2">Grades K–2</a>
+        <a class="btn" href="#3-5">Grades 3–5</a>
+        <a class="btn" href="#6-8">Grades 6–8</a>
+        <a class="btn" href="#9-12">Grades 9–12</a>
+        <a class="btn" href="javascript:print()">Print the posters</a>
+      </div>
+      <div class="note-box teacher-notes">
+        <b>For teachers.</b> In the first phase of the founding pilot, students don't use EducateOS AI; these rules are for when the district turns it on, and for any other AI tool students meet. Why the rules say what they say: the bundled tutors give hints, not answers, but that is an instruction to the model, not a guarantee, so students still check. A message that looks like an email address, phone number or street address is never sent to a tutor's model, but other personal details aren't caught that way. A tutor keeps one conversation, which a learner can export for you, so a tutor you share with the class isn't private from you; the posters say "your teacher may see your chats". Every student message and reply is screened by Hall Monitor, and the AI never tells anyone what a student wrote, so the posters send students to a trusted adult. To print one band, choose its pages in the print dialog. For staff, see the <a href="/pilot/staff-ai-guidance/">staff AI use guidance</a>. Editable copy: <code>docs/educateos/pilot/student-ai-guidelines.md</code>.
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" style="padding-top:0">
+    <div class="wrap doc">
+      <article class="card poster k2" id="k-2" aria-labelledby="k-2-title">
+        <div class="grade">Grades K–2</div>
+        <h2 id="k-2-title">Using AI helpers</h2>
+        <ol role="list">
+          <li><span><b>Ask a grown-up first.</b> Use an AI helper only when your teacher says it's time.</span></li>
+          <li><span><b>Keep secrets safe.</b> Never tell the AI your full name, where you live, your phone number or your passwords.</span></li>
+          <li><span><b>AI can make mistakes.</b> If something sounds wrong or strange, ask your teacher.</span></li>
+          <li><span><b>Your teacher may see your chats.</b> Write only what you'd be happy for your teacher to read.</span></li>
+          <li><span><b>Feeling worried or sad? Tell a grown-up.</b> The AI can't help you the way a person can.</span></li>
+          <li><span><b>Be kind.</b> Type to the AI the way you'd talk to a classmate.</span></li>
+          <li><span><b>Tell the truth.</b> If the AI helped you, say so.</span></li>
+        </ol>
+      </article>
+
+      <article class="card poster" id="3-5" aria-labelledby="g3-5-title">
+        <div class="grade">Grades 3–5</div>
+        <h2 id="g3-5-title">Using AI helpers</h2>
+        <ol role="list">
+          <li><span><b>Use AI when your teacher says you can,</b> and only for what they said.</span></li>
+          <li><span><b>AI gives hints, you do the thinking.</b> The tutor helps you find the next step. The answer is yours to work out.</span></li>
+          <li><span><b>Check it.</b> AI can sound sure and still be wrong. Check facts in your book, a trusted website or with your teacher.</span></li>
+          <li><span><b>Keep personal information private.</b> Don't share your full name, address, phone number, birthday, passwords, or private things about you, your family or your friends.</span></li>
+          <li><span><b>Your teacher may see your AI chats.</b> Don't write anything you wouldn't want your teacher to read.</span></li>
+          <li><span><b>Be honest.</b> Tell your teacher when you used AI and what it helped with.</span></li>
+          <li><span><b>If the AI won't answer, that's on purpose.</b> Some questions are stopped for safety. If something is bothering you, talk to a trusted adult. The AI can't get help for you.</span></li>
+          <li><span><b>Stuck or unsure? Ask your teacher.</b></span></li>
+        </ol>
+      </article>
+
+      <article class="card poster" id="6-8" aria-labelledby="g6-8-title">
+        <div class="grade">Grades 6–8</div>
+        <h2 id="g6-8-title">Using AI for learning</h2>
+        <ol role="list">
+          <li><span><b>Follow your teacher's rules for each assignment.</b> Some work allows AI, some doesn't. When in doubt, ask before you use it.</span></li>
+          <li><span><b>Your work is your own.</b> Use AI to brainstorm, get hints or check your understanding, not to produce work you hand in as yours.</span></li>
+          <li><span><b>Say when you used AI.</b> Note what you asked it and how it helped, the way you'd cite a source.</span></li>
+          <li><span><b>Verify everything.</b> AI can invent facts, quotes and sources. Check important claims against a reliable source before you use them.</span></li>
+          <li><span><b>Protect personal information,</b> yours and other people's: no full names, addresses, phone numbers, passwords, photos or private details.</span></li>
+          <li><span><b>Your teacher may see your AI chats.</b> Treat them like schoolwork, not a diary.</span></li>
+          <li><span><b>Blocked messages are part of the safety system.</b> If something worries you or a friend, tell a trusted adult. The AI won't tell anyone.</span></li>
+          <li><span><b>Be respectful.</b> Don't try to trick the AI into breaking school rules.</span></li>
+        </ol>
+      </article>
+
+      <article class="card poster" id="9-12" aria-labelledby="g9-12-title">
+        <div class="grade">Grades 9–12</div>
+        <h2 id="g9-12-title">Using AI responsibly</h2>
+        <ol role="list">
+          <li><span><b>Know the rules for each assignment.</b> Your teacher decides whether and how AI may be used. If it isn't stated, ask.</span></li>
+          <li><span><b>Do your own thinking.</b> Use AI to explore ideas, get feedback, practice or find where you're stuck. Don't submit AI-generated work as your own.</span></li>
+          <li><span><b>Disclose and cite.</b> Say which AI tool you used, what you asked and what you kept. Cite the original sources, not the AI.</span></li>
+          <li><span><b>Verify.</b> AI output can be wrong, out of date, biased or made up, including citations. You're responsible for what you submit.</span></li>
+          <li><span><b>Protect privacy.</b> Don't enter personal information about yourself or anyone else: names, contact details, IDs, passwords, health or family matters, photos.</span></li>
+          <li><span><b>Assume your teacher can read your AI chats.</b> Write accordingly.</span></li>
+          <li><span><b>Understand the safety checks.</b> Messages and replies are screened, and some are stopped. If you or someone you know needs help, talk to a trusted adult or counselor. AI is not a substitute.</span></li>
+          <li><span><b>Use it fairly.</b> Don't use AI to harass, impersonate or deceive anyone, or to get around school rules.</span></li>
+        </ol>
+      </article>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>
