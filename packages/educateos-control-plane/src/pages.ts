@@ -8,7 +8,7 @@ import { BILLING_PATHS, type BilledInvoice, type BillingOverview, MANAGED_PLANS,
 import { ECHOED_FIELDS, type InstallEvent } from "./guided-install.ts";
 import type { ProbeResult } from "./probe.ts";
 import type { Registration } from "./registry.ts";
-import type { Operator } from "./store.ts";
+import type { Installation, Operator } from "./store.ts";
 
 /** The site's shared markup, from `sites/educateos-io/partials`. */
 export interface SiteShell {
@@ -258,6 +258,43 @@ export function billingPage(shell: SiteShell, operator: Operator, overview: Bill
 }
 
 /** A page for a request the control plane turns away. */
+/**
+ * The deregistration page (SCHO-368): the operator's installations, each with a form that must be
+ * confirmed by typing its instance ID.
+ */
+export function deregisterPage(
+  shell: SiteShell,
+  operator: Operator,
+  installations: readonly Installation[],
+  failed?: { instanceId: string; error: string },
+): string {
+  return page(shell, "Deregister an installation", html`<section class="page-hero">
+    <div class="wrap">
+      <div class="eyebrow">Operator console</div>
+      <h1>Deregister an installation</h1>
+      ${signedInBar(operator)}
+      <p class="lede">For a district leaving EducateOS. Deregistering deletes what educateos.io holds about an installation: its entry on your dashboard, its registry record and heartbeats if it registered, and the Clever district it served. Its slug becomes free.</p>
+      <p>It does not touch the installation itself, which runs in your own Cloudflare account: export the district first, then remove it with <code>npx launch-educate-os uninstall</code>. See the <a href="https://educateos.io/pilot/">founding pilot's offboarding notes</a>.</p>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+      ${installations.length === 0 ? html`<p class="muted">You have no installations made through educateos.io.</p>` : ""}
+      ${installations.map((installation) => html`<form method="post" action="/app/deregister" class="card">
+        <h3>${installation.hostname}</h3>
+        <p class="muted">${installation.instanceId}, installed ${installation.installedAt.slice(0, 10)} into account ${installation.accountId}</p>
+        <input type="hidden" name="instanceId" value="${installation.instanceId}">
+        <div class="field">
+          <label for="confirm-${installation.instanceId}">Type ${installation.instanceId} to confirm</label>
+          <input class="input" id="confirm-${installation.instanceId}" name="confirm" required autocomplete="off" spellcheck="false">
+          ${failed?.instanceId === installation.instanceId ? html`<br><small class="badge warn">${failed.error}</small>` : ""}
+        </div>
+        <p><button class="btn" type="submit">Deregister</button></p>
+      </form>`)}
+    </div>
+  </section>`);
+}
+
 export function messagePage(shell: SiteShell, title: string, message: string): string {
   return page(shell, title, html`<section class="page-hero">
     <div class="wrap">

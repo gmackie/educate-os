@@ -146,6 +146,20 @@ export class DurableObjectRegistryStorage implements InstanceRegistryStorage {
     });
   }
 
+  /**
+   * Deregisters an installation (SCHO-368, district offboarding): deletes its record and the Clever
+   * district it served, in one transaction. Its keys stay in the key table, so none is ever accepted
+   * again, for this or any instance. Answers what was removed; nothing, for an unknown instance.
+   */
+  async deregister(instanceId: InstanceRecord["instanceId"]): Promise<{ registered: boolean; cleverDistrictId?: string }> {
+    return this.#tables.transact((sql) => {
+      const [clever] = sql.exec(`SELECT clever_district_id FROM ${REGISTRY_TABLES.cleverDistricts} WHERE instance_id = ?`, instanceId).toArray();
+      sql.exec(`DELETE FROM ${REGISTRY_TABLES.cleverDistricts} WHERE instance_id = ?`, instanceId);
+      const removed = sql.exec(`DELETE FROM ${REGISTRY_TABLES.instances} WHERE instance_id = ? RETURNING instance_id`, instanceId).toArray();
+      return { registered: removed.length > 0, ...(clever === undefined ? {} : { cleverDistrictId: String(clever.clever_district_id) }) };
+    });
+  }
+
   /** The registered installation that serves a Clever district, if one does. */
   async cleverDistrictInstance(cleverDistrictId: string): Promise<InstanceRecord["instanceId"] | undefined> {
     return this.#tables.transact((sql) => {

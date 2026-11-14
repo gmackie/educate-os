@@ -64,7 +64,21 @@ guess.
 | `getAccessOrganization`, `listAccessIdentityProviders` | `/accounts/{id}/access/organizations`, `.../identity_providers` | Access: Organizations, Identity Providers, and Groups: Read (calls verified 2026-10-31, SCHO-66; the token's exact Access groups could not be read back) | `access:write` | unverified |
 | Access policies and applications | `/accounts/{id}/access/policies`, `/accounts/{id}/access/apps` | Access: Apps and Policies: Edit (verified 2026-10-31, SCHO-66: list, create and delete) | `access:write` | unverified |
 | `listAiGateways`, `createAiGateway` (optional) | `/accounts/{id}/ai-gateway/gateways` | AI Gateway: Edit (verified 2026-11-02, SCHO-66: list, create and delete; without it HTTP 403, code 10000) | `ai:write` | unverified |
+| `deleteKvNamespace` (uninstall, SCHO-368) | `DELETE /accounts/{id}/storage/kv/namespaces/{ns}` | Workers KV Storage: Edit (the SCHO-66 probe's cleanup deleted one, 2026-11-02; not yet through this call) | `workers_kv:write` | wrangler-requested |
+| `deleteR2Bucket` (uninstall) | `DELETE /accounts/{id}/r2/buckets/{name}`, with `cf-r2-jurisdiction` for a pinned bucket | Workers R2 Storage: Edit (**unverified**: R2 is not enabled on the sandbox account; a non-empty bucket is assumed refused with HTTP 409, code 10008) | `workers:write` | unverified |
+| `deleteD1Database` (uninstall) | `DELETE /accounts/{id}/d1/database/{uuid}` | D1: Edit (the SCHO-66 probe's cleanup deleted one, 2026-11-02; not yet through this call) | `d1:write` | wrangler-requested |
+| `deleteAccessApplication`, `deleteAccessPolicy` (uninstall) | `DELETE /accounts/{id}/access/apps/{app}`, `.../access/policies/{policy}` | Access: Apps and Policies: Edit (the SCHO-66 probe's cleanup deleted both, 2026-10-31; not yet through these calls) | `access:write` | unverified |
+| `deleteAiGateway` (uninstall) | `DELETE /accounts/{id}/ai-gateway/gateways/{id}` | AI Gateway: Edit (the SCHO-66 probe's cleanup deleted one, 2026-11-02; not yet through this call) | `ai:write` | unverified |
 | (refresh tokens) | `https://dash.cloudflare.com/oauth2/token` | n/a | `offline_access` | wrangler-requested |
+
+**Uninstall needs no permission beyond the install token's** (SCHO-368,
+[runbooks/district-offboarding.md](runbooks/district-offboarding.md) step 5). Besides the five
+deletes above, it uses `deleteWorkerScript` (never `force`), `detachWorkerDomain`,
+`deleteCustomHostname` and `deleteWorkerRoute`, which installs already call. It reads the same lists
+as planning, plus each prefixed Worker's settings (for its instance marker) and the backend's secret
+names (to say whether it registered). It never reads or deletes an R2 object, KV value or D1 row, so
+it cannot empty a bucket: the operator does. None of the uninstall's calls has run against a live
+account yet (SCHO-378); the fake models them, and the not-found and not-empty codes are assumed.
 
 A pinned install (`dataJurisdiction: "us"`, [ADR-0015](adr/0015-us-data-jurisdiction.md)) calls the
 same endpoints: KV and D1 creates carry `jurisdiction` in their body, and R2 calls carry the

@@ -395,6 +395,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     );
   }
 
+  async deleteKvNamespace(accountId: string, namespaceId: string) {
+    await this.#result("deleteKvNamespace", "DELETE", `/accounts/${seg(accountId)}/storage/kv/namespaces/${seg(namespaceId)}`);
+  }
+
   async listR2Buckets(accountId: string, jurisdiction?: DataJurisdiction) {
     const buckets: { name: string }[] = [];
     let cursor: string | undefined;
@@ -417,6 +421,12 @@ export class CloudflareHttpApi implements CloudflareApi {
     return { name };
   }
 
+  async deleteR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction) {
+    await this.#result("deleteR2Bucket", "DELETE", `/accounts/${seg(accountId)}/r2/buckets/${seg(name)}`, {
+      headers: r2JurisdictionHeader(jurisdiction),
+    });
+  }
+
   async listD1Databases(accountId: string) {
     return await this.#paged("listD1Databases", `/accounts/${seg(accountId)}/d1/database`, D1Wire);
   }
@@ -436,6 +446,10 @@ export class CloudflareHttpApi implements CloudflareApi {
       }),
     );
     return results.flatMap((r) => r.results);
+  }
+
+  async deleteD1Database(accountId: string, databaseId: string) {
+    await this.#result("deleteD1Database", "DELETE", `/accounts/${seg(accountId)}/d1/database/${seg(databaseId)}`);
   }
 
   async getAccessOrganization(accountId: string) {
@@ -472,6 +486,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     ));
   }
 
+  async deleteAccessPolicy(accountId: string, policyId: string) {
+    await this.#result("deleteAccessPolicy", "DELETE", `/accounts/${seg(accountId)}/access/policies/${seg(policyId)}`);
+  }
+
   async listAccessApplications(accountId: string) {
     return (await this.#paged("listAccessApplications", `/accounts/${seg(accountId)}/access/apps`, AppWire)).map(toApp);
   }
@@ -488,6 +506,10 @@ export class CloudflareHttpApi implements CloudflareApi {
         json: appBody(spec),
       }),
     ));
+  }
+
+  async deleteAccessApplication(accountId: string, appId: string) {
+    await this.#result("deleteAccessApplication", "DELETE", `/accounts/${seg(accountId)}/access/apps/${seg(appId)}`);
   }
 
   async listAiGateways(accountId: string) {
@@ -508,6 +530,10 @@ export class CloudflareHttpApi implements CloudflareApi {
         },
       }),
     );
+  }
+
+  async deleteAiGateway(accountId: string, gatewayId: string) {
+    await this.#result("deleteAiGateway", "DELETE", `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}`);
   }
 
   async #paged<T extends z.ZodType>(operation: string, path: string, item: T): Promise<z.infer<T>[]> {

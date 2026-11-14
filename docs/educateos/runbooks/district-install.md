@@ -196,14 +196,17 @@ Worker that ran a Durable Object migration since can't go back past it.
 
 ## Uninstall
 
-There is no uninstall command. In the Cloudflare dashboard, delete everything named
-`educateos-<name>-*`: the Workers, KV namespaces, the R2 bucket, the D1 databases, the AI Gateway,
-the Workers custom domains (deleting the Worker removes its custom domain and DNS record with it),
-and the Access application and policy. **Deleting the Workers and storage deletes the district's
+`npx launch-educate-os uninstall` shows what removing the install deletes, and
+`--confirm <instanceId>` deletes it: the Workers carrying the install's marker, their custom
+domains, and the Access applications and policies, AI Gateway, KV namespaces, R2 buckets and D1
+databases with the install's exact names, never anything else named `educateos-<name>-*`. It never
+empties an R2 bucket; empty one first. **Deleting the Workers and storage deletes the district's
 data with them**; export first. The full sequence (district export, disconnecting integrations,
-revoking Access and the IdP, deletion and confirming it) is [district-offboarding.md](district-offboarding.md). This is how the 2026-10-26 trial installs were removed (10 Workers,
-6 KV namespaces, 2 R2 buckets, 4 domains, 2 Access applications and 2 policies); afterwards the
-hostnames answered 530.
+revoking Access and the IdP, the uninstall and confirming it, deregistering from educateos.io) is
+[district-offboarding.md](district-offboarding.md). The command is tested against the installer's
+Cloudflare fake, not yet against a live account (SCHO-368), and is not in 0.1.0 on npm. The
+2026-10-26 trial installs were removed by hand in the dashboard (10 Workers, 6 KV namespaces, 2 R2
+buckets, 4 domains, 2 Access applications and 2 policies); afterwards the hostnames answered 530.
 
 ## The guided-install option
 

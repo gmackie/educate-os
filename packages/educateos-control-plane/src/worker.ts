@@ -122,6 +122,11 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
     return this.#registry.linkCleverDistrict(instanceId, cleverDistrictId);
   }
 
+  /** Deregisters one of the operator's installations. Reached only from the console's form post. */
+  deregisterInstallation(operator: Operator, instanceId: string): Promise<RegistryReply> {
+    return this.#registry.deregister(operator, instanceId);
+  }
+
   cleverLaunchHostname(cleverDistrictId: string): Promise<string | undefined> {
     return this.#registry.cleverLaunchHostname(cleverDistrictId);
   }

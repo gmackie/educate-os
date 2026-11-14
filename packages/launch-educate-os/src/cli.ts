@@ -5,6 +5,7 @@
 //   launch-educate-os upgrade     install the newest release (or --release <id>) with saved answers
 //   launch-educate-os rollback    return to the previous release (or --to <id>)
 //   launch-educate-os doctor      check Node, the release source, the token and the account
+//   launch-educate-os uninstall   plan the instance's removal; --confirm <instanceId> deletes it
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EducateOsError } from "@educateos/contracts";
@@ -24,7 +25,7 @@ import {
   releaseBaseUrl,
   type VerifiedRelease,
 } from "./release-source.ts";
-import { deployedReleaseId, installRelease, LaunchSecrets, rollbackRelease, type RunContext } from "./run.ts";
+import { deployedReleaseId, installRelease, LaunchSecrets, rollbackRelease, type RunContext, uninstallInstance } from "./run.ts";
 import { DEFAULT_RELEASE_URL, EDUCATEOS_RELEASE_TRUST } from "./trust.ts";
 import { runWizard } from "./wizard.ts";
 
@@ -36,7 +37,7 @@ export const LAUNCH_VERSION = typeof __LAUNCH_VERSION__ === "string" ? __LAUNCH_
 /** The Node versions the launcher runs on. */
 export const MINIMUM_NODE = [22, 12] as const;
 
-const COMMANDS = ["install", "plan", "upgrade", "rollback", "doctor", "help"] as const;
+const COMMANDS = ["install", "plan", "upgrade", "rollback", "doctor", "uninstall", "help"] as const;
 type Command = (typeof COMMANDS)[number];
 
 /** Everything the CLI touches outside itself, so tests can run it in process. */
@@ -60,6 +61,8 @@ Usage:
   npx launch-educate-os upgrade     install the newest signed release with your saved answers
   npx launch-educate-os rollback    go back to the previous release (--to <release-id>)
   npx launch-educate-os doctor      check Node, the release source, the token and the account
+  npx launch-educate-os uninstall   show what removing this install deletes (district offboarding);
+                                    --confirm <instanceId> deletes it. Export the district first.
 
 Options:
   --config <file>       answers file (default ./${ANSWERS_FILE}); written by the wizard, never holds secrets
@@ -75,6 +78,8 @@ Options:
   --to <id>             rollback: the release to return to (default: the one before, from the answers)
   --current-release-dir <dir>  rollback offline: the installed release's directory
   --registry-url <url>  register with this registry after applying (needs "fleet" in the answers)
+  --confirm <id>        uninstall: delete, confirming with the instance ID (ins_...); without it,
+                        uninstall only plans (or asks for the ID on a terminal). --yes never deletes
   -h, --help            this help
   -v, --version         the installer's version
 
@@ -102,6 +107,7 @@ function parse(argv: string[]) {
       to: { type: "string" },
       "current-release-dir": { type: "string" },
       "registry-url": { type: "string" },
+      confirm: { type: "string" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -212,6 +218,7 @@ export async function main(io: CliIo): Promise<number> {
     if (io.env[TEST_CLOUDFLARE_RPC_ENV]) out.line(`NOTE: ${TEST_CLOUDFLARE_RPC_ENV} is set: talking to a test Cloudflare, not api.cloudflare.com.`);
     if (command === "doctor") return await doctor(io, values, out);
     if (command === "rollback") return await rollbackCommand(io, values, out, prompter);
+    if (command === "uninstall") return await uninstallCommand(io, values, out, prompter);
     return await installCommand(io, values, out, prompter, command);
   } catch (error) {
     if (error instanceof PromptCancelled) {
@@ -330,6 +337,37 @@ async function rollbackCommand(io: CliIo, values: Values, out: Output, prompter:
   });
   if (outcome.applied) await writeAnswers(answersPath, record(answers, previous, "rollback", now()));
   return outcome.exitCode;
+}
+
+async function uninstallCommand(io: CliIo, values: Values, out: Output, prompter: Prompter | undefined): Promise<number> {
+  const now = io.now ?? (() => new Date());
+  const fetchImpl = io.fetch ?? fetch.bind(globalThis);
+  const answersPath = resolve(io.cwd, values.config ?? ANSWERS_FILE);
+  const answers = await readAnswers(answersPath);
+  if (answers === undefined) throw new EducateOsError("not-found", `uninstall needs the answers file from the install (${answersPath}); pass --config <file>`);
+  const trust = await readTrust(values.trust, out, io.cwd);
+  const token = io.env[DISTRICT_TOKEN_ENV] ?? (prompter ? await prompter.secret("Cloudflare API token") : tokenFromEnv(io));
+  out.secret(token);
+  const cf = connect(io, token);
+
+  // The release the instance runs names its Workers and storage: --release, else the account's
+  // marker, else the answers' last install, else the newest.
+  const where = location(values, io.cwd);
+  const load = (releaseId: string | undefined) =>
+    loadRelease({ location: where, ...(releaseId ? { releaseId } : {}), trust, fetch: fetchImpl, now: now() });
+  let release = await load(values.release ?? lastInstalled(answers)?.releaseId);
+  if (values.release === undefined) {
+    const deployed = await deployedReleaseId(cf, installConfig(answers, release.pin), release.manifest);
+    if (deployed !== undefined && deployed !== release.releaseId) release = await load(deployed);
+  }
+  describeRelease(out, release, now());
+
+  const context: RunContext = { out, cf, prompter, yes: values.yes === true, secrets: new LaunchSecrets(io.env, out) };
+  return (await uninstallInstance(context, {
+    config: installConfig(answers, release.pin),
+    release,
+    ...(values.confirm === undefined ? {} : { confirm: values.confirm }),
+  })).exitCode;
 }
 
 async function doctor(io: CliIo, values: Values, out: Output): Promise<number> {

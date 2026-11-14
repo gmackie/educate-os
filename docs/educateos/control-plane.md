@@ -23,6 +23,7 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | `/healthz` | JSON `{"status":"ok","commit":…}` once the store answers. ForgeGraph's health check. |
 | `/registry/v1/heartbeat` | The opt-in instance registry's heartbeats: signed by the installation, no sign-in. |
 | `/app/install` | The guided install: the form (GET) and the run (POST), inside the console. It stays when the console moves. |
+| `/app/deregister` | Deregistration (SCHO-368): the operator's installations (GET) and the confirmed removal of one (POST). It stays when the console moves. See [Deregistration](#deregistration-scho-368). |
 | `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. With `ADMIN_URL` set, a 302 to the hosted admin ([below](#moving-to-the-admin-scho-263)). |
 | `/clever/launch` | Clever portal launches, sent on to the registered installation for the user's Clever district (SCHO-249). No sign-in. See [Clever portal launches](#clever-portal-launches). |
 | `/app/billing`, `/app/billing/*` | Billing for managed services, inside the console (SCHO-208). See [Billing](#billing). |
@@ -394,6 +395,28 @@ same token permissions. They found one bug: `GET /accounts/{id}/workers/domains`
 unavailable. `cloudflare-http.ts` now reads `null` as no errors, with a test. With that fixed, a
 CLI apply into account c07a7e70 created all 13 resources of release `r000001-088ddc0`, and both
 hostnames then served behind Access.
+
+## Deregistration (SCHO-368)
+
+District offboarding ([runbooks/district-offboarding.md](runbooks/district-offboarding.md), step 7)
+removes what educateos.io holds about a guided install. The operator who made it opens
+`/app/deregister`, which lists their installations, each with a form confirmed by typing its
+instance ID. The post (same-origin, like every console form) calls the Durable Object's
+`deregisterInstallation(operator, instanceId)`, never reachable otherwise:
+
+1. If a registry record exists under the operator's commercial account, `DurableObjectRegistryStorage.deregister`
+   deletes it and its Clever district mapping in one transaction. The key table keeps its keys, so
+   none is accepted again, for any instance.
+2. `ControlPlaneStore.removeInstallation` deletes the installation row and the slug's reservation, so
+   the slug is free. A later install that claims it is still refused by the managed zone while
+   educateos.io's DNS holds the old instance's records.
+
+Registry first, so a run interrupted between the two finishes when run again. Another operator's
+installation, or an unknown ID, answers 404 and changes nothing; a confirmation that isn't the
+instance ID answers 400 and changes nothing. It doesn't touch the district's account (that is
+`launch-educate-os uninstall`) or educateos.io's DNS, for which this Worker holds no token: Gmacko
+Ventures releases a slug's records with `packages/educateos-installer/scripts/release-managed-slug.ts`.
+Tested in workerd (`__tests__/deregister.test.ts`); not yet used in production.
 
 ## Moving to the admin (SCHO-263)
 

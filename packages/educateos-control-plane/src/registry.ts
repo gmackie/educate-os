@@ -36,6 +36,18 @@ export interface DashboardEntry {
   registration?: Registration;
 }
 
+/** What deregistering an installation removed. */
+export interface Deregistration {
+  instanceId: string;
+  /** The slug, now free for another install. */
+  slug: string;
+  hostname: string;
+  /** Whether a registry record was deleted (the installation had opted in). */
+  registered: boolean;
+  /** The Clever district the installation served, whose portal launches now go nowhere. */
+  cleverDistrictId?: string;
+}
+
 /** The registry and the operator store, in one Durable Object. */
 export class ControlPlaneRegistry {
   readonly #storage: DurableObjectRegistryStorage;
@@ -91,6 +103,28 @@ export class ControlPlaneRegistry {
     if (!CLEVER_DISTRICT_ID.test(cleverDistrictId)) return undefined;
     const instanceId = await this.#storage.cleverDistrictInstance(cleverDistrictId);
     return instanceId === undefined ? undefined : this.#store.installation(instanceId)?.hostname;
+  }
+
+  /**
+   * The operator's deregistration of one of their installations (SCHO-368, district offboarding):
+   * its registry record and Clever district mapping go, then its installation row and slug
+   * reservation. Registry first, so a run interrupted between the two is finished by running it
+   * again. Only the operator who installed it may; another's, or an unknown ID, is `not-found`.
+   * The managed zone's DNS records for its slug need educateos.io's DNS token, which this Worker
+   * doesn't hold: Gmacko Ventures releases them (docs/educateos/runbooks/district-offboarding.md).
+   */
+  async deregister(operator: Operator, instanceId: string): Promise<RegistryReply> {
+    const owned = this.#store.installations(operator.subject).find((installation) => installation.instanceId === instanceId);
+    const instance = InstanceId.safeParse(instanceId);
+    if (owned === undefined || !instance.success) return { ok: false, code: "not-found", message: "you have no installation with that instance ID" };
+    const record = await this.#storage.get(instance.data);
+    // A record under another operator's account is never this operator's to remove.
+    const removed = record === undefined || record.commercialAccountId !== operator.accountId
+      ? { registered: false }
+      : await this.#storage.deregister(instance.data);
+    this.#store.removeInstallation(operator.subject, instanceId);
+    const body: Deregistration = { instanceId, slug: owned.slug, hostname: owned.hostname, ...removed };
+    return { ok: true, body };
   }
 
   /**
