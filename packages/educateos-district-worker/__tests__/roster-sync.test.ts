@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { readDistrictWorkerConfig } from "../src/config.ts";
 import { TEST_CONFIG } from "./fixtures.ts";
-import { workerClassroomGrades, workerRosterSource } from "../src/district.ts";
+import { workerClassroomGrades, workerClassroomWriter, workerRosterSource } from "../src/district.ts";
 import { NOTIFICATION_CRON } from "../src/schedule.ts";
 
 const district = () => env.DISTRICT.getByName(NORTHFIELD.district.id);
@@ -142,4 +142,57 @@ describe("the Classroom grade source", () => {
     }
     expect(calls.filter((c) => c.includes("studentSubmissions"))).toEqual(["Bearer token-owner@example.edu /v1/courses/123/courseWork/-/studentSubmissions?userId=222&states=RETURNED&pageSize=100"]);
   });
+});
+
+// SCHO-428: approved grades are published to Classroom over the same connection.
+describe("the Classroom grade writer", () => {
+  const connection = (rosterScopes: "readonly" | "read-write") => readDistrictWorkerConfig(JSON.stringify({ ...TEST_CONFIG, classroom: {
+    admin: "admin@example.edu", rosterScopes,
+    roster: { term: { sourcedId: "fall", title: "Fall", startDate: "2026-09-01", endDate: "2026-12-31" }, schools: [{ sourcedId: "school", name: "School", grades: ["08"] }] },
+  } })).classroom!;
+
+  it("is absent without a Classroom connection or its key, so no offering can be routed to Classroom", () => {
+    expect(workerClassroomWriter(undefined, unused)).toBeUndefined();
+    expect(workerClassroomWriter({ config: connection("read-write"), key: undefined }, unused)).toBeUndefined();
+    expect(workerClassroomWriter({ config: connection("read-write"), key: "" }, unused)).toBeUndefined();
+  });
+
+  for (const rosterScopes of ["read-write", "readonly"] as const) {
+    it(`grades as the course owner with coursework.students (${rosterScopes} domain), patching only that student's submission`, async () => {
+      const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+      const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+      const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der))}\n-----END PRIVATE KEY-----\n`;
+      const scopes: string[] = [];
+      const writes: string[] = [];
+      const fetcher: typeof fetch = async (input, init) => {
+        const url = new URL(String(input));
+        const method = init?.method ?? "GET";
+        if (url.hostname === "oauth2.googleapis.com") {
+          const claims = JSON.parse(atob(new URLSearchParams(String(init?.body)).get("assertion")!.split(".")[1]!.replaceAll("-", "+").replaceAll("_", "/")));
+          scopes.push(`${claims.sub} ${claims.scope}`);
+          return Response.json({ access_token: `token-${claims.sub}`, token_type: "Bearer", expires_in: 3600 });
+        }
+        const who = new Headers(init?.headers).get("authorization");
+        if (method !== "GET") writes.push(`${who} ${method} ${url.pathname}${url.search} ${String(init?.body)}`);
+        if (url.pathname === "/v1/courses/123") return Response.json({ id: "123", name: "Science", courseState: "ACTIVE", ownerId: "111" });
+        if (url.pathname === "/v1/courses/123/teachers/111") return Response.json({ userId: "111", profile: { emailAddress: "owner@example.edu" } });
+        if (url.pathname === "/v1/courses/123/courseWork/9") return Response.json({ id: "9", title: "[educateos-approved] Quiz", state: "PUBLISHED", maxPoints: 10, associatedWithDeveloper: true });
+        if (url.pathname === "/v1/courses/123/courseWork/9/studentSubmissions") return Response.json({ studentSubmissions: [{ id: "s1", courseWorkId: "9", userId: "222", state: "TURNED_IN" }] });
+        if (url.pathname === "/v1/courses/123/courseWork/9/studentSubmissions/s1") return Response.json({ id: "s1", courseWorkId: "9", userId: "222", state: "TURNED_IN", assignedGrade: 8 });
+        throw new Error(`unexpected request ${method} ${url.pathname}`);
+      };
+      const key = JSON.stringify({ type: "service_account", client_email: "sync@example.iam.gserviceaccount.com", private_key: pem });
+      const writer = workerClassroomWriter({ config: connection(rosterScopes), key }, fetcher)!;
+      await writer.setAssignedGrade({ courseId: "123", courseWorkId: "9", userId: "222", assignedGrade: 8 });
+      expect(scopes.length).toBeGreaterThan(0);
+      for (const granted of scopes) {
+        expect(granted.split(" ")).toContain("https://www.googleapis.com/auth/classroom.coursework.students");
+        // The roster scopes keep the form the domain delegated.
+        if (rosterScopes === "read-write") expect(granted).not.toContain(".readonly");
+        else expect(granted).toContain("classroom.rosters.readonly");
+      }
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toMatch(/^Bearer token-owner@example\.edu PATCH \/v1\/courses\/123\/courseWork\/9\/studentSubmissions\/s1\?updateMask=assignedGrade%2CdraftGrade /);
+    });
+  }
 });
