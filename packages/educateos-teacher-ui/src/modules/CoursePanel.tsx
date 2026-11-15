@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Badge, Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
-import { Books, DownloadSimple } from "@phosphor-icons/react";
+import { Books, DownloadSimple, ArrowsClockwise } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
-import type { CourseInstallPlan, LibraryCourse } from "../types.ts";
+import type { CourseInstallPlan, CourseUpdatePreview, LibraryCourse } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { useAction } from "./useAction.ts";
 
@@ -27,6 +27,16 @@ const unitContents = (unit: CourseInstallPlan["units"][number]): string => {
 
 const remaining = (plan: CourseInstallPlan) => plan.units.filter((unit) => unit.status === "new" || unit.status === "installing").length;
 
+const UPDATE_STATUS: Record<CourseUpdatePreview["units"][number]["status"], string> = {
+  unchanged: "No source changes",
+  "upstream-added": "Publisher added",
+  "upstream-removed": "Publisher removed",
+  "upstream-changed": "Publisher changed",
+  "local-change": "Your changes preserved",
+  conflict: "Competing changes — review required",
+  reconcile: "Cannot match local material safely",
+};
+
 /**
  * Adding a course from the district's course library (SCHO-331): the courses an administrator
  * imported, a preview of what installing one adds to this class, and the install itself, which
@@ -40,12 +50,27 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
     courses.reload();
   });
   const [plan, setPlan] = useState<CourseInstallPlan | undefined>();
+  const [update, setUpdate] = useState<CourseUpdatePreview | undefined>();
 
   const preview = (course: LibraryCourse) =>
     action.run("preview", async (client) => {
       const result = await client.call("teacher.previewCourseInstall", { params: { offeringId }, body: { packageId: course.packageId, version: course.version } });
+      setUpdate(undefined);
       setPlan(result);
       return `${course.title} would add ${plural(remaining(result), "module")} to this class.`;
+    });
+
+  const reviewUpdate = (course: LibraryCourse) =>
+    action.run("review-update", async (client) => {
+      if (course.installed === undefined) throw new Error("This class has not installed that course.");
+      const result = await client.call("teacher.previewCourseUpdate", {
+        params: { offeringId },
+        body: { packageId: course.packageId, fromVersion: course.installed.version, toVersion: course.version },
+      });
+      setPlan(undefined);
+      setUpdate(result);
+      const flagged = result.units.filter((unit) => unit.status !== "unchanged").length;
+      return "Update preview: " + plural(flagged, "unit") + " may need attention. Nothing in the class has changed.";
     });
 
   const install = (planned: CourseInstallPlan) =>
@@ -73,7 +98,7 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
       {courses.status === "ready" && list.length === 0 && (
         <Text variant="secondary">Your district hasn't added any courses to its course library yet.</Text>
       )}
-      {list.length > 0 && plan === undefined && (
+      {list.length > 0 && plan === undefined && update === undefined && (
         <ul aria-label="Courses" className="flex flex-col divide-y divide-kumo-line">
           {list.map((course) => (
             <li key={course.packageId} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -90,9 +115,19 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
                 </Text>
               </div>
               <div>
-                <Button size="sm" variant="secondary" loading={action.running("preview")} disabled={action.busy} onClick={() => void preview(course)}>
-                  {course.installed !== undefined && !course.installed.done ? `Finish adding ${course.title}` : `Preview ${course.title}`}
-                </Button>
+                {course.installed?.done === true && course.installed.version !== course.version ? (
+                  <Button size="sm" variant="secondary" icon={<ArrowsClockwise aria-hidden />}
+                    loading={action.running("review-update")} disabled={action.busy}
+                    onClick={() => void reviewUpdate(course)}>
+                    Review newer version
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="secondary" loading={action.running("preview")} disabled={action.busy}
+                    onClick={() => void preview(course)}>
+                    {course.installed !== undefined && !course.installed.done
+                      ? "Finish adding " + course.title : "Preview " + course.title}
+                  </Button>
+                )}
               </div>
             </li>
           ))}
@@ -128,6 +163,46 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
               {plan.done ? "Already added" : `Add ${plural(remaining(plan), "module")}`}
             </Button>
             <Button variant="secondary" disabled={installing} onClick={() => setPlan(undefined)}>Cancel</Button>
+          </div>
+        </section>
+      )}
+      {update !== undefined && (
+        <section aria-label="Read-only course update preview" className="flex flex-col gap-3">
+          <h3><Text variant="heading" as="span">Review course changes</Text></h3>
+          <Text>{update.packageId + " · " + update.fromVersion + " → " + update.toVersion}</Text>
+          <Banner title="No automatic changes"
+            description="This comparison makes no changes. Existing lessons, assignments, student work and grades remain unchanged. Future adoption will require teacher approval." />
+          <ol className="flex list-decimal flex-col gap-3 pl-6">
+            {update.units.map((unit) => {
+              const changed = unit.items.filter((item) => item.status !== "unchanged");
+              return (
+                <li key={unit.key} className="flex flex-col gap-1">
+                  <span className="font-medium">{unit.title}</span>
+                  <Text variant="secondary" as="span" size="sm">
+                    {UPDATE_STATUS[unit.status] + " · " + plural(changed.length, "changed or uncertain item")}
+                  </Text>
+                  {unit.status === "reconcile" && <Text variant="secondary" as="span" size="sm">{unit.explanation}</Text>}
+                  {changed.length > 0 && (
+                    <ul className="flex list-disc flex-col gap-1 pl-5">
+                      {changed.map((item) => (
+                        <li key={item.key}>
+                          <span>{item.title}</span>
+                          <Text variant="secondary" as="span" size="sm">
+                            {" · " + UPDATE_STATUS[item.status] + (item.sensitive ? " · restricted or assessed content" : "")}
+                          </Text>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <div className="flex flex-col gap-1">
+            {update.warnings.map((warning) => <Text key={warning} variant="secondary" size="sm">{warning}</Text>)}
+          </div>
+          <div>
+            <Button variant="secondary" onClick={() => setUpdate(undefined)}>Back to course library</Button>
           </div>
         </section>
       )}

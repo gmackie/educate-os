@@ -66,6 +66,7 @@ import { installListing, packBody, packTemplates } from "./marketplace.ts";
 import type { PublisherTrust } from "@educateos/ocs";
 import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
 import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
+import { previewCourseVersionUpdate } from "./course-update.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -1013,6 +1014,42 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.previewCourseInstall": async (ctx, { params, body }) => {
       const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
       return previewCourseInstall(await ctx.courseInstall(params.offeringId, plan), plan);
+    },
+    "teacher.previewCourseUpdate": async (ctx, { params, body }) => {
+      const offering = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope: offering, classification: "teacher-only" },
+        "Only the class's teachers can inspect course updates.");
+      const installed = (await stores.courseLibrary.loadInstalls(params.offeringId))?.courses.find(
+        (course) => course.packageId === body.packageId && course.version === body.fromVersion,
+      );
+      if (installed?.completedAt === undefined) {
+        throw new EducateOsError("conflict", "Install the original course completely before reviewing an update.");
+      }
+      const indexed = await stores.courseLibrary.listCourses();
+      const previous = indexed.find((course) => course.packageId === body.packageId && course.version === body.fromVersion);
+      const candidate = indexed.find((course) => course.packageId === body.packageId && course.version === body.toVersion);
+      if (previous === undefined || candidate === undefined) {
+        throw new EducateOsError("not-found", "Both published versions must be in the district's approved course library.");
+      }
+      if (installed.digest !== previous.digest) {
+        throw new EducateOsError("conflict", "The originally installed version no longer matches its published fingerprint.");
+      }
+      const prior = body.fromVersion.split(".").map(Number);
+      const next = body.toVersion.split(".").map(Number);
+      const later = next[0]! > prior[0]! || (next[0] === prior[0] && (
+        next[1]! > prior[1]! || (next[1] === prior[1] && next[2]! > prior[2]!)
+      ));
+      if (!later) throw new EducateOsError("validation-failed", "Choose a newer published course version.");
+      const library = stores.courseLibrary.library(libraryPolicies(courseTrust(), now));
+      const [from, to] = await Promise.all([
+        planLibraryInstall(library, body.packageId, body.fromVersion),
+        planLibraryInstall(library, body.packageId, body.toVersion),
+      ]);
+      const outline = (await ctx.courseContent().outline(ctx.subject, params.offeringId)).outline;
+      return previewCourseVersionUpdate({
+        offeringId: params.offeringId, from, to, installed, outline,
+        fromDigest: previous.digest, toDigest: candidate.digest,
+      });
     },
     "teacher.installCourse": async (ctx, { params, body }) => {
       const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
