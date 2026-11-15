@@ -3,6 +3,7 @@
 import { EducateOsError } from "@educateos/contracts";
 import { CourseIntentDraftRecord, type CourseIntentDraftRecord as Draft, type CourseIntentDraftStatus } from "./routes.ts";
 
+/** District-owned append-only draft event history, scoped to an offering and teacher. */
 export interface CourseIntentDraftStore {
   /** Atomically reserve a unique teacher/offering request before calling any model. */
   claim(pending: Draft): Promise<{ created: boolean; draft: Draft }>;
@@ -18,6 +19,7 @@ function sameSource(a: Draft["source"], b: Draft["source"]): boolean {
     && a.digest === b.digest && a.unitKey === b.unitKey;
 }
 
+/** Validate the one and only initial pending state of a new teacher request. */
 export function validateDraftClaim(pending: Draft): Draft {
   const parsed = CourseIntentDraftRecord.parse(pending);
   if (parsed.revision !== 1 || parsed.status !== "pending" || parsed.result !== undefined
@@ -27,6 +29,7 @@ export function validateDraftClaim(pending: Draft): Draft {
   return parsed;
 }
 
+/** Refuse reuse of a request key for a different owner, source or teaching goal. */
 export function compareDraftRequest(existing: Draft, incoming: Draft): Draft {
   if (existing.offeringId !== incoming.offeringId
     || existing.ownerPrincipalId !== incoming.ownerPrincipalId
@@ -92,6 +95,7 @@ export function validateDraftTransition(current: Draft, input: Draft, expectedRe
   return next;
 }
 
+/** In-memory revision log for synthetic district and local harness tests. */
 export class InMemoryCourseIntentDraftStore implements CourseIntentDraftStore {
   readonly #revisions = new Map<string, Draft[]>();
 
