@@ -17,7 +17,7 @@ This sample service **must not be exposed publicly**. Its own handler does not a
 staff: only a district-owned Worker may bind it, and that Worker MUST enforce policy and budget
 before calling it. Configure the service and district deployment in the same Cloudflare account.
 
-The example wrangler.jsonc has workers_dev:false and no public route. Do not override those
+The example wrangler.jsonc explicitly sets workers_dev:false and preview_urls:false, with no public route. Both settings matter because version/preview URLs can otherwise expose a Worker directly. Do not override those
 settings without adding an independent, reviewed authorization boundary.
 
 ## Deployment prerequisites (not automated)
