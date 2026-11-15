@@ -38,8 +38,10 @@ export interface SubjectFacts extends PrincipalFacts {
  *   belongs to (ADR-0012, {@link guardianRelationships}).
  * - `lti-deployment`: the subject is a registered LTI tool with an active deployment to the
  *   resource's offering that allows the LTI service the resource and action need (SCHO-179).
+ * - `family-adult`: the subject is an adult of the family a `family` resource names, or of the
+ *   family whose child a `home-practice` resource names (ADR-0016).
  */
-export const Relationship = z.enum(["share-grantee", "appeal-reviewer", "guardian-of", "lti-deployment"]);
+export const Relationship = z.enum(["share-grantee", "appeal-reviewer", "guardian-of", "lti-deployment", "family-adult"]);
 /** A relationship. */
 export type Relationship = z.infer<typeof Relationship>;
 

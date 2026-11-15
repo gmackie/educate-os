@@ -231,6 +231,29 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   their own time.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
+  // Home learning (ADR-0016). A family's adults are guardians in the directory, but their authority
+  // over the family's own record comes from membership of that family, never from a school
+  // relationship; these kinds hold no school record, so the guardian catch-all below still keeps
+  // every school rule from reaching them.
+  {
+    id: "family.adult.create",
+    description: "A guardian starts a family for home learning. The home-learning service allows one family per adult.",
+    when: { principalKinds: ["guardian"], kinds: ["family"], classifications: ["personal-private"], actions: ["create"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "family.adult.manage",
+    description: "An adult of a family reads and changes that family's record, its children's profiles and their home practice, and exports or deletes them; each decision is audited with the family.",
+    when: {
+      principalKinds: ["guardian"],
+      kinds: ["family", "home-practice"],
+      classifications: ["personal-private"],
+      relationships: ["family-adult"],
+      actions: [...READS, "create", "update", "delete", "submit", "export"],
+    },
+    effect: { effect: "allow" },
+  },
+
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
   // read-only; the catch-all below keeps every other rule in the table from reaching them.
   {
