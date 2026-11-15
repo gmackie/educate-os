@@ -66,6 +66,7 @@ import { installListing, packBody, packTemplates } from "./marketplace.ts";
 import type { PublisherTrust } from "@educateos/ocs";
 import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
 import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
+import { inspectCurriculumPreflight } from "./curriculum-preflight.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -1008,6 +1009,26 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           matchesClass: course !== undefined && entry.subject === course.subject && entry.gradeBand === course.gradeBand,
           ...(installed === undefined ? {} : { installed: { version: installed.version, done: installed.completedAt !== undefined } }),
         };
+      });
+    },
+    "teacher.previewCurriculumPreflight": async (ctx, { params, body }) => {
+      // Authorize before looking up a publisher/version: unauthorized callers must not
+      // discover whether a district has imported a particular course.
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can inspect its curriculum.");
+      const library = stores.courseLibrary.library(libraryPolicies(courseTrust(), now));
+      const plan = await planLibraryInstall(library, body.packageId, body.version);
+      // Reuse installation's local standard resolver without invoking any mutation API.
+      const services = await ctx.courseInstall(params.offeringId, plan);
+      const indexed = (await stores.courseLibrary.listCourses()).find(
+        (course) => course.packageId === body.packageId && course.version === body.version,
+      );
+      if (indexed === undefined) throw new EducateOsError("not-found", "This course is not in the district's approved library.");
+      return inspectCurriculumPreflight(plan, {
+        digest: indexed.digest,
+        signedAtImport: indexed.publisher.signed,
+        isApproved: services.isApproved,
       });
     },
     "teacher.previewCourseInstall": async (ctx, { params, body }) => {
