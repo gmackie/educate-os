@@ -9,8 +9,8 @@
 //
 // `run` turns in each learner's submission on both of a course's seeded activities. The teacher
 // then grades and returns the first activity with the synthetic scores below, and leaves the
-// second turned in for review. A rerun changes nothing, and a grade a teacher has since edited is
-// kept and reported, never overwritten. Only app-owned `[educateos-demo:` work is touched. Reports
+// second turned in for review. A rerun changes nothing, and a grade a teacher has since edited, or
+// review work a teacher has since graded and returned, is kept and reported, never overwritten. Only app-owned `[educateos-demo:` work is touched. Reports
 // hold IDs, states and scores, never credentials.
 import { execFileSync } from "node:child_process";
 import { open } from "node:fs/promises";
@@ -100,8 +100,12 @@ export async function harborClassroomWork(student: Tokens, teacher: Tokens, mode
           }
         }
         mine = await own();
+        // Work left for review may since have been graded and returned by its teacher (as the
+        // Workshop's approved Classroom grading does, SCHO-402): that is kept and reported.
+        const reviewed = score === undefined && mine.state === "RETURNED" && mine.assignedGrade !== undefined;
+        if (reviewed && outcome === "unchanged") outcome = `teacher returned ${mine.assignedGrade}`;
         const expected = score === undefined ? "TURNED_IN" : "RETURNED";
-        if (mine.state !== expected) problems.push(`${learner}: ${work!.id} is ${mine.state}, expected ${expected}`);
+        if (mine.state !== expected && !reviewed) problems.push(`${learner}: ${work!.id} is ${mine.state}, expected ${expected}`);
         if (score !== undefined && mine.assignedGrade === undefined) problems.push(`${learner}: ${work!.id} has no returned grade`);
         rows.push({ offeringId: planned.fixtureId, courseId: course.id, workId: work!.id, learner, state: mine.state, grade: mine.assignedGrade ?? null, outcome });
       }

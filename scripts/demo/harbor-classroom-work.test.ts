@@ -76,3 +76,17 @@ test("a grade the teacher has since changed is kept, and verify does not write",
   assert.equal(writes.length, count);
   assert.ok(again.rows.some((r) => r.outcome === "teacher grade 6 kept"));
 });
+
+test("review work a teacher later graded and returned is kept; returned without a grade is a problem", async () => {
+  const { transport, student, teacher, subs } = fakeClassroom();
+  await harborClassroomWork(student, teacher, "run", transport);
+  const awaiting = [...subs.values()].filter((s) => s.state === "TURNED_IN");
+  Object.assign(awaiting[0]!, { state: "RETURNED", assignedGrade: 8 });
+  const reviewed = await harborClassroomWork(student, teacher, "verify", transport);
+  assert.deepEqual(reviewed.problems, []);
+  assert.ok(reviewed.rows.some((r) => r.outcome === "teacher returned 8"));
+  awaiting[1]!.state = "RETURNED";
+  const ungraded = await harborClassroomWork(student, teacher, "verify", transport);
+  assert.equal(ungraded.problems.length, 1);
+  assert.match(ungraded.problems[0]!, /is RETURNED, expected TURNED_IN$/);
+});

@@ -129,7 +129,8 @@ exemplars are documented in [Classroom verification](classroom-verification.md).
 learner turns in their own submission with a token delegated to their own synthetic account
 (`classroom.coursework.me`, which reaches only their own submission). Each course's own teacher
 then grades and returns its first activity with the script's synthetic scores, and leaves the
-second turned in for review. Reruns change nothing, and a grade a teacher has since edited is kept.
+second turned in for review. Reruns change nothing. A grade a teacher has since edited is kept, and
+so is review work a teacher has since graded and returned (as the Workshop's Classroom grading does).
 Each run also checks that a learner's attempts to read or grade a classmate's submission are refused.
 
 ```sh
@@ -231,23 +232,111 @@ to the intended district principal. An administrator acting through a provider A
 as student sign-in. Harbor OTP rejection is separate from inbox authorization; do not weaken Access
 policies or elevate an unlinked identity to make a demo pass.
 
-## Live evidence, 2026-11-12
+## Presenter walkthrough
 
-- Canvas seed and read-only verification: 32 people, 12 published courses, 24 assignments,
-  24 module introductions and linked activities, four discussion topics and fourteen announcements;
-  GET-only verification reports no configuration problems.
-- Harbor seed and read-only verification: four real courses, eight published app-owned assignments; no reported problems.
-- Northfield showcase verification: twelve sample courses installed, all four bands populated;
-  35 personas, ten linked. Existing co-op offerings retained.
-- Northfield administrator, teacher-68 and student-68 Access sign-ins succeeded. Teacher-68 resolved
-  to Hannah Kowalski, student-68 to Kofi Mensah; each listed one class. Teacher-to-student,
-  student-to-teacher and both admin API calls returned 403. LMS launch acceptance remains open.
-- Harbor administrator OTP was rejected; existing inbox credentials were recovered and verified
-  HTTP 200. This does not establish Harbor administrator access.
+Use a separate browser profile, or a private window, for each sign-in, since Access keeps one
+session per browser. Sign in with the address and Access's emailed code. Agents read the codes
+from agent-inbox (`access-sign-in.ts`); the owner's code goes to the owner's own mailbox. A session
+lasts about a day. Check who you are at `/api/me` before presenting.
 
-Required before completion: authenticated role/principal verification, student isolation, LTI
-launches in each intended course, learner submissions, teacher review and approved grade return,
-readback from the learner's session, and production publication evidence for the implementation.
+| School | Sign-in | Presents as |
+|---|---|---|
+| Harbor | the owner's own email | Marisol Vega, district administrator |
+| Harbor | `teacher@agents.gmac.io` | Kwame Asante (Marine Science, US Government) |
+| Harbor | `student@agents.gmac.io` | Nia Fontaine (Marine Science, Composition) |
+| Northfield | `admin@agents.gmac.io` | Admin2, a co-op administrator |
+| Northfield | `teacher-k2@`, `teacher-35@`, `teacher-68@`, `teacher-912@` | Daniel Yazzie, Fatima Al-Sayed, Hannah Kowalski, Morgan Lee |
+| Northfield | `student-k2@`, `student-35@`, `student-68@`, `student-912@` | Mateo Delgado, Abena Mensah, Kofi Mensah, Lucía Delgado |
+| Northfield | `guardian-rosa@`, `guardian-kwame@` | Rosa Delgado (Mateo, Lucía), Kwame Mensah (Abena, Kofi) |
+
+`canvas-grade-return.ts` borrows the `teacher-*` sign-ins and links each one back when it ends.
+Check `/api/me` if a run was interrupted.
+
+### Harbor, on Google Classroom (harbor.educateos.io)
+
+1. **Administrator.** The dashboard (`/admin/`) shows 6 students and 3 staff in 4 classes, with
+   Google Classroom as the roster. Under Roster sync, imports wait for an administrator's preview.
+   Point out that teachers and students cannot open these pages (403).
+2. **Teacher, Kwame Asante.** My classes (`/teach/`) lists Marine Science and US Government. Open
+   Marine Science, then Gradebook. Under the official grid, **From Google Classroom** shows each
+   student's Classroom grades for both seeded activities:
+   - Tide Pools: Nia 9, Owen 7, Pia 8.
+   - Coastal Water: Nia 8 and Pia 9 returned, Owen turned in and awaiting review.
+
+   These grades are read live; EducateOS writes nothing to Classroom here.
+3. **Student, Nia Fontaine.** Home lists Marine Science and Composition. On Marine Science
+   (`/courses/<offering>`), From Google Classroom shows only her own returned grades: Coastal Water
+   8/10 and Tide Pools 9/10. Opening a class she is not in answers as if it did not exist.
+
+### Northfield, on Canvas (northfield.educateos.io, canvas.mackie.house)
+
+1. **Administrator.** All classes lists 15 classes:
+   - the twelve showcase classes, three per band (K-2, 3-5, 6-8, 9-12);
+   - a spring Biology I section;
+   - the co-op's own Earth Science and a standards-check ELA class.
+2. **Teacher, Hannah Kowalski (`teacher-68@`).** My classes shows English 8 · Period 2. Its
+   gradebook holds the grades she approved. Each one is already in the Canvas course's
+   "[educateos-approved] …" column, sent by the teacher who approved it. An administrator cannot
+   send a teacher's grade.
+3. **Student, Kofi Mensah (`student-68@`).** Home lists English 8 with its announcement. Its
+   modules are Argument Writing, Theme, Memoir and Poetry. **Grades** (`/grades`) shows "Phones in
+   the Classroom" at 15 of 16, the same 15 that his own Canvas submission shows.
+4. **Canvas.** The EducateOS Demo account (account 3) has the same twelve courses, with modules,
+   discussions, quizzes and learners' submissions. In English 8 and Biology, the EducateOS
+   activities in the first module open from Canvas over LTI 1.3 as the person who launched them.
+   Each approved grade also shows in the learner's own Canvas grades. Canvas's synthetic people
+   have no passwords, so show their view with Canvas's **Act as user**, from an account-admin
+   login.
+
+### The AI workspace (Workshop, `/ai` on either district)
+
+As Hannah at Northfield, open **AI workspace**. The home page greets her by name and offers a
+model the district funds. The workspace "Coastal Water Quality Assignment Grade Updates" shows the
+teacher-approved Classroom grading flow (SCHO-402):
+
+- The agent proposed grades for Kwame's Marine Science course through Hannah's connected Google
+  account.
+- Hannah approved Nia's 8 and Pia's 9, and they were returned in Classroom.
+- She denied Owen's grade, so his work is still awaiting review.
+
+To close the loop, show the same grades in Harbor, in Kwame's gradebook and in Nia's own class
+page.
+
+## Live evidence, 2026-11-15
+
+Every check below was a read-only `verify` against the live systems, with reports under
+`/tmp/scho415/` (mode 600). Each report shows 0 problems.
+
+- **Canvas seed** (`seed-canvas-demo.ts verify`): 32 people, 12 courses, everything as seeded.
+- **Canvas participation** (`canvas-participation.ts verify`): 46 submissions, 32 teacher reviews,
+  12 discussion entries, 22 quiz attempts, 12 isolation checks.
+- **LTI launches** (`canvas-lti-acceptance.ts launches`): 24 of 24 accepted. In each of the 12
+  courses, the teacher and a learner opened EducateOS from Canvas course navigation, and each was
+  admitted as themself in that course's offering.
+- **Grade return** (`canvas-grade-return.ts verify`):
+  - 40 teacher-approved grades in 12 courses are in Canvas.
+  - All 40 were read back by their own learner.
+  - 19 of 19 administrator publish attempts were refused.
+  - Every presenter was linked back afterwards.
+- **Northfield showcase** (`seed-showcase.ts verify`): 35 personas, 12 of 12 sample courses
+  installed; each band has 3 classes and 50-61 activities.
+- **Harbor seed** (`seed-harbor-classroom.ts verify`): 4 courses, 8 app-owned activities.
+- **Harbor learner work** (`harbor-classroom-work.ts verify`): 20 submissions (12 returned, 8
+  awaiting review) and 6 isolation checks.
+  - Coastal Water for Nia and Pia now counts as returned by their teacher, since the Workshop
+    grading demo returned them, and verify accepts that.
+- **Sign-ins**: every address in the walkthrough table resolved through `/api/me` to the person
+  listed. Harbor's role table is under [Harbor's administrator](#harbors-administrator).
+- **Browser**, headless, signed in as each person: Harbor's administrator dashboard, Kwame's
+  Marine Science gradebook with From Google Classroom, Nia's Marine Science page, Hannah's My
+  classes and her AI workspace home. Each loaded with no console errors.
+
+The remaining gaps:
+
+- Deep links: only English 8 and Biology have EducateOS activities deep-linked into Canvas modules.
+  The other ten courses launch from course navigation.
+- Grade return: Harbor's grades are read from Classroom, not sent to it. Northfield's go to Canvas
+  through AGS.
 
 ## Connecting additional Canvas courses
 
