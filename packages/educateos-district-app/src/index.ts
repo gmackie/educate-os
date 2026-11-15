@@ -23,3 +23,6 @@ export * from "./ops.ts";
 export * from "./ops-analytics.ts";
 // Course library (SCHO-331)
 export * from "./course-library.ts";
+
+// Optional, provider-governed teacher draft suggestion seam.
+export type { CourseIntentProvider, CourseIntentPrompt } from "./course-intent.ts";

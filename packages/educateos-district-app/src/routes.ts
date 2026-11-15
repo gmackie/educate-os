@@ -4,6 +4,9 @@ import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
+import { PedagogicalIntentV0 } from "@educateos/curriculum";
+import { ModelRef } from "@educateos/ai-governance";
+import { UsdNano } from "@educateos/contracts";
 // Devices (SCHO-261)
 import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
 // Operations (SCHO-263)
@@ -1032,6 +1035,29 @@ const CourseBundleInput = z.record(z.string(), z.json());
 /** Which course version a teacher previews or installs in a class. */
 export const CourseInstallInput = z.strictObject({ packageId: CoursePackageId, version: CoursePackageVersion });
 
+/** Teacher-triggered goal presets prevent freeform student data in the model request. */
+export const CourseIntentGoal = z.enum(["low-equipment", "language-scaffolding", "accessibility-first", "hands-on-practice"]);
+export const CourseIntentInput = CourseInstallInput.extend({
+  unitKey: z.string().min(1).max(500),
+  goal: CourseIntentGoal,
+});
+export const CourseIntentDraftBody = z.strictObject({
+  source: z.strictObject({
+    packageId: CoursePackageId,
+    version: CoursePackageVersion,
+    digest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    unitKey: z.string().min(1).max(500),
+  }),
+  goal: CourseIntentGoal,
+  model: ModelRef,
+  actualUsdNano: UsdNano,
+  /** Untrusted machine-generated intent. Teacher has not reviewed or published it. */
+  intent: PedagogicalIntentV0,
+  draftOnly: z.literal(true),
+  warnings: z.array(z.string()).min(1).max(8),
+});
+export type CourseIntentDraftBody = z.infer<typeof CourseIntentDraftBody>;
+
 /** One item of a unit, as installing it adds it. */
 export const CourseInstallItemBody = z.strictObject({
   key: z.string(),
@@ -1277,6 +1303,16 @@ export const ROUTES = {
   "teacher.libraryCourses": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/course-library", surface: "teacher",
     params: params({ offeringId: OfferingId }), response: z.array(TeacherLibraryCourseBody),
+  }),
+  "teacher.courseIntentAvailability": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library/ai-intent",
+    surface: "teacher", params: params({ offeringId: OfferingId }),
+    response: z.strictObject({ available: z.boolean() }),
+  }),
+  "teacher.suggestCourseIntent": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-library/ai-intent",
+    surface: "teacher", params: params({ offeringId: OfferingId }),
+    body: CourseIntentInput, response: CourseIntentDraftBody,
   }),
   "teacher.previewCourseInstall": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",
