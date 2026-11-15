@@ -270,6 +270,29 @@ describe("the idle recheck", () => {
     await runRecheck();
     await expectRevoked(() => gadget.hello());
   });
+
+  it("keeps a workspace its owner has open alone (SCHO-402)", async () => {
+    let owner = await principal("owner");
+    let ws = await workspace(owner);
+    await admit(ws, owner, "gadget.execute");
+    let runRecheck = async () => {
+      let alarm = await runInDurableObject(ws, (_instance, state) => state.storage.getAlarm());
+      vi.spyOn(Date, "now").mockReturnValue(alarm! + 1);
+      expect(await runDurableObjectAlarm(ws)).toBe(true);
+      vi.restoreAllMocks();
+    };
+
+    let opened = await ws.open(owner.userId, owner.name, () => {});
+    await runRecheck();
+    using gadget = await ws.testGadgetFacet(GADGET_ID);
+    expect(await outcome(gadget.hello())).toMatch(/^ok:/);
+
+    opened[Symbol.dispose]();
+    await vi.waitFor(async () => {
+      await runRecheck();
+      expect(await outcome(gadget.hello())).toMatch(/^error:/);
+    }, { timeout: 5_000, interval: 100 });
+  });
 });
 
 describe("revoking a collaborator", () => {
