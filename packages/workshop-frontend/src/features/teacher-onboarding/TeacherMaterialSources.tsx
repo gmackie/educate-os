@@ -9,13 +9,18 @@ export const TeacherMaterialSources = () => (
       </div>
       <div className="flex flex-col gap-1">
         <h4 className="font-medium text-kumo-default">Spreadsheets and question banks</h4>
-        <p className="text-kumo-subtle">Choose Attach files for Excel (.xlsx) or UTF-8 comma-separated CSV. Share at most 1,000 rows and 100 columns. XLSX previews read the first worksheet, including hidden rows and columns; move the intended sheet first or export it as CSV. Other sheets, charts, images and formatting are omitted. Formula values may be stale or missing and are never recalculated. Older .xls, macro-enabled workbooks and vendor question banks need a supported export.</p>
+        <p className="text-kumo-subtle">Choose Attach files for Excel (.xlsx) or UTF-8 comma-separated CSV. Share at most 1,000 rows across up to 100 worksheets, with 100 columns per sheet. XLSX previews read worksheets in workbook order, including hidden sheets, rows and columns. Check each sheet’s coverage: the shared text limit can shorten or omit later sheets. Charts, images and formatting are omitted. Formula values may be stale or missing and are never recalculated. Older .xls, macro-enabled workbooks and vendor question banks need a supported export.</p>
         <p className="text-kumo-subtle">Review answer keys and teacher notes before adapting a student activity. This supplies teaching source text; it does not create a quiz or import grades.</p>
       </div>
       <div className="flex flex-col gap-1">
+        <h4 className="font-medium text-kumo-default">Web links, videos and pasted lesson text</h4>
+        <p className="text-kumo-subtle">Paste a public web address into your brief and ask the conversation to read it using its web tools. A URL alone is not evidence that the page was read. Sign-in pages, blocked sites and interactive tools may need a readable excerpt or supported file export.</p>
+        <p className="text-kumo-subtle">For a video, share its link and paste the transcript, captions or relevant teaching notes, with timestamps when useful. Fetching a video page does not watch the video or read its audio. Paste assignment instructions, rubrics or question-bank text directly when you do not have a supported file.</p>
+      </div>
+      <div className="flex flex-col gap-1">
         <h4 className="font-medium text-kumo-default">Google Drive and Classroom</h4>
-        <p className="text-kumo-subtle">Choose Add connection, then Google. For Drive, select one file or folder with read-only access to read Docs, Sheets, Slides or PDFs. For Classroom, select a course you teach to read existing coursework instructions and material links. Connect linked Drive files separately to read their contents.</p>
-        <p className="text-kumo-subtle">Classroom sources cover coursework and its attachments; standalone Classwork materials are not included. You can share their Drive files directly. If Google is unavailable or your school blocks access, download a supported file or paste the lesson text.</p>
+        <p className="text-kumo-subtle">Choose Add connection, then Google. For Drive, select one file or folder with read-only access to read Docs, Sheets, Slides or PDFs. For Classroom, select a course you teach to read existing coursework and standalone Classwork material posts, including descriptions and resource links. Connect linked Drive files separately to read their contents.</p>
+        <p className="text-kumo-subtle">Older Google connections may need reconnecting to allow read-only Classroom materials. If Google is unavailable, consent is denied or your school blocks access, download a supported file or paste the lesson text.</p>
       </div>
       <div className="flex flex-col gap-1">
         <h4 className="font-medium text-kumo-default">LMS course exports</h4>

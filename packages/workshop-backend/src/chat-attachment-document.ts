@@ -14,13 +14,13 @@ export async function describeChatAttachmentDocument(
     if (type === "cartridge" && /\.zip$/i.test(attachment.name ?? "")) return undefined;
     return `Document text could not be read (${result.reason}). ` +
       "Do not infer its contents. Ask the user to paste a readable excerpt or provide a text export; " +
-      "scans may need OCR and encrypted files need an unlocked copy. Spreadsheets need a UTF-8 comma-separated CSV or XLSX export, at most 1000 rows and 100 columns; move the intended worksheet first. LMS exports must be Common Cartridge 1.1–1.3 (.imscc), not a vendor backup ZIP. Try a smaller lesson export if a limit was reached. The original file is preserved.";
+      "scans may need OCR and encrypted files need an unlocked copy. Spreadsheets need a UTF-8 comma-separated CSV or XLSX export, at most 1000 rows across 100 worksheets and 100 columns per sheet; export the intended worksheet separately if needed. LMS exports must be Common Cartridge 1.1–1.3 (.imscc), not a vendor backup ZIP. Try a smaller lesson export if a limit was reached. The original file is preserved.";
   }
 
   const limitations = type === "csv"
     ? "CSV teaching source only; comma-separated row/column values, not an imported quiz. Formula-like text is not evaluated. Keep answer keys and teacher notes separate from student-facing material."
     : type === "xlsx"
-      ? "First XLSX worksheet only, including hidden rows and columns. Other sheets, styles, charts, images and comments are omitted. Dates may be serial numbers; formulas use cached values which may be stale or missing. No formulas or external links are evaluated or fetched. Keep answer keys and teacher notes separate from student-facing material."
+      ? "XLSX worksheets in workbook order, including hidden sheets, rows and columns. Coverage identifies full, partial, empty and omitted worksheet text; do not infer values beyond this excerpt. Styles, charts, images and comments are omitted. Dates may be serial numbers; formulas use cached values which may be stale or missing. No formulas or external links are evaluated or fetched. Keep answer keys and teacher notes separate from student-facing material."
     : type === "docx"
     ? "Word body text only; images, headers, footers, comments, and embedded objects are omitted."
     : type === "pptx"

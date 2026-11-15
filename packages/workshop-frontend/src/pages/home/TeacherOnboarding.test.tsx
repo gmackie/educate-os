@@ -113,6 +113,9 @@ describe("individual teacher onboarding", () => {
       expect(container.textContent).toContain(heading);
     }
     expect(container.textContent).toContain("Connect linked Drive files separately");
+    expect(container.textContent).toContain("standalone Classwork material posts");
+    expect(container.textContent).toContain("worksheets in workbook order");
+    expect(container.textContent).toContain("Fetching a video page does not watch the video");
     expect(container.textContent).toContain("preview and confirmation flow");
     const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
     const click = vi.spyOn(fileInput, "click");

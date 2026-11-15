@@ -11,7 +11,7 @@ import type {
   ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomRosterMember, ClassroomSubmission,
-  ClassroomMySubmission, ClassroomCourseWorkMaterial,
+  ClassroomMySubmission, ClassroomCourseWorkMaterial, ClassroomCourseMaterial,
 } from "./classroom-types";
 import type { ClassroomStudentCourseWork, ClassroomStudentSubmission } from "./classroom-student-types";
 import { GoogleApiError, readGoogleJson } from "./google-response";
@@ -491,6 +491,26 @@ export class ClassroomApi {
     const params = new URLSearchParams([["courseWorkStates", "PUBLISHED"], ["courseWorkStates", "DRAFT"]]);
     return (await this.#listAll(`${this.#course(courseId)}/courseWork`, params, "courseWork", "read teaching materials"))
       .map(classroomCourseWorkFromRaw).map(({ courseWork }) => courseWork);
+  }
+
+  /** Standalone course materials under the teacher's own read-only materials consent. */
+  async listCourseMaterials(courseId: string): Promise<ClassroomCourseMaterial[]> {
+    if (!(await this.isTeacher(courseId))) {
+      throw new Error("The connected Google account does not teach this Classroom course.");
+    }
+    const params = new URLSearchParams([["courseWorkMaterialStates", "PUBLISHED"], ["courseWorkMaterialStates", "DRAFT"]]);
+    try {
+      return (await this.#listAll(`${this.#course(courseId)}/courseWorkMaterials`, params, "courseWorkMaterial", "read course materials"))
+        .map(value => {
+          const { maxPoints: _points, ...material } = classroomCourseWorkFromRaw(value).courseWork;
+          return material;
+        });
+    } catch (error) {
+      if (isClassroomNoAccessError(error)) {
+        throw new Error("Standalone Classroom materials could not be read. Check that you still teach this course; reconnect Google and allow read-only course materials if the connection predates this permission. If your school blocks access, export the file or paste the lesson text.", { cause: error });
+      }
+      throw error;
+    }
   }
 
   /** One coursework item, refused locally unless this connection's project created it. */

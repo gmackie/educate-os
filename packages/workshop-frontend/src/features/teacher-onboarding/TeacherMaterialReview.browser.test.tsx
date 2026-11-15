@@ -69,7 +69,7 @@ it("opens the source preview by keyboard and renders source markup as plain text
 
 
 it("shows real workbook omissions before the teacher sends and renders cell markup inertly", async () => {
-  const bytes = await workbook([{ name: "Questions", rows: '<row r="1" hidden="1"><c r="A1" t="inlineStr"><is><t>&lt;img src="https://example.com/private"&gt;</t></is></c></row>' }]);
+  const bytes = await workbook([{ name: "Cover", rows: "" }, { name: "Questions", state: "hidden", rows: '<row r="1" hidden="1"><c r="A1" t="inlineStr"><is><t>&lt;img src="https://example.com/private"&gt;</t></is></c></row>' }]);
   container = document.body.appendChild(document.createElement("div"));
   root = createRoot(container);
   await act(async () => root!.render(<TeacherMaterialReview attachments={[{
@@ -77,9 +77,11 @@ it("shows real workbook omissions before the teacher sends and renders cell mark
   }]} />));
   const trigger = page.getByRole("button", { name: "Read extracted text from questions.xlsx" });
   await expect.element(trigger).toBeVisible();
-  await expect.element(page.getByText(/including hidden rows and columns/)).toBeVisible();
+  await expect.element(page.getByText(/including hidden sheets, rows and columns/)).toBeVisible();
   await expect.element(page.getByText(/Formula values are cached and may be stale or missing/)).toBeVisible();
   await act(async () => { await userEvent.click(trigger); });
   await expect.element(page.getByLabelText("Extracted text from questions.xlsx")).toMatchTextContent('<img src=""https://example.com/private"">');
+  await expect.element(page.getByLabelText("Extracted text from questions.xlsx")).toMatchTextContent('2. "Questions" (hidden): full');
+  await expect.element(page.getByLabelText("Extracted text from questions.xlsx")).toMatchTextContent('1. "Cover" (visible): empty');
   expect(container.querySelector("pre img")).toBeNull();
 });

@@ -15,10 +15,12 @@ import { FakeClassroom } from "../classroom-fixture";
 import { FakeKv } from "../fake-kv";
 
 class TestApprovalQueue extends RpcTarget implements ApprovalQueue {
+  rejectObservation = false;
   readonly observations: ObservationDescription[] = [];
   readonly submitted: ActionDescription[] = [];
 
   async authorizeObservation(description: ObservationDescription): Promise<void> {
+    if (this.rejectObservation) throw new Error("Observer denied");
     this.observations.push(description);
   }
 
@@ -72,6 +74,19 @@ describe("Google Classroom course session", () => {
     expect(writes()).toEqual([]);
     expect(queue.submitted).toEqual([]);
     expect(classroom.requests.some(request => request.path.includes("studentSubmissions") || request.path.endsWith("/students"))).toBe(false);
+  });
+
+  it("authorizes standalone material reads even when empty, and returns nothing when observation is refused", async () => {
+    expect(await session.listCourseMaterials()).toEqual([]);
+    expect(queue.observations).toEqual([expect.objectContaining({ subresources: ["classroom/course/101"] })]);
+    classroom.courseMaterials = [{ id: "301", title: "Teacher-only notes", state: "DRAFT", description: "Lesson source" }];
+    expect(await session.listCourseMaterials()).toMatchObject([{ id: "301", description: "Lesson source" }]);
+    expect(queue.observations).toHaveLength(2);
+    queue.rejectObservation = true;
+    await expect(session.listCourseMaterials()).rejects.toThrow("Observer denied");
+    expect(queue.submitted).toEqual([]);
+    expect(writes()).toEqual([]);
+    expect(classroom.requests.some(request => request.path.includes("student"))).toBe(false);
   });
 
   it("checks every observer against the reported course and rejects unknown subresources", async () => {

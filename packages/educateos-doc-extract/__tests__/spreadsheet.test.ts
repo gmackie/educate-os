@@ -28,17 +28,18 @@ it("refuses unsupported binary/UTF-16 encodings, empty data, wide/tall tables an
   expect(await extractDocumentText(encode("a,b\n1,2"), "csv", { ...LESSON_SOURCE_LIMITS, maxSteps: 3 })).toMatchObject({ reason: "budget-exceeded" });
 });
 
-it("reads only the first worksheet, preserving sparse columns and cached formula values", async () => {
+it("reads all worksheets in order, preserving sparse columns and cached formula values", async () => {
   const bytes = await workbook([
     { name: "Questions", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Question</t></is></c><c r="C1" t="s"><v>0</v></c></row><row r="2" hidden="1"><c r="A2" t="b"><v>1</v></c><c r="C2"><f>1+1</f><v>17</v></c></row>' },
-    { name: "Other sheet", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>OMITTED SOURCE</t></is></c></row>' },
+    { name: "Other sheet", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>LATER SOURCE</t></is></c></row>' },
   ], ["Answer"], { deflate: true });
   const original = bytes.slice();
   const result = await extractDocumentText(bytes, "xlsx", LESSON_SOURCE_LIMITS);
-  expect(result).toMatchObject({ status: "extracted", text: expect.stringContaining('First worksheet "Questions" only') });
+  expect(result).toMatchObject({ status: "extracted", text: expect.stringContaining('Worksheet 1 "Questions" (visible)') });
   expect(result).toMatchObject({ text: expect.stringContaining("Question,,Answer\nTRUE,,17") });
   if (result.status !== "extracted") throw new Error("Missing text");
-  expect(result.text).not.toContain("OMITTED SOURCE");
+  expect(result.text).toContain("LATER SOURCE");
+  expect(result.text.indexOf("Question,,Answer")).toBeLessThan(result.text.indexOf("LATER SOURCE"));
   expect(result.text).not.toContain("1+1");
   expect(bytes).toEqual(original);
 });
@@ -50,14 +51,15 @@ it("caps CSV and XLSX output with a truthful excerpt flag", async () => {
     const result = await extractDocumentText(bytes, type, { ...LESSON_SOURCE_LIMITS, maxTextChars: 128 });
     expect(result).toMatchObject({ status: "extracted", truncated: true });
     if (result.status !== "extracted") throw new Error("Missing excerpt");
-    expect(result.text.length).toBe(128);
+    expect(result.text.length).toBeLessThanOrEqual(128);
   }
 });
 
-it("refuses an empty first sheet without substituting later sheets, and enforces lesson table limits", async () => {
+it("labels empty sheets, reads later values, and enforces aggregate lesson table limits", async () => {
   const later = { name: "Later", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Do not substitute</t></is></c></row>' };
   const empty = await workbook([{ name: "Empty", rows: "" }, later]);
-  expect(await extractDocumentText(empty, "xlsx", LESSON_SOURCE_LIMITS)).toEqual({ status: "not-extractable", reason: "no-text" });
+  expect(await extractDocumentText(empty, "xlsx", LESSON_SOURCE_LIMITS)).toMatchObject({ status: "extracted", text: expect.stringContaining("Do not substitute") });
+  expect(await extractDocumentText(await workbook([{ name: "Empty", rows: "" }]), "xlsx", LESSON_SOURCE_LIMITS)).toEqual({ status: "not-extractable", reason: "no-text" });
   for (const [row, column] of [[1001, "A"], [1, "CW"]] as const) {
     const bytes = await workbook([{ name: "Oversized", rows: `<row r="${row}"><c r="${column}${row}"><v>1</v></c></row>` }]);
     expect(await extractDocumentText(bytes, "xlsx", LESSON_SOURCE_LIMITS)).toEqual({ status: "not-extractable", reason: "too-large" });
@@ -72,4 +74,31 @@ it("uses spreadsheet extensions only with compatible metadata, checks bytes and 
   expect(lessonSourceType({ name: "bank.csv", mimeType: "image/png" })).toBeUndefined();
   expect(lessonSourceType({ name: "bank.xlsm", mimeType: "application/octet-stream" })).toBeUndefined();
   expect(await reviewLessonSource({ name: "bank.xlsx", mimeType: "application/octet-stream" }, encode("Not a workbook"))).toMatchObject({ extraction: { reason: "malformed" } });
+});
+
+it("labels hidden sheets, empty coverage and exactly which sheet values the excerpt includes", async () => {
+  const bytes = await workbook([
+    { name: "Empty", rows: "" },
+    { name: "Student lesson", rows: '<row r="1"><c r="A1" t="s"><v>0</v></c></row>' },
+    { name: "Answer key", state: "veryHidden", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>TEACHER ONLY ANSWER</t></is></c></row>' },
+  ], ["x".repeat(2000)]);
+  const full = await extractDocumentText(bytes, "xlsx", LESSON_SOURCE_LIMITS);
+  expect(full).toMatchObject({ status: "extracted", text: expect.stringContaining('3. "Answer key" (veryHidden): full') });
+  expect(full).toMatchObject({ text: expect.stringContaining("TEACHER ONLY ANSWER"), truncated: false });
+  const partial = await extractDocumentText(bytes, "xlsx", { ...LESSON_SOURCE_LIMITS, maxTextChars: 600 });
+  expect(partial).toMatchObject({ status: "extracted", text: expect.stringContaining('1. "Empty" (visible): empty'), truncated: true });
+  expect(partial).toMatchObject({ text: expect.stringContaining('2. "Student lesson" (visible): partial') });
+  expect(partial).toMatchObject({ text: expect.stringContaining('3. "Answer key" (veryHidden): omitted') });
+  if (partial.status !== "extracted") throw new Error("Missing excerpt");
+  expect(partial.text.length).toBe(600);
+  expect(partial.text).not.toContain("TEACHER ONLY ANSWER");
+});
+
+it("shares the worksheet count, sparse row and work limits across the whole workbook", async () => {
+  const row = '<row r="600"><c r="A600"><v>1</v></c></row>';
+  const bytes = await workbook([{ name: "First", rows: row }, { name: "Second", rows: row }]);
+  expect(await extractDocumentText(bytes, "xlsx", LESSON_SOURCE_LIMITS)).toEqual({ status: "not-extractable", reason: "too-large" });
+  const many = await workbook(Array.from({ length: 101 }, (_, i) => ({ name: `Sheet ${i}`, rows: "" })));
+  expect(await extractDocumentText(many, "xlsx", LESSON_SOURCE_LIMITS)).toEqual({ status: "not-extractable", reason: "too-large" });
+  expect(await extractDocumentText(bytes, "xlsx", { ...LESSON_SOURCE_LIMITS, maxSteps: 500 })).toEqual({ status: "not-extractable", reason: "budget-exceeded" });
 });

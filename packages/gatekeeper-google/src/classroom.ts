@@ -14,7 +14,7 @@ import {
 import type {
   ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
-  ClassroomSubmission, GoogleClassroomCourseSession,
+  ClassroomSubmission, GoogleClassroomCourseSession, ClassroomCourseMaterial,
 } from "./classroom-types";
 import type { GoogleVerifierApi } from "./google-verifier-types";
 import CLASSROOM_TYPES_CODE from "./classroom-types.txt";
@@ -230,6 +230,16 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
     await this.#queue.authorizeObservation({
       title: "Read existing Classroom teaching materials",
       description: `Read ${materials.length} coursework source(s) in Google Classroom course ${this.#courseId}; linked files require separate access.`,
+      subresources: [`classroom/course/${this.#courseId}`],
+    });
+    return materials;
+  }
+
+  async listCourseMaterials(): Promise<ClassroomCourseMaterial[]> {
+    const materials = await this.#api.listCourseMaterials(this.#courseId);
+    await this.#queue.authorizeObservation({
+      title: "Read standalone Classroom materials",
+      description: `Read ${materials.length} standalone material post(s) in Google Classroom course ${this.#courseId}; linked files require separate access.`,
       subresources: [`classroom/course/${this.#courseId}`],
     });
     return materials;

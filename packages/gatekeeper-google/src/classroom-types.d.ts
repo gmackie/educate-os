@@ -56,6 +56,9 @@ export type ClassroomCourseWork = {
   pending?: true;
 };
 
+/** A standalone Classwork material post. It is a lesson source, with no assignment or grade. */
+export type ClassroomCourseMaterial = Omit<ClassroomCourseWork, "maxPoints" | "pending">;
+
 /** The coursework `createCourseWork` creates: always an assignment. */
 export type ClassroomCourseWorkDraft = {
   title: string;
@@ -129,7 +132,8 @@ export type ClassroomGradingPeriodSettings = { gradingPeriods: ClassroomGradingP
 /**
  * Session interface for one Google Classroom course.
  *
- * `listTeachingMaterials` reads existing coursework as teaching sources, including work made in
+ * `listTeachingMaterials` reads existing coursework and `listCourseMaterials` reads standalone
+ * Classwork material posts as teaching sources, including work made in
  * Classroom itself. The other coursework and grading methods remain restricted to work created
  * through this connection. A material link does not grant access to the linked Google file.
  */
@@ -141,6 +145,14 @@ export interface GoogleClassroomCourseSession {
    * files separately through Drive. This does not enable grading or changing external coursework.
    */
   listTeachingMaterials(): Promise<ClassroomCourseWork[]>;
+
+  /**
+   * Read published and draft standalone Classwork material posts in the bound course, including
+   * descriptions and resource links. Requires a teacher and Google's read-only course materials
+   * permission; reconnect Google if the existing connection lacks that permission. Linked Drive
+   * files need their own connection. Does not read students or fetch video/transcript contents.
+   */
+  listCourseMaterials(): Promise<ClassroomCourseMaterial[]>;
 
   /** Read the bound course's grading periods. No cross-course lookup is accepted. */
   getGradingPeriodSettings(): Promise<ClassroomGradingPeriodSettings>;

@@ -449,3 +449,18 @@ Access sign-ins still require an administrator-confirmed link to the rostered pr
 
 Production verification remains open in SCHO-255. Library tests and Worker tests are not evidence
 that a demo district has been configured, synced, or used successfully by a teacher or learner.
+
+
+### Personal onboarding source coverage (SCHO-421)
+
+A teacher's course binding provides two independent read-only source paths:
+`listTeachingMaterials()` for existing coursework and `listCourseMaterials()` for standalone
+published/draft Classwork material posts. Both check current teacher membership, report
+`classroom/course/<id>` before returning (even when empty), and expose only source descriptions
+and resource links. They do not fetch links or read rosters, submissions or grades. Collaborators
+must independently teach the reported course. Coursework mutations remain app-owned.
+
+Standalone posts require `classroom.courseworkmaterials.readonly`. Reconnect older Google accounts
+to grant it; if a school blocks consent, use an exported file or pasted excerpt. Failure of this
+read does not change the independent coursework listing into an empty or failed source. Video
+links describe a resource; they do not provide its transcript or audiovisual contents.
