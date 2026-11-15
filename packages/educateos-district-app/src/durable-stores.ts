@@ -2374,9 +2374,10 @@ export class DurableObjectCourseLibraryStore implements CourseLibraryStore {
 
 
 
-// Private teacher-owned curriculum adaptation drafts (experimental).
-// No content is in a Foundation service. A revision is appended rather than
-// overwriting the original model suggestion or its teacher review history.
+/**
+ * Private teacher-owned curriculum adaptation drafts in a Durable Object.
+ * Each revision is appended; no Foundation service ever stores the record.
+ */
 export class DurableObjectCourseIntentDraftStore implements CourseIntentDraftStore {
   readonly #tables: Tables;
 
