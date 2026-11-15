@@ -167,18 +167,18 @@ describe("queue", () => {
   });
 });
 
-describe("child sessions and practice", () => {
-  async function startedSession() {
-    const env = setup();
-    const kids = await riversFamily(env.service);
-    await env.service.addToQueue(RIVERS, kids.maya.id, { pack: "number-sense", activity: "jump-forward-10" });
-    const { token } = await env.service.startChildSession(RIVERS, kids.maya.id);
-    const child = (await env.service.childSession(RIVERS, token))!;
-    const home = await env.service.practiceHome(RIVERS, child);
-    const view = await env.service.startPractice(RIVERS, child, home.queue[0]!.entryId);
-    return { ...env, ...kids, token, child, view };
-  }
+async function startedSession() {
+  const env = setup();
+  const kids = await riversFamily(env.service);
+  await env.service.addToQueue(RIVERS, kids.maya.id, { pack: "number-sense", activity: "jump-forward-10" });
+  const { token } = await env.service.startChildSession(RIVERS, kids.maya.id);
+  const child = (await env.service.childSession(RIVERS, token))!;
+  const home = await env.service.practiceHome(RIVERS, child);
+  const view = await env.service.startPractice(RIVERS, child, home.queue[0]!.entryId);
+  return { ...env, ...kids, token, child, view };
+}
 
+describe("child sessions and practice", () => {
   it("binds a child session to the adult who started it", async () => {
     const { service, token } = await startedSession();
     expect(await service.childSession(NAIR, token)).toBeUndefined();

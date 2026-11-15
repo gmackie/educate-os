@@ -510,10 +510,9 @@ export class HomeLearningService {
 
   /** A child's progress by skill, with their recent sessions and a note for each. */
   async progress(subject: VerifiedPrincipal, learnerId: unknown): Promise<ProgressView> {
-    const { learner, family } = await this.#learner(subject, LearnerId.parse(learnerId), "read");
+    const { learner } = await this.#learner(subject, LearnerId.parse(learnerId), "read");
     const sessions = await this.#store.listSessions(learner.id, 200);
     const progress = progressOf(currentPacks(this.#packs), sessions, this.#now());
-    const queue = family.queues[learner.id] ?? [];
     return {
       learner,
       skills: progress.map(({ skill, ...rest }) => ({ ...rest, skillId: skill.id, title: skill.title, description: skill.description, standards: skill.standards })),
@@ -523,7 +522,7 @@ export class HomeLearningService {
 
   /** One session in full: each item, what was saved and any correction. */
   async session(subject: VerifiedPrincipal, learnerId: unknown, sessionId: unknown): Promise<SessionDetail> {
-    const { learner, family } = await this.#learner(subject, LearnerId.parse(learnerId), "read");
+    const { learner } = await this.#learner(subject, LearnerId.parse(learnerId), "read");
     const session = await this.#sessionOf(learner.id, sessionId);
     const { activity } = this.#resolve(session.ref);
     const sessions = await this.#store.listSessions(learner.id, 200);

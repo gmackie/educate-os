@@ -40,6 +40,8 @@ export const ErrorPattern = z.enum([
 /** An error pattern. */
 export type ErrorPattern = z.infer<typeof ErrorPattern>;
 
+const sortedLetters = (word: string) => word.split("").toSorted().join("");
+
 /** The answer kind each item type takes. */
 export function answerKindFor(item: Item): Answer["kind"] {
   switch (item.type) {
@@ -97,8 +99,7 @@ export function scoreTry(item: Item, answer: Answer): TryResult {
     case "build-word": {
       const built = (answer as { letters: string[] }).letters.join("");
       if (built === item.answer) return { correct: true };
-      const sorted = (s: string) => s.split("").toSorted().join("");
-      return sorted(built) === sorted(item.answer) ? { correct: false, pattern: "letters-out-of-order" } : { correct: false };
+      return sortedLetters(built) === sortedLetters(item.answer) ? { correct: false, pattern: "letters-out-of-order" } : { correct: false };
     }
     case "read-aloud":
       // Read with help still read the sentence; only "on their own" is independent (below).
