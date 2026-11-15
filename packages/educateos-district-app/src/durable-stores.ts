@@ -134,6 +134,8 @@ import { KeyId, OpsScope } from "@educateos/fleet/ops";
 import { InstalledPack, sameRelease, type MarketplacePackStore } from "./marketplace.ts";
 // Course library (SCHO-331)
 import { DurableObjectPackageLibrary } from "@educateos/ocs/durable-object-library";
+import { CourseIntentDraftRecord, type CourseIntentDraftRecord as IntentDraft } from "./routes.ts";
+import { compareDraftRequest, validateDraftClaim, validateDraftTransition, type CourseIntentDraftStore } from "./course-intent-drafts.ts";
 import { LibraryCourse, OfferingCourseInstalls, type CourseLibrary, type CourseLibraryStore, type LibraryPolicies } from "./course-library.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
@@ -227,6 +229,8 @@ export const DISTRICT_TABLES = {
   // tables (`OCS_LIBRARY_TABLE`, `OCS_EXPORT_TABLE` in `@educateos/ocs/durable-object-library`).
   courseLibraryCourses: "educateos_course_library_courses",
   courseInstalls: "educateos_course_installs",
+  courseIntentDraftRequests: "educateos_course_intent_draft_requests",
+  courseIntentDraftRevisions: "educateos_course_intent_draft_revisions",
   // Delegations (SCHO-175)
   delegations: "educateos_delegations",
 } as const;
@@ -1211,6 +1215,7 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     marketplacePacks: new DurableObjectMarketplacePackStore(storage),
     // Course library (SCHO-331)
     courseLibrary: new DurableObjectCourseLibraryStore(storage),
+    courseIntentDrafts: new DurableObjectCourseIntentDraftStore(storage),
     // Delegations (SCHO-175)
     delegations: new DurableObjectDelegationStore(storage),
   };
@@ -2364,5 +2369,132 @@ export class DurableObjectCourseLibraryStore implements CourseLibraryStore {
   #installs(sql: DistrictSqlStorage["sql"], offeringId: string): OfferingCourseInstalls | undefined {
     const [row] = sql.exec(`SELECT installs_json FROM ${DISTRICT_TABLES.courseInstalls} WHERE offering_id = ?`, offeringId).toArray();
     return row === undefined ? undefined : parseStored(OfferingCourseInstalls, row.installs_json, `the course installs of ${offeringId}`);
+  }
+}
+
+
+
+// Private teacher-owned curriculum adaptation drafts (experimental).
+// No content is in a Foundation service. A revision is appended rather than
+// overwriting the original model suggestion or its teacher review history.
+export class DurableObjectCourseIntentDraftStore implements CourseIntentDraftStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const q = DISTRICT_TABLES.courseIntentDraftRequests;
+    const v = DISTRICT_TABLES.courseIntentDraftRevisions;
+    this.#tables = new Tables(storage, [
+      "CREATE TABLE IF NOT EXISTS " + q + " ("
+        + "seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, offering_id TEXT NOT NULL,"
+        + "owner_id TEXT NOT NULL, request_key TEXT NOT NULL,"
+        + "UNIQUE(offering_id, owner_id, request_key))",
+      "CREATE INDEX IF NOT EXISTS " + q + "_owner ON " + q + " (offering_id, owner_id, seq)",
+      "CREATE TABLE IF NOT EXISTS " + v + " ("
+        + "draft_id TEXT NOT NULL, revision INTEGER NOT NULL, record_json TEXT NOT NULL,"
+        + "PRIMARY KEY(draft_id, revision))",
+      "CREATE TRIGGER IF NOT EXISTS " + q + "_immutable_update BEFORE UPDATE ON " + q
+        + " BEGIN SELECT RAISE(ABORT, 'course intent request is immutable'); END",
+      "CREATE TRIGGER IF NOT EXISTS " + q + "_immutable_delete BEFORE DELETE ON " + q
+        + " BEGIN SELECT RAISE(ABORT, 'course intent request is immutable'); END",
+      "CREATE TRIGGER IF NOT EXISTS " + v + "_immutable_update BEFORE UPDATE ON " + v
+        + " BEGIN SELECT RAISE(ABORT, 'course intent revision is immutable'); END",
+      "CREATE TRIGGER IF NOT EXISTS " + v + "_immutable_delete BEFORE DELETE ON " + v
+        + " BEGIN SELECT RAISE(ABORT, 'course intent revision is immutable'); END",
+    ], []);
+  }
+
+  #latest(sql: DistrictSqlStorage["sql"], draftId: string): IntentDraft | undefined {
+    const [row] = sql.exec(
+      "SELECT record_json FROM " + DISTRICT_TABLES.courseIntentDraftRevisions
+        + " WHERE draft_id = ? ORDER BY revision DESC LIMIT 1", draftId,
+    ).toArray();
+    return row === undefined ? undefined : parseStored(
+      CourseIntentDraftRecord, row.record_json, "a private curriculum draft revision",
+    );
+  }
+
+  async claim(input: IntentDraft): Promise<{ created: boolean; draft: IntentDraft }> {
+    const pending = validateDraftClaim(input);
+    const q = DISTRICT_TABLES.courseIntentDraftRequests;
+    const v = DISTRICT_TABLES.courseIntentDraftRevisions;
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(
+        "SELECT id FROM " + q + " WHERE offering_id = ? AND owner_id = ? AND request_key = ?",
+        pending.offeringId, pending.ownerPrincipalId, pending.requestKey,
+      ).toArray();
+      if (row !== undefined) {
+        if (typeof row.id !== "string") throw new DistrictStoreCorruptionError("draft request identifier is invalid");
+        const current = this.#latest(sql, row.id);
+        if (current === undefined) throw new DistrictStoreCorruptionError("draft request has no revision");
+        return { created: false, draft: compareDraftRequest(current, pending) };
+      }
+      sql.exec(
+        "INSERT INTO " + q + " (id, offering_id, owner_id, request_key) VALUES (?, ?, ?, ?)",
+        pending.id, pending.offeringId, pending.ownerPrincipalId, pending.requestKey,
+      );
+      sql.exec(
+        "INSERT INTO " + v + " (draft_id, revision, record_json) VALUES (?, ?, ?)",
+        pending.id, 1, JSON.stringify(pending),
+      );
+      return { created: true, draft: pending };
+    });
+  }
+
+  async transition(input: IntentDraft, expectedRevision: number): Promise<IntentDraft> {
+    const v = DISTRICT_TABLES.courseIntentDraftRevisions;
+    return this.#tables.transaction((sql) => {
+      const current = this.#latest(sql, input.id);
+      if (current === undefined) throw new EducateOsError("not-found", "The curriculum draft was not found.");
+      const next = validateDraftTransition(current, input, expectedRevision);
+      sql.exec(
+        "INSERT INTO " + v + " (draft_id, revision, record_json) VALUES (?, ?, ?)",
+        next.id, next.revision, JSON.stringify(next),
+      );
+      return next;
+    });
+  }
+
+  async get(offeringId: string, ownerPrincipalId: string, draftId: string): Promise<IntentDraft | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [found] = sql.exec(
+        "SELECT id FROM " + DISTRICT_TABLES.courseIntentDraftRequests
+          + " WHERE id = ? AND offering_id = ? AND owner_id = ?",
+        draftId, offeringId, ownerPrincipalId,
+      ).toArray();
+      return found === undefined ? undefined : this.#latest(sql, draftId);
+    });
+  }
+
+  async list(offeringId: string, ownerPrincipalId: string, limit = 25): Promise<IntentDraft[]> {
+    return this.#tables.transaction((sql) => {
+      const rows = sql.exec(
+        "SELECT id FROM " + DISTRICT_TABLES.courseIntentDraftRequests
+          + " WHERE offering_id = ? AND owner_id = ? ORDER BY seq DESC LIMIT ?",
+        offeringId, ownerPrincipalId, Math.max(1, Math.min(25, limit)),
+      ).toArray();
+      return rows.map((row) => {
+        if (typeof row.id !== "string") throw new DistrictStoreCorruptionError("draft ID is invalid");
+        const current = this.#latest(sql, row.id);
+        if (current === undefined) throw new DistrictStoreCorruptionError("private curriculum draft has no revision");
+        return current;
+      });
+    });
+  }
+
+  async history(offeringId: string, ownerPrincipalId: string, draftId: string): Promise<IntentDraft[]> {
+    return this.#tables.transaction((sql) => {
+      const [found] = sql.exec(
+        "SELECT id FROM " + DISTRICT_TABLES.courseIntentDraftRequests
+          + " WHERE id = ? AND offering_id = ? AND owner_id = ?",
+        draftId, offeringId, ownerPrincipalId,
+      ).toArray();
+      if (found === undefined) return [];
+      return sql.exec(
+        "SELECT record_json FROM " + DISTRICT_TABLES.courseIntentDraftRevisions
+          + " WHERE draft_id = ? ORDER BY revision", draftId,
+      ).toArray().map((row) => parseStored(
+        CourseIntentDraftRecord, row.record_json, "a private curriculum draft revision",
+      ));
+    });
   }
 }
