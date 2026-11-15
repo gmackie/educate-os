@@ -24,11 +24,11 @@ import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educa
 import { LearningArtifacts } from "@educateos/learning-artifacts";
 import { AssessmentService, GradebookService, AssignmentId } from "@educateos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@educateos/content-studio";
-import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@educateos/curriculum";
+import { contentStudioReleases, CourseContentService, CurriculumService, PedagogicalIntentV0, type AiHelpPolicySource, type OfferingScope } from "@educateos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
 import type { ReleaseTrust } from "@educateos/releases";
 import { approveStandards, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
-import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
+import { AiLedger, ledgerGovernor, usdNanoFromCents, usdNanoValue, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
 import { createDraftRevision, DesiredState, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
 import { integrationHealth, oneroster } from "@educateos/integrations";
 import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type ArtifactsPlan } from "@educateos/artifacts-git";
@@ -66,6 +66,7 @@ import { installListing, packBody, packTemplates } from "./marketplace.ts";
 import type { PublisherTrust } from "@educateos/ocs";
 import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
 import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
+import type { CourseIntentProvider } from "./course-intent.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -134,6 +135,8 @@ export interface DistrictAppOptions {
   cloudflareAccount?: CloudflareAccountFacts;
   /** The district gateway's model catalog. */
   modelCatalog?: readonly GovernedModel[];
+  /** Optional district-owned AI intent generator; no provider means feature disabled. */
+  courseIntentProvider?: CourseIntentProvider;
   /** The AI-help levels above each offering. Defaults to `full` help allowed district-wide. */
   aiHelp?: AiHelpPolicySource;
   /** Verifies framework releases before the catalog mirror installs them. Defaults to the catalog's own seed releases only. */
@@ -432,6 +435,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       effectivePolicy: (scope) => policySource.effectivePolicy(scope),
     },
   });
+  const courseIntentGovernor = ledgerGovernor(ledger);
   const evaluators = options.evaluators ?? builtinRegistry();
   const assessmentRuns = new AssessmentRuns({ runs: stores.assessmentRuns, rubrics: stores.rubrics, registry: evaluators, now });
   const projectsGit = options.projects === undefined
@@ -1009,6 +1013,100 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           ...(installed === undefined ? {} : { installed: { version: installed.version, done: installed.completedAt !== undefined } }),
         };
       });
+    },
+    "teacher.courseIntentAvailability": async (ctx, { params }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can view its AI adaptation tools.");
+      return { available: options.courseIntentProvider !== undefined };
+    },
+    "teacher.suggestCourseIntent": async (ctx, { params, body }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can request AI lesson suggestions.");
+      const provider = options.courseIntentProvider;
+      if (provider === undefined) {
+        throw new EducateOsError("unavailable", "The district has not configured an AI curriculum provider.");
+      }
+      // No caller-selected model or freeform prompt is accepted by this route.
+      // The price ceiling is a second cap beyond the district's funding and model policy.
+      if (usdNanoValue(provider.estimatedMaxUsdNano) > usdNanoValue(usdNanoFromCents(10))) {
+        throw new EducateOsError("unavailable", "The district's AI curriculum provider exceeds the request ceiling.");
+      }
+      const plan = await planLibraryInstall(
+        stores.courseLibrary.library(libraryPolicies(courseTrust(), now)),
+        body.packageId, body.version,
+      );
+      const unit = plan.units.find((candidate) => candidate.key === body.unitKey);
+      if (unit === undefined) throw new EducateOsError("not-found", "That unit is not part of the verified course.");
+      const indexed = (await stores.courseLibrary.listCourses()).find(
+        (course) => course.packageId === body.packageId && course.version === body.version,
+      );
+      if (indexed === undefined) throw new EducateOsError("not-found", "This course is not in the district library.");
+      const source = {
+        packageId: body.packageId, version: body.version, digest: indexed.digest,
+        unitKey: body.unitKey,
+      };
+      const requestId = "course-intent:" + crypto.randomUUID();
+      const decision = await courseIntentGovernor.beforeRequest({
+        requestId,
+        principal: { principalId: ctx.principal.principalId, districtId },
+        workspace: { kind: "course", offeringId: params.offeringId },
+        model: provider.model,
+        estimatedMaxUsdNano: provider.estimatedMaxUsdNano,
+      });
+      if (decision.effect === "deny") throw new EducateOsError(decision.error.code, decision.error.message);
+      let settled = false;
+      try {
+        const generated = await provider.generate({
+          source,
+          title: unit.title.slice(0, 200),
+          summary: (unit.summary ?? "").slice(0, 1000),
+          learningStandards: unit.standards.map((standard) => ({
+            frameworkKey: standard.frameworkKey, competencyUri: standard.competencyUri,
+          })).slice(0, 20),
+          goal: body.goal,
+          maxOutputTokens: 750,
+        });
+        if (usdNanoValue(generated.actualUsdNano) > usdNanoValue(provider.estimatedMaxUsdNano)) {
+          throw new EducateOsError("unavailable", "The AI provider returned a cost above its declared maximum.");
+        }
+        await courseIntentGovernor.afterResponse({
+          status: "completed", requestId, usage: generated.usage,
+          actualUsdNano: generated.actualUsdNano,
+        });
+        settled = true;
+        const parsed = PedagogicalIntentV0.safeParse(generated.intent);
+        if (!parsed.success || parsed.data.origin !== "machine-suggestion"
+            || parsed.data.source.packageId !== source.packageId
+            || parsed.data.source.version !== source.version
+            || parsed.data.source.digest !== source.digest
+            || parsed.data.source.unitKey !== source.unitKey) {
+          throw new EducateOsError("validation-failed", "The AI suggestion did not match its source or validation contract.");
+        }
+        return {
+          source,
+          goal: body.goal,
+          model: provider.model,
+          actualUsdNano: generated.actualUsdNano,
+          intent: parsed.data,
+          draftOnly: true as const,
+          warnings: [
+            "This is a machine suggestion, not an approved lesson or evidence of effectiveness.",
+            "No classroom, assessment or publisher material was changed. Human review is required.",
+          ],
+        };
+      } catch (error) {
+        if (!settled) {
+          // The provider may have charged even when its result was lost or invalid.
+          // Preserve the maximum reservation as unknown liability, never assume $0.
+          await courseIntentGovernor.afterResponse({
+            status: "completed", requestId, attempts: [{ attemptIndex: 0, state: "unknown" }],
+          });
+        }
+        if (error instanceof EducateOsError && error.code === "validation-failed") throw error;
+        throw new EducateOsError("unavailable", "The AI suggestion could not be completed.");
+      }
     },
     "teacher.previewCourseInstall": async (ctx, { params, body }) => {
       const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
@@ -1846,7 +1944,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     districtId,
     engine,
     ledger,
-    aiGovernor: ledgerGovernor(ledger),
+    aiGovernor: courseIntentGovernor,
     guardDirectory: guardDirectoryOver(async () => {
       const [directory, workspaces, workshopUserLinks] = await Promise.all([stores.directory.load(), stores.workspaces.load(), stores.workshopUserLinks.list()]);
       return { directory: directory.snapshot, workspaces: workspaces.state.workspaces, workshopUserLinks };

@@ -52,6 +52,10 @@ declare namespace Cloudflare {
      * district with no Workshop that serves `/ai` itself. Unset, the page has no link.
      */
     AI_DEMO_URL?: string;
+    /** Optional internal service binding for bounded teacher curriculum suggestions. */
+    COURSE_INTENT_INFERENCE?: Fetcher;
+    /** Trusted deploy-time JSON: model reference and maximum nanodollar estimate. */
+    COURSE_INTENT_MODEL?: string;
     /**
      * A read-only Cloudflare API token (Account Analytics Read, Access: Audit Logs Read, Workers
      * Scripts Read) for `/api/ops/analytics` (SCHO-263), a Worker secret. Unset, that route answers
