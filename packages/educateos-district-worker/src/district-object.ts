@@ -378,7 +378,22 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     try {
       log.info("a scheduled district job ran", { event: "district.cron.notifications", ...await app.communication.runNotificationJob() });
     } finally {
-      await this.#runRosterSync(app);
+      try {
+        await this.#runRosterSync(app);
+      } finally {
+        await this.#runHomeLearningPurge(app);
+      }
+    }
+  }
+
+  /** The hourly home-learning retention purge (ADR-0016): logged, never thrown. Counts only. */
+  async #runHomeLearningPurge(app: DistrictApp): Promise<void> {
+    const log = logger.with({ districtId: app.districtId });
+    try {
+      const outcome = await app.homeLearning.purgeExpired();
+      if (outcome.ran) log.info("a scheduled district job ran", { event: "district.cron.home-learning.purge", deleted: outcome.deleted });
+    } catch (error) {
+      log.error("the home-learning purge failed", { event: "district.cron.home-learning.purge.failed", error });
     }
   }
 

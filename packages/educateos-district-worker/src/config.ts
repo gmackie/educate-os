@@ -130,7 +130,11 @@ export const DistrictWorkerConfig = z.strictObject({
    * routes answer `not-found`. A community also sets `authority: "local"`, and its Access policy
    * must admit the people who may sign up.
    */
-  homeLearning: z.strictObject({ signup: z.enum(["open", "approval", "invite-only"]) }).optional(),
+  homeLearning: z.strictObject({
+    signup: z.enum(["open", "approval", "invite-only"]),
+    /** Days a practice session is kept; the hourly job deletes older ones. Unset keeps them until the family deletes them. */
+    retentionDays: z.int().min(30).max(3650).optional(),
+  }).optional(),
   /**
    * The organization MCP endpoint (SCHO-174). Absent (the default), `/mcp` and its metadata are
    * 404. Turn it on only once the district's authorization server issues tokens for it (NATH-6)
