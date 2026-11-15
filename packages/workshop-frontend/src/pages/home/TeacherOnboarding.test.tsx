@@ -109,7 +109,7 @@ describe("individual teacher onboarding", () => {
   it("offers every source path and wires files and connections without sending the brief", async () => {
     await render();
     await prepare();
-    for (const heading of ["Lesson documents and slides", "Google Drive and Classroom", "LMS course exports"]) {
+    for (const heading of ["Lesson documents and slides", "Spreadsheets and question banks", "Google Drive and Classroom", "LMS course exports"]) {
       expect(container.textContent).toContain(heading);
     }
     expect(container.textContent).toContain("Connect linked Drive files separately");

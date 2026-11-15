@@ -55,6 +55,14 @@ describe("parseCsv (RFC 4180)", () => {
   it("stops at the row cap instead of reading the whole file", () => {
     expect(parse("h\r\n1\r\n2\r\n", 2).ok).toBe(true);
     const result = parse("h\r\n1\r\n2\r\n3\r\n4\r\n", 2);
-    expect(!result.ok && result.error).toEqual({ row: 4, line: 4, message: "has more than 2 data rows" });
+    expect(!result.ok && result.error).toEqual({ reason: "too-many-rows", row: 4, line: 4, message: "has more than 2 data rows" });
   });
+});
+
+
+it("caps table width before accumulating more fields and meters parsing", () => {
+  expect(oneroster.parseCsv("a,b,c", { maxRows: 10, maxColumns: 2 })).toMatchObject({ ok: false, error: { reason: "too-many-columns" } });
+  expect(oneroster.parseCsv('a,"b,c"', { maxRows: 10, maxColumns: 2 }).ok).toBe(true);
+  let remaining = 3;
+  expect(() => oneroster.parseCsv("header,more", { maxRows: 10, spend: n => { remaining -= n; if (remaining < 0) throw new Error("budget"); } })).toThrow("budget");
 });

@@ -13,11 +13,12 @@ import { DEFAULT_EXTRACTION_LIMITS, type ExtractionLimits } from "./limits.ts";
 import { extractPdfText } from "./pdf.ts";
 import { extractPptxText } from "./pptx.ts";
 import { extractCartridgeText } from "./cartridge.ts";
+import { extractCsvText, extractXlsxText } from "./spreadsheet.ts";
 
 export { DEFAULT_EXTRACTION_LIMITS, type ExtractionLimits } from "./limits.ts";
 
 /** Documents and read-only course packages that can supply teaching source text. */
-export type DocumentContentType = ExtractableContentType | "pptx" | "cartridge";
+export type DocumentContentType = ExtractableContentType | "pptx" | "cartridge" | "csv" | "xlsx";
 
 /**
  * Extracts document text or a read-only course preview within `limits`. Never throws for anything about the
@@ -31,7 +32,7 @@ export async function extractDocumentText(
   if (bytes.byteLength > limits.maxBytes) return { status: "not-extractable", reason: "too-large" };
   const budget = new StepBudget(limits.maxSteps);
   try {
-    const extract = { pdf: extractPdfText, docx: extractDocxText, pptx: extractPptxText, cartridge: extractCartridgeText }[contentType];
+    const extract = { pdf: extractPdfText, docx: extractDocxText, pptx: extractPptxText, cartridge: extractCartridgeText, csv: extractCsvText, xlsx: extractXlsxText }[contentType];
     const { text, truncated } = await extract(bytes, limits, budget);
     if (text === "") return { status: "not-extractable", reason: "no-text" };
     return { status: "extracted", text, truncated };

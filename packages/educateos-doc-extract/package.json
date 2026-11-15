@@ -2,15 +2,17 @@
   "name": "@educateos/doc-extract",
   "version": "0.1.0",
   "private": true,
-  "description": "EducateOS bounded document text extraction for Content Studio review (SCHO-79): DOCX, PPTX and read-only Common Cartridge previews through the cartridge's bounded unzip and DTD-free XML parser, and PDF text from uncompressed or Flate-compressed content streams only, under caps on size, pages and work. A pure library: no network, no storage. Not a deployable Worker.",
+  "description": "EducateOS bounded document text extraction for Content Studio review (SCHO-79): DOCX, PPTX, CSV, XLSX and read-only Common Cartridge previews through the cartridge's bounded unzip and DTD-free XML parser, and PDF text from uncompressed or Flate-compressed content streams only, under caps on size, pages and work. A pure library: no network, no storage. Not a deployable Worker.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./lesson-source": "./src/lesson-source.ts"
   },
   "dependencies": {
+    "@educateos/assessment-ci": "workspace:*",
     "@educateos/cartridge": "workspace:*",
-    "@educateos/content-studio": "workspace:*"
+    "@educateos/content-studio": "workspace:*",
+    "@educateos/integrations": "workspace:*"
   },
   "devDependencies": {
     "@educateos/academics": "workspace:*",
