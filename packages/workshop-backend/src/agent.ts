@@ -4,6 +4,7 @@ import { applyCodeChange, codeChangeSerializedSize, MAX_CODE_CHANGE_SIZE, replac
   type FileChange } from '@gadgets/workshop-shared/code-change';
 import { PDF_MIME_TYPE, modelApiSupportsPdfAttachments } from './chat-attachment-pdf';
 import { canInlineChatAttachmentImage, decodeChatAttachmentText, isAllowedChatAttachmentImageMimeType } from './chat-attachment-validation';
+import { describeChatAttachmentDocument } from './chat-attachment-document';
 import { AgentCatalog, ObservationDescription } from '@gadgets/workshop-shared/gatekeeper';
 import { createWorkshopLogger, obsContext } from "./observability";
 import { createTracer } from "@gadgets/observability/tracing";
@@ -2327,6 +2328,10 @@ async function runAgentPass(
                     {type: "image", data: data.toBase64(), mimeType: attachment.mimeType},
                   ];
                 } else {
+                  let document = await describeChatAttachmentDocument(attachment, data, MAX_TOOL_RESULT_CHARS);
+                  if (document !== undefined) {
+                    return [{type: "text", text: `\n\n[Attached file${filename}${workspaceLocation}]\n${document}`}];
+                  }
                   // Model input support does not restrict workspace files. Never decode binary
                   // uploads lossily or send unsupported formats to a provider as image parts.
                   return [{

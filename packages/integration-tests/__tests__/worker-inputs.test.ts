@@ -20,6 +20,10 @@ it.each([
   "packages/workshop-backend/src/server.ts",
   "packages/workshop-backend/wrangler.jsonc",
   "packages/workshop-shared/src/api.ts",
+  "packages/educateos-doc-extract/src/pdf.ts",
+  "packages/educateos-cartridge/src/xml.ts",
+  "packages/educateos-content-studio/src/extraction.ts",
+  "packages/educateos-zip/src/zip.ts",
   // Inlined into the blueprint archives the Worker ships.
   "packages/bundled-blueprints/libraries/ui/client.ts",
   "packages/integration-tests/fixtures/gatekeeper-test/wrangler.jsonc",
