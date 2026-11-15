@@ -19,7 +19,7 @@ const ProviderReply = z.strictObject({
   actualUsdNano: z.string().regex(/^(0|[1-9][0-9]{0,29})$/),
 });
 
-export function boundCourseIntentProvider(binding: Pick<Fetcher, "fetch">, settingsJson: string | undefined): CourseIntentProvider {
+export function boundCourseIntentProvider(binding: { fetch(request: Request): Promise<Response> }, settingsJson: string | undefined): CourseIntentProvider {
   if (settingsJson === undefined || settingsJson.trim() === "") {
     throw new Error("COURSE_INTENT_MODEL must be provided with the course inference service binding.");
   }
