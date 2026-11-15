@@ -1,3 +1,6 @@
+import { plannerExplanation, type PlannerAiOptions } from "./planner-ai.ts";
+import { advancePlannerCoach, plannerLesson } from "./planner-coaching.ts";
+import { assertPlannerAssessment, plannerKnowledge } from "./planner-evidence.ts";
 import { importWorkshopAssessmentBlueprint, verifyWorkshopAssessmentBlueprint, type WorkshopAssessmentReleaseSource } from "@educateos/assessment-sdk";
 import { GadgetAssessmentSubmission, GadgetCheckpointSubmission, checkpointContent, GADGET_CHECKPOINT_MEDIA_TYPE } from "./gadget-assessment.ts";
 import {
@@ -148,6 +151,8 @@ export interface DistrictAppOptions {
   modelCatalog?: readonly GovernedModel[];
   /** The AI-help levels above each offering. Defaults to `full` help allowed district-wide. */
   aiHelp?: AiHelpPolicySource;
+  /** Optional guarded planner gateway adapter. Absent in production; curriculum remains available. */
+  plannerAi?: PlannerAiOptions;
   /** Verifies framework releases before the catalog mirror installs them. Defaults to the catalog's own seed releases only. */
   verifyCatalogRelease?: VerifyRelease;
   /**
@@ -760,18 +765,20 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       }
     }
 
-    async plannerCreate(offeringId: OfferingId, studentId: PrincipalId, goal: string, skills: PlannerPlan["skills"], teacher: boolean): Promise<PlannerPlan> {
+    async plannerCreate(offeringId: OfferingId, studentId: PrincipalId, goal: string, skills: PlannerPlan["skills"], teacher: boolean, focus?: string): Promise<PlannerPlan> {
       const plans = await this.plannerAccess(offeringId, teacher, true);
       this.plannerStudent(offeringId, studentId);
       const offering = this.snapshot.offerings.find((o) => o.id === offeringId)!;
       const course = this.snapshot.courses.find((c) => c.id === offering.courseId);
-      if (course === undefined || educationLevelsOf(course.gradeBand)?.has("06") !== true) throw new EducateOsError("conflict", "This MVP offers grade 6 learning opportunities. Choose a class that includes grade 6.");
+      const levels = course === undefined ? undefined : educationLevelsOf(course.gradeBand);
+      if (levels === undefined || (!["06", "07"].some((l) => levels.has(l)))) throw new EducateOsError("conflict", "Reviewed coaching lessons currently cover grades 6 and 7. No alignment is inferred for other grades.");
+      if (focus && !levels.has(focus.startsWith("W.") ? focus.split(".")[1]!.padStart(2, "0") : focus[0]!.padStart(2, "0"))) throw new EducateOsError("conflict", "Choose a focus within this class grade band.");
       const createdAt = now().toISOString();
       const plan: PlannerPlan = {
         id: crypto.randomUUID(), revision: 1, offeringId, studentId, goal, skills,
         source: teacher ? "teacher" : "student", authorId: this.principal.principalId,
         authorName: this.snapshot.principals.find((p) => p.id === this.principal.principalId)!.displayName,
-        createdAt, opportunities: await plannerOpportunities(catalog, goal, plans.filter((p) => p.studentId === studentId), createdAt),
+        createdAt, opportunities: await plannerOpportunities(catalog, goal, plans.filter((p) => p.studentId === studentId), createdAt, levels, focus),
       };
       await stores.planner.save(plan, 0);
       return plan;
@@ -1017,13 +1024,47 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   }
 
   const handlers: Handlers = {
+    "student.plannerKnowledge": async (ctx, { params }) => plannerKnowledge(await ctx.plannerAccess(params.offeringId, false), params.offeringId, ctx.principal.principalId),
+    "student.plannerCoach": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (!plan || !opportunity) throw new EducateOsError("not-found", "This opportunity was not found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      if (opportunity.decision !== "accepted" || opportunity.challenge) throw new EducateOsError("conflict", "Accept this opportunity first. Shared challenge evidence cannot be changed.");
+      await ctx.plannerApproved(opportunity);
+      opportunity.coaching ??= { lesson: plannerLesson(opportunity.code), step: 0, mode: "instruction", hints: 0, events: [], source: "curriculum" };
+      advancePlannerCoach(opportunity.coaching, body.action, now().toISOString());
+      if (body.action === "show") {
+        const learnerOfferings = new Set(ctx.snapshot.enrollments.filter((e) => e.principalId === plan.studentId && e.role === "student" && e.status === "active").map((e) => e.offeringId));
+        const learnerCourses = ctx.snapshot.offerings.filter((o) => learnerOfferings.has(o.id)).map((o) => ctx.snapshot.courses.find((c) => c.id === o.courseId));
+        const bands = learnerCourses.map((c) => c && educationLevelsOf(c.gradeBand));
+        const levels = bands.length > 0 && bands.every((b) => b !== undefined) ? new Set(bands.flatMap((b) => [...b!])) : undefined;
+        opportunity.coaching.aiStatus = await plannerExplanation({ options: options.plannerAi, policy: options.aiHelp, governor: ledgerGovernor(ledger), scope: ctx.offeringScope(params.offeringId), levels, plan, opportunity, allowAi: body.allowAi });
+      }
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return plan;
+    },
+    "student.plannerChallenge": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (!plan || !opportunity) throw new EducateOsError("not-found", "This opportunity was not found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      const start = opportunity.coaching?.events.find((e) => e.action === "try");
+      if (opportunity.decision !== "accepted" || opportunity.response === undefined || !start || opportunity.challenge) throw new EducateOsError("conflict", "Share your project response and choose Try myself first. Each challenge is shared once.");
+      await ctx.plannerApproved(opportunity);
+      opportunity.challenge = { text: body.text, reflection: body.reflection, assistance: body.assistance, startedAt: start.at, sharedAt: now().toISOString(), source: "student-practice", helpEvents: opportunity.coaching!.events.filter((e) => e.action === "hint" || e.action === "show").length };
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return plan;
+    },
     "student.planner": (ctx, { params }) => ctx.plannerAccess(params.offeringId, false),
-    "student.planGoal": (ctx, { params, body }) => ctx.plannerCreate(params.offeringId, ctx.principal.principalId, body.goal, body.skills, false),
+    "student.planGoal": (ctx, { params, body }) => ctx.plannerCreate(params.offeringId, ctx.principal.principalId, body.goal, body.skills, false, body.focus),
     "teacher.planner": async (ctx, { params }) => (await ctx.plannerAccess(params.offeringId, true)).flatMap((p) => {
       const view = plannerTeacherView(p);
       return view === undefined ? [] : [view];
     }),
-    "teacher.plannerInvite": async (ctx, { params, body }) => plannerTeacherView(await ctx.plannerCreate(params.offeringId, body.studentId, body.goal, body.skills, true))!,
+    "teacher.plannerInvite": async (ctx, { params, body }) => plannerTeacherView(await ctx.plannerCreate(params.offeringId, body.studentId, body.goal, body.skills, true, body.focus))!,
     "student.plannerDecision": async (ctx, { params, body }) => {
       const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
       const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
@@ -1054,9 +1095,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (plan === undefined || opportunity?.response === undefined) throw new EducateOsError("not-found", "No shared evidence was found.");
       if (plan.revision !== body.revision) throw plannerConflict();
       assertPlannerReview(body);
+      const prior = (await ctx.plannerAccess(params.offeringId, true)).filter((p) => p.studentId === plan.studentId);
+      assertPlannerAssessment(body, opportunity, prior, now().toISOString());
       if (body.decision === "recommend") {
         await ctx.plannerApproved(opportunity);
-        if (opportunity.response.assistance !== "independent") throw new EducateOsError("conflict", "Assisted work cannot support a mastery recommendation. Request a fresh independent response.");
+
       }
       const { revision: _revision, ...review } = body;
       opportunity.reviews.push({ ...review, by: ctx.principal.principalId, at: now().toISOString() });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Checkbox, InputArea, Surface, Text } from "@cloudflare/kumo";
+import { Button, Checkbox, InputArea, Select, Surface, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
 import { messageFor, useApi, useQuery } from "../api.tsx";
 import { ErrorState } from "../ErrorState.tsx";
@@ -15,33 +15,38 @@ export const StudentPlanner = ({ offeringId }: { offeringId: string }) => {
   const api = useApi();
   const announce = useAnnounce();
   const [plans, reload] = useQuery(`planner:${offeringId}`, (client) => client.call("student.planner", { params: { offeringId } }));
+  const [knowledge, reloadKnowledge] = useQuery(`planner-knowledge:${offeringId}`, (client) => client.call("student.plannerKnowledge", { params: { offeringId } }));
+  const changed = () => { reload(); reloadKnowledge(); };
   const [goal, setGoal] = useState("");
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [focus, setFocus] = useState("interest");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const propose = async () => {
     setBusy(true);
     setError("");
     try {
-      await api.call("student.planGoal", { params: { offeringId }, body: { goal, skills } });
+      await api.call("student.planGoal", { params: { offeringId }, body: { goal, skills, ...(focus === "interest" ? {} : { focus: focus as "6.RP.A.3b" | "W.6.1" | "7.RP.A.1" | "W.7.1" }) } });
       setGoal("");
-      reload();
+      changed();
       announce("Your private learning plan is saved.");
     } catch (caught) { setError(messageFor(caught)); }
     finally { setBusy(false); }
   };
   return <section aria-label="Personalized Learning Planner" className="flex flex-col gap-4">
     <Text as="h2" variant="heading">Personalized Learning Planner</Text>
-    <Text>What do you want to build or explore? Grade 6 opportunities use standards your district approved. You can accept or skip them. Required assignments stay in Activities.</Text>
-    <Text variant="secondary">Your goal stays private. Only a response you choose to share goes to your class teachers. This planner never reads your private chats or calls a model.</Text>
+    <Text>What do you want to build or explore? Reviewed grade 6–7 coaching opportunities use standards your district approved. You can accept or skip them. Required assignments stay in Activities.</Text>
+    <Text variant="secondary">Your goal stays private. Only a response you choose to share goes to your class teachers. This planner never reads private chats. AI explanations are optional and require district permission; curriculum lessons work without AI.</Text>
     <form onSubmit={(event) => { event.preventDefault(); void propose(); }} className="flex flex-col gap-3">
       <InputArea label="What do you want to build or explore?" placeholder="Build a Roblox Pizza Tycoon, compare cookie costs, or explore a pet project" value={goal} onValueChange={setGoal} maxLength={1000} required />
+      <Select label="Opportunity focus" value={focus} items={{ interest: "Find a natural connection", "6.RP.A.3b": "Grade 6 · unit rates", "W.6.1": "Grade 6 · arguments", "7.RP.A.1": "Grade 7 · fraction rates", "W.7.1": "Grade 7 · arguments and opposing claims" }} onValueChange={(v) => v && setFocus(v)} />
       <fieldset className="flex flex-wrap gap-3"><legend>Optional skill practice (no scoring)</legend>
         {SKILLS.map((skill) => <Checkbox key={skill} label={skill} checked={skills.includes(skill)} onCheckedChange={(checked) => setSkills(checked ? [...skills, skill] : skills.filter((s) => s !== skill))} />)}
       </fieldset>
       <Button type="submit" variant="primary" loading={busy} disabled={goal.trim() === ""}>Find optional opportunities</Button>
       {error && <p role="alert" className="text-kumo-danger">{error}</p>}
     </form>
+    {knowledge.status === "ready" && knowledge.data.competencies.length > 0 && <details><summary>Your reviewed knowledge</summary><Text>Practice and reviewed evidence are separate. These are advisory records for this class, not official grades.</Text><ul>{knowledge.data.competencies.map((c) => <li key={`${c.competencyUri}:${c.releaseDigest}`}>{c.code}: {c.status}</li>)}</ul></details>}
     {plans.status === "loading" && <LoadingSkeleton label="Loading your planner" />}
     {plans.status === "error" && <ErrorState error={plans.error} onRetry={reload} title="We couldn't load your planner" />}
     {plans.status === "ready" && plans.data.map((plan) => <Surface key={plan.id} className="flex flex-col gap-3 rounded-lg border border-kumo-hairline p-4">
@@ -49,7 +54,7 @@ export const StudentPlanner = ({ offeringId }: { offeringId: string }) => {
       <Text variant="secondary">{plan.source === "student" ? "Your private goal" : `Optional teacher invitation from ${plan.authorName} · not a required assignment`}</Text>
       {plan.skills.length > 0 && <Text>Optional skill practice: {plan.skills.join(", ")}</Text>}
       {plan.opportunities.length === 0 && <Text>No verified, approved match was found. Try mentioning a concrete rate, cost, sport or argument, or ask your teacher. No mastery has been inferred.</Text>}
-      {plan.opportunities.map((opportunity) => <PlannerOpportunityCard key={opportunity.id} plan={plan} opportunity={opportunity} onChanged={reload} />)}
+      {plan.opportunities.map((opportunity) => <PlannerOpportunityCard key={opportunity.id} plan={plan} opportunity={opportunity} onChanged={changed} />)}
     </Surface>)}
   </section>;
 };

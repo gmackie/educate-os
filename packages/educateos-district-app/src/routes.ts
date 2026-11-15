@@ -1,3 +1,5 @@
+import { PlannerCoachAction } from "./planner-coaching.ts";
+import { PlannerKnowledge } from "./planner-evidence.ts";
 import { WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
 import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 import { PlannerPlan, PlannerTeacherView, PlannerGoalInput, PlannerReviewInput, PlannerAssistance } from "./planner.ts";
@@ -1284,6 +1286,9 @@ function route<const S extends RouteSpec>(spec: S): S {
  * typed client calls.
  */
 export const ROUTES = {
+  "student.plannerKnowledge": route({ method: "GET", path: "/api/student/offerings/:offeringId/planner/knowledge", surface: "student", params: params({ offeringId: OfferingId }), response: PlannerKnowledge }),
+  "student.plannerCoach": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/coach", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), action: PlannerCoachAction, allowAi: z.boolean().default(false) }), response: PlannerPlan }),
+  "student.plannerChallenge": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/challenge", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), text: z.string().trim().min(1).max(10000), reflection: z.string().trim().min(1).max(2000), assistance: PlannerAssistance }), response: PlannerPlan }),
   "student.planner": route({ method: "GET", path: "/api/student/offerings/:offeringId/planner", surface: "student", params: params({ offeringId: OfferingId }), response: z.array(PlannerPlan) }),
   "student.planGoal": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner", surface: "student", params: params({ offeringId: OfferingId }), body: PlannerGoalInput, response: PlannerPlan, status: 201 }),
   "student.plannerDecision": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/decision", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), decision: z.enum(["accepted", "skipped"]) }), response: PlannerPlan }),

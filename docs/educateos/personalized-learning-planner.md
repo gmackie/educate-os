@@ -1,5 +1,10 @@
 # Personalized Learning Planner MVP (SCHO-420)
 
+The next stacked milestone is documented in [Adaptive planner coaching](planner-adaptive-coaching.md)
+(SCHO-424): structured grade 6–7 coaching, independent practice, teacher assessment and advisory
+knowledge. The MVP description below records the original baseline; use the milestone guide for
+current assessment requirements and the production-unwired AI provider seam.
+
 This is an implemented, deterministic grade 6 planner in the district application. Open a student's
 class page and select **Personalized Learning Planner · optional grade 6 opportunities**. In Teacher
 Studio, open that class's **Learning planner** tab (`/teach/#/classes/<offering-id>/planner`). The class's

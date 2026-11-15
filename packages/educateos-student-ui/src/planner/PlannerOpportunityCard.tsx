@@ -1,3 +1,4 @@
+import { PlannerCoach } from "./PlannerCoach.tsx";
 import { useState } from "react";
 import { Button, InputArea, Radio, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
@@ -37,7 +38,7 @@ export const PlannerOpportunityCard = ({ plan, opportunity: o, onChanged }: { pl
     <details><summary>Approved standard and evidence contract</summary>
       <Text>{o.framework.title} · {o.framework.publisher ?? o.framework.creator} · {o.framework.version} · release {o.releaseVersion}</Text>
       <Text>{o.node.fullStatement}</Text>
-      <Text variant="secondary">Catalog record: {o.node.provenance.source}. {o.code === "6.RP.A.3b" ? "Component (b) of catalog standard 6.RP.A.3." : "Catalog standard W.6.1."} Local catalog identities are not canonical CASE GUIDs.</Text>
+      <Text variant="secondary">Catalog record: {o.node.provenance.source}. {o.code === "6.RP.A.3b" ? "Component (b) of catalog standard 6.RP.A.3." : `Catalog standard ${o.node.humanCodingScheme}.`} Local catalog identities are not canonical CASE GUIDs.</Text>
       <ul className="list-disc pl-5">{o.contract.criteria.map((c) => <li key={c.id}>{c.description}</li>)}</ul>
       <Text>Practice may use help with disclosure. A teacher must independently assess unassisted work before recommending mastery. Generated code or artifacts alone do not establish mastery.</Text>
     </details>
@@ -45,6 +46,7 @@ export const PlannerOpportunityCard = ({ plan, opportunity: o, onChanged }: { pl
       <Button disabled={busy || o.decision === "accepted"} onClick={() => void act("accepted")}>Accept</Button>
       <Button disabled={busy || o.decision === "skipped"} onClick={() => void act("skipped")}>Skip</Button>
     </div>}
+    {o.decision === "accepted" && <PlannerCoach plan={plan} opportunity={o} onChanged={onChanged} />}
     {o.decision === "accepted" && o.response === undefined && <form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void act("share"); }}>
       <InputArea label={`Your response for ${o.code}`} value={text} onValueChange={setText} maxLength={10000} required />
       <Radio.Group legend={`Help used for ${o.code}`} value={assistance} onValueChange={(value) => setAssistance(value as Assistance)}>

@@ -105,7 +105,7 @@ export const CoursePage = ({ offeringId }: { offeringId: string }) => {
       <CourseQuizzes offeringId={offeringId} />
       <CourseClassroomGrades offeringId={offeringId} />
       <CourseDiscussions offeringId={offeringId} />
-      <Button aria-expanded={plannerOpen} onClick={() => setPlannerOpen(!plannerOpen)}>Personalized Learning Planner · optional grade 6 opportunities</Button>
+      <Button aria-expanded={plannerOpen} onClick={() => setPlannerOpen(!plannerOpen)}>Personalized Learning Planner · optional coaching</Button>
       {plannerOpen && <StudentPlanner key={offeringId} offeringId={offeringId} />}
       <section aria-labelledby="activities" className="flex flex-col gap-3">
         <Text variant="heading" as="h2">
