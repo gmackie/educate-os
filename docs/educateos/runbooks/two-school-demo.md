@@ -181,6 +181,42 @@ audited. Administrators, district-scoped roles, unknown or ambiguous personas an
 are refused. A sign-in another principal already owns returns 409. Verify the result with
 `/api/me` in the presenter's session.
 
+### Harbor's administrator
+
+Harbor's administrator is Marisol Vega (`prn_hb-school-admin`, district admin). Her only sign-in is
+the deployment owner's own Access identity, linked when the district was first configured
+(`DISTRICT_CONFIG` directory seed). Present the administrator by signing in with that identity.
+Access emails the code to the owner, so an agent needs the owner to hand it the code each time.
+
+A test mailbox such as admin@agents.gmac.io **cannot** become Harbor's administrator, and should
+not:
+
+- Harbor is a roster district (`external:oneroster`), so the directory seed is read once and
+  ignored after that.
+- The operator's identity-link route refuses administrators and district-scoped roles.
+- An administrator is linked only by an existing administrator approving an identity request.
+
+Signing in as admin@agents.gmac.io answers `/api/me` with `unauthenticated` and an
+`unlinkedSignIn`. That is correct; don't work around it. Northfield is different: there,
+admin@agents.gmac.io is already linked to one of the co-op's administrators (Admin2).
+
+Role checks, with one Access cookie per role (owner as administrator, teacher@ as Kwame Asante,
+student@ as Nia Fontaine). Verified 2026-11-15:
+
+| Request | Administrator | Teacher | Student |
+|---|---|---|---|
+| `/api/me` | 200 Marisol Vega | 200 Kwame Asante | 200 Nia Fontaine |
+| `/api/admin/health`, `/api/admin/offerings` | 200 | 403 | 403 |
+| `/api/teacher/offerings` | 200 | 200 | 403 |
+| Marine Science (Kwame's) roster and gradebook | 200 | 200 | 403 |
+| Math 7 (Ruth Delaney's) roster | 200 | 404 | 403 |
+| `/api/student/offerings`, Marine Science activities | 403 | 403 | 200 |
+| Math 7 activities (Nia not enrolled) | 403 | 403 | 404 |
+
+The 404s are deliberate: a class a person doesn't teach or take is answered as if it didn't
+exist, so it can't be discovered. Rerun the table with `curl -s -o /dev/null -w '%{http_code}'`
+and each role's cookie. A changed cell is a regression.
+
 ## Demo sign-in credential recovery
 
 Agent-inbox's supported source of truth is app `agent-inbox`, stage `production`, secret
