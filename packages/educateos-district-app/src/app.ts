@@ -37,7 +37,7 @@ import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, fileResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type FileDownload, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
+import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type FileDownload, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface, type WithCookie } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
@@ -46,6 +46,8 @@ import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCour
 import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
+import { familyAdults, HomeLearningService, type ChildSession } from "@educateos/home-learning";
+import { childSessionToken, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type Announcement, type MailSender } from "./communication/index.ts";
@@ -204,6 +206,11 @@ export interface DistrictAppOptions {
    * hands the link over.
    */
   guardianInvitationPage?: string;
+  /**
+   * Home learning for families (ADR-0016), as a community installation offers it, with how it
+   * admits newcomers. Without it the family and learner routes answer `not-found`.
+   */
+  homeLearning?: HomeLearningOptions;
 
   // Communication (SCHO-189)
   /** Where notification and digest email goes, through a provider in the district's own account. Without it nothing is emailed. */
@@ -351,7 +358,7 @@ export interface DistrictApp {
 export const DEFAULT_AUTHORITY = ONEROSTER_AUTHORITY;
 
 /** The routes a verified sign-in reaches before it is anyone's principal (ADR-0012). */
-type OnboardingRouteName = "onboarding.previewGuardianInvitation" | "onboarding.redeemGuardianInvitation";
+type OnboardingRouteName = "onboarding.previewGuardianInvitation" | "onboarding.redeemGuardianInvitation" | "onboarding.community" | "onboarding.joinCommunity";
 
 /** Which principal kinds a surface answers. */
 const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPrincipal["kind"][]> = {
@@ -360,6 +367,8 @@ const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPri
   teacher: ["staff"],
   admin: ["staff"],
   guardian: ["guardian"],
+  family: ["guardian"],
+  learner: ["guardian"],
 };
 
 /** The principal a request runs as: who it is, without the sign-in that proved it. */
@@ -432,7 +441,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
   const informationOver = (directory: AcademicStore) => directoryPolicyInformation(directory, policySource, {
-    relationships: [guardianRelationships(stores.guardianRelationships, directory, now), ...options.policySources?.relationships ?? []],
+    relationships: [
+      guardianRelationships(stores.guardianRelationships, directory, now),
+      familyAdults(stores.homeLearning),
+      ...options.policySources?.relationships ?? [],
+    ],
     subjects: options.policySources?.subjects ?? [],
     delegations: stores.delegations,
     now,
@@ -599,6 +612,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     readonly origin: string;
     /** The district's approved standards, as this request resolves alignments against them. */
     readonly alignments: AlignmentSource = requestAlignments();
+    /** The browser's open child session (ADR-0016), resolved before any handler runs. */
+    childSession: ChildSession | undefined = undefined;
 
     constructor(correlationId: string, principal: RequestPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
       this.correlationId = correlationId;
@@ -612,6 +627,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     get subject() {
       return this.caller.principal;
+    }
+
+    homeLearning(): HomeLearningService {
+      if (options.homeLearning === undefined) throw new EducateOsError("not-found", "Home learning isn't offered here.");
+      return new HomeLearningService({ store: stores.homeLearning, authorizer: this.authorizer, districtId, now });
     }
 
     academics(): AcademicDirectory {
@@ -930,7 +950,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     });
   }
 
-  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   /**
    * Runs a route bound to an academic operation (SCHO-173): its path parameters and body are the
@@ -1888,6 +1908,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
   // Guardians (ADR-0012, SCHO-188)
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
+  // Home learning (ADR-0016)
+  const homeLearningRoutes = homeLearningHandlers<RequestContext>();
 
   /**
    * Serves one `/api` request. Without `servedAs`, the caller is whoever the request's credential
@@ -1920,6 +1942,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // Onboarding answers a verified sign-in that is nobody's principal yet. Its one route only
       // starts a request an administrator decides, so it needs no principal and grants nothing.
       if (spec.surface === "onboarding") {
+        if ((matched.name as OnboardingRouteName) === "onboarding.community") {
+          return jsonResponse({ homeLearning: options.homeLearning !== undefined, signup: options.homeLearning?.signup ?? null }, 200, correlationId);
+        }
+        if ((matched.name as OnboardingRouteName) === "onboarding.joinCommunity") {
+          const { body } = await parseInput() as { body: { displayName: string } };
+          const answer = await joinCommunity({ directory: stores.directory, identityLinks: stores.identityLinks, options: options.homeLearning, now }, identity, body.displayName);
+          return jsonResponse(answer, spec.status ?? 200, correlationId);
+        }
         const { body } = await parseInput() as { body: { token: string } };
         const invitations = guardianInvitationsFor(engine);
         const answer = (matched.name as OnboardingRouteName) === "onboarding.previewGuardianInvitation"
@@ -1943,12 +1973,30 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     const input = await parseInput();
     const ctx = new RequestContext(correlationId, principal, snapshot, url.origin);
+    // A browser in a child session (ADR-0016) may only practice, whatever route it asks for. Only a
+    // browser carries the cookie: a device or service served as a principal never has one.
+    if (options.homeLearning !== undefined && principal.kind === "guardian" && servedAs === undefined) {
+      const token = childSessionToken(request);
+      ctx.childSession = token === undefined ? undefined : await ctx.homeLearning().childSession(ctx.subject, token);
+    }
+    if (options.homeLearning === undefined && (spec.surface === "family" || spec.surface === "learner")) {
+      throw new EducateOsError("not-found", "Home learning isn't offered here.");
+    }
+    enforceChildSession(matched.name, spec.surface, ctx.childSession);
     const { operation } = spec as RouteSpec;
     if (operation !== undefined) {
       return jsonResponse(await runOperation(ctx, operation, input as { params?: object; body?: object }), spec.status ?? 200, correlationId);
     }
-    const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
+    const handler = (handlers[matched.name as keyof Handlers]
+      ?? guardianRoutes[matched.name as GuardianRouteName]
+      ?? homeLearningRoutes[matched.name as HomeLearningRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     if (spec.download !== undefined) return fileResponse(await handler(ctx, input) as FileDownload, spec.download, correlationId);
+    if ((spec as RouteSpec).cookie !== undefined) {
+      const { body, setCookie } = await handler(ctx, input) as WithCookie<unknown>;
+      const response = jsonResponse(body, spec.status ?? 200, correlationId);
+      response.headers.set("set-cookie", setCookie);
+      return response;
+    }
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
 

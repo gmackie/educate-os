@@ -381,6 +381,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       },
     }),
     ...(config.unscreenedStudentPosts === undefined ? {} : { unscreenedStudentPosts: config.unscreenedStudentPosts }),
+    ...(config.homeLearning === undefined ? {} : { homeLearning: config.homeLearning }),
     // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
     release: { version: settings.releaseVersion },
     // Marketplace (SCHO-209): listings are verified offline against the deployment's pin.

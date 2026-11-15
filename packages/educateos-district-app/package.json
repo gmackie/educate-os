@@ -16,6 +16,7 @@
     "@educateos/artifacts-git": "workspace:*",
     "@educateos/assessment": "workspace:*",
     "@educateos/assessment-ci": "workspace:*",
+    "@educateos/assessment-sdk": "workspace:*",
     "@educateos/cartridge": "workspace:*",
     "@educateos/catalog": "workspace:*",
     "@educateos/config": "workspace:*",
@@ -24,6 +25,7 @@
     "@educateos/curriculum": "workspace:*",
     "@educateos/discussions": "workspace:*",
     "@educateos/fleet": "workspace:*",
+    "@educateos/home-learning": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/identity-links": "workspace:*",
     "@educateos/integrations": "workspace:*",
@@ -37,8 +39,7 @@
     "@educateos/releases": "workspace:*",
     "@educateos/workspaces": "workspace:*",
     "@educateos/zip": "workspace:*",
-    "zod": "catalog:",
-    "@educateos/assessment-sdk": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@educateos/fixtures": "workspace:*",

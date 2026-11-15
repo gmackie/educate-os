@@ -1261,6 +1261,9 @@ importers:
       '@educateos/fleet':
         specifier: workspace:*
         version: link:../educateos-fleet
+      '@educateos/home-learning':
+        specifier: workspace:*
+        version: link:../educateos-home-learning
       '@educateos/identity':
         specifier: workspace:*
         version: link:../educateos-identity
@@ -1422,6 +1425,9 @@ importers:
       '@educateos/fleet':
         specifier: workspace:*
         version: link:../educateos-fleet
+      '@educateos/home-learning':
+        specifier: workspace:*
+        version: link:../educateos-home-learning
       '@educateos/marketplace':
         specifier: workspace:*
         version: link:../educateos-marketplace

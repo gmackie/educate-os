@@ -1,3 +1,4 @@
+import { InMemoryHomeLearningStore, type HomeLearningStore } from "@educateos/home-learning";
 import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 import {
   EducateOsError,
@@ -325,6 +326,9 @@ export interface DistrictAppStores {
   // Student archive (SCHO-371)
   /** How each student archive's export-local IDs map back to district IDs; kept here, never in the archive. */
   exportMappings: ExportMappingStore;
+  // Home learning (ADR-0016)
+  /** Families, their children's practice and the child sessions of a community installation. */
+  homeLearning: HomeLearningStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -376,5 +380,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     delegations: new InMemoryDelegationStore(),
     // Student archive (SCHO-371)
     exportMappings: new InMemoryExportMappingStore(),
+    // Home learning (ADR-0016)
+    homeLearning: new InMemoryHomeLearningStore(),
   };
 }

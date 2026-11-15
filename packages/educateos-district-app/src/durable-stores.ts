@@ -1,3 +1,12 @@
+import {
+  ChildSession,
+  FamilyRecord,
+  HOME_LEARNING_CONFLICT,
+  PracticeSession,
+  type ActivityRef as HomeActivityRef,
+  type HomeLearningStore,
+  type PracticeSessionId,
+} from "@educateos/home-learning";
 import { GadgetAssessmentBinding, sameGadgetAssessmentPin, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 // Durable stores for one district (SCHO-171), published as their own entry point
 // (`@educateos/district-app/durable-stores`). Every `DistrictAppStores` member lives in one
@@ -29,6 +38,8 @@ import {
   type GuardianRelationshipId,
   type OfferingId,
   PrincipalId,
+  FamilyId,
+  type LearnerId,
 } from "@educateos/contracts";
 import { DurableObjectAcademicStore } from "@educateos/academics/durable-object-store";
 import { DurableObjectWorkspaceStore, legacyWorkspaceReplacements } from "@educateos/workspaces/durable-object-store";
@@ -236,6 +247,12 @@ export const DISTRICT_TABLES = {
   delegations: "educateos_delegations",
   // Student archive (SCHO-371)
   exportMappings: "educateos_export_mappings",
+  // Home learning (ADR-0016)
+  families: "educateos_families",
+  familyAdults: "educateos_family_adults",
+  familyLearners: "educateos_family_learners",
+  practiceSessions: "educateos_practice_sessions",
+  childSessions: "educateos_child_sessions",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1222,8 +1239,176 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     delegations: new DurableObjectDelegationStore(storage),
     // Student archive (SCHO-371)
     exportMappings: new DurableObjectExportMappingStore(storage),
+    // Home learning (ADR-0016)
+    homeLearning: new DurableObjectHomeLearningStore(storage),
   };
 }
+
+// Home learning (ADR-0016)
+
+/**
+ * A {@link HomeLearningStore} in a Durable Object's SQLite: each family as one row under its
+ * revision, with index rows naming the family of every adult and child (an adult's row is its
+ * primary key, so no adult can belong to two families), each practice session as its own row
+ * under its version, and each child session by its token's digest.
+ */
+export class DurableObjectHomeLearningStore implements HomeLearningStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.families} (id TEXT PRIMARY KEY, revision INTEGER NOT NULL, family_json TEXT NOT NULL)`,
+      `CREATE TABLE IF NOT EXISTS ${t.familyAdults} (principal_id TEXT PRIMARY KEY, family_id TEXT NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS ${t.familyAdults}_family ON ${t.familyAdults} (family_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.familyLearners} (learner_id TEXT PRIMARY KEY, family_id TEXT NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS ${t.familyLearners}_family ON ${t.familyLearners} (family_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.practiceSessions} (
+        id TEXT PRIMARY KEY, family_id TEXT NOT NULL, learner_id TEXT NOT NULL, ref_key TEXT NOT NULL,
+        completed INTEGER NOT NULL, started_at TEXT NOT NULL, version INTEGER NOT NULL, session_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.practiceSessions}_learner ON ${t.practiceSessions} (learner_id, started_at)`,
+      `CREATE INDEX IF NOT EXISTS ${t.practiceSessions}_open ON ${t.practiceSessions} (learner_id, ref_key, completed)`,
+      `CREATE INDEX IF NOT EXISTS ${t.practiceSessions}_family ON ${t.practiceSessions} (family_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.childSessions} (digest TEXT PRIMARY KEY, family_id TEXT NOT NULL, learner_id TEXT NOT NULL, session_json TEXT NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS ${t.childSessions}_family ON ${t.childSessions} (family_id)`,
+    ], []);
+  }
+
+  async loadFamily(id: FamilyId): Promise<FamilyRecord | undefined> {
+    return this.#tables.transaction((sql) => this.#family(sql, id));
+  }
+
+  async familyOfAdult(principalId: PrincipalId): Promise<FamilyId | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT family_id FROM ${DISTRICT_TABLES.familyAdults} WHERE principal_id = ?`, principalId).toArray();
+      return row === undefined ? undefined : FamilyId.parse(row.family_id);
+    });
+  }
+
+  async familyOfLearner(learnerId: LearnerId): Promise<FamilyId | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT family_id FROM ${DISTRICT_TABLES.familyLearners} WHERE learner_id = ?`, learnerId).toArray();
+      return row === undefined ? undefined : FamilyId.parse(row.family_id);
+    });
+  }
+
+  async commitFamily(next: FamilyRecord, expectedRevision: number | undefined): Promise<void> {
+    const family = FamilyRecord.parse(next);
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT revision FROM ${t.families} WHERE id = ?`, family.id).toArray();
+      const stored = row === undefined ? undefined : Number(row.revision);
+      if (stored !== expectedRevision || family.revision !== (expectedRevision ?? 0) + 1) throw new EducateOsError("conflict", HOME_LEARNING_CONFLICT);
+      for (const adult of family.adults) {
+        const [other] = sql.exec(`SELECT family_id FROM ${t.familyAdults} WHERE principal_id = ?`, adult.principalId).toArray();
+        if (other !== undefined && other.family_id !== family.id) throw new EducateOsError("conflict", "That adult already belongs to a family.");
+      }
+      sql.exec(
+        `INSERT INTO ${t.families} (id, revision, family_json) VALUES (?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET revision = excluded.revision, family_json = excluded.family_json`,
+        family.id, family.revision, JSON.stringify(family),
+      );
+      sql.exec(`DELETE FROM ${t.familyAdults} WHERE family_id = ?`, family.id);
+      for (const adult of family.adults) sql.exec(`INSERT INTO ${t.familyAdults} (principal_id, family_id) VALUES (?, ?)`, adult.principalId, family.id);
+      sql.exec(`DELETE FROM ${t.familyLearners} WHERE family_id = ?`, family.id);
+      for (const learner of family.learners) sql.exec(`INSERT INTO ${t.familyLearners} (learner_id, family_id) VALUES (?, ?)`, learner.id, family.id);
+    });
+  }
+
+  async deleteFamily(id: FamilyId): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      for (const table of [t.familyAdults, t.familyLearners, t.practiceSessions, t.childSessions]) sql.exec(`DELETE FROM ${table} WHERE family_id = ?`, id);
+      sql.exec(`DELETE FROM ${t.families} WHERE id = ?`, id);
+    });
+  }
+
+  async getSession(id: PracticeSessionId): Promise<PracticeSession | undefined> {
+    return this.#tables.transaction((sql) => this.#session(sql, id));
+  }
+
+  async saveSession(next: PracticeSession, expectedVersion: number | undefined): Promise<void> {
+    const session = PracticeSession.parse(next);
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT version FROM ${t.practiceSessions} WHERE id = ?`, session.id).toArray();
+      const stored = row === undefined ? undefined : Number(row.version);
+      if (stored !== expectedVersion || session.version !== (expectedVersion ?? 0) + 1) throw new EducateOsError("conflict", HOME_LEARNING_CONFLICT);
+      sql.exec(
+        `INSERT INTO ${t.practiceSessions} (id, family_id, learner_id, ref_key, completed, started_at, version, session_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET completed = excluded.completed, version = excluded.version, session_json = excluded.session_json`,
+        session.id, session.familyId, session.learnerId, refKey(session.ref), session.completedAt === undefined ? 0 : 1, session.startedAt, session.version, JSON.stringify(session),
+      );
+    });
+  }
+
+  async listSessions(learnerId: LearnerId, limit: number): Promise<PracticeSession[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ? ORDER BY started_at DESC, id DESC LIMIT ?`, learnerId, limit).toArray()
+        .map((row) => parseStored(PracticeSession, row.session_json, "a practice session"))
+    );
+  }
+
+  async openSession(learnerId: LearnerId, ref: HomeActivityRef): Promise<PracticeSession | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(
+        `SELECT session_json FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ? AND ref_key = ? AND completed = 0 ORDER BY started_at DESC LIMIT 1`,
+        learnerId, refKey(ref),
+      ).toArray();
+      return row === undefined ? undefined : parseStored(PracticeSession, row.session_json, "a practice session");
+    });
+  }
+
+  async deleteSessionsOf(learnerId: LearnerId): Promise<void> {
+    this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ?`, learnerId);
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.childSessions} WHERE learner_id = ?`, learnerId);
+    });
+  }
+
+  async getChildSession(digest: string): Promise<ChildSession | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.childSessions} WHERE digest = ?`, digest).toArray();
+      return row === undefined ? undefined : parseStored(ChildSession, row.session_json, "a child session");
+    });
+  }
+
+  async putChildSession(session: ChildSession): Promise<void> {
+    const parsed = ChildSession.parse(session);
+    this.#tables.transaction((sql) => {
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.childSessions} (digest, family_id, learner_id, session_json) VALUES (?, ?, ?, ?)
+         ON CONFLICT (digest) DO UPDATE SET session_json = excluded.session_json`,
+        parsed.digest, parsed.familyId, parsed.learnerId, JSON.stringify(parsed),
+      );
+    });
+  }
+
+  async endChildSessionsOf(familyId: FamilyId, at: string): Promise<number> {
+    return this.#tables.transaction((sql) => {
+      const open = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.childSessions} WHERE family_id = ?`, familyId).toArray()
+        .map((row) => parseStored(ChildSession, row.session_json, "a child session"))
+        .filter((child) => child.endedAt === undefined);
+      for (const child of open) {
+        sql.exec(`UPDATE ${DISTRICT_TABLES.childSessions} SET session_json = ? WHERE digest = ?`, JSON.stringify({ ...child, endedAt: at }), child.digest);
+      }
+      return open.length;
+    });
+  }
+
+  #family(sql: DistrictSqlStorage["sql"], id: string): FamilyRecord | undefined {
+    const [row] = sql.exec(`SELECT family_json FROM ${DISTRICT_TABLES.families} WHERE id = ?`, id).toArray();
+    return row === undefined ? undefined : parseStored(FamilyRecord, row.family_json, "a family");
+  }
+
+  #session(sql: DistrictSqlStorage["sql"], id: string): PracticeSession | undefined {
+    const [row] = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.practiceSessions} WHERE id = ?`, id).toArray();
+    return row === undefined ? undefined : parseStored(PracticeSession, row.session_json, "a practice session");
+  }
+}
+
+const refKey = (ref: HomeActivityRef) => `${ref.pack}@${ref.version}/${ref.activity}`;
 
 // Gradebook (SCHO-187)
 
