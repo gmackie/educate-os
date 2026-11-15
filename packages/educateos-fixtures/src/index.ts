@@ -18,6 +18,7 @@ export { LAKESHORE, LAKESHORE_GUARDIANS } from "./lakeshore.ts";
 export { NORTHFIELD, NORTHFIELD_GUARDIANS } from "./northfield.ts";
 export { PRAIRIE, PRAIRIE_GUARDIANS } from "./prairie.ts";
 export { RIVERBEND } from "./riverbend.ts";
+export { WILLOWCREEK } from "./willowcreek.ts";
 export type * from "./profile.ts";
 export type * from "./vendors/classroom.ts";
 export type * from "./vendors/clever.ts";
