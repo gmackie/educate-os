@@ -613,6 +613,7 @@ test("deploys each community as its own district Worker with no demo, marketplac
     const config = communities.get(slug)!;
     assert.equal(config.name, deployed[slug], `${slug} would deploy as a new Worker, with an empty Durable Object`);
     assert.deepEqual(config.routes, [{ pattern: hostname, custom_domain: true }]);
+    assert.equal((config.vars as Record<string, unknown>).DATA_JURISDICTION, "us", `${slug} keeps families' data in the US`);
     for (const name of ["DEMO_SHOWCASE", "PRODUCT_ANALYTICS", "MARKETPLACE_TRUST", "COURSE_LIBRARY_TRUST"]) {
       assert.equal((config.vars as Record<string, unknown> | undefined)?.[name], undefined, `${slug} sets ${name}`);
     }

@@ -20,7 +20,8 @@
     "DATA_JURISDICTIONS_SUPPORTED": "us",
     "LTI_TOOL_ORIGIN": "https://safranek.educateos.io",
     "AI_DEMO_URL": "https://northfield.educateos.io/ai/",
-    "SCHOOL_MANIFEST": "{\"origin\":\"https://safranek.educateos.io\",\"features\":{\"ai\":false}}"
+    "SCHOOL_MANIFEST": "{\"origin\":\"https://safranek.educateos.io\",\"features\":{\"ai\":false}}",
+    "DATA_JURISDICTION": "us"
   },
   "triggers": {
     "crons": [

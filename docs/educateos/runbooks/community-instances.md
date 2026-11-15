@@ -17,7 +17,7 @@ operator routes stay off, and organizers can't see families' practice.
 
 | Slug | Hostname | Who Access admits | Sign-up | Organizer | First deployed |
 |---|---|---|---|---|---|
-| safranek | `safranek.educateos.io` | `me-gmail` (the owner, who is the family's parent) | open | EducateOS operations (`admin@agents.gmac.io`'s Access subject), which `me-gmail` doesn't admit, so no organizer can sign in | 2026-11-15 |
+| safranek | `safranek.educateos.io` | `me-gmail` (the owner, who is the family's parent) | open, 730-day retention, US jurisdiction | EducateOS operations (`admin@agents.gmac.io`'s Access subject), which `me-gmail` doesn't admit, so no organizer can sign in | 2026-11-15 |
 
 ## Adding a community
 
@@ -44,7 +44,7 @@ operator routes stay off, and organizers can't see families' practice.
 
    ```sh
    node packages/educateos-district-worker/scripts/community-config.ts <slug> \
-     --name "<Name>" --time-zone <IANA zone> --signup open \
+     --name "<Name>" --time-zone <IANA zone> --signup open --retention-days 730 \
      --organizer-subject <Access user_uuid> --organizer-name "<Organizer>" |
      FG_APP=educateos-<slug> forge secret set DISTRICT_CONFIG --stage production --stdin
    printf %s '<audience>' | FG_APP=educateos-<slug> forge secret set CF_ACCESS_AUD --stage production --stdin
