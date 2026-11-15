@@ -4,7 +4,7 @@ import type { LessonSourceReview } from "@educateos/doc-extract/lesson-source";
 import type { ComposerAttachment } from "../chat/composer/attachments/useComposerAttachments";
 import { reviewTeacherFile } from "./reviewTeacherFile";
 
-type ReviewState = { status: "reading" | "unavailable" } | LessonSourceReview;
+type ReviewState = { status: "reading" } | { status: "unavailable" } | LessonSourceReview;
 
 const recovery = {
   "unsupported-encoding": "Some text encodings cannot be read. Export a text-based PDF or paste the relevant lesson text.",
