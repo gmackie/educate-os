@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@cloudflare/kumo";
 import { readComposerDraft } from "../chat/composer/draft/composerDraft";
 import { TeacherIntake } from "./TeacherIntake";
+import { TeacherMaterialSources } from "./TeacherMaterialSources";
 
 export const TeacherOnboarding = ({ composer, draftStorageKey, onPrepare, onBack }: {
   composer: ReactNode;
@@ -28,9 +29,8 @@ export const TeacherOnboarding = ({ composer, draftStorageKey, onPrepare, onBack
       ) : (
         <section aria-labelledby="teacher-brief-heading" className="flex flex-col gap-4">
           <h2 id="teacher-brief-heading" className="text-lg font-medium text-kumo-default">Review your brief and add materials</h2>
-          <p className="text-sm text-kumo-subtle">Edit the request below, paste a useful excerpt, or use the + menu to attach files and choose available connections. Start with one PDF or Word (.docx) lesson. File limits are 4 MiB each and 5 MiB total. Send when you’re ready to ask AI for options.</p>
-          <p className="text-sm text-kumo-subtle">Your original files are kept. Word imports use body text; images, comments and page layout may be missing. PDFs depend on the selected AI model and available text. For scans, slides or older Word files, paste an excerpt or export readable text. AI will ask for another source if it cannot read a document.</p>
-          <p className="text-sm text-kumo-subtle">Your brief is separate from your home draft. Connecting an account does not enroll students or enable school roster and grade integrations.</p>
+          <TeacherMaterialSources />
+          <p className="text-sm text-kumo-subtle">Edit the request below or paste a useful excerpt. Your brief is separate from your home draft. Connecting an account does not enroll students or enable school roster and grade integrations.</p>
           {composer}
         </section>
       )}

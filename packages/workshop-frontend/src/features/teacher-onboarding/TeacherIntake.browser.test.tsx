@@ -29,6 +29,8 @@ it("collects existing materials and the integration choice using the keyboard be
   await input(() => userEvent.fill(page.getByRole("textbox", { name: "Learner level and needs (optional)" }), "Grade 9"));
   await input(() => userEvent.fill(page.getByRole("textbox", { name: "What would you like to make easier?" }), "An investigation using my existing slides"));
   await input(() => userEvent.click(page.getByRole("checkbox", { name: "Slides and presentations" })));
+  await input(() => userEvent.click(page.getByRole("checkbox", { name: "LMS exports and assignment text" })));
+  await input(() => userEvent.click(page.getByRole("checkbox", { name: "Google Drive, Classroom and other teaching tools" })));
   const reuse = page.getByRole("radio", { name: /^Reuse my materials/ });
   await expect.element(reuse).toBeChecked();
   await input(() => userEvent.click(reuse));
@@ -42,6 +44,10 @@ it("collects existing materials and the integration choice using the keyboard be
   const brief = onPrepare.mock.calls[0][0] as string;
   expect(brief).toContain("Learner level and needs: Grade 9");
   expect(brief).toContain("Documents and worksheets; Slides and presentations");
+  expect(brief).toContain("LMS exports and assignment text");
+  expect(brief).toContain("Google Drive, Classroom and other teaching tools");
+  expect(brief).toContain("a preview is not an imported or published school course");
+  expect(brief).toContain("Do not read rosters, student submissions or grades");
   expect(brief).toContain("My preferred starting point: Create an EducateOS activity");
   expect(brief).toContain("Distinguish capabilities available here from proposed integrations");
 });
