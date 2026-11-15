@@ -1,0 +1,13 @@
+// Example service-only deployment. No public routes and no workers.dev endpoint.
+// Deploy from this folder with Wrangler after institutional approval.
+// In the district Worker's generated config, bind this service under
+// COURSE_INTENT_INFERENCE, then supply COURSE_INTENT_MODEL to the district.
+// The model MUST also exist in the district's model catalog and funding pools.
+{
+  "name": "educateos-course-intent-inference",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-11-15",
+  "workers_dev": false,
+  "observability": { "enabled": false },
+  "ai": { "binding": "AI" }
+}
