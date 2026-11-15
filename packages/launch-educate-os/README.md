@@ -303,7 +303,7 @@ rule expiring every object does it for a large one), then run it again. It conti
 is left, so re-running after any failure is safe.
 
 Not yet run against a live Cloudflare account: it is tested against the installer's simulated one.
-Version 0.1.0 on npm does not have it yet.
+It was added in 0.2.0.
 
 ## License
 

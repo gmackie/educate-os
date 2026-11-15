@@ -1,6 +1,7 @@
 # `npx launch-educate-os`
 
-- Status: Published to npm as `launch-educate-os` 0.1.0 (SCHO-341, epic SCHO-320). A full install
+- Status: Published to npm as `launch-educate-os` (0.1.0, SCHO-341; 0.2.0 adds `connect`, `status`, `mcp` and
+  `uninstall`, SCHO-406, SCHO-407, SCHO-368). A full install
   into the owner's Cloudflare account completed on 2026-11-04 ([below](#live-install-2026-11-04));
   no district has run it yet.
 - Code: `packages/launch-educate-os` (the npm package), `packages/educateos-control-plane/src/release-files.ts`
@@ -180,8 +181,7 @@ library's `uninstall` (`packages/educateos-installer/src/uninstall.ts`), the ins
   `step` events and `done` with `status` `planned`, `removed`, `incomplete` or `refused`. Exit 0 for a
   plan or a clean removal, 1 for incomplete or a stopped prompt, 2 for a wrong confirmation.
 
-Not yet run against a live Cloudflare account (SCHO-378). It is not in 0.1.0 on npm; it ships in the
-next publish.
+Not yet run against a live Cloudflare account (SCHO-378). It was added in 0.2.0.
 
 ## Connect and status (SCHO-406)
 

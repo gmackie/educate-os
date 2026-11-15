@@ -230,7 +230,7 @@ empties an R2 bucket; empty one first. **Deleting the Workers and storage delete
 data with them**; export first. The full sequence (district export, disconnecting integrations,
 revoking Access and the IdP, the uninstall and confirming it, deregistering from educateos.io) is
 [district-offboarding.md](district-offboarding.md). The command is tested against the installer's
-Cloudflare fake, not yet against a live account (SCHO-368), and is not in 0.1.0 on npm. The
+Cloudflare fake, not yet against a live account (SCHO-368), and was added in `launch-educate-os` 0.2.0. The
 2026-10-26 trial installs were removed by hand in the dashboard (10 Workers, 6 KV namespaces, 2 R2
 buckets, 4 domains, 2 Access applications and 2 policies); afterwards the hostnames answered 530.
 
