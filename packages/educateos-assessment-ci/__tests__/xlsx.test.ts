@@ -1,7 +1,7 @@
 // The XLSX converter: a workbook becomes the same canonical CSV every time, every cell type reads as
 // written, and anything unsafe or unreadable is refused before it is used.
 import { describe, expect, it } from "vitest";
-import { xlsxToCsv } from "../src/index.ts";
+import { readXlsxWorksheet, xlsxToCsv } from "../src/index.ts";
 import { workbook, zip } from "./xlsx-fixture.ts";
 
 const LAB_ROWS = [
@@ -31,6 +31,11 @@ describe("xlsxToCsv", () => {
     const rows = `<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row>`;
     const csv = await xlsxToCsv(await workbook([{ name: "S", rows }], ["plain", 'say "hi", twice', "two\nlines"]));
     expect(csv).toBe('plain,"say ""hi"", twice","two\nlines"');
+  });
+
+  it("does not invent values for formulas without a cache, including shared-string cells", async () => {
+    const rows = '<row r="1"><c r="A1" t="s"><f>A2</f></c><c r="B1"><f>B2</f></c><c r="C1" t="str"><f>C2</f></c><c r="D1"><v>7</v></c></row>';
+    expect(await xlsxToCsv(await workbook([{ name: "S", rows }], ["Not a cached answer"]))).toBe(",,,7");
   });
 
   it("chooses a sheet by name and refuses one the workbook does not have", async () => {
@@ -67,4 +72,20 @@ describe("xlsxToCsv", () => {
     const missing = await workbook([{ name: "S", rows: `<row r="1"><c r="A1" t="s"><v>4</v></c></row>` }], ["only one"]);
     await expect(xlsxToCsv(missing)).rejects.toThrow(/shared string/);
   });
+});
+
+
+it("bounds a repeated shared-string projection and identifies the chosen sheet", async () => {
+  const bytes = await workbook([{ name: "Teaching data", rows: `<row r="1">${["A", "B", "C"].map(c => `<c r="${c}1" t="s"><v>0</v></c>`).join("")}</row>` }], ["x".repeat(1000)]);
+  expect(await readXlsxWorksheet(bytes, { maxTextChars: 25 })).toEqual({ sheetName: "Teaching data", csv: "x".repeat(25), truncated: true });
+  let remaining = 20;
+  await expect(readXlsxWorksheet(bytes, { maxTextChars: 25, spend: n => { remaining -= n; if (remaining < 0) throw new Error("budget"); } })).rejects.toThrow("budget");
+});
+
+it("refuses external worksheet relationships rather than following or misreading them", async () => {
+  const bytes = await zip([
+    { path: "xl/workbook.xml", data: `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="External" r:id="r1"/></sheets></workbook>` },
+    { path: "xl/_rels/workbook.xml.rels", data: `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="https://example.com/private" TargetMode="External"/></Relationships>` },
+  ]);
+  await expect(readXlsxWorksheet(bytes, { maxTextChars: 50 })).rejects.toThrow("external or unsupported");
 });

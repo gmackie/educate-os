@@ -8,7 +8,8 @@
     "fixtures:write": "node __tests__/fixtures/write-fixtures.ts"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./csv": "./src/oneroster/csv.ts"
   },
   "dependencies": {
     "@educateos/contracts": "workspace:*",

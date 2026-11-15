@@ -1449,12 +1449,18 @@ importers:
 
   packages/educateos-doc-extract:
     dependencies:
+      '@educateos/assessment-ci':
+        specifier: workspace:*
+        version: link:../educateos-assessment-ci
       '@educateos/cartridge':
         specifier: workspace:*
         version: link:../educateos-cartridge
       '@educateos/content-studio':
         specifier: workspace:*
         version: link:../educateos-content-studio
+      '@educateos/integrations':
+        specifier: workspace:*
+        version: link:../educateos-integrations
     devDependencies:
       '@educateos/academics':
         specifier: workspace:*

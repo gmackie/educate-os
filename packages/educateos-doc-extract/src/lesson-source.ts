@@ -17,6 +17,8 @@ export const LESSON_SOURCE_LIMITS: Readonly<ExtractionLimits> = {
 /** Select a bounded reader; that reader still checks the actual document structure. */
 export const lessonSourceType = (file: LessonSourceFile): DocumentContentType | undefined => {
   const generic = file.mimeType === "application/octet-stream";
+  if (file.mimeType === "text/csv" || (generic || file.mimeType === "text/plain" || file.mimeType === "application/vnd.ms-excel") && /\.csv$/i.test(file.name ?? "")) return "csv";
+  if (file.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || generic && /\.xlsx$/i.test(file.name ?? "")) return "xlsx";
   if (file.mimeType === "application/pdf" || generic && /\.pdf$/i.test(file.name ?? "")) return "pdf";
   if (file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       generic && /\.docx$/i.test(file.name ?? "")) return "docx";

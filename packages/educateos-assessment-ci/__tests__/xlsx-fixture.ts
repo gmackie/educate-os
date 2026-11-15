@@ -1,5 +1,5 @@
 // Builds small XLSX workbooks for tests: a ZIP of the parts a workbook needs, stored or deflated.
-import { crc32 } from "@educateos/cartridge";
+import { crc32 } from "@educateos/cartridge/zip";
 
 const encoder = new TextEncoder();
 
