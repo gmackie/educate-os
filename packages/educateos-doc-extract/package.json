@@ -12,12 +12,13 @@
     "@educateos/content-studio": "workspace:*"
   },
   "devDependencies": {
-    "@gadgets/scripts": "workspace:*",
     "@educateos/academics": "workspace:*",
     "@educateos/contracts": "workspace:*",
     "@educateos/fixtures": "workspace:*",
     "@educateos/policy": "workspace:*",
     "@educateos/portability": "workspace:*",
+    "@educateos/zip": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
     "vitest": "catalog:"
   }
 }

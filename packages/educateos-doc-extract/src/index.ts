@@ -6,7 +6,7 @@
 // writes), every loop over the document spends from a step budget so its CPU is bounded whatever
 // the input, and everything it inflates or returns is capped. What it returns is untrusted data,
 // which the studio passes only to the deterministic checks and an AI reviewer's data slot.
-import type { ExtractableContentType, TextExtraction, TextExtractor } from "@educateos/content-studio";
+import type { ExtractableContentType, TextExtraction, TextExtractor } from "@educateos/content-studio/extraction";
 import { ExtractionStopped, StepBudget } from "./budget.ts";
 import { extractDocxText } from "./docx.ts";
 import { DEFAULT_EXTRACTION_LIMITS, type ExtractionLimits } from "./limits.ts";

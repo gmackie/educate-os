@@ -1,6 +1,6 @@
 // Builders for synthetic test documents. They write whatever they are told, so hostile documents
 // can be built as easily as ordinary ones.
-import { writeZip } from "@educateos/portability";
+import { writeZip } from "@educateos/zip";
 
 const encoder = new TextEncoder();
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";

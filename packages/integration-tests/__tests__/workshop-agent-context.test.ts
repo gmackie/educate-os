@@ -13,6 +13,7 @@ import {
   SCRIPTED_MODEL_ID, scriptedModelRouter, systemPromptOf, type RoutedScriptedModel,
 } from "../src/mock-model.js";
 import { NetworkInterceptor } from "../src/network-interceptor.js";
+import { docx, onePagePdf, paragraph } from "../../educateos-doc-extract/__tests__/documents.ts";
 import {
   connect, listConnectedAccounts, nextUsernames, signUp, waitFor, waitForIdleChat,
 } from "../src/rpc-client.js";
@@ -210,4 +211,27 @@ it.concurrent("an attachment reaches the model in its turn and stays in later tu
   await ws.sendChatMessage(chatId, "What is due Friday?", SCRIPTED_MODEL_ID);
   await settle(ws, model, chatId, 2);
   expect(userTexts(model.requests[1])).toEqual([withAttachment, "What is due Friday?"]);
+});
+
+it.concurrent.each(["docx", "pdf"])("an uploaded %s lesson reaches the model as text while downloads keep the original", async type => {
+  const bytes = type === "docx" ? await docx(paragraph("Investigate food chains in the school garden."))
+    : await onePagePdf("BT (Investigate food chains in the school garden.) Tj ET", {compress: true});
+  const model = models.script([{text: "Here are three options."}, {text: "Reuse the lesson."}]);
+  using owner = await newWorkspace(model, "documentlesson");
+  const {ws} = owner;
+  const upload = {oid: await ws.uploadBlob(bytes), name: `garden.${type}`,
+    mimeType: type === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      : "application/pdf"};
+  const chatId = await ws.newChat("Compare ways to reuse this lesson.", SCRIPTED_MODEL_ID, undefined, [upload]);
+  for (let turn = 0; turn < 2; ++turn) {
+    if (turn) await ws.sendChatMessage(chatId, "Which option changes the least?", SCRIPTED_MODEL_ID);
+    await settle(ws, model, chatId, turn + 1);
+    const firstMessage = userTexts(model.requests[turn])[0];
+    expect(firstMessage).toContain("Investigate food chains in the school garden.");
+    expect(firstMessage).toContain(type === "docx" ? "Word body text only" : "PDF text only");
+    expect(firstMessage).toContain(`workspace file env.SCRATCH/garden.${type}`);
+  }
+  const message = (await history(ws, chatId)).find(message => message.type === "message" && message.attachments?.length);
+  if (!message || message.type !== "message") throw new Error("Missing lesson attachment");
+  expect(new Uint8Array(await ws.getChatAttachmentContent(chatId, message.attachments![0].id))).toEqual(bytes);
 });

@@ -5,6 +5,7 @@
     "lib": ["esnext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "types": ["./worker-configuration.d.ts"],
     "paths": {
       "@gadgets/typed-storage": ["../typed-storage/src/index.ts"],

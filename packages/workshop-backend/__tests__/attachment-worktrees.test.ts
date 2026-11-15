@@ -8,6 +8,7 @@ import {createFauxCore, fauxAssistantMessage, fauxText, fauxToolCall, type Api, 
 import type {OverseerDurableObject} from "../src/overseer";
 import type {UserDurableObject} from "../src/user";
 import type {CodeChange} from "@gadgets/workshop-shared/code-change";
+import {docx, onePagePdf, paragraph} from "../../educateos-doc-extract/__tests__/documents.ts";
 declare module "cloudflare:workers" { interface ProvidedEnv {
   TEST_OVERSEER: DurableObjectNamespace<OverseerDurableObject>;
   TEST_USER: DurableObjectNamespace<UserDurableObject>;
@@ -537,9 +538,48 @@ describe("scratch worktree attachment ingress", () => {
       expect(text).toContain(`workspace file env.SCRATCH/${file.name}`);
       expect(text).not.toContain("\ufffd");
       expect(input.content.some(part => part.type === "image")).toBe(file.mimeType === "image/png");
-      if (file.mimeType !== "image/png") expect(text).toContain("binary contents are not inlined");
+      if (file.mimeType === "application/pdf") expect(text).toContain("Document text could not be read");
+      else if (file.mimeType !== "image/png") expect(text).toContain("binary contents are not inlined");
     }),
   );
+
+  it.each(["docx", "pdf"])("replays extracted %s lesson text and preserves original workspace bytes", type => inKernel(crypto.randomUUID(), async impl => {
+    const bytes = type === "docx" ? await docx(paragraph("Explain how evaporation works."))
+      : await onePagePdf("BT (Explain how evaporation works.) Tj ET", {compress: true});
+    const mimeType = type === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      : "application/pdf";
+    const user = env.TEST_USER.getByName(crypto.randomUUID());
+    const blob = await impl.gitCache.writeBlob(bytes);
+    const chatId = await impl.newChat(user, {profile: USER}, "Compare lesson options", undefined,
+      [{oid: blob.oid, mimeType, name: `lesson.${type}`}]);
+    for (let turn = 0; turn < 2; ++turn) {
+      if (turn) await impl.sendChatMessage(user, {profile: USER}, chatId, "Use the same lesson");
+      const request = (await scriptedTurn(impl, chatId, [], "openai-completions"))[0];
+      const input = request.find(message => message.role === "user")!;
+      expect(input.content).toEqual(expect.arrayContaining([
+        expect.objectContaining({type: "text", text: expect.stringContaining("Explain how evaporation works.")}),
+      ]));
+      expect(JSON.stringify(input)).toContain(`workspace file env.SCRATCH/lesson.${type}`);
+      if (Array.isArray(input.content)) expect(input.content.some(part => part.type === "image")).toBe(false);
+    }
+    const message = [...impl.storage.chats.list()].find(message => message.type === "message" && message.attachments?.length);
+    if (!message || message.type !== "message") throw new Error("Missing attachment");
+    expect(await impl.getChatAttachmentData(chatId, message.attachments![0].id)).toEqual(bytes);
+    const tree = impl.storage.gadgets.get(impl.getChatAgentContext(chatId).scratch!.worktreeId)!;
+    if (tree.type !== "worktree") throw new Error("Expected scratch worktree");
+    const value = await impl.gitCache.fileBytesAtCommit(tree.baseCommit, `lesson.${type}`);
+    expect(impl.gitCache.readBlob(value!.oid, value!.byteLength)).toEqual(bytes);
+    // A provider with native PDF support still sees the PDF itself, without a text fallback.
+    if (type === "pdf") {
+      await impl.sendChatMessage(user, {profile: USER}, chatId, "Read the original PDF");
+      const request = (await scriptedTurn(impl, chatId, [], "anthropic-messages"))[0];
+      const input = request.find(message => message.role === "user")!;
+      expect(input.content).toEqual(expect.arrayContaining([
+        expect.objectContaining({type: "image", mimeType: "application/pdf", data: bytes.toBase64()}),
+      ]));
+      expect(JSON.stringify(input)).not.toContain("[Extracted PDF text");
+    }
+  }));
 
   it.each([
     {name: "panorama.png", base64: "iVBORw0KGgoAAAANSUhEUgAAIygAAAABCAAAAACWSFqZAAAAH0lEQVR4nO3BAQEAAACCIP+vbkhAAQAAAAAAAADAgQEjKQABNueTHwAAAABJRU5ErkJggg=="},
