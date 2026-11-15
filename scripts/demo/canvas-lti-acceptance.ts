@@ -83,6 +83,9 @@ export class LaunchBrowser {
     const jar = this.#cookies.get(url.hostname) ?? new Map<string, string>();
     const send = () => this.#fetch(url, { method: init.method, redirect: "manual", headers: {
       "user-agent": "EducateOS-Demo-Verification/1.0",
+      // fetch's default `*` makes Canvas record its first locale, Arabic, as the person's browser
+      // locale, which their real sessions (and an administrator's Act as user) then show.
+      "accept-language": "en-US,en;q=0.9",
       ...(jar.size === 0 ? {} : { cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; ") }),
       ...(init.body === undefined ? {} : { "content-type": "application/x-www-form-urlencoded" }),
     }, ...(init.body === undefined ? {} : { body: init.body }) });

@@ -282,11 +282,24 @@ Check `/api/me` if a run was interrupted.
    modules are Argument Writing, Theme, Memoir and Poetry. **Grades** (`/grades`) shows "Phones in
    the Classroom" at 15 of 16, the same 15 that his own Canvas submission shows.
 4. **Canvas.** The EducateOS Demo account (account 3) has the same twelve courses, with modules,
-   discussions, quizzes and learners' submissions. In English 8 and Biology, the EducateOS
-   activities in the first module open from Canvas over LTI 1.3 as the person who launched them.
-   Each approved grade also shows in the learner's own Canvas grades. Canvas's synthetic people
-   have no passwords, so show their view with Canvas's **Act as user**, from an account-admin
-   login.
+   discussions, quizzes and learners' submissions. In every course, the first module holds two
+   EducateOS activities that open from Canvas over LTI 1.3 as the person who launched them. Each
+   approved grade also shows in the learner's own Canvas grades.
+
+   To show a person's own Canvas view, open it with `canvas-open-as.ts` (below) in a separate
+   browser profile, signed in to Access. Kofi's English 8 grades (Canvas course 10) show
+   "[educateos-approved] Phones in the Classroom" at 15/16:
+
+   ```sh
+   node scripts/demo/canvas-open-as.ts prn_nf-student-kofi /courses/10/grades
+   ```
+
+   Canvas's **Act as user** does not work here, and must not be made to. Account 3 is its own
+   root account, but canvas.mackie.house answers as the PlayTrek root account (1), where the demo
+   administrator has no rights. Granting it rights there would hand it the PlayTrek school.
+   `canvas-open-as.ts` mints a single-use session token for the person in the Canvas console (as
+   the acceptance scripts do) and passes the sign-in link to the browser without printing it. The
+   synthetic people have no passwords.
 
 ### The AI workspace (Workshop, `/ai` on either district)
 
@@ -330,13 +343,34 @@ Every check below was a read-only `verify` against the live systems, with report
 - **Browser**, headless, signed in as each person: Harbor's administrator dashboard, Kwame's
   Marine Science gradebook with From Google Classroom, Nia's Marine Science page, Hannah's My
   classes and her AI workspace home. Each loaded with no console errors.
+- **Deep links** (`canvas-lti-acceptance.ts deep-link`, SCHO-419): all 12 courses now have two
+  EducateOS activities in their first module.
+  - The ten new courses each answered `linked`. A learner's launch of each item opened exactly the
+    activity its teacher selected, and the learner could not reach the picker.
+  - A rerun of all 12 answered `reused` with 2 of 2 items opening and 0 problems, so nothing was
+    added twice.
+- **Canvas as a learner** (`canvas-open-as.ts`): opened as Kofi Mensah on English 8 grades, in
+  English, showing 15/16 for the approved column.
 
-The remaining gaps:
+Grade return differs by school: Harbor's grades are read from Classroom, not sent to it.
+Northfield's go to Canvas through AGS.
 
-- Deep links: only English 8 and Biology have EducateOS activities deep-linked into Canvas modules.
-  The other ten courses launch from course navigation.
-- Grade return: Harbor's grades are read from Classroom, not sent to it. Northfield's go to Canvas
-  through AGS.
+### Canvas showing Arabic (fixed 2026-11-15)
+
+Node's `fetch` sends `Accept-Language: *`, and Canvas resolves the wildcard to its first locale,
+Arabic. Requests from the demo scripts therefore did two things:
+
+- They recorded `ar` as the browser locale of 31 demo users, which Canvas uses when neither the
+  user nor the account chooses a locale.
+- They named each course's default assignment group "المهام".
+
+The fix has three parts:
+
+- Account 3's default locale is `en`.
+- Those users' browser locale was cleared, and the 12 groups were renamed "Assignments".
+- The scripts' Canvas clients now send `Accept-Language: en-US`.
+
+If Canvas pages show Arabic again, look for a client that sends no language.
 
 ## Connecting additional Canvas courses
 
