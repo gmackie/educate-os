@@ -1012,10 +1012,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       });
     },
     "teacher.previewCurriculumPreflight": async (ctx, { params, body }) => {
+      // Authorize before looking up a publisher/version: unauthorized callers must not
+      // discover whether a district has imported a particular course.
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can inspect its curriculum.");
       const library = stores.courseLibrary.library(libraryPolicies(courseTrust(), now));
       const plan = await planLibraryInstall(library, body.packageId, body.version);
-      // Reuse the same per-offering teacher authorization as regular course installation,
-      // but never invoke the install or Content Studio's mutation APIs.
+      // Reuse installation's local standard resolver without invoking any mutation API.
       const services = await ctx.courseInstall(params.offeringId, plan);
       const indexed = (await stores.courseLibrary.listCourses()).find(
         (course) => course.packageId === body.packageId && course.version === body.version,
