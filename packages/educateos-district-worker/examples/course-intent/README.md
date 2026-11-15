@@ -42,9 +42,10 @@ settings without adding an independent, reviewed authorization boundary.
         "provider": "cloudflare",
         "modelId": "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
       },
-      "estimatedMaxUsdNano": "100000000"
+      "estimatedMaxUsdNano": "10000000"
     }
 
+   The sample reserves at most $0.01 per request; a 10,000 input-token and 750 output-token run at the pinned gross rate costs under $0.005. Revisit the ceiling when model limits or prices change.
 6. Add the exact model to the **district-owned** model catalog and
    an approved funding pool. A binding alone must not enable AI spending.
 7. Run synthetic tests and a privacy/security pilot before real teachers.
