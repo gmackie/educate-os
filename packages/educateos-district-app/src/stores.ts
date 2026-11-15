@@ -51,6 +51,7 @@ import { InMemoryOpsStore, type OpsStore } from "./ops.ts";
 import { InMemoryMarketplacePackStore, type MarketplacePackStore } from "./marketplace.ts";
 // Course library (SCHO-331)
 import { InMemoryCourseLibraryStore, type CourseLibraryStore } from "./course-library.ts";
+import { InMemoryCourseIntentDraftStore, type CourseIntentDraftStore } from "./course-intent-drafts.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -310,6 +311,8 @@ export interface DistrictAppStores {
   // Course library (SCHO-331)
   /** The district's course library of imported OCS courses, and each class's course installs. */
   courseLibrary: CourseLibraryStore;
+  /** Private per-teacher, per-offering curriculum adaptation draft history. */
+  courseIntentDrafts: CourseIntentDraftStore;
   // Delegations (SCHO-175)
   /** Staff members' delegations to registered clients, which bound every request a client makes for them. */
   delegations: DelegationStore;
@@ -360,6 +363,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     marketplacePacks: new InMemoryMarketplacePackStore(),
     // Course library (SCHO-331)
     courseLibrary: new InMemoryCourseLibraryStore(),
+    courseIntentDrafts: new InMemoryCourseIntentDraftStore(),
     // Delegations (SCHO-175)
     delegations: new InMemoryDelegationStore(),
   };

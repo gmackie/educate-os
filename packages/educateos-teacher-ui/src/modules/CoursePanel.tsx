@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge, Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
 import { Books, DownloadSimple } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
-import type { CourseInstallPlan, CourseIntentDraft, LibraryCourse } from "../types.ts";
+import type { CourseInstallPlan, CourseIntentDraft, CourseIntentDraftRecord, LibraryCourse } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { useAction } from "./useAction.ts";
 
@@ -41,12 +41,18 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
   });
   const [plan, setPlan] = useState<CourseInstallPlan | undefined>();
   const [suggestion, setSuggestion] = useState<CourseIntentDraft | undefined>();
+  const [drafts, setDrafts] = useState<CourseIntentDraftRecord[] | undefined>();
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [selectedStrategies, setSelectedStrategies] = useState<string[]>([]);
+  const toggle = (values: string[], id: string, checked: boolean) =>
+    checked ? [...values.filter((x) => x !== id), id] : values.filter((x) => x !== id);
   const intentAvailability = useLoad(`course-ai:${offeringId}`, (client) => client.call("teacher.courseIntentAvailability", { params: { offeringId } }));
 
   const preview = (course: LibraryCourse) =>
     action.run("preview", async (client) => {
       const result = await client.call("teacher.previewCourseInstall", { params: { offeringId }, body: { packageId: course.packageId, version: course.version } });
       setSuggestion(undefined);
+      setDrafts(undefined);
       setPlan(result);
       return `${course.title} would add ${plural(remaining(result), "module")} to this class.`;
     });
@@ -55,10 +61,39 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
     action.run("suggest-intent", async (client) => {
       const draft = await client.call("teacher.suggestCourseIntent", {
         params: { offeringId },
-        body: { packageId: planned.packageId, version: planned.version, unitKey, goal: "low-equipment" },
+        body: { packageId: planned.packageId, version: planned.version, unitKey, goal: "low-equipment", requestKey: crypto.randomUUID() },
       });
       setSuggestion(draft);
-      return "Private AI suggestion ready for review. Nothing has been published or installed.";
+      setSelectedGoals([]);
+      setSelectedStrategies([]);
+      setDrafts(undefined);
+      return "Saved a private AI suggestion for your review. Nothing has been published or installed.";
+    });
+
+  const showDrafts = () =>
+    action.run("draft-list", async (client) => {
+      const previous = await client.call("teacher.listCourseIntentDrafts", { params: { offeringId } });
+      setPlan(undefined);
+      setSuggestion(undefined);
+      setDrafts(previous);
+      return previous.length + " private curriculum drafts for this teacher.";
+    });
+
+  const reviewSuggestion = (draft: CourseIntentDraft, choice: "review" | "discard") =>
+    action.run("draft-review", async (client) => {
+      const next = await client.call("teacher.reviewCourseIntentDraft", {
+        params: { offeringId, draftId: draft.draftId },
+        body: choice === "review"
+          ? { action: "review", expectedRevision: draft.revision,
+              selection: { goalIds: selectedGoals, strategyIds: selectedStrategies } }
+          : { action: "discard", expectedRevision: draft.revision },
+      });
+      if (next.status === "discarded") {
+        setSuggestion(undefined);
+        return "Draft discarded from current planning. Its historical audit revisions remain within the district.";
+      }
+      setSuggestion({ ...draft, revision: next.revision, status: "reviewed" });
+      return "Selected recommendations saved as private, reviewed planning notes. No lesson was changed.";
     });
 
   const install = (planned: CourseInstallPlan) =>
@@ -80,13 +115,19 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
   const list = courses.status === "ready" ? courses.data : [];
   return (
     <LayerCard className="flex flex-col gap-4 p-4">
-      <h2><Text variant="heading" as="span">Add a course</Text></h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2><Text variant="heading" as="span">Add a course</Text></h2>
+        <Button size="sm" variant="secondary" disabled={action.busy}
+          loading={action.running("draft-list")} onClick={() => void showDrafts()}>
+          My AI drafts
+        </Button>
+      </div>
       {courses.status === "loading" && <Text variant="secondary">Loading your district's courses…</Text>}
       {courses.status === "error" && <Problem error={courses.error} onRetry={courses.reload} />}
       {courses.status === "ready" && list.length === 0 && (
         <Text variant="secondary">Your district hasn't added any courses to its course library yet.</Text>
       )}
-      {list.length > 0 && plan === undefined && (
+      {list.length > 0 && plan === undefined && drafts === undefined && suggestion === undefined && (
         <ul aria-label="Courses" className="flex flex-col divide-y divide-kumo-line">
           {list.map((course) => (
             <li key={course.packageId} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -130,29 +171,6 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
               </li>
             ))}
           </ol>
-          {suggestion !== undefined && (
-            <section aria-label="AI course intent draft" className="flex flex-col gap-2">
-              <h3><Text variant="heading" as="span">Private suggested adaptation</Text></h3>
-              <Banner title="Draft — not approved"
-                description="This is an AI-generated suggestion for the selected course unit. It has not been verified, installed, assigned, or published." />
-              <Text variant="secondary" size="sm">
-                {"Source " + suggestion.source.version + " · " + suggestion.goal.replaceAll("-", " ") +
-                  " · estimated ledger charge $" + (Number(suggestion.actualUsdNano) / 1e9).toFixed(6)}
-              </Text>
-              <Text variant="secondary" size="sm">Learning goals proposed:</Text>
-              <ul className="list-disc pl-5">
-                {suggestion.intent.learningGoals.map((goal) => <li key={goal.id}>{goal.statement}</li>)}
-              </ul>
-              <Text variant="secondary" size="sm">Teaching strategies proposed:</Text>
-              <ul className="list-disc pl-5">
-                {suggestion.intent.strategies.map((strategy) => <li key={strategy.id}>{strategy.approach}</li>)}
-              </ul>
-              <Text variant="secondary" size="sm">
-                This preview is not saved. You can review these suggestions and manually adapt the lesson; publishing requires separate teacher and district approvals.
-              </Text>
-              <div><Button variant="secondary" onClick={() => setSuggestion(undefined)}>Discard suggestion</Button></div>
-            </section>
-          )}
           {plan.reusedDefinitions > 0 && (
             <Text variant="secondary" size="sm">{`${plural(plan.reusedDefinitions, "activity", "activities")} this class already has from an earlier course will be reused.`}</Text>
           )}
@@ -173,6 +191,93 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
             </Button>
             <Button variant="secondary" disabled={installing} onClick={() => setPlan(undefined)}>Cancel</Button>
           </div>
+        </section>
+      )}
+      {drafts !== undefined && (
+        <section aria-label="My private course intent drafts" className="flex flex-col gap-3">
+          <h3><Text variant="heading" as="span">My AI planning drafts</Text></h3>
+          <Banner title="District-private planning history"
+            description="These records contain model suggestions, not approved lessons. Reviewing them does not alter the course or publish anything." />
+          {drafts.length === 0 && <Text variant="secondary">No suggestions have been saved yet.</Text>}
+          <ul className="flex flex-col divide-y divide-kumo-line">
+            {drafts.map((draft) => (
+              <li key={draft.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">{draft.source.packageId + " · " + draft.source.unitKey}</span>
+                  <Text size="sm" variant="secondary" as="span">
+                    {draft.status.replaceAll("-", " ") + " · " + new Date(draft.updatedAt).toLocaleString()}
+                  </Text>
+                  {draft.selection !== undefined && (
+                    <Text size="sm" variant="secondary" as="span">
+                      {draft.selection.goalIds.length + " selected goals, " + draft.selection.strategyIds.length + " strategies"}
+                    </Text>
+                  )}
+                </div>
+                {(draft.status === "proposed" || draft.status === "reviewed") && draft.result !== undefined && (
+                  <Button variant="secondary" size="sm" onClick={() => {
+                    setSuggestion({ ...draft.result!, draftId: draft.id, revision: draft.revision, status: draft.status as "proposed" | "reviewed" });
+                    setSelectedGoals(draft.selection?.goalIds ?? []);
+                    setSelectedStrategies(draft.selection?.strategyIds ?? []);
+                    setDrafts(undefined);
+                  }}>View</Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div><Button variant="secondary" onClick={() => setDrafts(undefined)}>Back to courses</Button></div>
+        </section>
+      )}
+      {suggestion !== undefined && (
+        <section aria-label="Private AI course intent draft" className="flex flex-col gap-3">
+          <h3><Text variant="heading" as="span">
+            {suggestion.status === "reviewed" ? "Teacher-reviewed planning notes" : "Private suggested adaptation"}
+          </Text></h3>
+          <Banner title={suggestion.status === "reviewed" ? "Planning notes saved" : "Draft — not approved"}
+            description="These notes are private to this teacher and class. They have not been published, assigned, or applied to an active lesson." />
+          <Text size="sm" variant="secondary">
+            {"Source " + suggestion.source.packageId + " · " + suggestion.source.version +
+              " · " + suggestion.goal.replaceAll("-", " ")}
+          </Text>
+          <Text size="sm" variant="secondary">
+            {"Estimated model cost $" + (Number(suggestion.actualUsdNano) / 1e9).toFixed(6) +
+              " · draft revision " + suggestion.revision}
+          </Text>
+          <div className="flex flex-col gap-2">
+            <Text>Suggested learning goals</Text>
+            {suggestion.intent.learningGoals.map((goal) => (
+              <label key={goal.id} className="flex items-start gap-2">
+                <input type="checkbox" checked={selectedGoals.includes(goal.id)}
+                  disabled={suggestion.status === "reviewed"}
+                  onChange={(e) => setSelectedGoals((v) => toggle(v, goal.id, e.target.checked))} />
+                <span>{goal.statement}</span>
+              </label>
+            ))}
+            <Text>Suggested teaching strategies</Text>
+            {suggestion.intent.strategies.map((strategy) => (
+              <label key={strategy.id} className="flex items-start gap-2">
+                <input type="checkbox" checked={selectedStrategies.includes(strategy.id)}
+                  disabled={suggestion.status === "reviewed"}
+                  onChange={(e) => setSelectedStrategies((v) => toggle(v, strategy.id, e.target.checked))} />
+                <span>{strategy.approach}</span>
+              </label>
+            ))}
+          </div>
+          {suggestion.status === "proposed" && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" loading={action.running("draft-review")} disabled={action.busy || selectedGoals.length === 0}
+                onClick={() => void reviewSuggestion(suggestion, "review")}>
+                Save selected planning notes
+              </Button>
+              <Button variant="secondary" disabled={action.busy}
+                onClick={() => void reviewSuggestion(suggestion, "discard")}>Discard suggestion</Button>
+            </div>
+          )}
+          <Text size="sm" variant="secondary">
+            Selecting suggestions records a private review. It does not change a course page, rubric, assignment or student submission. Future lesson editing requires a separate approval-gated action.
+          </Text>
+          <div><Button variant="secondary" onClick={() => {
+            setSuggestion(undefined); setDrafts(undefined);
+          }}>Back to course library</Button></div>
         </section>
       )}
       {action.state.status === "failed" && <Problem error={action.state.error} />}
