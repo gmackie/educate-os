@@ -46,6 +46,10 @@ describe("curriculum-wide read-only OCS preflight", () => {
     const report = await district.ok(teacher, "teacher.previewCurriculumPreflight", { params, body: COURSE });
     expect(report.checks.find((c) => c.id === "standards")?.status).toBe("attention");
     expectError(await district.call(district.tokenFor(NF.amara), "teacher.previewCurriculumPreflight", { params, body: COURSE }), 403, "forbidden");
+    // Prevent metadata existence leaks before checking the teacher's offering access.
+    expectError(await district.call(district.tokenFor(NF.amara), "teacher.previewCurriculumPreflight", {
+      params, body: { ...COURSE, version: "9.9.9" },
+    }), 403, "forbidden");
     expectError(await district.call(teacher, "teacher.previewCurriculumPreflight", {
       params, body: { ...COURSE, version: "9.9.9" },
     }), 404, "not-found");
