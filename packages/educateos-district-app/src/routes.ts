@@ -1100,7 +1100,7 @@ export type CourseIntentDraftRecord = z.infer<typeof CourseIntentDraftRecord>;
 export const CourseIntentCreatedDraftBody = CourseIntentDraftBody.extend({
   draftId: CourseIntentDraftId,
   revision: z.int().positive(),
-  status: z.literal("proposed"),
+  status: z.enum(["proposed", "reviewed"]),
 });
 export type CourseIntentCreatedDraftBody = z.infer<typeof CourseIntentCreatedDraftBody>;
 export const CourseIntentReviewInput = z.discriminatedUnion("action", [
