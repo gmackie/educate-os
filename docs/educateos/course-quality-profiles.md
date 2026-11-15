@@ -57,6 +57,8 @@ PR #35 offers read-only course-wide technical checks over the district's existin
 6. Only after institutional approval may a publisher release appropriate metadata, without sending student-level information to the Foundation.
 7. After a new edition is published, its claims are scoped to the new digest; prior reviews may be linked historically but never transferred as verified without review.
 
+The tracked follow-on work packages, with acceptance tests and dependencies, are in [Course Commons quality delivery backlog](course-quality-delivery-backlog.md).
+
 ## Engineering next steps
 
 - Build immutable district-owned run storage with source digest and policy/check versions; ensure stale runs do not authorize new publications.
