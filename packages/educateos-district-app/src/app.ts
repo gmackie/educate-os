@@ -37,7 +37,7 @@ import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { type AssignmentViewBody, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
+import { CourseIntentDraftRecord, type AssignmentViewBody, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
@@ -1023,13 +1023,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.suggestCourseIntent": async (ctx, { params, body }) => {
       const scope = ctx.offeringScope(params.offeringId);
       await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
-        "Only the class's teachers can request AI lesson suggestions.");
+        "Only the class's teachers can request private AI lesson suggestions.");
       const provider = options.courseIntentProvider;
       if (provider === undefined) {
         throw new EducateOsError("unavailable", "The district has not configured an AI curriculum provider.");
       }
-      // No caller-selected model or freeform prompt is accepted by this route.
-      // The price ceiling is a second cap beyond the district's funding and model policy.
       if (usdNanoValue(provider.estimatedMaxUsdNano) > usdNanoValue(usdNanoFromCents(10))) {
         throw new EducateOsError("unavailable", "The district's AI curriculum provider exceeds the request ceiling.");
       }
@@ -1044,20 +1042,48 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       );
       if (indexed === undefined) throw new EducateOsError("not-found", "This course is not in the district library.");
       const source = {
-        packageId: body.packageId, version: body.version, digest: indexed.digest,
-        unitKey: body.unitKey,
+        packageId: body.packageId, version: body.version,
+        digest: indexed.digest, unitKey: body.unitKey,
       };
-      const requestId = "course-intent:" + crypto.randomUUID();
-      const decision = await courseIntentGovernor.beforeRequest({
-        requestId,
-        principal: { principalId: ctx.principal.principalId, districtId },
-        workspace: { kind: "course", offeringId: params.offeringId },
-        model: provider.model,
-        estimatedMaxUsdNano: provider.estimatedMaxUsdNano,
+      const at = now().toISOString();
+      const pending = CourseIntentDraftRecord.parse({
+        id: "cid_" + crypto.randomUUID().replaceAll("-", ""),
+        offeringId: params.offeringId,
+        ownerPrincipalId: ctx.principal.principalId,
+        requestKey: body.requestKey ?? crypto.randomUUID(),
+        source,
+        goal: body.goal,
+        createdAt: at, updatedAt: at, revision: 1, status: "pending",
       });
-      if (decision.effect === "deny") throw new EducateOsError(decision.error.code, decision.error.message);
+      // Claim BEFORE spending or calling the provider. A retry with the same key
+      // returns its existing completed draft, and an in-flight retry cannot double-spend.
+      const claimed = await stores.courseIntentDrafts.claim(pending);
+      if (!claimed.created) {
+        if ((claimed.draft.status === "proposed" || claimed.draft.status === "reviewed")
+            && claimed.draft.result !== undefined) {
+          return {
+            ...claimed.draft.result, draftId: claimed.draft.id,
+            revision: claimed.draft.revision, status: claimed.draft.status,
+          };
+        }
+        throw new EducateOsError("conflict",
+          "This request has already started or was discarded. Review its saved history or start a new request.");
+      }
+      const requestId = claimed.draft.id;
+      let reserved = false;
       let settled = false;
       try {
+        const decision = await courseIntentGovernor.beforeRequest({
+          requestId,
+          principal: { principalId: ctx.principal.principalId, districtId },
+          workspace: { kind: "course", offeringId: params.offeringId },
+          model: provider.model,
+          estimatedMaxUsdNano: provider.estimatedMaxUsdNano,
+        });
+        if (decision.effect === "deny") {
+          throw new EducateOsError(decision.error.code, decision.error.message);
+        }
+        reserved = true;
         const generated = await provider.generate({
           source,
           title: unit.title.slice(0, 200),
@@ -1071,10 +1097,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         if (usdNanoValue(generated.actualUsdNano) > usdNanoValue(provider.estimatedMaxUsdNano)) {
           throw new EducateOsError("unavailable", "The AI provider returned a cost above its declared maximum.");
         }
-        await courseIntentGovernor.afterResponse({
-          status: "completed", requestId, usage: generated.usage,
-          actualUsdNano: generated.actualUsdNano,
+        const settlement = await courseIntentGovernor.afterResponse({
+          status: "completed", requestId,
+          usage: generated.usage, actualUsdNano: generated.actualUsdNano,
         });
+        if (settlement.outcome !== "settled") {
+          throw new EducateOsError("unavailable", "The AI reservation could not be settled.");
+        }
         settled = true;
         const parsed = PedagogicalIntentV0.safeParse(generated.intent);
         if (!parsed.success || parsed.data.origin !== "machine-suggestion"
@@ -1082,31 +1111,93 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
             || parsed.data.source.version !== source.version
             || parsed.data.source.digest !== source.digest
             || parsed.data.source.unitKey !== source.unitKey) {
-          throw new EducateOsError("validation-failed", "The AI suggestion did not match its source or validation contract.");
+          throw new EducateOsError("validation-failed", "The AI suggestion did not match its original source.");
         }
-        return {
-          source,
-          goal: body.goal,
-          model: provider.model,
-          actualUsdNano: generated.actualUsdNano,
-          intent: parsed.data,
+        const result = {
+          source, goal: body.goal, model: provider.model,
+          actualUsdNano: generated.actualUsdNano, intent: parsed.data,
           draftOnly: true as const,
           warnings: [
-            "This is a machine suggestion, not an approved lesson or evidence of effectiveness.",
-            "No classroom, assessment or publisher material was changed. Human review is required.",
+            "Private model suggestion. This is not an approved lesson or evidence of effectiveness.",
+            "Review the goals and strategies before accepting them as planning notes.",
+            "Nothing in the classroom, assessment records or publisher's releases was changed.",
           ],
         };
+        const saved = await stores.courseIntentDrafts.transition(
+          CourseIntentDraftRecord.parse({
+            ...claimed.draft, revision: 2, status: "proposed",
+            updatedAt: now().toISOString(), result,
+          }), 1,
+        );
+        return {
+          ...result, draftId: saved.id, revision: saved.revision,
+          status: "proposed" as const,
+        };
       } catch (error) {
-        if (!settled) {
-          // The provider may have charged even when its result was lost or invalid.
-          // Preserve the maximum reservation as unknown liability, never assume $0.
-          await courseIntentGovernor.afterResponse({
-            status: "completed", requestId, attempts: [{ attemptIndex: 0, state: "unknown" }],
-          });
+        if (reserved && !settled) {
+          // A timed-out provider may have billed. Record unknown liability
+          // at the reserved maximum; reconciliation can later settle it.
+          try {
+            await courseIntentGovernor.afterResponse({
+              status: "completed", requestId,
+              attempts: [{ attemptIndex: 0, state: "unknown" }],
+            });
+          } catch {
+            // Do not mask the primary model failure or assume the cost was zero.
+          }
         }
-        if (error instanceof EducateOsError && error.code === "validation-failed") throw error;
+        try {
+          await stores.courseIntentDrafts.transition(
+            CourseIntentDraftRecord.parse({
+              ...claimed.draft, revision: 2, status: "failed",
+              updatedAt: now().toISOString(),
+            }), 1,
+          );
+        } catch {
+          // A failed storage transition remains a pending request. Never
+          // retry a possibly charged model call under the same request key.
+        }
+        if (error instanceof EducateOsError) throw error;
         throw new EducateOsError("unavailable", "The AI suggestion could not be completed.");
       }
+    },
+    "teacher.listCourseIntentDrafts": async (ctx, { params }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can list their private curriculum drafts.");
+      return stores.courseIntentDrafts.list(params.offeringId, ctx.principal.principalId, 25);
+    },
+    "teacher.getCourseIntentDraft": async (ctx, { params }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can read their private curriculum drafts.");
+      const draft = await stores.courseIntentDrafts.get(
+        params.offeringId, ctx.principal.principalId, params.draftId,
+      );
+      if (draft === undefined) throw new EducateOsError("not-found", "The draft is not available to this teacher.");
+      return draft;
+    },
+    "teacher.reviewCourseIntentDraft": async (ctx, { params, body }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can review their private curriculum drafts.");
+      const current = await stores.courseIntentDrafts.get(
+        params.offeringId, ctx.principal.principalId, params.draftId,
+      );
+      if (current === undefined) throw new EducateOsError("not-found", "The draft is not available to this teacher.");
+      if (current.revision !== body.expectedRevision || current.status !== "proposed") {
+        throw new EducateOsError("conflict", "This draft changed or was already reviewed; reload it first.");
+      }
+      const revised = CourseIntentDraftRecord.parse({
+        ...current,
+        revision: current.revision + 1,
+        updatedAt: now().toISOString(),
+        reviewedBy: ctx.principal.principalId,
+        ...(body.action === "review"
+          ? { status: "reviewed" as const, selection: body.selection }
+          : { status: "discarded" as const, result: undefined }),
+      });
+      return stores.courseIntentDrafts.transition(revised, body.expectedRevision);
     },
     "teacher.previewCourseInstall": async (ctx, { params, body }) => {
       const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
