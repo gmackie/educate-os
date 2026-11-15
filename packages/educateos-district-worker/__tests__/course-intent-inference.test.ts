@@ -48,7 +48,7 @@ describe("service-only Workers AI course intent inference", () => {
     const result = await serveCourseIntentInference(req(body), mock);
     expect(result.status).toBe(200);
     expect(result.headers.get("cache-control")).toBe("no-store");
-    const data = await result.json() as Record<string, any>;
+    const data = await result.json() as { intent: { source: typeof source; origin: string }; usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number }; actualUsdNano: string };
     expect(data.intent).toMatchObject({ source, origin: "machine-suggestion" });
     expect(data.usage).toStrictEqual({ inputTokens: 1000, outputTokens: 100, cacheReadTokens: 0, cacheWriteTokens: 0 });
     expect(data.actualUsdNano).toBe("518300");
