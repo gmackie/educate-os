@@ -539,6 +539,7 @@ describe("scratch worktree attachment ingress", () => {
       expect(text).not.toContain("\ufffd");
       expect(input.content.some(part => part.type === "image")).toBe(file.mimeType === "image/png");
       if (file.mimeType === "application/pdf") expect(text).toContain("Document text could not be read");
+      else if (file.mimeType === "text/csv") expect(text).toContain("Document text could not be read (unsupported-encoding)");
       else if (file.mimeType !== "image/png") expect(text).toContain("binary contents are not inlined");
     }),
   );

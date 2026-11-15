@@ -76,3 +76,12 @@ it("bounds inflated Word content independently of the upload limit", async () =>
   const bytes = await docx(paragraph("x".repeat(2 * 1024 * 1024)));
   expect(await describeChatAttachmentDocument(word, bytes, 32768)).toContain("could not be read (too-large)");
 });
+
+
+it("labels CSV question-bank source without converting it into a student quiz", async () => {
+  const bytes = new TextEncoder().encode('Question,,Answer\n"Garden food chain?",,17');
+  const text = await describeChatAttachmentDocument({ name: "bank.csv", mimeType: "text/csv" }, bytes, 32768);
+  expect(text).toContain('Question,,Answer\n"Garden food chain?",,17');
+  expect(text).toContain("CSV teaching source only");
+  expect(text).toContain("not an imported quiz");
+});

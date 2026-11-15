@@ -1,3 +1,4 @@
+import { workbook } from "../../educateos-assessment-ci/__tests__/xlsx-fixture.ts";
 // What the user hands the agent -- pasted links and attachments -- and what the agent is told about
 // the workspace, observed in the requests the scripted model receives.
 
@@ -239,4 +240,40 @@ it.concurrent.each(["docx", "pdf", "pptx", "imscc", "zip"])("an uploaded %s less
   const message = (await history(ws, chatId)).find(message => message.type === "message" && message.attachments?.length);
   if (!message || message.type !== "message") throw new Error("Missing lesson attachment");
   expect(new Uint8Array(await ws.getChatAttachmentContent(chatId, message.attachments![0].id))).toEqual(bytes);
+});
+
+
+it.concurrent.each(["text/csv", "text/plain", "application/octet-stream", "application/vnd.ms-excel", "xlsx"])("spreadsheet source %s uses bounded model replay and preserves originals", async mime => {
+  const bytes = mime === "xlsx"
+    ? await workbook([{ name: "Teaching bank", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Question</t></is></c><c r="C1" t="inlineStr"><is><t>Answer</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Garden food chain?</t></is></c><c r="C2"><f>1+1</f><v>17</v></c></row>' }, { name: "Omitted", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>NOT SHARED</t></is></c></row>' }])
+    : new TextEncoder().encode('Question,,Answer\nGarden food chain?,,17');
+  const model = models.script([{ text: "Here are options." }, { text: "Reuse the source." }]);
+  using owner = await newWorkspace(model, "spreadsheetlesson");
+  const { ws } = owner;
+  const upload = { oid: await ws.uploadBlob(bytes), name: `questions.${mime === "xlsx" ? "xlsx" : "csv"}`, mimeType: mime === "xlsx" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : mime };
+  const chatId = await ws.newChat("Compare options for this question bank.", SCRIPTED_MODEL_ID, undefined, [upload]);
+  for (let turn = 0; turn < 2; turn++) {
+    if (turn) await ws.sendChatMessage(chatId, "Which option changes least?", SCRIPTED_MODEL_ID);
+    await settle(ws, model, chatId, turn + 1);
+    const text = userTexts(model.requests[turn])[0]!;
+    expect(text).toContain("Question,,Answer\nGarden food chain?,,17");
+    expect(text).toContain(mime === "xlsx" ? "First XLSX worksheet only" : "CSV teaching source only");
+    expect(text).toContain("Keep answer keys and teacher notes separate");
+    expect(text).not.toContain("NOT SHARED");
+    expect(text).toContain(`workspace file env.SCRATCH/${upload.name}`);
+  }
+  const message = (await history(ws, chatId)).find(message => message.type === "message" && message.attachments?.length);
+  if (!message || message.type !== "message") throw new Error("Missing spreadsheet attachment");
+  expect(new Uint8Array(await ws.getChatAttachmentContent(chatId, message.attachments![0].id))).toEqual(bytes);
+});
+
+it.concurrent("malformed CSV does not bypass validation as a generic text attachment", async () => {
+  const model = models.script([{ text: "Please export valid CSV." }]);
+  using owner = await newWorkspace(model, "malformedcsv");
+  const upload = { oid: await owner.ws.uploadBlob(new TextEncoder().encode('Question,Answer\n"UNREADABLE_SOURCE')), name: "questions.csv", mimeType: "text/csv" };
+  const chatId = await owner.ws.newChat("Review this bank.", SCRIPTED_MODEL_ID, undefined, [upload]);
+  await settle(owner.ws, model, chatId, 1);
+  const text = userTexts(model.requests[0])[0]!;
+  expect(text).toContain("could not be read (malformed)");
+  expect(text).not.toContain("UNREADABLE_SOURCE");
 });

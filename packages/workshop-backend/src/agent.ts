@@ -5,6 +5,7 @@ import { applyCodeChange, codeChangeSerializedSize, MAX_CODE_CHANGE_SIZE, replac
 import { PDF_MIME_TYPE, modelApiSupportsPdfAttachments } from './chat-attachment-pdf';
 import { canInlineChatAttachmentImage, decodeChatAttachmentText, isAllowedChatAttachmentImageMimeType } from './chat-attachment-validation';
 import { describeChatAttachmentDocument } from './chat-attachment-document';
+import { lessonSourceType } from '@educateos/doc-extract/lesson-source';
 import { AgentCatalog, ObservationDescription } from '@gadgets/workshop-shared/gatekeeper';
 import { createWorkshopLogger, obsContext } from "./observability";
 import { createTracer } from "@gadgets/observability/tracing";
@@ -2293,7 +2294,8 @@ async function runAgentPass(
                   return [{type: "text", text: `\n\n[Attached file${filename}${workspaceLocation}; ` +
                     "original contents are currently unavailable.]"}];
                 }
-                let text = decodeChatAttachmentText(attachment.mimeType, data);
+                // CSV uses the same bounded source validation as its local teaching preview.
+                let text = lessonSourceType(attachment) === "csv" ? undefined : decodeChatAttachmentText(attachment.mimeType, data);
                 if (canInlineChatAttachmentImage(attachment.mimeType, data, attachmentImageMaxEdge)) {
                   return [{type: "text", text: `\n\n[Attached image${filename}${workspaceLocation}]`}, {
                     type: "image",
