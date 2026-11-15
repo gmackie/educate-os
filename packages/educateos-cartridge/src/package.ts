@@ -1,4 +1,4 @@
-import { snapshotDigest } from "@educateos/content-studio";
+import { snapshotDigest } from "@educateos/content-studio/ids";
 import { CartridgeRefusedError } from "./errors.ts";
 import { type CartridgeManifest, parseManifest } from "./manifest.ts";
 import { DEFAULT_XML_LIMITS, type XmlLimits } from "./xml.ts";

@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { docx, onePagePdf, pageTree, paragraph, pdf as makePdf } from "../../educateos-doc-extract/__tests__/documents.ts";
+import { docx, onePagePdf, pageTree, paragraph, pdf as makePdf, pptx } from "../../educateos-doc-extract/__tests__/documents.ts";
+import { courseCartridgePackage } from "../../educateos-cartridge/src/course.ts";
 import { describeChatAttachmentDocument } from "../src/chat-attachment-document";
 
 const word = {mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"};
@@ -51,6 +52,18 @@ it("does not guess text from unrelated formats or misleading extensions", async 
     .toBeUndefined();
   expect(await describeChatAttachmentDocument({mimeType: "application/zip", name: "lesson.zip"}, bytes, 32768))
     .toBeUndefined();
+});
+
+it("reads generic PowerPoint and cartridge uploads, with explicit coverage and preserved originals", async () => {
+  const slides = await pptx(["Compare ecosystems."]);
+  const cartridge = await courseCartridgePackage({ title: "Science", language: "en", modules: [{ title: "Habitats", items: [{ kind: "page", title: "Compare", body: "Compare ecosystems." }] }] });
+  for (const [name, bytes, label] of [["lesson.PPTX", slides, "speaker notes"], ["course.imscc", cartridge, "No course, enrollment"]] as const) {
+    const original = bytes.slice();
+    const result = await describeChatAttachmentDocument({ name, mimeType: "application/octet-stream" }, bytes, 32768);
+    expect(result).toContain("Compare ecosystems.");
+    expect(result).toContain(label);
+    expect(bytes).toEqual(original);
+  }
 });
 
 it("refuses unsupported PDF streams and excessive pages instead of fabricating lesson text", async () => {

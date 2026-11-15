@@ -250,7 +250,7 @@ export interface QtiQuiz {
  * @param identifier The placement in the cartridge, which each loss is reported under (an item's as `<placement>/<item ref>`).
  */
 export function readQtiQuiz(files: ReadonlyMap<string, Uint8Array>, path: string, kind: "test" | "item", identifier: string): QtiQuiz | { loss: QtiLoss } {
-  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
   const read = (at: string): string | undefined => {
     const bytes = files.get(at);
     if (bytes === undefined) return undefined;

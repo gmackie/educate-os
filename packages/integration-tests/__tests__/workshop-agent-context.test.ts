@@ -13,7 +13,8 @@ import {
   SCRIPTED_MODEL_ID, scriptedModelRouter, systemPromptOf, type RoutedScriptedModel,
 } from "../src/mock-model.js";
 import { NetworkInterceptor } from "../src/network-interceptor.js";
-import { docx, onePagePdf, paragraph } from "../../educateos-doc-extract/__tests__/documents.ts";
+import { docx, onePagePdf, paragraph, pptx } from "../../educateos-doc-extract/__tests__/documents.ts";
+import { courseCartridgePackage } from "../../educateos-cartridge/src/course.ts";
 import {
   connect, listConnectedAccounts, nextUsernames, signUp, waitFor, waitForIdleChat,
 } from "../src/rpc-client.js";
@@ -213,22 +214,26 @@ it.concurrent("an attachment reaches the model in its turn and stays in later tu
   expect(userTexts(model.requests[1])).toEqual([withAttachment, "What is due Friday?"]);
 });
 
-it.concurrent.each(["docx", "pdf"])("an uploaded %s lesson reaches the model as text while downloads keep the original", async type => {
+it.concurrent.each(["docx", "pdf", "pptx", "imscc", "zip"])("an uploaded %s lesson reaches the model as text while downloads keep the original", async type => {
   const bytes = type === "docx" ? await docx(paragraph("Investigate food chains in the school garden."))
-    : await onePagePdf("BT (Investigate food chains in the school garden.) Tj ET", {compress: true});
+    : type === "pptx" ? await pptx(["Investigate food chains in the school garden."])
+      : type === "imscc" || type === "zip" ? await courseCartridgePackage({ title: "Garden", language: "en", modules: [{ title: "Ecosystems", items: [{ kind: "page", title: "Field lesson", body: "Investigate food chains in the school garden." }] }] })
+        : await onePagePdf("BT (Investigate food chains in the school garden.) Tj ET", {compress: true});
   const model = models.script([{text: "Here are three options."}, {text: "Reuse the lesson."}]);
   using owner = await newWorkspace(model, "documentlesson");
   const {ws} = owner;
   const upload = {oid: await ws.uploadBlob(bytes), name: `garden.${type}`,
     mimeType: type === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      : "application/pdf"};
+      : type === "pptx" ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        : type === "zip" ? "application/zip" : type === "imscc" ? "application/octet-stream" : "application/pdf"};
   const chatId = await ws.newChat("Compare ways to reuse this lesson.", SCRIPTED_MODEL_ID, undefined, [upload]);
   for (let turn = 0; turn < 2; ++turn) {
     if (turn) await ws.sendChatMessage(chatId, "Which option changes the least?", SCRIPTED_MODEL_ID);
     await settle(ws, model, chatId, turn + 1);
     const firstMessage = userTexts(model.requests[turn])[0];
     expect(firstMessage).toContain("Investigate food chains in the school garden.");
-    expect(firstMessage).toContain(type === "docx" ? "Word body text only" : "PDF text only");
+    expect(firstMessage).toContain(type === "docx" ? "Word body text only"
+      : type === "pptx" ? "PowerPoint slide text" : type === "imscc" || type === "zip" ? "Common Cartridge preview only" : "PDF text only");
     expect(firstMessage).toContain(`workspace file env.SCRATCH/garden.${type}`);
   }
   const message = (await history(ws, chatId)).find(message => message.type === "message" && message.attachments?.length);
