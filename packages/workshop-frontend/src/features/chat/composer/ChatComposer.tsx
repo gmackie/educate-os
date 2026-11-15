@@ -47,6 +47,7 @@ import { useComposerAttachmentDrop } from "./attachments/useComposerAttachmentDr
 import {
   MAX_COMPOSER_ATTACHMENTS,
   useComposerAttachments,
+  type ComposerAttachment,
 } from "./attachments/useComposerAttachments";
 import { CapturedConsoleLogsPrompt } from "./CapturedConsoleLogsPrompt";
 import ComposerAddMenu from "./ComposerAddMenu";
@@ -94,6 +95,7 @@ export const ChatComposer = ({
   newChat = false,
   offerFormats = false,
   showAttachmentActions = false,
+  renderAttachmentReview,
   autoFocus = false,
   minRows = 2,
   seedText,
@@ -141,6 +143,8 @@ export const ChatComposer = ({
   offerFormats?: boolean;
   /** Show labeled file and connection actions when introducing the composer to new users. */
   showAttachmentActions?: boolean;
+  /** Feature-owned detail view for the current uploads, alongside their existing controls. */
+  renderAttachmentReview?: (attachments: readonly ComposerAttachment[]) => ReactNode;
   autoFocus?: boolean;
   /** Minimum number of textarea rows at rest. Defaults to 2. */
   minRows?: number;
@@ -776,6 +780,7 @@ export const ChatComposer = ({
           disabled={isSending}
           onRemove={removeAttachment}
         />
+        {renderAttachmentReview?.(pendingAttachments)}
         {/* Textarea */}
         <div className="relative px-4 pb-2.5 pt-3">
           {slashCommandPicker.popup}

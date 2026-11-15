@@ -4029,6 +4029,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.15
         version: 6.43.15
+      '@educateos/doc-extract':
+        specifier: workspace:*
+        version: link:../educateos-doc-extract
       '@educateos/shell':
         specifier: workspace:*
         version: link:../educateos-shell

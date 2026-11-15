@@ -5,7 +5,8 @@
   "description": "EducateOS bounded document text extraction for Content Studio review (SCHO-79): DOCX, PPTX and read-only Common Cartridge previews through the cartridge's bounded unzip and DTD-free XML parser, and PDF text from uncompressed or Flate-compressed content streams only, under caps on size, pages and work. A pure library: no network, no storage. Not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./lesson-source": "./src/lesson-source.ts"
   },
   "dependencies": {
     "@educateos/cartridge": "workspace:*",
