@@ -98,6 +98,12 @@ node scripts/demo/canvas-grade-return.ts run    --admin-cookie <admin> \
 node scripts/demo/canvas-grade-return.ts verify --admin-cookie <admin> --presenter ... --out /tmp/grade-return-verified.json
 ```
 
+Each "[educateos-approved]" column is left out of the Canvas course total (`omit_from_final_grade`).
+The work it grades is already a Canvas assignment of its own, so counting both would count it
+twice (SCHO-422). `run` marks any column that still counts, and `verify` reports one that a teacher
+has made count again, rather than changing it. All 19 columns were marked on 2026-11-15.
+Kofi's English 8 total now counts "Phones in the Classroom" once: 15/16, not 30/32.
+
 Canvas columns are looked up in the Canvas console (`ssh labnuc`, as for `canvas-actors.ts`), because
 the REST API does not list AGS line items by resource ID.
 
