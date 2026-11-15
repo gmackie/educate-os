@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { PrincipalId } from "@educateos/contracts";
 import { nextGuardianGuidanceGrant } from "@educateos/policy";
 import { DurableObjectGuardianGuidanceGrantStore, DurableObjectGuidanceStore, type DistrictSqlStorage } from "../src/durable-stores.ts";
+import type { PlannerPlan } from "../src/planner.ts";
 import { InMemoryGuidanceStore, PLANNER_EVIDENCE_CODES, type GuidanceRecord } from "../src/guidance.ts";
 import { bootDistrict, expectError, NF, NORTHFIELD, RIVERBEND, type TestDistrict } from "./support.ts";
 
@@ -49,6 +50,15 @@ const prioritise = async (d: TestDistrict, codes: [string, "focus" | "supporting
   d.ok(d.tokenFor(NF.rivera), "teacher.guidanceAgenda", {
     params, body: { revision: 0, priorities: await Promise.all(codes.map(async ([code, level]) => ({ ...(await mathNode(d, code)), level }))) },
   });
+
+/** Practice remains separate from the unseen assessment performed by the teacher. */
+async function independentPractice(d: TestDistrict, plan: PlannerPlan, opportunityId: string) {
+  const target = { ...params, planId: plan.id, opportunityId };
+  const student = d.tokenFor(NF.amara);
+  const started = await d.ok(student, "student.plannerCoach", { params: target, body: { revision: plan.revision, action: "try", allowAi: false } });
+  return d.ok(student, "student.plannerChallenge", { params: target, body: { revision: started.revision, text: "A new claim with credible supporting sources, reasons and a conclusion.", reflection: "I can explain this in another project.", assistance: "independent" } });
+}
+const unseenAssessment = (plan: PlannerPlan, opportunityId: string) => ({ method: "independent-task" as const, observedAt: plan.opportunities.find((o) => o.id === opportunityId)!.challenge!.sharedAt, context: "Teacher selected a separate unseen argument task and observed every criterion independently." });
 
 describe("guardian opt-in is explicit, per relationship and off by default", () => {
   it("gives a confirmed guardian nothing until an administrator enables it, including for new relationships", async () => {
@@ -239,7 +249,8 @@ describe("teacher coverage separates opportunities from mastery", () => {
     const sharedPlan = await d.ok(amara, "student.plannerShare", { params: { ...params, planId: plan.id, opportunityId: math.id }, body: { revision: accepted.revision, text: "My claim, two reasons, two credible sources, a conclusion. I defended it alone.", assistance: "independent" } });
     dash = await d.ok(teacher, "teacher.guidance", { params });
     expect(dash.coverage[0]).toMatchObject({ mastery: { "needs-evidence": 1, encountered: 1, practiced: 0, "independent-reviewed": 0 }, opportunities: { offered: 1, accepted: 1, shared: 1, reviewed: 0 } });
-    const review = { revision: sharedPlan.revision, level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Fresh problem, oral explanation, no help." };
+    const practiced = await independentPractice(d, sharedPlan, math.id);
+    const review = { assessment: unseenAssessment(practiced, math.id), revision: practiced.revision, level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Fresh problem, oral explanation, no help." };
     await d.ok(teacher, "teacher.plannerReview", { params: { ...params, planId: plan.id, opportunityId: math.id }, body: review });
     dash = await d.ok(teacher, "teacher.guidance", { params });
     expect(dash.coverage[0]!.mastery).toEqual({ "needs-evidence": 1, "encountered": 0, "practiced": 0, "independent-reviewed": 1 });
@@ -271,7 +282,7 @@ describe("teacher coverage separates opportunities from mastery", () => {
   });
 
   it("covers only standards this build can actually collect evidence for, and says so", () => {
-    expect([...PLANNER_EVIDENCE_CODES].toSorted()).toEqual(["6.RP.A.3", "W.6.1"]);
+    expect([...PLANNER_EVIDENCE_CODES].toSorted()).toEqual(["6.RP.A.3", "7.RP.A.1", "W.6.1", "W.7.1"]);
   });
 });
 
@@ -287,7 +298,8 @@ describe("guardian progress is a permitted summary of their own child", () => {
     const opp = plan.opportunities[1]!;
     const a = await d.ok(amara, "student.plannerDecision", { params: { ...params, planId: plan.id, opportunityId: opp.id }, body: { revision: plan.revision, decision: "accepted" } });
     const s = await d.ok(amara, "student.plannerShare", { params: { ...params, planId: plan.id, opportunityId: opp.id }, body: { revision: a.revision, text: "SHARED SECRET ANSWER", assistance: "independent" } });
-    await d.ok(teacher, "teacher.plannerReview", { params: { ...params, planId: plan.id, opportunityId: opp.id }, body: { revision: s.revision, level: "demonstrated", assistance: "independent", independentlyAssessed: true, decision: "recommend", rationale: "RATIONALE TEXT" } });
+    const practiced = await independentPractice(d, s, opp.id);
+    await d.ok(teacher, "teacher.plannerReview", { params: { ...params, planId: plan.id, opportunityId: opp.id }, body: { assessment: unseenAssessment(practiced, opp.id), revision: practiced.revision, level: "demonstrated", assistance: "independent", independentlyAssessed: true, decision: "recommend", rationale: "RATIONALE TEXT" } });
     const view = await d.ok(gina.guardian, "guardian.guidance", { params: childParams(AMARA) });
     expect(view.capabilities).toEqual({ suggest: false, progress: true });
     expect(inEng9(view).progress).toEqual([{ code: "W.6.1", statement: expect.any(String), focus: true, label: "Showed this independently, reviewed by the teacher" }]);

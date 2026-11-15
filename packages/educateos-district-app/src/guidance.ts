@@ -9,9 +9,10 @@
 //     evidence state) in separate counter objects, and never derives one from the other;
 //   - nothing here has a score, a sentiment, a trait or a diagnosis field.
 import { z } from "zod";
+import { independentlyReviewedPlannerEvidence } from "./planner-evidence.ts";
 import { EducateOsError, OfferingId, PrincipalId } from "@educateos/contracts";
 import type { GuardianGuidanceGrantStore } from "@educateos/policy";
-import { PlannerAssistance, PlannerLevel, PlannerSkill, plannerTeacherView, type PlannerPlan } from "./planner.ts";
+import { PlannerOpportunity, PlannerSkill, plannerTeacherView, type PlannerPlan } from "./planner.ts";
 
 // Standards
 
@@ -24,12 +25,12 @@ export const StandardState = z.enum(["approved", "hidden", "not-approved", "unma
 export type StandardState = z.infer<typeof StandardState>;
 
 /**
- * The standards this build can collect shared evidence for today: the planner's two fixed
+ * The standards this build can collect shared evidence for today: the planner's grade 6 and 7 fixed
  * mappings. Every other approved standard can be prioritised and tracked, and shows `none`, so a
  * teacher sees plainly that no evidence pathway exists yet instead of an empty-looking success.
  * A test keeps this in step with `plannerOpportunities`.
  */
-export const PLANNER_EVIDENCE_CODES: ReadonlySet<string> = new Set(["6.RP.A.3", "W.6.1"]);
+export const PLANNER_EVIDENCE_CODES: ReadonlySet<string> = new Set(["6.RP.A.3", "W.6.1", "7.RP.A.1", "W.7.1"]);
 
 const IsoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
 const Plain = (max: number) => z.string().trim().min(1).max(max).refine((text) => !/(https?:\/\/|www\.|@\S+\.\S+|\b\d{3}[-. ]?\d{3}[-. ]?\d{4}\b)/i.test(text), "Use plain words: no links, email addresses or phone numbers.");
@@ -159,14 +160,14 @@ type Opportunity = PlannerPlan["opportunities"][number];
 /**
  * One opportunity's evidence state. Offering, accepting or skipping gives none. Shared work with no
  * teacher review is only `encountered`. `independent-reviewed` needs the teacher's latest review to
- * be a recommendation made on independently assessed, unassisted work, and the learner's own
- * disclosure to say independent as well. A later hold supersedes an earlier recommendation.
+ * be a recommendation made on independently assessed, unassisted work, with a separately shared independent practice challenge. Assisted project work can precede
+ * independent assessment; the assistance disclosure is preserved. A later hold supersedes an earlier recommendation.
  */
 export function opportunityState(opportunity: Opportunity): MasteryState {
   if (opportunity.response === undefined) return "needs-evidence";
   const review = opportunity.reviews.at(-1);
   if (review === undefined) return "encountered";
-  if (review.decision === "recommend" && review.independentlyAssessed && review.assistance === "independent" && opportunity.response.assistance === "independent") return "independent-reviewed";
+  if (independentlyReviewedPlannerEvidence(opportunity)) return "independent-reviewed";
   return review.level === "encountered" ? "encountered" : "practiced";
 }
 
@@ -246,7 +247,10 @@ export async function computeCoverage(input: {
     const counts = { offered: 0, accepted: 0, skipped: 0, shared: 0, reviewed: 0 };
     for (const student of input.roster) {
       const opportunities = visible.filter((v) => v.plan.studentId === student.id).flatMap((v) => v.opportunities).filter((o) => o.frameworkKey === ref.frameworkKey && o.node.uri === ref.competencyUri);
-      const state = opportunities.reduce<MasteryState>((best, o) => RANK[opportunityState(o)] > RANK[best] ? opportunityState(o) : best, "needs-evidence");
+      // A later teacher correction controls this standard across all plans, just as in
+      // plannerKnowledge. Old demonstrations must not mask a later hold.
+      const latest = opportunities.filter((o) => o.reviews.length > 0).toSorted((a, b) => a.reviews.at(-1)!.at.localeCompare(b.reviews.at(-1)!.at) || Number(a.reviews.at(-1)!.decision === "hold") - Number(b.reviews.at(-1)!.decision === "hold")).at(-1);
+      const state = latest ? opportunityState(latest) : opportunities.reduce<MasteryState>((best, o) => RANK[opportunityState(o)] > RANK[best] ? opportunityState(o) : best, "needs-evidence");
       perStudent.set(student.id, { state, opportunities });
       mastery[state]++;
       for (const o of opportunities) {
@@ -339,8 +343,8 @@ export const EvidenceStudent = z.strictObject({
   studentId: PrincipalId, displayName: z.string(), state: MasteryState,
   evidence: z.array(z.strictObject({
     opportunityId: z.string().uuid(), planId: z.string().uuid(), source: z.enum(["student", "teacher"]), task: z.string(), criteria: z.array(z.string()), decision: z.enum(["offered", "accepted", "skipped"]),
-    response: z.strictObject({ text: z.string(), assistance: PlannerAssistance, sharedAt: z.iso.datetime() }).optional(),
-    reviews: z.array(z.strictObject({ level: PlannerLevel, assistance: PlannerAssistance, independentlyAssessed: z.boolean(), decision: z.enum(["hold", "recommend"]), rationale: z.string(), by: PrincipalId, at: z.iso.datetime() })),
+    response: PlannerOpportunity.shape.response,
+    reviews: PlannerOpportunity.shape.reviews,
   })),
 });
 /** Drill-down for one standard. */

@@ -14,7 +14,8 @@ export const PlannerKnowledge = z.strictObject({
 
 type Opportunity = PlannerPlan["opportunities"][number];
 type Review = z.infer<typeof PlannerReviewInput>;
-const supported = (o: Opportunity) => {
+/** The common evidence floor for learner knowledge, teacher coverage and family progress. */
+export const independentlyReviewedPlannerEvidence = (o: Opportunity) => {
   const r = o.reviews.at(-1);
   return o.response !== undefined && o.challenge?.assistance === "independent" && r?.decision === "recommend" && r.assistance === "independent" && r.independentlyAssessed && r.assessment !== undefined && ["demonstrated", "retained", "transferred"].includes(r.level);
 };
@@ -32,7 +33,7 @@ export function assertPlannerAssessment(review: Review, opportunity: Opportunity
   const method = review.level === "retained" ? "delayed-check" : review.level === "transferred" ? "new-context" : "independent-task";
   if (assessment.method !== method) throw new EducateOsError("conflict", "The assessment conditions must match the claimed evidence level.");
   if (review.level === "demonstrated") return;
-  const baseline = prior.flatMap((p) => p.opportunities).filter((o) => o.id !== opportunity.id && o.node.uri === opportunity.node.uri && o.releaseDigest === opportunity.releaseDigest && supported(o)).map((o) => o.reviews.at(-1)!).filter((r) => Date.parse(r.assessment!.observedAt) < Date.parse(assessment.observedAt));
+  const baseline = prior.flatMap((p) => p.opportunities).filter((o) => o.id !== opportunity.id && o.node.uri === opportunity.node.uri && o.releaseDigest === opportunity.releaseDigest && independentlyReviewedPlannerEvidence(o)).map((o) => o.reviews.at(-1)!).filter((r) => Date.parse(r.assessment!.observedAt) < Date.parse(assessment.observedAt));
   if (review.level === "retained" && !baseline.some((r) => Date.parse(assessment.observedAt) - Date.parse(r.assessment!.observedAt) >= 7 * 86400000)) {
     throw new EducateOsError("conflict", "Retention requires a prior independently reviewed demonstration and a delayed check at least seven days later.");
   }
@@ -56,7 +57,7 @@ export function plannerKnowledge(plans: PlannerPlan[], offeringId: z.infer<typeo
       const first = opportunities[0]!;
       const reviewed = opportunities.filter((o) => o.reviews.length > 0).toSorted((a, b) => a.reviews.at(-1)!.at.localeCompare(b.reviews.at(-1)!.at) || Number(a.reviews.at(-1)!.decision === "hold") - Number(b.reviews.at(-1)!.decision === "hold"));
       const latest = reviewed.at(-1);
-      const status = latest && supported(latest) ? latest.reviews.at(-1)!.level as "demonstrated" | "retained" | "transferred" : opportunities.some((o) => o.response !== undefined) ? "practiced" as const : "unverified" as const;
+      const status = latest && independentlyReviewedPlannerEvidence(latest) ? latest.reviews.at(-1)!.level as "demonstrated" | "retained" | "transferred" : opportunities.some((o) => o.response !== undefined) ? "practiced" as const : "unverified" as const;
       return { competencyUri: first.node.uri, releaseDigest: first.releaseDigest, code: first.code, status, evidenceIds: opportunities.filter((o) => o.response !== undefined).map((o) => o.id), ...(latest ? { reviewedAt: latest.reviews.at(-1)!.at } : {}) };
     }),
   };

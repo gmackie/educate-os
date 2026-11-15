@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PlannerActivityEvidence } from "./planner-activity-evidence.ts";
 import { EducateOsError, EvidenceContractId, OfferingId, PrincipalId } from "@educateos/contracts";
 import { CompetencyNode, EvidenceContract, FrameworkDefinition } from "@educateos/registry";
 import type { CatalogMirror } from "@educateos/catalog";
@@ -39,7 +40,7 @@ export const PlannerOpportunity = z.strictObject({
   contract: EvidenceContract,
   priorEvidence: z.string(),
   decision: z.enum(["offered", "accepted", "skipped"]),
-  response: z.strictObject({ text: z.string().trim().min(1).max(10000), assistance: PlannerAssistance, sharedAt: z.iso.datetime() }).optional(),
+  response: z.strictObject({ text: z.string().trim().min(1).max(10000), assistance: PlannerAssistance, activityEvidence: PlannerActivityEvidence.optional(), sharedAt: z.iso.datetime() }).optional(),
   reviews: z.array(Review),
   coaching: PlannerCoaching.optional(),
   challenge: PlannerChallenge.optional(),

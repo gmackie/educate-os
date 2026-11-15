@@ -1244,6 +1244,9 @@ importers:
 
   packages/educateos-district-app:
     dependencies:
+      '@educateos/activity-adapters':
+        specifier: workspace:*
+        version: link:../educateos-activity-adapters
       '@educateos/academics':
         specifier: workspace:*
         version: link:../educateos-academics

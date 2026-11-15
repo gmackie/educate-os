@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@educateos/academics": "workspace:*",
+    "@educateos/activity-adapters": "workspace:*",
     "@educateos/ai-governance": "workspace:*",
     "@educateos/artifacts-git": "workspace:*",
     "@educateos/assessment": "workspace:*",

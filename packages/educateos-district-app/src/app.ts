@@ -1,3 +1,4 @@
+import { plannerActivityEvidence, type PlannerActivityEvidenceSource } from "./planner-activity-evidence.ts";
 import { plannerExplanation, type PlannerAiOptions } from "./planner-ai.ts";
 import { advancePlannerCoach, plannerLesson } from "./planner-coaching.ts";
 import { assertPlannerAssessment, plannerKnowledge } from "./planner-evidence.ts";
@@ -154,6 +155,8 @@ export interface DistrictAppOptions {
   aiHelp?: AiHelpPolicySource;
   /** Optional guarded planner gateway adapter. Absent in production; curriculum remains available. */
   plannerAi?: PlannerAiOptions;
+  /** Optional paired activity evidence source. No external tool is available by default. */
+  plannerActivityEvidence?: PlannerActivityEvidenceSource;
   /** Verifies framework releases before the catalog mirror installs them. Defaults to the catalog's own seed releases only. */
   verifyCatalogRelease?: VerifyRelease;
   /**
@@ -1086,7 +1089,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (plan.revision !== body.revision) throw plannerConflict();
       if (opportunity.decision !== "accepted" || opportunity.response !== undefined) throw new EducateOsError("conflict", "Accept the opportunity first. A shared response cannot be replaced.");
       await ctx.plannerApproved(opportunity);
-      opportunity.response = { text: body.text, assistance: body.assistance, sharedAt: now().toISOString() };
+      const activityEvidence = body.activityEvidenceId === undefined ? undefined : await plannerActivityEvidence({ source: options.plannerActivityEvidence, reference: body.activityEvidenceId, districtId, plan, opportunity, assistance: body.assistance });
+      opportunity.response = { text: body.text, assistance: body.assistance, ...(activityEvidence ? { activityEvidence } : {}), sharedAt: now().toISOString() };
       plan.revision++;
       await stores.planner.save(plan, body.revision);
       return plan;

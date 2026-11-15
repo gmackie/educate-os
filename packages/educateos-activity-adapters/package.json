@@ -4,7 +4,12 @@
   "private": true,
   "description": "Approval-bound project activity adapters and verifiable learning evidence; no ambient tool execution",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts.ts",
+    "./evidence": "./src/evidence.ts",
+    "./runtime": "./src/runtime.ts"
+  },
   "scripts": { "test:run": "vitest run", "example": "node examples/pizza-tycoon.ts" },
   "dependencies": {
     "@educateos/assessment-sdk": "workspace:*",
