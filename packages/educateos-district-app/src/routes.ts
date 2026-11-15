@@ -1032,6 +1032,34 @@ const CourseBundleInput = z.record(z.string(), z.json());
 /** Which course version a teacher previews or installs in a class. */
 export const CourseInstallInput = z.strictObject({ packageId: CoursePackageId, version: CoursePackageVersion });
 
+/** Course-wide deterministic coverage report, not an authorization or educator review. */
+export const CurriculumPreflightStatus = z.enum(["pass", "attention", "not-verified"]);
+export const CurriculumPreflightCheckId = z.enum([
+  "package-integrity", "publisher-trust", "standards", "activity-portability",
+  "resource-portability", "reading-attribution", "instructor-material",
+  "copyright-rights", "accessibility", "educational-effectiveness",
+]);
+export const CurriculumPreflightBody = z.strictObject({
+  packageId: CoursePackageId,
+  version: CoursePackageVersion,
+  digest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  title: z.string(),
+  publicationApproved: z.literal(false),
+  readOnly: z.literal(true),
+  summary: z.strictObject({
+    passed: z.int().nonnegative(),
+    attention: z.int().nonnegative(),
+    notVerified: z.int().nonnegative(),
+  }),
+  checks: z.array(z.strictObject({
+    id: CurriculumPreflightCheckId,
+    status: CurriculumPreflightStatus,
+    explanation: z.string(),
+    deterministic: z.boolean(),
+  })).length(10),
+});
+export type CurriculumPreflightBody = z.infer<typeof CurriculumPreflightBody>;
+
 /** One item of a unit, as installing it adds it. */
 export const CourseInstallItemBody = z.strictObject({
   key: z.string(),
@@ -1277,6 +1305,11 @@ export const ROUTES = {
   "teacher.libraryCourses": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/course-library", surface: "teacher",
     params: params({ offeringId: OfferingId }), response: z.array(TeacherLibraryCourseBody),
+  }),
+  "teacher.previewCurriculumPreflight": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-library/preflight",
+    surface: "teacher", params: params({ offeringId: OfferingId }),
+    body: CourseInstallInput, response: CurriculumPreflightBody,
   }),
   "teacher.previewCourseInstall": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",
