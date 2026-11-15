@@ -155,6 +155,14 @@ Do them through Forge, in this order, and record the deployment ID, commit and r
      failing closed, and `educator`. The config is refused otherwise, and every call is denied.
 
    Minify it and check it is under 5 KB (`wc -c`). Keep the current secret's value to roll back.
+   To stay under the limit, list a contract price book's four prices once under `priceBooks`
+   (`{"<priceBookId>": {"inputUsdNanoPerMTok": …, "outputUsdNanoPerMTok": …,
+   "cacheReadUsdNanoPerMTok": …, "cacheWriteUsdNanoPerMTok": …}}`). A model rate can then give its
+   `priceBookId` with no prices of its own (SCHO-401). Every visible Workers AI model the Workshop
+   offers must be enabled in `modelCatalog`, allowed by a pool other than the safety pool, and
+   priced; otherwise that model is refused ("The AI assistant isn't available for this request").
+   The guard logs `ai_guard.config.unfunded_offered_models`, naming any it would refuse. Check the
+   guard's logs for it after each change.
    Set it with `forge secret set AI_GUARD_CONFIG --stage production --stdin` for app
    `educateos-ai-guard` and redeploy the guard through Forge. Do not switch before step 2's links
    read back, or the operator's own assistant goes off. An invalid config denies every call and

@@ -2,5 +2,6 @@
 // `GoogleClassroomFake`. Error helpers are exported under Classroom names so this barrel merges
 // with the other fakes'.
 export * from "./fake.ts";
+export * from "./token.ts";
 export { googleErrorResponse as classroomErrorResponse } from "./errors.ts";
 export type { ErrorInfo as ClassroomErrorInfo, GoogleStatus as ClassroomErrorStatus } from "./errors.ts";

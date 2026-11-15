@@ -34,6 +34,7 @@ export class FakeClassroom {
     courseWork("202", "Teacher-made quiz", false),
     courseWork("203", "Essay", true, { state: "DRAFT" }),
   ];
+  courseMaterials: Item[] = [];
   rubrics: Item[] = [];
   gradingPeriodSettings: Item = {};
   submissions: Item[] = [
@@ -96,6 +97,10 @@ export class FakeClassroom {
         this.gradingPeriodSettings = { ...body, gradingPeriods: (body.gradingPeriods as Item[]).map(p => ({ ...p, id: p.id ?? String(this.#nextId++) })) };
       }
       return Response.json(this.gradingPeriodSettings);
+    }
+    if (parts[2] === "courseWorkMaterials" && method === "GET" && parts.length === 3) {
+      const states = query.getAll("courseWorkMaterialStates");
+      return this.#page(this.courseMaterials.filter(({ state }) => states.includes(String(state))), query, "courseWorkMaterial");
     }
     if (parts[2] !== "courseWork") return googleError(404, "NOT_FOUND");
 

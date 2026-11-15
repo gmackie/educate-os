@@ -88,8 +88,9 @@ Worker. Role/status revocation needs no deploy.
   ["https://classroom.googleapis.com/courses/:courseId"]}]`. A principal qualifies only while
   active, of kind `staff`, and holding a `teacher` or `co-teacher` role assignment in force.
   - A teacher's `gatekeeper.connect` must name a non-empty subset of one grant's patterns. An
-    omitted list (meaning everything) or any extra type, Drive included, is refused. So is a
-    reconnect without patterns: a teacher disconnects and connects again instead.
+    omitted list (meaning everything) or any extra type, Drive included, is refused. A reconnect
+    names the account's own granted types, so a teacher can renew an expired Classroom connection.
+    An account that records no granted types names none, and is refused for teachers.
   - A teacher's `resource.acquire` must equal a granted pattern or match it as a `URLPattern`.
     This is the only place the adapter interprets a pattern, so list only types whose gatekeeper
     itself confines them to the teacher's own teaching. Google's Classroom Course is one: it

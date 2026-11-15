@@ -1,7 +1,7 @@
 // The XLSX converter: a workbook becomes the same canonical CSV every time, every cell type reads as
 // written, and anything unsafe or unreadable is refused before it is used.
 import { describe, expect, it } from "vitest";
-import { xlsxToCsv } from "../src/index.ts";
+import { readXlsxWorkbook, readXlsxWorksheet, xlsxToCsv } from "../src/index.ts";
 import { workbook, zip } from "./xlsx-fixture.ts";
 
 const LAB_ROWS = [
@@ -31,6 +31,11 @@ describe("xlsxToCsv", () => {
     const rows = `<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row>`;
     const csv = await xlsxToCsv(await workbook([{ name: "S", rows }], ["plain", 'say "hi", twice', "two\nlines"]));
     expect(csv).toBe('plain,"say ""hi"", twice","two\nlines"');
+  });
+
+  it("does not invent values for formulas without a cache, including shared-string cells", async () => {
+    const rows = '<row r="1"><c r="A1" t="s"><f>A2</f></c><c r="B1"><f>B2</f></c><c r="C1" t="str"><f>C2</f></c><c r="D1"><v>7</v></c></row>';
+    expect(await xlsxToCsv(await workbook([{ name: "S", rows }], ["Not a cached answer"]))).toBe(",,,7");
   });
 
   it("chooses a sheet by name and refuses one the workbook does not have", async () => {
@@ -67,4 +72,62 @@ describe("xlsxToCsv", () => {
     const missing = await workbook([{ name: "S", rows: `<row r="1"><c r="A1" t="s"><v>4</v></c></row>` }], ["only one"]);
     await expect(xlsxToCsv(missing)).rejects.toThrow(/shared string/);
   });
+});
+
+
+it("bounds a repeated shared-string projection and identifies the chosen sheet", async () => {
+  const bytes = await workbook([{ name: "Teaching data", rows: `<row r="1">${["A", "B", "C"].map(c => `<c r="${c}1" t="s"><v>0</v></c>`).join("")}</row>` }], ["x".repeat(1000)]);
+  expect(await readXlsxWorksheet(bytes, { maxTextChars: 25 })).toEqual({ sheetName: "Teaching data", csv: "x".repeat(25), truncated: true });
+  let remaining = 20;
+  await expect(readXlsxWorksheet(bytes, { maxTextChars: 25, spend: n => { remaining -= n; if (remaining < 0) throw new Error("budget"); } })).rejects.toThrow("budget");
+});
+
+it("refuses external worksheet relationships rather than following or misreading them", async () => {
+  const bytes = await zip([
+    { path: "xl/workbook.xml", data: `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="External" r:id="r1"/></sheets></workbook>` },
+    { path: "xl/_rels/workbook.xml.rels", data: `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="https://example.com/private" TargetMode="External"/></Relationships>` },
+  ]);
+  await expect(readXlsxWorksheet(bytes, { maxTextChars: 50 })).rejects.toThrow("external or unsupported");
+});
+
+it("reads workbook order with hidden/empty sheets under a shared CSV cap while keeping assessment selection", async () => {
+  const bytes = await workbook([
+    { name: "Cover", rows: "" },
+    { name: "Data", rows: LAB_ROWS },
+    { name: "Teacher notes", state: "hidden", rows: '<row r="1"><c r="A1"><v>42</v></c></row>' },
+  ], ["Trial", "Mass (g)", "Time (s)"]);
+  const options = { maxTextChars: 1000, maxSheets: 100, maxTotalRows: 1000 };
+  expect(await readXlsxWorkbook(bytes, options)).toEqual({ truncated: false, worksheets: [
+    { sheetName: "Cover", visibility: "visible", source: { csv: "", truncated: false } },
+    { sheetName: "Data", visibility: "visible", source: { csv: "Trial,Mass (g),Time (s)\n1,5.2,30\n2,5,31", truncated: false } },
+    { sheetName: "Teacher notes", visibility: "hidden", source: { csv: "42", truncated: false } },
+  ] });
+  const bounded = await readXlsxWorkbook(bytes, { ...options, maxTextChars: 5 });
+  expect(bounded).toMatchObject({ truncated: true, worksheets: [
+    { source: { csv: "" } }, { source: { csv: "Trial", truncated: true } }, { sheetName: "Teacher notes" },
+  ] });
+  expect(bounded.worksheets[2]?.source).toBeUndefined();
+  expect(await xlsxToCsv(bytes)).toBe("");
+  expect(await xlsxToCsv(bytes, { sheet: "Teacher notes" })).toBe("42");
+});
+
+it("refuses ambiguous workbook names and aggregate row overflow", async () => {
+  const options = { maxTextChars: 1000, maxSheets: 100, maxTotalRows: 3 };
+  const duplicate = await workbook([{ name: "Same", rows: "" }, { name: "Same", rows: "" }]);
+  await expect(readXlsxWorkbook(duplicate, options)).rejects.toThrow("ambiguous");
+  const rows = '<row r="2"><c r="A2"><v>1</v></c></row>';
+  await expect(readXlsxWorkbook(await workbook([{ name: "A", rows }, { name: "B", rows }]), options)).rejects.toMatchObject({ reason: "too-large" });
+});
+
+it("checks later worksheet relationships even when the excerpt has no remaining space", async () => {
+  const main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+  const rels = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+  const bytes = await zip([
+    { path: "xl/workbook.xml", data: `<workbook xmlns="${main}" xmlns:r="${rels}"><sheets><sheet name="Safe" r:id="r1"/><sheet name="External" r:id="r2"/></sheets></workbook>` },
+    { path: "xl/_rels/workbook.xml.rels", data: `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="r1" Type="${rels}/worksheet" Target="worksheets/safe.xml"/><Relationship Id="r2" Type="${rels}/worksheet" Target="https://example.test/private" TargetMode="External"/></Relationships>` },
+    { path: "xl/worksheets/safe.xml", data: `<worksheet xmlns="${main}"><sheetData><row r="1"><c r="A1"><v>42</v></c></row></sheetData></worksheet>` },
+  ]);
+  await expect(readXlsxWorkbook(bytes, { maxTextChars: 1, maxSheets: 100, maxTotalRows: 1000 })).rejects.toThrow("external or unsupported");
+  // A consumer explicitly selecting one worksheet retains its existing assessment behavior.
+  expect(await xlsxToCsv(bytes)).toBe("42");
 });

@@ -71,6 +71,7 @@ describe("the wizard", () => {
       "y", // the OSS admin
       "", // AI Gateway: yes
       "", // apply: yes
+      "n", // connect the LMS and roster: later
     ], { cwd: dir, env: { [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url } });
 
     expect(result.stderr).toBe("");
@@ -84,6 +85,8 @@ describe("the wizard", () => {
     expect(result.stdout).toContain("AI Workshop      https://educateos.northfield.example/ai/");
     expect(result.stdout).toContain("OSS admin        https://admin.northfield.example/");
     expect(result.stdout).toContain("Delete the Cloudflare API token");
+    expect(result.stdout).toContain("Connect your LMS and roster now? [Y/n]");
+    expect(result.stdout).toContain("Later: `npx launch-educate-os connect`.");
     expect(result.stdout).not.toContain(cloudflare.token);
     expect(cloudflare.fake.serving("educateos.northfield.example")?.releaseId).toBe("r000001-aaaaaaa");
     // A new install keeps its storage in Cloudflare's US jurisdiction (ADR-0015).
@@ -101,12 +104,16 @@ describe("the wizard", () => {
     });
 
     // A re-run reuses the answers and finds nothing to change.
-    const again = await onTerminal(["--release-url", mirror.base, "--trust", trust], [cloudflare.token, "", ""], {
+    const again = await onTerminal(["--release-url", mirror.base, "--trust", trust], [cloudflare.token, "", "", "y", "3", "n"], {
       cwd: dir, env: { [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url },
     });
     expect(again.code).toBe(0);
     expect(again.stdout).toContain("Reuse these answers?");
     expect(again.stdout).toContain("Plan: nothing to change");
+    // This time the operator takes the offer and picks Schoology, which the menu says isn't available.
+    expect(again.stdout).toContain("What should the district connect?");
+    expect(again.stdout).toContain("3) Schoology         LMS      (not available yet)");
+    expect(again.stdout).toContain("Schoology isn't available yet.");
   });
 
   it("asks again for a refused token, and asks, hidden, for the secrets the release needs", async () => {

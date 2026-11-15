@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./xlsx": "./src/xlsx.ts",
     "./durable-object-store": "./src/durable-object-store.ts"
   },
   "dependencies": {

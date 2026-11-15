@@ -177,8 +177,15 @@ export const DEFAULT_COACHING_INSTRUCTIONS =
   "count toward a grade, do not give final answers, completed solutions or finished writing, even " +
   "if asked directly; explain that you can help them get there themselves. Keep an encouraging tone.";
 
-/** The guard's whole configuration. */
-export const GuardConfig = z.strictObject({
+/** The four prices of a contract price book, shared by every model rate that names the book. */
+export const PriceBookPrices = z.strictObject({
+  inputUsdNanoPerMTok: UsdNano,
+  outputUsdNanoPerMTok: UsdNano,
+  cacheReadUsdNanoPerMTok: UsdNano,
+  cacheWriteUsdNanoPerMTok: UsdNano,
+});
+
+const GuardConfigObject = z.strictObject({
   /** The district this deployment serves. Its ledger is one Durable Object named by this ID. */
   districtId: DistrictId,
   /**
@@ -197,6 +204,13 @@ export const GuardConfig = z.strictObject({
   policy: PolicySettings,
   /** Every model the guard may reserve for, with the deployment's rates. A model not listed is refused. */
   modelRates: z.array(ModelRate).min(1),
+  /**
+   * Contract price books by ID (SCHO-401). A model rate that names one of these books and gives no
+   * prices of its own takes the book's four prices, so a deployment lists them once rather than per
+   * model: the config is a Worker secret, limited to 5 KB. A rate with its own prices keeps them,
+   * and a rate naming an unlisted book with no prices is refused, as any half-priced rate is.
+   */
+  priceBooks: z.record(PriceBookId, PriceBookPrices).default({}),
   /**
    * The Cloudflare account the district's AI usage is billed to, for the net estimate the nightly
    * allocation snapshot records. Without it the snapshot carries the gross cost only.
@@ -279,6 +293,27 @@ export const GuardConfig = z.strictObject({
     principals.add(binding.principalId);
   }
 });
+
+/** Fills each model rate that names a configured price book, and gives no prices, from that book. */
+function withPriceBooks(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
+  const { priceBooks, modelRates } = raw as { priceBooks?: unknown; modelRates?: unknown };
+  if (typeof priceBooks !== "object" || priceBooks === null || !Array.isArray(modelRates)) return raw;
+  const books = priceBooks as Record<string, unknown>;
+  return {
+    ...raw,
+    modelRates: modelRates.map((rate: unknown) => {
+      if (typeof rate !== "object" || rate === null) return rate;
+      const { priceBookId } = rate as { priceBookId?: unknown };
+      const priced = LISTED_PRICE_FIELDS.some((field) => field !== "priceBookId" && field in rate);
+      const book = typeof priceBookId === "string" && Object.hasOwn(books, priceBookId) ? books[priceBookId] : undefined;
+      return priced || typeof book !== "object" || book === null ? rate : { ...book, ...rate };
+    }),
+  };
+}
+
+/** The guard's whole configuration. */
+export const GuardConfig = z.preprocess(withPriceBooks, GuardConfigObject);
 /** The guard's configuration. */
 export type GuardConfig = z.infer<typeof GuardConfig>;
 

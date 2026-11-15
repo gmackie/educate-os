@@ -143,8 +143,8 @@ own), named with the instance prefix.
 
 Run the uninstall with the install's answers file and a token with the permissions in
 [installer-permissions.md](../installer-permissions.md) (the install token's; uninstall needs no
-other). It ships in the next `launch-educate-os` release; 0.1.0 on npm does not have it, so until
-then run it from a checkout (`node packages/launch-educate-os/src/bin.ts`) or with the installer CLI
+other). It needs `launch-educate-os` 0.2.0 or later (`npx launch-educate-os@latest uninstall`); you can also
+run it from a checkout (`node packages/launch-educate-os/src/bin.ts`) or with the installer CLI
 (`pnpm --filter @educateos/installer start uninstall --config install.json --manifest <release>/manifest.json`).
 
 ```sh

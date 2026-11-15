@@ -90,6 +90,7 @@ export async function openFakeOverseer(
       markOutputsDirty: () => {},
       trackUnreadReader: () => {},
       joinSession: () => () => {},
+      joinOwnerSession: () => () => {},
       joinPresence: () => () => {},
       joinOutputsFanout: () => () => {},
       ensureObserver: async () => {},

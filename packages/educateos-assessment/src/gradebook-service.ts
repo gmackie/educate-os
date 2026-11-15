@@ -231,11 +231,29 @@ export class GradebookService {
   async studentSummary(caller: Caller, rawOfferingId: OfferingId): Promise<StudentGradeSummary> {
     const offeringId = parse(OfferingId, rawOfferingId);
     const at = await this.#offering(offeringId);
+    const student = await this.#requireOwnRow(caller, at);
+    const { settings, columns, rows } = await this.#compute(offeringId, [student]);
+    return { offeringId, settings, columns, row: rows[0]! };
+  }
+
+  /**
+   * Requires that the caller may read the class grid (`grid`), as {@link grid} does, or their own
+   * row (`own-row`), as {@link studentSummary} does, for gradebook data kept outside EducateOS,
+   * such as the class's grades in Google Classroom (SCHO-403). Either refusal answers `not-found`.
+   */
+  async authorizeRead(caller: Caller, rawOfferingId: OfferingId, view: "grid" | "own-row"): Promise<void> {
+    const at = await this.#offering(parse(OfferingId, rawOfferingId));
+    if (view === "grid") await this.#requireGrid(caller, at, "read");
+    else await this.#requireOwnRow(caller, at);
+  }
+
+  /** The caller's own row, if they are or were a student of the offering and may read it; else `not-found`. */
+  async #requireOwnRow(caller: Caller, at: OfferingContext): Promise<GradebookStudent> {
+    const offeringId = at.scope.offeringId;
     const student = studentsOf(at.snapshot, offeringId, { includeInactive: true }).find((s) => s.principalId === caller.principal.principalId);
     const target = gradebookTarget(at, "course", caller.principal.principalId);
     if (student === undefined || (await this.#decide(caller, "read", target)) !== "allow") throw notFound(offeringId);
-    const { settings, columns, rows } = await this.#compute(offeringId, [student]);
-    return { offeringId, settings, columns, row: rows[0]! };
+    return student;
   }
 
   async #view(offeringId: OfferingId, at: OfferingContext): Promise<GradebookView> {

@@ -954,6 +954,21 @@ class OverseerImpl implements AgentHooks {
     return () => { this.#liveSessions.delete(session); };
   }
 
+  // Open owner sessions, which #liveSessions leaves out (it counts collaborators' access). The
+  // standing recheck's idle test needs them too: an owner working alone is not idle (SCHO-402).
+  #ownerSessions = 0;
+
+  // Count an owner session for its lifetime. Returns a function that uncounts it, once.
+  joinOwnerSession(): () => void {
+    this.#ownerSessions++;
+    let left = false;
+    return () => {
+      if (left) return;
+      left = true;
+      this.#ownerSessions--;
+    };
+  }
+
   /** The collaborators holding a live session (see joinSession), each profile id once. */
   liveCollaborators(): string[] {
     return [...new Set(Array.from(this.#liveSessions, session => session.holder.profileId))];
@@ -6904,7 +6919,7 @@ class OverseerImpl implements AgentHooks {
     }
     if (refused) {
       this.#revokeStanding("a principal's Workshop access changed");
-    } else if (Object.values(this.#liveSessions).every(n => n === 0) &&
+    } else if (this.#liveSessions.size === 0 && this.#ownerSessions === 0 &&
         this.#runningAgents.size === 0 && this.#pendingCallDrains.size === 0 &&
         Array.from(this.storage.pendingAgentCalls.list({ limit: 1 })).length === 0) {
       this.#revokeStanding(STANDING_IDLE_REASON);
@@ -12103,7 +12118,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
                private slashCommandsReady: Promise<void>) {
     super();
     this.#leaveSession = this.isOwner
-        ? () => {} : this.impl.joinSession({kind: "build", profileId: this.clientProfileId});
+        ? this.impl.joinOwnerSession() : this.impl.joinSession({kind: "build", profileId: this.clientProfileId});
     this.#leavePresence = joinSessionPresence(
         this.impl, this.clientProfileId, "build", () => this.#getClientProfile());
     this.#leaveOutputsFanout = this.impl.joinOutputsFanout(this.clientUserId);

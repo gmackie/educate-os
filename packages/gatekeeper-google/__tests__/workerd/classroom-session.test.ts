@@ -9,16 +9,18 @@ import {
   CLASSROOM_ACTIONS, CLASSROOM_STUDENT_ACTIONS, type ClassroomAction, type ClassroomStudentAction,
 } from "../../src/classroom-actions";
 import { ClassroomApi } from "../../src/classroom-api";
-import { GoogleClassroomCourseSessionImpl } from "../../src/classroom";
+import { GoogleClassroomCourseSessionImpl, GoogleClassroomGatekeeperImpl } from "../../src/classroom";
 import { GoogleClassroomStudentGatekeeperImpl, GoogleClassroomStudentSessionImpl } from "../../src/classroom-student";
 import { FakeClassroom } from "../classroom-fixture";
 import { FakeKv } from "../fake-kv";
 
 class TestApprovalQueue extends RpcTarget implements ApprovalQueue {
+  rejectObservation = false;
   readonly observations: ObservationDescription[] = [];
   readonly submitted: ActionDescription[] = [];
 
   async authorizeObservation(description: ObservationDescription): Promise<void> {
+    if (this.rejectObservation) throw new Error("Observer denied");
     this.observations.push(description);
   }
 
@@ -65,6 +67,49 @@ afterEach(() => {
 const writes = () => classroom.requests.filter(({ method }) => method !== "GET");
 
 describe("Google Classroom course session", () => {
+  it("exposes existing coursework only as audited source reads, with no roster, grades or queued writes", async () => {
+    expect((await session.listTeachingMaterials()).map(work => work.id)).toContain("202");
+    expect(queue.observations).toEqual([expect.objectContaining({ subresources: ["classroom/course/101"] })]);
+    await expect(session.setGrade("202", "Cg4Isub9", 90)).rejects.toThrow(/only the coursework it created/);
+    expect(writes()).toEqual([]);
+    expect(queue.submitted).toEqual([]);
+    expect(classroom.requests.some(request => request.path.includes("studentSubmissions") || request.path.endsWith("/students"))).toBe(false);
+  });
+
+  it("authorizes standalone material reads even when empty, and returns nothing when observation is refused", async () => {
+    expect(await session.listCourseMaterials()).toEqual([]);
+    expect(queue.observations).toEqual([expect.objectContaining({ subresources: ["classroom/course/101"] })]);
+    classroom.courseMaterials = [{ id: "301", title: "Teacher-only notes", state: "DRAFT", description: "Lesson source" }];
+    expect(await session.listCourseMaterials()).toMatchObject([{ id: "301", description: "Lesson source" }]);
+    expect(queue.observations).toHaveLength(2);
+    queue.rejectObservation = true;
+    await expect(session.listCourseMaterials()).rejects.toThrow("Observer denied");
+    expect(queue.submitted).toEqual([]);
+    expect(writes()).toEqual([]);
+    expect(classroom.requests.some(request => request.path.includes("student"))).toBe(false);
+  });
+
+  it("checks every observer against the reported course and rejects unknown subresources", async () => {
+    const verify = GoogleClassroomGatekeeperImpl.prototype.verifyObserverAccess.bind({ ctx: { props: { courseId: "101" } } } as never);
+    const allowed = vi.fn(async () => true);
+    const denied = vi.fn(async () => false);
+    class Verifier extends RpcTarget {
+      check: (courseId: string) => Promise<boolean>;
+      constructor(check: (courseId: string) => Promise<boolean>) { super(); this.check = check; }
+      async hasClassroomTeacherAccess(courseId: string): Promise<boolean> { return this.check(courseId); }
+    }
+    using teacher = new RpcStub(new Verifier(allowed));
+    using other = new RpcStub(new Verifier(denied));
+    const observers = [
+      { id: "teacher", verifier: teacher as unknown as Fetcher<GatekeeperUserVerifier> },
+      { id: "other", verifier: other as unknown as Fetcher<GatekeeperUserVerifier> },
+    ];
+    expect(await verify(observers, ["classroom/course/101"])).toEqual({ allowedObserverIds: ["teacher"] });
+    expect(allowed).toHaveBeenCalledWith("101");
+    expect(denied).toHaveBeenCalledWith("101");
+    await expect(verify(observers, ["classroom/course/102"])).rejects.toThrow("Unknown Classroom");
+  });
+
   it("records each read as an observation", async () => {
     let roster = await session.getRoster();
 

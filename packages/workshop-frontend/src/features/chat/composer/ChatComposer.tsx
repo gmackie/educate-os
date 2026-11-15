@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { DropdownMenu, useKumoToastManager } from "@cloudflare/kumo";
+import { Button, DropdownMenu, useKumoToastManager } from "@cloudflare/kumo";
 import { Brain, DotsThree, File as FileIcon } from "@phosphor-icons/react";
 import { RpcStub } from "capnweb";
 import type {
@@ -23,6 +23,7 @@ import type {
   SlashCommandRequest,
 } from "@gadgets/workshop-shared/api";
 import { isTransientRpcError } from "../../../rpcErrors";
+import { useToastClearance } from "./useToastClearance";
 import { slashCommandTokenKey } from "./slash-commands/slashCommandInput";
 import {
   ComposerMirror, composerTextareaClass, type ComposerMirrorHandle, type MirrorToken,
@@ -46,6 +47,7 @@ import { useComposerAttachmentDrop } from "./attachments/useComposerAttachmentDr
 import {
   MAX_COMPOSER_ATTACHMENTS,
   useComposerAttachments,
+  type ComposerAttachment,
 } from "./attachments/useComposerAttachments";
 import { CapturedConsoleLogsPrompt } from "./CapturedConsoleLogsPrompt";
 import ComposerAddMenu from "./ComposerAddMenu";
@@ -92,6 +94,8 @@ export const ChatComposer = ({
   onDiscardConsoleLogs = () => {},
   newChat = false,
   offerFormats = false,
+  showAttachmentActions = false,
+  renderAttachmentReview,
   autoFocus = false,
   minRows = 2,
   seedText,
@@ -137,6 +141,10 @@ export const ChatComposer = ({
    * with `newChat`, since a format names something to build rather than something to say.
    */
   offerFormats?: boolean;
+  /** Show labeled file and connection actions when introducing the composer to new users. */
+  showAttachmentActions?: boolean;
+  /** Feature-owned detail view for the current uploads, alongside their existing controls. */
+  renderAttachmentReview?: (attachments: readonly ComposerAttachment[]) => ReactNode;
   autoFocus?: boolean;
   /** Minimum number of textarea rows at rest. Defaults to 2. */
   minRows?: number;
@@ -166,6 +174,8 @@ export const ChatComposer = ({
    * pre-approval catalog and proactively offer to pre-approve its actions. */
 }) => {
   const toasts = useKumoToastManager();
+  const composerRef = useRef<HTMLDivElement>(null);
+  useToastClearance(composerRef);
   const {
     attachments: pendingAttachments,
     addFiles,
@@ -708,7 +718,7 @@ export const ChatComposer = ({
     // captured-log floating chip with z-10, the textarea/mirror with z-[1])
     // so they can't paint on top of body-level portaled popovers like the
     // model picker dropdown opening above the composer.
-    <div className="relative isolate px-2 py-2 sm:px-4 sm:py-4">
+    <div ref={composerRef} className="relative isolate px-2 py-2 sm:px-4 sm:py-4">
       <input
         ref={attachmentInputRef}
         type="file"
@@ -727,6 +737,13 @@ export const ChatComposer = ({
         onAttach={handleAttachLogs}
         onDiscard={onDiscardConsoleLogs}
       />
+
+      {showAttachmentActions && (
+        <div className="mb-3 flex flex-wrap gap-2" aria-label="Add teaching sources">
+          <Button type="button" disabled={isBlocked} onClick={() => attachmentInputRef.current?.click()}>Attach files</Button>
+          <Button type="button" disabled={isBlocked} onClick={handleAttachOpen}>Add connection</Button>
+        </div>
+      )}
 
       {/* Prompt card. Brighter than the page surface (kumo-control vs kumo-base) and gently lifted
           with a soft neutral shadow so the composer reads as a distinct surface instead of blending
@@ -763,6 +780,7 @@ export const ChatComposer = ({
           disabled={isSending}
           onRemove={removeAttachment}
         />
+        {renderAttachmentReview?.(pendingAttachments)}
         {/* Textarea */}
         <div className="relative px-4 pb-2.5 pt-3">
           {slashCommandPicker.popup}

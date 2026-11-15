@@ -1,4 +1,4 @@
-import type { NotExtractableReason } from "@educateos/content-studio";
+import type { NotExtractableReason } from "@educateos/content-studio/extraction";
 
 /**
  * Stops extraction with a reason. Thrown deep inside a parser and caught once, at the entry point,

@@ -147,9 +147,9 @@ export const GOOGLE_CLASSROOM_COURSE_RESOURCE: SupportedResource = {
   urlPattern: `https://${CLASSROOM_HOST}/courses/:courseId`,
   title: "Google Classroom Course",
   description:
-      "Read one course you teach and its roster, and, with your approval, create assignments " +
-      "and grade and return students' work on them. Only assignments created through this " +
-      "connection can be seen or graded.",
+      "Read teaching materials in one course you teach and its roster, and, with your approval, " +
+      "create assignments and grade and return students' work on them. Grading and changes are " +
+      "limited to assignments created through this connection. Linked Google files need separate Drive access.",
   grantable: true,
 };
 
@@ -399,6 +399,8 @@ export const RESOURCE_SCOPES: {resource: SupportedResource, scopes: string[]}[] 
       // Creating, reading and grading this project's coursework. Email addresses and photos
       // (`classroom.profile.*`) are deliberately not requested.
       "https://www.googleapis.com/auth/classroom.coursework.students",
+      // Standalone Classwork material posts are separate from assignments.
+      "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
     ],
   },
   {

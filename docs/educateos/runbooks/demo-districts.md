@@ -382,20 +382,31 @@ same steps work for a standalone demo district: use `FG_APP=educateos-<slug>` an
 If `link` answers `409`, that test identity is already one of the co-op's own people. The showcase
 will not take it. Present with the other identities, or add mailboxes (below).
 
-### More presenter mailboxes (not done)
+### Per-band presenter mailboxes
 
-Four test identities can be one persona each at a time, so presenting several bands at once means
-relinking. To give each band its own identities, gmackie/agent-inbox would need:
+Each band has its own teacher and student test identity, so presenting several bands at once
+needs no relinking. They are admitted through gmackie/agent-inbox's `access.json`. As linked on
+2026-11-15:
 
-- `access.json`: add, for example, `teacher-k2@`, `student-k2@`, `teacher-35@`, `student-35@`,
-  `teacher-68@`, `student-68@`, `teacher-912@`, `student-912@` and `guardian-2@agents.gmac.io` to
-  `emails`. Its `access` CI job syncs the "SchoolOS demo testers" policy from this list.
-- Email Routing on gmac.io: one literal rule per new address to the agent-inbox Worker. The zone
-  catch-all goes to `greenglass` and must stay as it is. The Worker accepts any address on
-  `INBOX_DOMAIN`, so it needs no change.
-- Its README: list the addresses.
+| Band | Teacher | Student |
+|---|---|---|
+| K-2 | `teacher-k2@agents.gmac.io`, Daniel Yazzie | `student-k2@`, Mateo Delgado |
+| 3-5 | `teacher-35@`, Fatima Al-Sayed | `student-35@`, Abena Mensah |
+| 6-8 | `teacher-68@`, Hannah Kowalski | `student-68@`, Kofi Mensah |
+| 9-12 | `teacher-912@`, Morgan Lee | `student-912@`, Lucía Delgado |
 
-Then link each address once, and nothing needs switching during a presentation.
+The guardian identities are `guardian-rosa@` (Rosa Delgado, parent of Mateo and Lucía) and
+`guardian-kwame@` (Kwame Mensah, parent of Abena and Kofi).
+
+To add another address:
+
+- Add it to `emails` in `access.json`; the `access` CI job syncs the "SchoolOS demo testers"
+  policy from that list.
+- Add one literal Email Routing rule on gmac.io sending it to the agent-inbox Worker. The zone
+  catch-all goes to `greenglass` and must stay as it is.
+
+`canvas-grade-return.ts` borrows the `teacher-*` identities while it runs and links them back
+afterwards.
 
 ### Reset
 

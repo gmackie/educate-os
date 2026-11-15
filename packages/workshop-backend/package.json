@@ -17,6 +17,7 @@
     "@cloudflare/puppeteer": "^2.0.0",
     "@earendil-works/pi-agent-core": "1.5.0",
     "@earendil-works/pi-ai": "1.5.0",
+    "@educateos/doc-extract": "workspace:*",
     "@gadgets/error-reporting": "workspace:*",
     "@gadgets/observability": "workspace:*",
     "@gadgets/typed-storage": "workspace:*",

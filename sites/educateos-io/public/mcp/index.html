@@ -79,7 +79,8 @@
       <div class="anchor-row rise" style="--d:3">
         <a class="btn" href="#client">MCP servers <span class="status avail">Available in Cloudflare OS</span></a>
         <a class="btn" href="#portal">District portal <span class="status avail">Available in Cloudflare OS</span></a>
-        <a class="btn" href="#server">Your district as a server <span class="status planned">Planned</span></a>
+        <a class="btn" href="#server">Your district as a server <span class="status dev">In development</span></a>
+        <a class="btn" href="#launcher">Set it up with the launcher</a>
       </div>
     </div>
   </section>
@@ -175,8 +176,8 @@
       <div class="copy">
         <div class="eyebrow">Your district as an MCP server</div>
         <h2>Let the AI tools staff already use reach school data, under the district's rules.</h2>
-        <span class="status planned" style="margin-top:16px">Planned</span>
-        <p class="lede">The design gives each district its own MCP server, so an approved outside AI client could call the district's school tools. It is designed and has no code yet.</p>
+        <span class="status dev" style="margin-top:16px">In development</span>
+        <p class="lede">Each district gets its own MCP server, so an approved outside AI client can call the district's school tools. It is built and tested against a simulated sign-in server, and isn't switched on for any district yet: the district's sign-in server doesn't issue tokens for it yet.</p>
         <ul class="checks">
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>The same operation, handler and policy decision as the district's own app, whether it's called from the web or over MCP.</li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Standard OAuth sign-in. A token meant for another service is refused, and revoking access takes effect at once.</li>
@@ -189,9 +190,36 @@
           <div class="li"><div class="t"><b class="strong">MCP client: agents call MCP servers</b><small>Cloudflare OS feature, unit-tested</small></div><span class="status avail">Available in Cloudflare OS</span></div>
           <div class="li"><div class="t"><b class="strong">MCP Server Portal connector</b><small>Cloudflare OS feature, unit-tested</small></div><span class="status avail">Available in Cloudflare OS</span></div>
           <div class="li"><div class="t"><b class="strong">School tools for Workshop agents</b><small>Tested end to end against simulated districts</small></div><span class="status dev">In development</span></div>
-          <div class="li"><div class="t"><b class="strong">District MCP server for outside clients</b><small>Designed, with no code yet</small></div><span class="status planned">Planned</span></div>
+          <div class="li"><div class="t"><b class="strong">District MCP server for outside clients</b><small>Built and tested with the official MCP client against a simulated sign-in server; not deployed</small></div><span class="status dev">In development</span></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="launcher">
+    <div class="wrap split" style="align-items:start">
+      <div class="copy">
+        <div class="eyebrow">For district IT</div>
+        <h2>Set it up with the launcher.</h2>
+        <p class="lede">The same <code>npx launch-educate-os</code> that installs EducateOS walks you through MCP: what is switched on, how each AI client connects, and adding a server to the AI Workshop.</p>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">mcp status</b> reads your saved install answers, checks the district's MCP address live, and, with your Cloudflare token, checks the connectors in your account.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">mcp clients</b> prints your district's MCP address, how sign-in and permissions work, and the exact steps for Claude, ChatGPT, Claude Code, VS Code and Cursor.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">mcp add</b> checks a server the way the Workshop will connect to it, installs the MCP Server connector, lets district administrators connect it, and lists the Workshop steps.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>It changes only your answers file, never your Cloudflare account, and never sends your token anywhere but Cloudflare.</span></li>
+        </ul>
+        <p class="muted" style="font-size:.85rem;margin-top:18px">Tested against simulated servers, not yet run by a district. Outside AI clients can't sign in to a district yet, and the MCP Server Portal can't be set up from the launcher yet; the commands say so when they find it.</p>
+      </div>
+      <pre class="code" tabindex="0" aria-label="Commands to set up MCP with the launcher"><span class="c"># what is set up, with live checks</span>
+npx launch-educate-os mcp status
+
+<span class="c"># connect AI clients to your district</span>
+npx launch-educate-os mcp clients
+npx launch-educate-os mcp clients --client claude
+
+<span class="c"># add an MCP server to the AI Workshop</span>
+npx launch-educate-os mcp add \
+  --server-url https://mcp.example.org/mcp</pre>
     </div>
   </section>
 

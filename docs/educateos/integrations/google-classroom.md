@@ -437,6 +437,11 @@ Set `DISTRICT_CONFIG.classroom` to `{ admin, roster, rosterScopes }`, where `ros
 still makes only roster reads, and never requests coursework scopes.
 
 Keep the service-account JSON key in `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a Worker secret.
+`npx launch-educate-os connect google-classroom` (SCHO-406) does both for a district installed with
+the launcher: it prints the scopes to delegate, checks the delegation with a delegated token and a
+Classroom read, stores the key, and writes and applies `DISTRICT_CONFIG.classroom` with
+`https://accounts.google.com` in `additionalTrustedIssuers`. It is tested against the provider fakes
+only.
 Missing connection settings or credentials report why sync cannot run. Existing sync history,
 removal holds, scheduling and administrator authorization remain the authority for applying it.
 This wiring does not implement Google sign-in or establish a person's identity link: deployed
@@ -444,3 +449,18 @@ Access sign-ins still require an administrator-confirmed link to the rostered pr
 
 Production verification remains open in SCHO-255. Library tests and Worker tests are not evidence
 that a demo district has been configured, synced, or used successfully by a teacher or learner.
+
+
+### Personal onboarding source coverage (SCHO-421)
+
+A teacher's course binding provides two independent read-only source paths:
+`listTeachingMaterials()` for existing coursework and `listCourseMaterials()` for standalone
+published/draft Classwork material posts. Both check current teacher membership, report
+`classroom/course/<id>` before returning (even when empty), and expose only source descriptions
+and resource links. They do not fetch links or read rosters, submissions or grades. Collaborators
+must independently teach the reported course. Coursework mutations remain app-owned.
+
+Standalone posts require `classroom.courseworkmaterials.readonly`. Reconnect older Google accounts
+to grant it; if a school blocks consent, use an exported file or pasted excerpt. Failure of this
+read does not change the independent coursework listing into an empty or failed source. Video
+links describe a resource; they do not provide its transcript or audiovisual contents.

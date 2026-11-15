@@ -170,7 +170,7 @@ export function planCourseCartridge(pkg: CartridgePackage): CourseCartridgePlan 
   const skipped: CourseCartridgeSkip[] = [];
   const flattened: string[] = [];
   const truncated: string[] = [];
-  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
   const title = (plan.metadata.title ?? "").trim() || UNTITLED;
 
   // A discussion topic: its `<topic>` file's title and prompt. An HTML prompt is reduced to text;

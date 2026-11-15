@@ -12,6 +12,7 @@ import { CourseModules } from "./modules/CourseModules.tsx";
 import { CourseAnnouncements } from "./communication/CourseAnnouncements.tsx";
 import { CourseDiscussions } from "./discussions/CourseDiscussions.tsx";
 import { CourseQuizzes } from "./quizzes/CourseQuizzes.tsx";
+import { CourseClassroomGrades } from "./classroom/CourseClassroomGrades.tsx";
 import { PageHeading } from "./PageHeading.tsx";
 
 const STATUS_VARIANT = {
@@ -99,6 +100,7 @@ export const CoursePage = ({ offeringId }: { offeringId: string }) => {
       <CourseAnnouncements offeringId={offeringId} />
       <CourseModules offeringId={offeringId} activities={activities} />
       <CourseQuizzes offeringId={offeringId} />
+      <CourseClassroomGrades offeringId={offeringId} />
       <CourseDiscussions offeringId={offeringId} />
       <section aria-labelledby="activities" className="flex flex-col gap-3">
         <Text variant="heading" as="h2">

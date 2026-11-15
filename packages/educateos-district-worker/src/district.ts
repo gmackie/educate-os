@@ -18,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type ClassroomGradeSource, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -158,6 +158,8 @@ export interface DistrictSeams {
    * district that configures screening refuses every student post as screening-unavailable.
    */
   discussionHallMonitor?: (settings: DiscussionScreeningSettings) => DiscussionScreening["hallMonitor"];
+  /** Told why a Classroom grade read was unavailable (SCHO-403), to log it. */
+  onClassroomGradesUnavailable?: DistrictAppOptions["onClassroomGradesUnavailable"];
   /** Told what each demo showcase route did (SCHO-326), to log it. */
   onShowcaseEvent?: (event: ShowcaseEvent) => void;
   /** Told what each demo operator route did (SCHO-326), to log it. */
@@ -207,6 +209,14 @@ export function readCourseLibraryTrust(text: string | undefined): PublisherTrust
   return parsed.data;
 }
 
+function withClassroomGrades(
+  source: ClassroomGradeSource | undefined,
+  onUnavailable: DistrictAppOptions["onClassroomGradesUnavailable"],
+): Pick<DistrictAppOptions, "classroomGrades" | "onClassroomGradesUnavailable"> {
+  if (source === undefined) return {};
+  return { classroomGrades: source, ...(onUnavailable === undefined ? {} : { onClassroomGradesUnavailable: onUnavailable }) };
+}
+
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
 export function configuredDistrictId(config: string | undefined): string {
   return readDistrictWorkerConfig(config).directory.district.id;
@@ -242,6 +252,38 @@ export function workerRosterSource(
     return { source: clever.cleverRosterSource(new clever.CleverDataClient({ connection: rostering.clever, token, fetch: rosterFetch })) };
   };
 }
+
+/**
+ * The live, read-only Classroom grade reads behind the "From Google Classroom" panel (SCHO-403),
+ * when the deployment has a Classroom connection and its key; otherwise `undefined`, and the
+ * panel's routes answer `not-connected`. Tokens ask for the roster reads plus reading coursework
+ * and submissions, in the `.readonly` or read-write form the domain delegated (`rosterScopes`).
+ * Requests are short and retried once, so a page load never waits long on Classroom.
+ */
+export function workerClassroomGrades(
+  classroom: { config: NonNullable<DistrictWorkerConfig["classroom"]>; key: string | undefined } | undefined,
+  classroomFetch: typeof fetch,
+): ClassroomGradeSource | undefined {
+  if (classroom === undefined || !classroom.key) return undefined;
+  const tokens = googleclassroom.serviceAccountTokens({
+    key: classroom.key,
+    scopes: classroom.config.rosterScopes === "read-write"
+      ? googleclassroom.CLASSROOM_GRADE_READ_SCOPES_READ_WRITE
+      : googleclassroom.CLASSROOM_GRADE_READ_SCOPES,
+    fetch: classroomFetch,
+    retry: CLASSROOM_GRADE_RETRY,
+  });
+  return new googleclassroom.ClassroomGradeReader(new googleclassroom.GoogleClassroomClient({
+    tokens,
+    admin: classroom.config.admin,
+    fetch: classroomFetch,
+    retry: CLASSROOM_GRADE_RETRY,
+    limits: { maxResponseBytes: 4 * 1024 * 1024, maxListItems: 10_000, requestTimeoutMs: 8_000 },
+  }));
+}
+
+/** Two attempts, a short wait, and no long `Retry-After`: a page is waiting. */
+const CLASSROOM_GRADE_RETRY = { maxAttempts: 2, baseDelayMs: 250, maxDelayMs: 1_000, maxRetryAfterMs: 2_000 };
 
 /**
  * Starts the district in `storage`: its stores (the directory seeded from the configuration on
@@ -310,6 +352,11 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     // Scheduled roster sync (SCHO-203)
     rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init)),
       config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey }),
+    // From Google Classroom (SCHO-403): over the same connection and fetch as the roster.
+    ...withClassroomGrades(workerClassroomGrades(
+      config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey },
+      seams.rosterFetch ?? ((input, init) => fetch(input, init)),
+    ), seams.onClassroomGradesUnavailable),
     ...(config.rosterServicePrincipalId === undefined ? {} : { rosterServicePrincipalId: config.rosterServicePrincipalId }),
     ...(config.fundingPools === undefined ? {} : { fundingPools: config.fundingPools }),
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),

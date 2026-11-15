@@ -118,7 +118,10 @@ npx launch-educate-os            # the wizard (same as `install`)
 npx launch-educate-os plan       # preflight and plan only; changes nothing
 npx launch-educate-os upgrade    # install the newest release, with your saved answers
 npx launch-educate-os rollback   # return to the previous release (or --to <release-id>)
-npx launch-educate-os doctor     # check Node, the release source, the token and the account
+npx launch-educate-os doctor     # check Node, the release source, the token and the account, then `status`
+npx launch-educate-os connect    # connect the district's LMS and roster (see below)
+npx launch-educate-os status     # what the district is connected to, and whether it works
+npx launch-educate-os mcp ...    # set up MCP: status, clients, add (see "MCP" below)
 ```
 
 | Option | Meaning |
@@ -153,6 +156,112 @@ npx launch-educate-os upgrade --config educateos-install.json --yes --json
 
 Exit codes: 0 done, 1 blocked or failed (nothing further changed), 2 usage (or a confirmation was
 needed and `--yes` wasn't given), 130 stopped by the operator.
+
+## Connect your LMS and roster
+
+With the district LMS installed, the wizard ends by offering **Connect your LMS and roster now?**,
+which is the same as running:
+
+```sh
+npx launch-educate-os connect              # a menu
+npx launch-educate-os connect canvas       # or name one
+```
+
+Each integration says what it gives the district and what you need first, shows the exact steps
+and values for the other system, stores what the district reads, and ends with a live check and
+what teachers do next. Nothing changes in your account without a confirmation (or `--yes`).
+
+| Integration | What the launcher does | Where it is stored | Live check |
+| --- | --- | --- | --- |
+| `canvas`, `moodle` | Creates a single-use LTI 1.3 Dynamic Registration invitation, gives the click path in Canvas or Moodle, then trusts the LMS's issuer and approves its registration for a course. | In the district (its admin API, `/api/lti/*`). | The Tool's keys at `/lti/jwks`, and the registration approved. |
+| `clever` | Asks for your Clever district ID and district-app token (hidden). | The district Worker's secret `CLEVER_DISTRICT_TOKEN`. | Reads Clever's API v3.1 with the token: your district, then its users. |
+| `google-classroom` | Asks for the service account's JSON key file, a Workspace administrator, and a term and school; prints the domain-wide delegation scopes. | The district Worker's secret `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, and `DISTRICT_CONFIG.classroom` in your answers file, applied for you. | A delegated token as the administrator, then a Classroom read. |
+| `oneroster` | Reads a OneRoster 1.2 CSV export directory. | In the district (`/api/admin/roster/preview`, then `apply`). | The district's preview of every change; it applies only if you agree. |
+| `schoology`, `classlink` | Not available yet: says why and what to use instead. | | |
+
+The steps in the district run as a district administrator, so they need your own Cloudflare Access
+token for the district (`cloudflared access login https://<district>` then
+`cloudflared access token --app https://<district>`), pasted hidden or set as
+`EDUCATEOS_ACCESS_TOKEN`. Without it, the launcher prints the requests to make instead. Worker
+secrets are set with the Cloudflare API token (`CLOUDFLARE_API_TOKEN`; Workers Scripts: Edit).
+
+`npx launch-educate-os status` reads everything and changes nothing: the district answers, Access
+asks people to sign in, the LTI Tool publishes its keys, which LMSs are registered, which roster
+credentials are set, and whether the roster sync can run, each with the fix when it isn't working.
+Exit code 1 when something is failing.
+
+In CI (`--json` gives one `connect` or `status` event):
+
+```sh
+EDUCATEOS_ACCESS_TOKEN=... npx launch-educate-os connect canvas --json        # prints the invitation
+EDUCATEOS_ACCESS_TOKEN=... npx launch-educate-os connect canvas --yes --issuer https://<district>.instructure.com \
+  --context-id <lti_context_id> --offering-id off_... --deployment-id <id>     # approves it
+EDUCATEOS_CLEVER_DISTRICT_TOKEN=... npx launch-educate-os connect clever --clever-district-id <id> --yes
+npx launch-educate-os connect google-classroom --service-account-key key.json --workspace-admin admin@district.org \
+  --classroom-roster classroom-roster.json --yes
+EDUCATEOS_ACCESS_TOKEN=... npx launch-educate-os connect oneroster --csv-dir ./oneroster-export --yes
+npx launch-educate-os status --json
+```
+
+What is proven where: Canvas and Moodle registrations passed live runs (a self-hosted current Canvas
+and Moodle 4.5, 2026-10-26), though not through this command. The Clever, Google Classroom and
+OneRoster flows, and `connect` itself, are tested against simulated providers and a simulated
+district only; no real roster has been imported through them yet.
+
+## MCP
+
+`npx launch-educate-os mcp` helps you set up MCP (the Model Context Protocol) after an install. There
+are two separate things:
+
+- **Your district's own MCP endpoint**, `https://<your hostname>/mcp`, which outside AI clients
+  (Claude, ChatGPT, Claude Code, VS Code, Cursor) call to reach school tools under district policy.
+  It is off by default; `DISTRICT_CONFIG.mcp` turns it on.
+- **The AI Workshop's MCP connectors**, which let Workshop agents call outside MCP servers: the
+  **MCP Server** connector (`gatekeeper-mcp`, for any server an administrator pastes the address
+  of) and the **MCP Server Portal** connector (`gatekeeper-mcp-portal`, for one portal).
+
+```sh
+npx launch-educate-os mcp status                  # what's set up, with live checks
+npx launch-educate-os mcp clients                 # connect AI clients to your district's /mcp
+npx launch-educate-os mcp clients --client claude # one client's steps
+npx launch-educate-os mcp add --server-url https://mcp.example.org/mcp   # add an MCP server to the Workshop
+```
+
+- **`mcp status`** reads the answers file: whether `DISTRICT_CONFIG.mcp` turns the endpoint on, its
+  issuer (and whether the district trusts it), which MCP connectors the answers install, and whether
+  `DISTRICT_CONFIG.workshopPolicy` lets district administrators connect them. Then it checks live:
+  the endpoint's OAuth metadata (`/.well-known/oauth-protected-resource/mcp`) and the 401 an
+  unauthenticated request gets. With `CLOUDFLARE_API_TOKEN` set, it also checks the connectors'
+  Workers in your account, and the portal's address. Which connectors the Workshop offers is a
+  Workshop setting (`/ai/admin?tab=gatekeepers`), which the launcher can't read.
+- **`mcp clients`** prints the endpoint's URL, how sign-in works, who may use it, a live check of
+  the authorization server (can clients register themselves, PKCE), and each client's steps and
+  config snippet. `--url <endpoint>` works without an answers file.
+- **`mcp add`** checks a server the way the Workshop's connector will (an MCP `initialize` with no
+  credentials, then its OAuth metadata and whether the connector can register there), then adds
+  `gatekeeper-mcp` to `gatekeepers` and a `{"vendorId": "mcp", "access": "all"}` grant to
+  `DISTRICT_CONFIG.workshopPolicy.connectors` (district administrators may connect MCP servers;
+  teachers may not). It shows the changes and asks first (`--yes` without a terminal). Apply them
+  with `npx launch-educate-os --config educateos-install.json`, then connect the server in the
+  Workshop: it prints the steps.
+
+Every MCP command reads and changes only the answers file and never Cloudflare. Live checks send
+no token or cookie. `--offline` skips them; `--json` prints `mcp`, `mcp-client` and `mcp-change`
+events.
+
+What isn't ready yet:
+
+- **The district endpoint has no live sign-in yet.** It is built and tested with the official MCP
+  client against a simulated authorization server, but the district's authorization server (Nathan)
+  doesn't issue tokens for it yet, no outside client has connected, and the installer doesn't exempt
+  `/mcp` from Cloudflare Access yet. Each person's delegation to a client is issued through the
+  district API; there is no page for it yet.
+- **The MCP Server Portal can't be configured by the installer yet**: it has no setting for the
+  portal's address, so `mcp add --connector portal` explains that and changes nothing.
+- **Not run against a live district.** The commands are tested against simulated endpoints and the
+  installer's simulated Cloudflare.
+
+The full guide is `docs/educateos/mcp-setup.md` in the EducateOS repository.
 
 ## Security
 
@@ -194,7 +303,7 @@ rule expiring every object does it for a large one), then run it again. It conti
 is left, so re-running after any failure is safe.
 
 Not yet run against a live Cloudflare account: it is tested against the installer's simulated one.
-Version 0.1.0 on npm does not have it yet.
+It was added in 0.2.0.
 
 ## License
 

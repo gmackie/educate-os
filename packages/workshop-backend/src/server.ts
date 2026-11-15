@@ -1081,7 +1081,7 @@ export default {
       }
       return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
     }
-    if (url.pathname === VERSION_PATH && req.method === "GET") {
+    if (pathname === VERSION_PATH && req.method === "GET") {
       return Response.json({ version: backendVersion(env) ?? null },
           { headers: { "Cache-Control": "no-store" } });
     }

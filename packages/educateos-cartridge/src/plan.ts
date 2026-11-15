@@ -1,4 +1,4 @@
-import { checkImportUrl } from "@educateos/content-studio";
+import { checkImportUrl } from "@educateos/content-studio/url-guard";
 import { ContentItemId, PrincipalId } from "@educateos/contracts";
 import { z } from "zod";
 import { CartridgeRefusedError } from "./errors.ts";
