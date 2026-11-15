@@ -130,6 +130,8 @@ export interface DistrictSettings {
 
 /** What a district reaches outside its storage. */
 export interface DistrictSeams {
+  /** Installer-owned model and mandatory screening bindings. */
+  plannerRuntime?: (policy: () => DistrictWorkerConfig["plannerAi"], table: DurableObjectRecordTable) => DistrictAppOptions["plannerAi"];
   /** Installer-provided release verification binding; no caller-supplied URL or publisher. */
   workshopReleases?: NonNullable<Parameters<typeof createDistrictApp>[0]["workshopReleases"]>;
   /** The fetch the Content Studio imports URLs with, after its own URL checks. */
@@ -332,6 +334,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const app = await createDistrictApp({
     stores,
     verifyRequest,
+    plannerAi: seams.plannerRuntime?.(() => readDistrictWorkerConfig(settings.config).plannerAi, new DurableObjectRecordTable(storage)),
     // IT review (SCHO-376): how sign-ins are verified, for the console's read-only settings. The
     // audience tags themselves are not passed, only how many there are.
     signIn: {

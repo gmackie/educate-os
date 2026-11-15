@@ -4,6 +4,7 @@
 // stores. Everything administrators change later (configuration, funding allocations, the roster)
 // is stored in the district's Durable Object, not here.
 import { z } from "zod";
+import { PlannerRuntimePolicy } from "./planner-runtime-policy.ts";
 import { WorkshopPolicySettings } from "./workshop-policy.ts";
 import { googleclassroom } from "@educateos/integrations";
 import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
@@ -44,6 +45,8 @@ export const DistrictWorkerConfig = z.strictObject({
    * directory this is ignored, apart from the district's ID, which must still match it.
    */
   directory: DistrictDirectorySnapshot,
+  /** Optional guarded planner runtime. Default disabled; never browser-configurable. */
+  plannerAi: PlannerRuntimePolicy.optional(),
   /** Explicit Workshop mint grants. Absent denies every capability request. */
   workshopPolicy: WorkshopPolicySettings.optional(),
   /**

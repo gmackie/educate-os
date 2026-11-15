@@ -24,6 +24,11 @@ it("lets a learner plan, skip, accept and explicitly share evidence through the 
   await user.click(within(math).getByRole("button", { name: "Accept" }));
   await user.click(await within(math).findByRole("button", { name: "Show me how" }));
   await within(math).findByText(/A practice machine makes 10 tiles/);
+  await within(math).findByText("AI was not requested. You can use the reviewed lesson at any time.");
+  await user.click(within(math).getByRole("checkbox", { name: /Allow a district-approved AI explanation/ }));
+  await user.click(within(math).getByRole("button", { name: "Show me how" }));
+  await within(math).findByText("Your school has not connected planner AI. Continue with the reviewed lesson.");
+  expect((within(math).getByRole("checkbox", { name: /Allow a district-approved AI explanation/ }) as HTMLInputElement).checked).toBeFalsy();
   await user.click(within(math).getByRole("button", { name: "Hint" }));
   await within(math).findByText(/Say the units aloud/);
   await user.type(await within(math).findByRole("textbox", { name: "Your response for 6.RP.A.3b" }), "Oven A makes 4 pizzas/minute; oven B makes 3.");
@@ -43,7 +48,7 @@ it("lets a learner plan, skip, accept and explicitly share evidence through the 
   const shared = await d.ok(d.tokenFor(NF.rivera), "teacher.planner", { params: { offeringId: NF.eng9 } });
   expect(shared[0]!.opportunities).toHaveLength(1);
   expect(shared[0]!.opportunities[0]!.response).toMatchObject({ assistance: "ai", text: "Oven A makes 4 pizzas/minute; oven B makes 3." });
-  expect(shared[0]!.opportunities[0]!.challenge).toMatchObject({ assistance: "independent", helpEvents: 2, source: "student-practice" });
+  expect(shared[0]!.opportunities[0]!.challenge).toMatchObject({ assistance: "independent", helpEvents: 3, source: "student-practice" });
   expect(shared[0]!.opportunities[0]).not.toHaveProperty("coaching");
   expect(JSON.stringify(shared)).not.toContain("My private Roblox");
 });

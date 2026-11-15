@@ -153,7 +153,7 @@ export interface DistrictAppOptions {
   modelCatalog?: readonly GovernedModel[];
   /** The AI-help levels above each offering. Defaults to `full` help allowed district-wide. */
   aiHelp?: AiHelpPolicySource;
-  /** Optional guarded planner gateway adapter. Absent in production; curriculum remains available. */
+  /** Optional guarded planner gateway adapter. Missing bindings leave curriculum available. */
   plannerAi?: PlannerAiOptions;
   /** Optional paired activity evidence source. No external tool is available by default. */
   plannerActivityEvidence?: PlannerActivityEvidenceSource;
@@ -1044,7 +1044,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         const learnerCourses = ctx.snapshot.offerings.filter((o) => learnerOfferings.has(o.id)).map((o) => ctx.snapshot.courses.find((c) => c.id === o.courseId));
         const bands = learnerCourses.map((c) => c && educationLevelsOf(c.gradeBand));
         const levels = bands.length > 0 && bands.every((b) => b !== undefined) ? new Set(bands.flatMap((b) => [...b!])) : undefined;
-        opportunity.coaching.aiStatus = await plannerExplanation({ options: options.plannerAi, policy: options.aiHelp, governor: ledgerGovernor(ledger), scope: ctx.offeringScope(params.offeringId), levels, plan, opportunity, allowAi: body.allowAi });
+        opportunity.coaching.aiStatus = await plannerExplanation({ options: options.plannerAi, policy: { layersFor: async (scope) => {
+          const effective = await policySource.effectivePolicy(scope);
+          if (effective.aiSpending === "disabled") return { district: "none" };
+          return options.aiHelp ? options.aiHelp.layersFor(scope) : { district: effective.aiHelp ?? "none" };
+        } }, governor: ledgerGovernor(ledger), scope: ctx.offeringScope(params.offeringId), levels, plan, opportunity, allowAi: body.allowAi });
       }
       plan.revision++;
       await stores.planner.save(plan, body.revision);
