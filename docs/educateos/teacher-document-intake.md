@@ -49,7 +49,29 @@ over the extraction caps remain available as originals but may need an unlocked 
 section or a readable text export. Extracted source text is labeled as teaching material rather
 than instructions to execute. AI proposals still need the teacher's choice before building.
 
+## Check file coverage before sending
+
+SCHO-417 adds a local source review below the onboarding composer's attachment controls. Each
+uploaded PDF, DOCX, PPTX or Common Cartridge can show the actual bounded text excerpt and format
+omissions before the teacher sends a model request. The original file still uses the normal
+workspace upload path. The review itself reads only the selected local blob in a browser worker;
+it makes no model requests or connector reads and stores no additional copy in browser storage.
+Removing an attachment or leaving the page terminates its worker. Each check also has a 15-second
+deadline, with a retry and excerpt fallback if browser policy or a worker failure prevents preview.
+
+The worker and backend replay share the type detection and extraction limits in
+`@educateos/doc-extract/lesson-source`. Unsupported files remain ordinary attachments. An invalid
+or ordinary ZIP gets a local format warning while retaining the backend's opaque-file behavior.
+Course coverage remains inside the text preview: check skipped, unplaced, flattened and truncated
+items before adapting. A PDF text preview does not describe every native PDF model's capabilities:
+supported models may also receive the original PDF, including visual content. No local review
+establishes rights, student suitability or publication. Google connections are read separately
+after send, under their existing capability checks.
+
 Regression coverage exercises the real extractor in workerd, attachment replay and original-byte
 preservation, plus uploaded PDF, DOCX, PPTX and cartridge documents across two RPC-driven turns against a scripted model whose
 request body is inspected. A real Google binding with a fake Google service also verifies existing
 coursework reaches the model, persists on later turns and issues no writes or student-data reads. Native PDF input is covered alongside the text fallback.
+Browser tests also run real preview workers on Word, slide, PDF and course bytes, and exercise
+keyboard disclosure of plain-text source markup. UI and worker lifecycle tests cover file removal,
+late responses, retries, blocked/stalled workers and format-specific recovery guidance.

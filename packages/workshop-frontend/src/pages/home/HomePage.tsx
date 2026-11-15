@@ -22,6 +22,7 @@ import {
 import { useDocumentTitle } from "../../useDocumentTitle";
 import { composerDraftStorageKey } from "../../features/chat/composer/draft/composerDraft";
 import { TeacherOnboarding } from "../../features/teacher-onboarding/TeacherOnboarding";
+import { TeacherMaterialReview } from "../../features/teacher-onboarding/TeacherMaterialReview";
 import { SchoolContextChip } from "../../features/school-context/SchoolContextChip";
 import { useSchoolContextLink } from "../../features/school-context/schoolContext";
 import { schoolContextPreamble } from "@gadgets/workshop-shared/school-context";
@@ -183,6 +184,7 @@ export const HomePage = ({ prompt, teacherOnboarding = false }: { prompt?: strin
         newChat
         offerFormats
         showAttachmentActions={teacherOnboarding}
+        renderAttachmentReview={teacherOnboarding ? attachments => <TeacherMaterialReview attachments={attachments} /> : undefined}
         autoFocus
         minRows={3}
         seedText={seed?.text}

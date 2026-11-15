@@ -18,6 +18,6 @@ export const TeacherMaterialSources = () => (
         <p className="text-kumo-subtle">This prepares source material in your personal workspace. Creating school modules uses the school’s separate preview and confirmation flow. Vendor backups such as Moodle .mbz need a Common Cartridge or readable text export.</p>
       </div>
     </div>
-    <p className="text-sm text-kumo-subtle">You can combine sources. Originals are kept. Limits: 5 files, 4 MiB each and 5 MiB total per message. Send the brief when you’re ready for AI to read the sources; ask it to show coverage and options before building.</p>
+    <p className="text-sm text-kumo-subtle">You can combine sources. After attaching files, check their text previews and omissions below. Originals are kept. Limits: 5 files, 4 MiB each and 5 MiB total per message. Send the brief when you’re ready for AI to read the sources; ask it to show coverage and options before building.</p>
   </section>
 );

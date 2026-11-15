@@ -6,9 +6,10 @@ import type { Overseer } from "@gadgets/workshop-shared/api";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { composerDraftStorageKey, readComposerDraft, writeComposerDraft } from "../../features/chat/composer/draft/composerDraft";
 import { HomePage } from "./HomePage";
+import { reviewTeacherFile } from "../../features/teacher-onboarding/reviewTeacherFile";
 
 const state = vi.hoisted(() => ({
-  api: { listModels: async () => [], newWorkspace: vi.fn<() => Pick<Overseer, "newChat" | "getMetadata"> & Disposable>() },
+  api: { listModels: async () => [], newWorkspace: vi.fn<() => Pick<Overseer, "newChat" | "getMetadata"> & Partial<Pick<Overseer, "uploadBlob">> & Disposable>() },
   navigate: vi.fn<(options: unknown) => void>(),
   addToast: vi.fn<(toast: unknown) => void>(),
   currentUser: { id: "teacher", name: "Ava" } as { id: string; name: string } | null,
@@ -34,6 +35,7 @@ vi.mock("../../GatekeeperModal", () => ({ default: ({ open }: { open: boolean })
 } }));
 vi.mock("../../features/deployment-updates/UpdateAvailableNotice", () => ({ UpdateAvailableNotice: () => null }));
 vi.mock("../../useDocumentTitle", () => ({ useDocumentTitle: () => {} }));
+vi.mock("../../features/teacher-onboarding/reviewTeacherFile", () => ({ reviewTeacherFile: vi.fn<typeof reviewTeacherFile>() }));
 vi.mock("./MeshBackground", () => ({ default: () => null }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -79,6 +81,31 @@ afterEach(async () => {
 });
 
 describe("individual teacher onboarding", () => {
+  it("reviews actual pending uploads without sending and removes the preview with the attachment", async () => {
+    vi.mocked(reviewTeacherFile).mockResolvedValue({ status: "reviewed", type: "docx", extraction: { status: "extracted", text: "Actual source lesson", truncated: false } });
+    const newChat = vi.fn<Overseer["newChat"]>(async () => 7);
+    const uploadBlob = vi.fn<Overseer["uploadBlob"]>(async () => "source-oid");
+    state.api.newWorkspace.mockReturnValue({ newChat, uploadBlob, getMetadata: async () => ({ id: "lesson", title: "Lesson" }), [Symbol.dispose]: vi.fn<() => void>() });
+    await render();
+    await prepare();
+    const file = new File(["source bytes"], "lesson.docx", { type: "application/octet-stream" });
+    Object.defineProperty(file, "stream", { value: () => new ReadableStream() });
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await act(async () => {
+      Object.defineProperty(input, "files", { value: [file], configurable: true });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(uploadBlob).toHaveBeenCalledOnce();
+    expect(reviewTeacherFile).toHaveBeenCalledWith({ blob: file, name: "lesson.docx", mimeType: "application/octet-stream" }, expect.any(AbortSignal));
+    expect(container.textContent).toContain("Text preview ready");
+    expect(newChat).not.toHaveBeenCalled();
+    expect(state.navigate).not.toHaveBeenCalled();
+    const signal = vi.mocked(reviewTeacherFile).mock.calls[0][1];
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Remove lesson.docx"]')!.click());
+    expect(signal.aborted).toBe(true);
+    expect(container.querySelector('[aria-label="Review uploaded teaching sources"]')).toBeNull();
+    expect(newChat).not.toHaveBeenCalled();
+  });
   it("offers every source path and wires files and connections without sending the brief", async () => {
     await render();
     await prepare();
