@@ -8,6 +8,11 @@ export const TeacherMaterialSources = () => (
         <p className="text-kumo-subtle">Choose Attach files for PDF, Word (.docx) or PowerPoint (.pptx). Word body text and slide text can be read; images, layout and speaker notes may be missing. Scans and older Office files need a readable text or PDF export.</p>
       </div>
       <div className="flex flex-col gap-1">
+        <h4 className="font-medium text-kumo-default">Spreadsheets and question banks</h4>
+        <p className="text-kumo-subtle">Choose Attach files for Excel (.xlsx) or UTF-8 comma-separated CSV. Share at most 1,000 rows and 100 columns. XLSX previews read the first worksheet, including hidden rows and columns; move the intended sheet first or export it as CSV. Other sheets, charts, images and formatting are omitted. Formula values may be stale or missing and are never recalculated. Older .xls, macro-enabled workbooks and vendor question banks need a supported export.</p>
+        <p className="text-kumo-subtle">Review answer keys and teacher notes before adapting a student activity. This supplies teaching source text; it does not create a quiz or import grades.</p>
+      </div>
+      <div className="flex flex-col gap-1">
         <h4 className="font-medium text-kumo-default">Google Drive and Classroom</h4>
         <p className="text-kumo-subtle">Choose Add connection, then Google. For Drive, select one file or folder with read-only access to read Docs, Sheets, Slides or PDFs. For Classroom, select a course you teach to read existing coursework instructions and material links. Connect linked Drive files separately to read their contents.</p>
         <p className="text-kumo-subtle">Classroom sources cover coursework and its attachments; standalone Classwork materials are not included. You can share their Drive files directly. If Google is unavailable or your school blocks access, download a supported file or paste the lesson text.</p>

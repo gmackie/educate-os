@@ -178,6 +178,7 @@
     "packages/bundled-blueprints/",
     "packages/configurator-ui/",
     "packages/educateos-academics/",
+    "packages/educateos-assessment-ci/",
     "packages/educateos-assessment/",
     "packages/educateos-cartridge/",
     "packages/educateos-catalog/",
