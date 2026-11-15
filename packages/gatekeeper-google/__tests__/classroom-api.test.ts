@@ -25,6 +25,30 @@ const exhausted = () => {
 };
 
 describe("ClassroomApi reads", () => {
+  it("reads existing coursework sources across pages without accessing student data or permitting changes", async () => {
+    Object.assign(classroom.courseWork.find(work => work.id === "202")!, {
+      description: "A lesson I already teach", materials: [{ driveFile: { driveFile: { title: "Lesson slides", alternateLink: "https://drive.google.com/file/d/lesson/view" } } }],
+    });
+    const sources = await api.listTeachingMaterials("101");
+    expect(sources.map(work => work.id)).toEqual(["201", "202", "203"]);
+    expect(sources.find(work => work.id === "202")).toMatchObject({ description: "A lesson I already teach", materials: [{ kind: "driveFile", title: "Lesson slides" }] });
+    expect(classroom.requests.every(request => request.method === "GET")).toBe(true);
+    expect(classroom.requests.some(request => request.path.includes("studentSubmissions") || request.path.endsWith("/students"))).toBe(false);
+    await expect(api.getOwnedCourseWork("101", "202")).rejects.toBeInstanceOf(ClassroomNotOwnedError);
+  });
+
+  it("refuses teaching-source access before listing if the account no longer teaches the course", async () => {
+    classroom.teachers = [];
+    await expect(api.listTeachingMaterials("101")).rejects.toThrow("does not teach");
+    expect(classroom.requests.map(request => request.path)).toEqual(["/courses/101/teachers/me"]);
+  });
+
+  it("refuses a repeated source page instead of hanging or duplicating lesson coverage", async () => {
+    classroom.intercept = request => request.path.endsWith("/courseWork")
+      ? Response.json({ courseWork: [], nextPageToken: "again" }) : undefined;
+    await expect(api.listTeachingMaterials("101")).rejects.toThrow("repeated a page");
+  });
+
   it("pages through the whole roster by nextPageToken", async () => {
     let roster = await api.getRoster("101");
 

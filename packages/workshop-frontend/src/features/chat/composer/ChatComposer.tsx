@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { DropdownMenu, useKumoToastManager } from "@cloudflare/kumo";
+import { Button, DropdownMenu, useKumoToastManager } from "@cloudflare/kumo";
 import { Brain, DotsThree, File as FileIcon } from "@phosphor-icons/react";
 import { RpcStub } from "capnweb";
 import type {
@@ -93,6 +93,7 @@ export const ChatComposer = ({
   onDiscardConsoleLogs = () => {},
   newChat = false,
   offerFormats = false,
+  showAttachmentActions = false,
   autoFocus = false,
   minRows = 2,
   seedText,
@@ -138,6 +139,8 @@ export const ChatComposer = ({
    * with `newChat`, since a format names something to build rather than something to say.
    */
   offerFormats?: boolean;
+  /** Show labeled file and connection actions when introducing the composer to new users. */
+  showAttachmentActions?: boolean;
   autoFocus?: boolean;
   /** Minimum number of textarea rows at rest. Defaults to 2. */
   minRows?: number;
@@ -730,6 +733,13 @@ export const ChatComposer = ({
         onAttach={handleAttachLogs}
         onDiscard={onDiscardConsoleLogs}
       />
+
+      {showAttachmentActions && (
+        <div className="mb-3 flex flex-wrap gap-2" aria-label="Add teaching sources">
+          <Button type="button" disabled={isBlocked} onClick={() => attachmentInputRef.current?.click()}>Attach files</Button>
+          <Button type="button" disabled={isBlocked} onClick={handleAttachOpen}>Add connection</Button>
+        </div>
+      )}
 
       {/* Prompt card. Brighter than the page surface (kumo-control vs kumo-base) and gently lifted
           with a soft neutral shadow so the composer reads as a distinct surface instead of blending

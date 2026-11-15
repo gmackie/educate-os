@@ -8,7 +8,9 @@
     ".": "./src/index.ts",
     "./errors": "./src/errors.ts",
     "./xml": "./src/xml.ts",
-    "./zip": "./src/zip.ts"
+    "./zip": "./src/zip.ts",
+    "./package": "./src/package.ts",
+    "./course": "./src/course.ts"
   },
   "dependencies": {
     "@educateos/catalog": "workspace:*",

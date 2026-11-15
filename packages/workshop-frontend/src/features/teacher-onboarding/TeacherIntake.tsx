@@ -37,7 +37,7 @@ export const TeacherIntake = ({ onPrepare }: { onPrepare: (brief: string) => voi
             ? [...previous, material]
             : previous.filter((item) => item !== material))} />
         ))}
-        <p className="text-sm text-kumo-subtle">Choose what you plan to share. You’ll add files, paste text or choose available account connections after reviewing your brief. Course exports need a supported importer; selecting a source does not import it.</p>
+        <p className="text-sm text-kumo-subtle">You can combine lesson documents and slides, Google Drive or Classroom sources, and Common Cartridge course exports. You’ll attach files or choose specific connections after reviewing your brief. Selecting a source does not import it.</p>
       </fieldset>
       <Radio.Group legend="How would you like to start?" appearance="card" value={level} onValueChange={(value) => setLevel(value as TeacherIntegrationLevel)}>
         {TEACHER_INTEGRATION_LEVELS.map(({ value, label, description }) => (

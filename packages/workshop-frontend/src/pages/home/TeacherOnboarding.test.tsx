@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   navigate: vi.fn<(options: unknown) => void>(),
   addToast: vi.fn<(toast: unknown) => void>(),
   currentUser: { id: "teacher", name: "Ava" } as { id: string; name: string } | null,
+  connectionPickerOpen: false,
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
@@ -27,7 +28,10 @@ vi.mock("../../AuthContext", () => ({
 }));
 vi.mock("../../useVendorBranding", () => ({ useVendorBranding: () => new Map() }));
 vi.mock("../../CapsuleOverlay", () => ({ default: () => null }));
-vi.mock("../../GatekeeperModal", () => ({ default: () => null }));
+vi.mock("../../GatekeeperModal", () => ({ default: ({ open }: { open: boolean }) => {
+  state.connectionPickerOpen = open;
+  return null;
+} }));
 vi.mock("../../features/deployment-updates/UpdateAvailableNotice", () => ({ UpdateAvailableNotice: () => null }));
 vi.mock("../../useDocumentTitle", () => ({ useDocumentTitle: () => {} }));
 vi.mock("./MeshBackground", () => ({ default: () => null }));
@@ -70,10 +74,29 @@ afterEach(async () => {
   container?.remove();
   sessionStorage.clear();
   state.currentUser = { id: "teacher", name: "Ava" };
+  state.connectionPickerOpen = false;
   vi.clearAllMocks();
 });
 
 describe("individual teacher onboarding", () => {
+  it("offers every source path and wires files and connections without sending the brief", async () => {
+    await render();
+    await prepare();
+    for (const heading of ["Lesson documents and slides", "Google Drive and Classroom", "LMS course exports"]) {
+      expect(container.textContent).toContain(heading);
+    }
+    expect(container.textContent).toContain("Connect linked Drive files separately");
+    expect(container.textContent).toContain("preview and confirmation flow");
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const click = vi.spyOn(fileInput, "click");
+    await act(async () => [...container.querySelectorAll("button")].find(button => button.textContent === "Attach files")!.click());
+    expect(click).toHaveBeenCalledOnce();
+    await act(async () => [...container.querySelectorAll("button")].find(button => button.textContent === "Add connection")!.click());
+    expect(state.connectionPickerOpen).toBe(true);
+    expect(state.api.newWorkspace).not.toHaveBeenCalled();
+    expect(state.navigate).not.toHaveBeenCalled();
+    click.mockRestore();
+  });
   it("offers a deterministic entry on the personal home", async () => {
     await render(false);
     const entry = [...container.querySelectorAll("button")].find((button) => button.textContent === "Start with my materials")!;

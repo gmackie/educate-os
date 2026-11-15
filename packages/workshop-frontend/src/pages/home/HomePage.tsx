@@ -182,6 +182,7 @@ export const HomePage = ({ prompt, teacherOnboarding = false }: { prompt?: strin
         onModelChange={handleModelChange}
         newChat
         offerFormats
+        showAttachmentActions={teacherOnboarding}
         autoFocus
         minRows={3}
         seedText={seed?.text}

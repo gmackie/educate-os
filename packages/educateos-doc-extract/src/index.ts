@@ -11,24 +11,28 @@ import { ExtractionStopped, StepBudget } from "./budget.ts";
 import { extractDocxText } from "./docx.ts";
 import { DEFAULT_EXTRACTION_LIMITS, type ExtractionLimits } from "./limits.ts";
 import { extractPdfText } from "./pdf.ts";
+import { extractPptxText } from "./pptx.ts";
+import { extractCartridgeText } from "./cartridge.ts";
 
 export { DEFAULT_EXTRACTION_LIMITS, type ExtractionLimits } from "./limits.ts";
 
+/** Documents and read-only course packages that can supply teaching source text. */
+export type DocumentContentType = ExtractableContentType | "pptx" | "cartridge";
+
 /**
- * Extracts the text of a PDF or DOCX within `limits`. Never throws for anything about the
+ * Extracts document text or a read-only course preview within `limits`. Never throws for anything about the
  * document: what it cannot read exactly is `not-extractable` with a reason.
  */
 export async function extractDocumentText(
   bytes: Uint8Array,
-  contentType: ExtractableContentType,
+  contentType: DocumentContentType,
   limits: ExtractionLimits = DEFAULT_EXTRACTION_LIMITS,
 ): Promise<TextExtraction> {
   if (bytes.byteLength > limits.maxBytes) return { status: "not-extractable", reason: "too-large" };
   const budget = new StepBudget(limits.maxSteps);
   try {
-    const { text, truncated } = contentType === "pdf"
-      ? await extractPdfText(bytes, limits, budget)
-      : await extractDocxText(bytes, limits, budget);
+    const extract = { pdf: extractPdfText, docx: extractDocxText, pptx: extractPptxText, cartridge: extractCartridgeText }[contentType];
+    const { text, truncated } = await extract(bytes, limits, budget);
     if (text === "") return { status: "not-extractable", reason: "no-text" };
     return { status: "extracted", text, truncated };
   } catch (error) {
