@@ -9,4 +9,5 @@ export * from "./tools.ts";
 export * from "./grants.ts";
 export * from "./delegations.ts";
 export * from "./guardians.ts";
+export * from "./guardian-guidance.ts";
 export * from "./academics.ts";

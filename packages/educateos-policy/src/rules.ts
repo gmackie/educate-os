@@ -269,6 +269,24 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     },
     effect: { effect: "allow" },
   },
+  // The one narrow exception to "guardians only read" (Guidance and Evidence). It names only the
+  // `learning-guidance` kind, which is not a guardian-readable kind, and it matches only a
+  // `guardian-of` fact from the separate guidance source: an administrator's explicit, per-relationship
+  // grant. It never matches a grade, submission, conversation or any other kind, and never a
+  // relationship that lacks the grant, which is every relationship until an administrator opts one in.
+  {
+    id: "guardian.child.learning-guidance",
+    description: "A guardian suggests a low-stakes topic for their child, or reads the child's permitted progress summary, only through a guardian relationship in force AND an administrator's explicit learning-guidance grant for that relationship; each decision is audited with the relationship. A suggestion is never an assignment.",
+    when: {
+      principalKinds: ["guardian"],
+      kinds: ["learning-guidance"],
+      ownership: ["others"],
+      relationships: ["guardian-of"],
+      classifications: ["course"],
+      actions: ["create", "read", "list"],
+    },
+    effect: { effect: "allow" },
+  },
   {
     id: "guard.guardian.child-records-only",
     description: "A guardian may do nothing else: no writes, no personal spaces or conversations, no submissions, no other children, no tools or directory.",

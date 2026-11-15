@@ -7,7 +7,7 @@ import { useAnnounce } from "../AppContext.tsx";
 import { ErrorState } from "../ErrorState.tsx";
 import { classTitle } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
-import { childCoursePath } from "../router.tsx";
+import { childCoursePath, childGuidancePath } from "../router.tsx";
 import { scoreText } from "./familyText.ts";
 import { ChildSwitcher } from "./ChildSwitcher.tsx";
 import { PageHeading } from "../PageHeading.tsx";
@@ -92,6 +92,7 @@ export const ChildPage = ({ studentId }: { studentId: string }) => {
       <div className="flex flex-col gap-1">
         <PageHeading>{`${child.displayName}'s classes`}</PageHeading>
         <FamilyPrivacyNote childName={child.displayName} />
+        <Link href={childGuidancePath(studentId)} variant="plain">Learning guidance and suggestions</Link>
       </div>
       <section aria-labelledby="current-classes" className="flex flex-col gap-3">
         <Text variant="heading" as="h2"><span id="current-classes">This term</span></Text>

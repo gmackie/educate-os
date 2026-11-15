@@ -16,6 +16,7 @@ import { CourseQuizzes } from "./quizzes/CourseQuizzes.tsx";
 import { CourseClassroomGrades } from "./classroom/CourseClassroomGrades.tsx";
 import { PageHeading } from "./PageHeading.tsx";
 import { StudentPlanner } from "./planner/StudentPlanner.tsx";
+import { StudentGuidance } from "./guidance/StudentGuidance.tsx";
 
 const STATUS_VARIANT = {
   "not-started": "neutral",
@@ -61,6 +62,7 @@ const ActivityRow = ({ offeringId, entry, hasWork }: { offeringId: string; entry
 /** A class: its activities in due-date order, each with its due date and status. */
 export const CoursePage = ({ offeringId }: { offeringId: string }) => {
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [course, reload] = useQuery(`course:${offeringId}`, async (api) => {
     const [activities, workspaces, offerings] = await Promise.all([
       api.call("student.listActivities", { params: { offeringId } }),
@@ -107,6 +109,8 @@ export const CoursePage = ({ offeringId }: { offeringId: string }) => {
       <CourseDiscussions offeringId={offeringId} />
       <Button aria-expanded={plannerOpen} onClick={() => setPlannerOpen(!plannerOpen)}>Personalized Learning Planner · optional coaching</Button>
       {plannerOpen && <StudentPlanner key={offeringId} offeringId={offeringId} />}
+      <Button aria-expanded={guidanceOpen} onClick={() => setGuidanceOpen(!guidanceOpen)}>Suggestions for you · optional, never assignments</Button>
+      {guidanceOpen && <StudentGuidance key={offeringId} offeringId={offeringId} />}
       <section aria-labelledby="activities" className="flex flex-col gap-3">
         <Text variant="heading" as="h2">
           <span id="activities">Activities</span>

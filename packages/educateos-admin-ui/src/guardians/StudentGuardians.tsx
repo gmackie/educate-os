@@ -9,6 +9,7 @@ import { LoadState } from "../app/LoadState.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
 import { READABLE_KIND_LABEL, STANDING, standingOf } from "./guardianLabels.ts";
 import { DigestPreview } from "./DigestPreview.tsx";
+import { GuardianGuidanceAccess } from "./GuardianGuidanceAccess.tsx";
 import { InviteGuardianForm } from "./InviteGuardianForm.tsx";
 import { RelationshipActions } from "./RelationshipActions.tsx";
 import { TableScroll } from "../app/TableScroll.tsx";
@@ -178,6 +179,8 @@ export const StudentGuardians = ({ studentId }: { studentId: string }) => {
               </TableScroll>
             )}
           </section>
+
+          <GuardianGuidanceAccess studentId={studentId} studentName={data.student.displayName} />
 
           <InviteGuardianForm studentId={studentId} studentName={data.student.displayName} onInvited={overview.reload} />
         </section>

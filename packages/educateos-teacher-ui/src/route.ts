@@ -8,6 +8,7 @@ export type Route =
   | { screen: "roster"; offeringId: string }
   | { screen: "modules"; offeringId: string }
   | { screen: "planner"; offeringId: string }
+  | { screen: "guidance"; offeringId: string }
   | { screen: "resources"; offeringId: string }
   | { screen: "resource"; offeringId: string; itemId: string }
   | { screen: "create"; offeringId: string }
@@ -27,6 +28,7 @@ export type Route =
 export const CLASS_SECTIONS = [
   { screen: "setup", label: "Classroom setup" },
   { screen: "planner", label: "Learning planner" },
+  { screen: "guidance", label: "Guidance" },
   { screen: "roster", label: "Roster" },
   { screen: "modules", label: "Modules" },
   { screen: "resources", label: "Resources" },
@@ -50,6 +52,7 @@ export const routeHref = (route: Route): string => {
     case "roster":
     case "modules":
     case "planner":
+    case "guidance":
     case "resources":
     case "create":
     case "gradebook":
@@ -79,7 +82,7 @@ export const parseRoute = (hash: string): Route => {
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
-  if (section === "setup" || section === "planner" || section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements" || section === "discussions") return { screen: section, offeringId };
+  if (section === "setup" || section === "planner" || section === "guidance" || section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements" || section === "discussions") return { screen: section, offeringId };
   // Quizzes (SCHO-191).
   if (section === "quizzes") {
     if (id === undefined) return { screen: "quizzes", offeringId };
@@ -99,6 +102,7 @@ export const parseRoute = (hash: string): Route => {
 const SCREEN_NAMES: Record<Exclude<Route["screen"], "classes">, string> = {
   setup: "Classroom setup",
   planner: "Learning planner",
+  guidance: "Guidance and evidence",
   roster: "Roster",
   modules: "Modules",
   resources: "Resources",

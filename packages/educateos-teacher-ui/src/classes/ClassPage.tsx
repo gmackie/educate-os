@@ -21,6 +21,7 @@ import type { TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { classLabel } from "./classLabel.ts";
 import { PlannerPage } from "../planner/PlannerPage.tsx";
+import { GuidancePage } from "../guidance/GuidancePage.tsx";
 
 type ClassRoute = Exclude<Route, { screen: "classes" }>;
 
@@ -91,6 +92,8 @@ const ClassSection = ({ route, teaching }: { route: Exclude<ClassRoute, { screen
   switch (route.screen) {
     case "planner":
       return <PlannerPage key={teaching.offering.id} teaching={teaching} />;
+    case "guidance":
+      return <GuidancePage key={teaching.offering.id} teaching={teaching} />;
     case "roster":
       return <RosterPage teaching={teaching} />;
     case "modules":

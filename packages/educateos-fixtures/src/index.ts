@@ -25,6 +25,7 @@ export type * from "./vendors/clever.ts";
 export type * from "./vendors/oneroster.ts";
 export { classroomSeed, cleverSeed, districtSeed, fakeSeed, oneRosterSeed, withStudentsRemoved };
 export type { DistrictSeedOptions, FakeDistrictSeed, FakePersonSeed } from "./vendors/district-seed.ts";
+export { GUIDANCE_DASHBOARD_SAMPLE, GUIDANCE_EVIDENCE_SAMPLE, GUIDANCE_SAMPLE_STUDENTS } from "./guidance-sample.ts";
 export { googleDemoPlan, type GoogleCoursePlan, type GoogleDemoPlan, type GoogleOrgUnitPlan, type GoogleUserPlan } from "./google-demo.ts";
 
 /**

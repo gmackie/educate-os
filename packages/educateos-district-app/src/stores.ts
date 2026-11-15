@@ -1,6 +1,7 @@
 import { InMemoryHomeLearningStore, type HomeLearningStore } from "@educateos/home-learning";
 import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 import { InMemoryPlannerStore, type PlannerStore } from "./planner.ts";
+import { InMemoryGuidanceStore, type GuidanceStores } from "./guidance.ts";
 import {
   EducateOsError,
   IntegrationSyncRun,
@@ -38,7 +39,7 @@ import { InMemoryDiscussionStorage, type DiscussionStorage } from "@educateos/di
 // Quizzes (SCHO-191)
 import { InMemoryQuizStorage, type QuizStorage } from "@educateos/quizzes";
 import { assertWorkshopUserLinkAvailable, type WorkshopUserLink } from "@educateos/identity";
-import { InMemoryDelegationStore, InMemoryGuardianRelationshipStore, type DelegationStore, type GuardianRelationshipStore } from "@educateos/policy";
+import { InMemoryDelegationStore, InMemoryGuardianGuidanceGrantStore, InMemoryGuardianRelationshipStore, type DelegationStore, type GuardianRelationshipStore } from "@educateos/policy";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@educateos/identity-links";
 import type { FundingAllocationRevision } from "./routes.ts";
 // Communication (SCHO-189)
@@ -245,6 +246,8 @@ export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReade
 export interface DistrictAppStores {
   /** Private goals, optional invitations and explicitly shared planner evidence. */
   planner: PlannerStore;
+  /** Standards agendas, learning invitations and the explicit guardian guidance opt-in (Guidance and Evidence). */
+  guidance: GuidanceStores;
   /** The academic directory (A01). */
   directory: AcademicStore;
   /** Which directory records the roster owns (A03). */
@@ -338,6 +341,7 @@ export interface DistrictAppStores {
 export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): DistrictAppStores {
   return {
     planner: new InMemoryPlannerStore(),
+    guidance: { records: new InMemoryGuidanceStore(), guardianGrants: new InMemoryGuardianGuidanceGrantStore() },
     directory: InMemoryAcademicStore.seeded(directory),
     rosterSources: new InMemoryRosterSourceStore(),
     rosterSync: new InMemoryRosterSyncStore(),

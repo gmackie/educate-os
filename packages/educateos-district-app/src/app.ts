@@ -47,11 +47,12 @@ import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
 import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
-import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
+import { Delegations, guardianGuidanceRelationships, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 import { familyAdults, HomeLearningService, type ChildSession } from "@educateos/home-learning";
 import { childSessionToken, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
+import { guidanceHandlers, type GuidanceRouteName } from "./guidance-routes.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type Announcement, type MailSender } from "./communication/index.ts";
@@ -449,6 +450,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const informationOver = (directory: AcademicStore) => directoryPolicyInformation(directory, policySource, {
     relationships: [
       guardianRelationships(stores.guardianRelationships, directory, now),
+      guardianGuidanceRelationships(stores.guidance.guardianGrants, stores.guardianRelationships, directory, now),
       familyAdults(stores.homeLearning),
       ...options.policySources?.relationships ?? [],
     ],
@@ -1008,7 +1010,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     return { hasFamily, childSession: { learnerId: learner.id, displayName: learner.displayName, avatar: learner.avatar } };
   }
 
-  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | GuidanceRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   /**
    * Runs a route bound to an academic operation (SCHO-173): its path parameters and body are the
@@ -2052,6 +2054,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
   // Home learning (ADR-0016)
   const homeLearningRoutes = homeLearningHandlers<RequestContext>();
+  // Guidance and Evidence: one mount point; the handlers and the policy grant live in their own modules.
+  const guidanceRoutes = guidanceHandlers<RequestContext>({ stores, catalog, now });
 
   /**
    * Serves one `/api` request. Without `servedAs`, the caller is whoever the request's credential
@@ -2131,6 +2135,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
     const handler = (handlers[matched.name as keyof Handlers]
       ?? guardianRoutes[matched.name as GuardianRouteName]
+      ?? guidanceRoutes[matched.name as GuidanceRouteName]
       ?? homeLearningRoutes[matched.name as HomeLearningRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     if (spec.download !== undefined) return fileResponse(await handler(ctx, input) as FileDownload, spec.download, correlationId);
     if ((spec as RouteSpec).cookie !== undefined) {
