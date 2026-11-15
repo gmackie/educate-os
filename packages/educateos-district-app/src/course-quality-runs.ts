@@ -68,6 +68,6 @@ export class InMemoryCourseQualityRunStore implements CourseQualityRunStore {
   }
 
   async list(offeringId: string, limit = 25): Promise<CourseQualityRun[]> {
-    return structuredClone(this.#runs.filter((run) => run.offeringId === offeringId).slice(-limit).reverse());
+    return structuredClone(this.#runs.filter((run) => run.offeringId === offeringId).slice(-limit).toReversed());
   }
 }
