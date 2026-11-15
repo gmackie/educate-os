@@ -1066,6 +1066,7 @@ export type CourseIntentDraftBody = z.infer<typeof CourseIntentDraftBody>;
  */
 export const CourseIntentDraftId = z.string().regex(/^cid_[0-9a-f]{32}$/);
 export const CourseIntentDraftStatus = z.enum(["pending", "proposed", "reviewed", "discarded", "failed"]);
+export type CourseIntentDraftStatus = z.infer<typeof CourseIntentDraftStatus>;
 export const CourseIntentSelection = z.strictObject({
   goalIds: z.array(z.string()).min(1).max(25).refine((x) => new Set(x).size === x.length),
   strategyIds: z.array(z.string()).max(15).refine((x) => new Set(x).size === x.length),
