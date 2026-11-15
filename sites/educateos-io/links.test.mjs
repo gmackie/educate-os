@@ -92,3 +92,26 @@ for (const page of pages) {
     assert.deepEqual(broken, [], `Broken internal links on ${relative(publicDir, page)}`);
   });
 }
+
+// security.txt (RFC 9116, SCHO-372) is served from public/.well-known/, which wrangler uploads
+// although it is a dot-directory. Its Policy and Canonical must resolve, and its Expires must stay
+// in the future: renew it about a year out when this fails (docs/educateos/security/vulnerability-disclosure.md).
+test("security.txt names the security contact, resolves its links and has not expired", () => {
+  const text = readFileSync(join(publicDir, ".well-known/security.txt"), "utf8");
+  const fields = new Map(text.split("\n").filter((line) => line && !line.startsWith("#")).map((line) => {
+    const at = line.indexOf(": ");
+    return [line.slice(0, at), line.slice(at + 2)];
+  }));
+  assert.equal(fields.get("Contact"), "mailto:security@educateos.io");
+  assert.equal(fields.get("Preferred-Languages"), "en");
+  assert.equal(fields.get("Canonical"), "https://educateos.io/.well-known/security.txt");
+  for (const field of ["Canonical", "Policy"]) {
+    const url = new URL(fields.get(field));
+    assert.equal(url.hostname, "educateos.io", field);
+    assert.ok(resolveTarget(url.pathname), `${field} ${url} has no file in public/`);
+  }
+  const expires = Date.parse(fields.get("Expires"));
+  const day = 24 * 60 * 60 * 1000;
+  assert.ok(expires - Date.now() > 30 * day, `security.txt Expires ${fields.get("Expires")} is less than 30 days away`);
+  assert.ok(expires - Date.now() < 400 * day, "RFC 9116 recommends an Expires less than a year ahead");
+});

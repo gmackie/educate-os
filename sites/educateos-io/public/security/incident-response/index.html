@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incident response · EducateOS</title>
+<meta name="description" content="How Gmacko Ventures LLC responds to a security incident in EducateOS, and its commitment to notify a district within 72 hours of confirming an incident affecting the district's installation data.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow">Security</div>
+      <h1>Incident response and breach notification</h1>
+      <p class="updated">Last updated: November 14, 2026</p>
+      <p>This is how Gmacko Ventures LLC, which develops EducateOS and runs educateos.io, responds to a security incident, and when it notifies a district. It is an outline, not a certification or an audited process. It will be revised after each incident and each tabletop exercise.</p>
+    </div>
+  </section>
+
+  <section class="tight" style="padding-top:8px">
+    <div class="wrap doc">
+      <h2 id="who-does-what">Who does what</h2>
+      <p>Each district runs EducateOS in its own Cloudflare account, so the district operates its installation and leads the response inside it: its account, its logs, its users and its notification decisions. We lead the response for what we control: the open-source code, the signed releases and their keys, educateos.io and its services, the project's demo districts, and any district data we hold or accessed under Support Access, which happens only at the district's written request. In every incident that touches a district, we work with the district's team.</p>
+
+      <h2 id="report">Reporting an incident</h2>
+      <p>Anyone can report a suspected incident or vulnerability to <a href="mailto:security@educateos.io?subject=Suspected%20incident">security@educateos.io</a>. A district that suspects an incident in its installation should email us there as well as following its own response plan. Researchers should read the <a href="/security/disclosure/">vulnerability disclosure policy</a>.</p>
+
+      <h2 id="process">How we respond</h2>
+      <ol>
+        <li><b>Receive and log.</b> Every report and alert gets a private incident record, with times, from the moment we receive it.</li>
+        <li><b>Triage.</b> We work out what is affected, whether it is being exploited, and how serious it is, and we decide whether it is a confirmed incident. We confirm an incident when the evidence shows that the security of a system or of data was actually compromised, not merely that a flaw exists.</li>
+        <li><b>Contain.</b> We stop the harm in what we control, for example by taking a service offline, revoking credentials or rotating release signing keys under the key-set procedure. Where containment needs an action in a district's account, we tell the district exactly what to do.</li>
+        <li><b>Fix.</b> We fix the cause and publish a signed release with an advisory. Districts apply releases when they choose; there are no automatic updates, so the advisory says how urgent the release is.</li>
+        <li><b>Notify.</b> We notify affected districts as described below, and keep them updated until the incident is closed.</li>
+        <li><b>Review.</b> After the incident, we write down what happened, why, and what changes, and share the parts that concern a district with that district.</li>
+      </ol>
+
+      <h2 id="notification">Our breach notification commitment to districts</h2>
+      <p>If we confirm an incident affecting an installation's data, we notify the district's named contact without undue delay, and no later than <b>72 hours after we confirm it</b>. An incident affects an installation's data if, for example, a flaw in EducateOS has been exploited to reach it, a release signing key has been misused, or it involves data we hold or accessed under Support Access. The district's named contact is the person the district names to us for security matters, in its agreement with us or by email to security@educateos.io.</p>
+      <p>The notice says what we know at that point:</p>
+      <ul>
+        <li>what happened, and when it happened and was discovered, as far as we know;</li>
+        <li>which systems, releases and kinds of data are or may be affected;</li>
+        <li>what we have done to contain it, and what the district should do now;</li>
+        <li>who at Gmacko Ventures LLC to contact for updates.</li>
+      </ul>
+      <p>If we don't yet know something, we send the notice anyway and follow up as we learn more. Because the district runs its installation, we may not be able to see which records or people are affected; the district determines that from its own account.</p>
+      <p>The same 72 hours appears in the <a href="/student-privacy/dpa/">DPA template</a> (§10) for student data we hold or have accessed. The DPA template is a draft pending counsel review.</p>
+
+      <h2 id="state-law">Supporting the district's own notification duties</h2>
+      <p>A district may have its own legal duties to notify students, families, staff or state agencies, under federal law and the law of its state, including Texas and Michigan. Those decisions and notices are the district's. We support them by:</p>
+      <ul>
+        <li>notifying the district promptly, so its own deadlines can be met;</li>
+        <li>providing the facts we have that the district needs for its notices and reports, including timelines and what was affected;</li>
+        <li>answering the district's questions, and those of its counsel, about how EducateOS stores and handles data;</li>
+        <li>coordinating any public statement of ours about the incident with the district before we make it.</li>
+      </ul>
+      <p>We don't give legal advice, and we don't send notices to a district's students, families or staff on its behalf unless the district asks us to in writing.</p>
+
+      <h2 id="limits">What this does not cover</h2>
+      <ul>
+        <li>Incidents in a district's Cloudflare account that EducateOS did not cause, such as a compromised district administrator account. We help on request.</li>
+        <li>Incidents at Cloudflare or another provider. Cloudflare and other providers notify their own customers under their own agreements; if we learn of one that affects EducateOS installations, we tell districts what we know.</li>
+      </ul>
+      <p>Questions about this outline? Email <a href="mailto:security@educateos.io?subject=Incident%20response">security@educateos.io</a>.</p>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/" aria-current="page">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

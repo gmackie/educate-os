@@ -100,6 +100,7 @@
           <tr><td>Integration status</td><td>Sign-in, rostering and LMS, feature by feature, on the <a href="/integrations/">integrations page</a>.</td><td><span class="status supported">Ready</span></td></tr>
           <tr><td>Data processing agreement</td><td>A <a href="/student-privacy/dpa/">DPA template</a> written for a district-run deployment. If your state uses a standard student data privacy agreement, send it to us.</td><td><span class="status validating">Draft, counsel review pending</span></td></tr>
           <tr><td>Security questionnaire answers</td><td><a href="/it/security-questionnaire/">Pre-filled answers</a> to the questions district security reviews ask most often, each pointing to the code or document behind it, including the ones where the answer is "not yet". Printable.</td><td><span class="status supported">Ready</span></td></tr>
+          <tr><td>Security contact and incident response</td><td>Report security problems to <a href="mailto:security@educateos.io">security@educateos.io</a> under the <a href="/security/disclosure/">vulnerability disclosure policy</a>. The <a href="/security/incident-response/">incident response outline</a> commits to notifying your named contact within 72 hours of confirming an incident affecting your installation's data. Also in <a href="/.well-known/security.txt">security.txt</a>.</td><td><span class="status supported">Ready</span></td></tr>
           <tr><td>Accessibility conformance report</td><td>An <a href="/it/accessibility/">accessibility conformance report</a> for the student, teacher, family and administrator screens against WCAG 2.1 AA: 40 criteria supported, 2 partially supported, none unsupported, 8 not applicable. It comes from an automated and keyboard audit of 143 demo screens in light and dark themes and at 320px wide. Screen-reader testing hasn't been done yet, and the open issues are listed in the report.</td><td><span class="status validating">Partially conforms</span></td></tr>
           <tr><td>Cost to run</td><td>The <a href="/pricing/">cost-to-run page</a>: what your district would pay Cloudflare to run EducateOS, by enrollment, from measured usage, with every figure labeled measured or projected. Access sign-in seats are shown as a separate line, and the <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/cost-to-run.md">method and measurements</a> are public.</td><td><span class="status supported">Ready</span></td></tr>
           <tr><td>Exit and data export</td><td>A district administrator downloads the whole district as one streamed ZIP of open JSON records plus every stored work file, from the admin console or an admin-only, audited endpoint, with no size limit. Each student downloads their own work, personal workspaces included, as a <code>.educateos</code> archive from the Student app. Tested against a seeded district, not yet run in a live one. The <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/runbooks/district-offboarding.md">offboarding runbook</a> covers disconnecting integrations, revoking access and deleting everything from your account.</td><td><span class="status validating">Harness-tested</span></td></tr>
@@ -270,6 +271,8 @@
         <h4>Trust</h4>
         <ul>
           <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
           <li><a href="/it/" aria-current="page">IT evaluation packet</a></li>
           <li><a href="/student-privacy/">Student privacy</a></li>
           <li><a href="/privacy/">Privacy Policy</a></li>
@@ -281,6 +284,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
           <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>

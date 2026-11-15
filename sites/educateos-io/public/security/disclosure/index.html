@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vulnerability disclosure policy · EducateOS</title>
+<meta name="description" content="How to report a security problem in EducateOS or educateos.io to security@educateos.io: scope, what to include, response targets, safe harbor and coordinated disclosure.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow">Security</div>
+      <h1>Vulnerability disclosure policy</h1>
+      <p class="updated">Last updated: November 14, 2026</p>
+      <p>If you find a security problem in EducateOS, please tell us at <a href="mailto:security@educateos.io">security@educateos.io</a>. This page says what is in scope, how to report, how we respond, and how we treat good-faith research. Gmacko Ventures LLC develops EducateOS and runs educateos.io. The same contact is published in <a href="/.well-known/security.txt">/.well-known/security.txt</a>.</p>
+    </div>
+  </section>
+
+  <section class="tight" style="padding-top:8px">
+    <div class="wrap doc">
+      <h2 id="scope">In scope</h2>
+      <ul>
+        <li><b>The educateos.io website and services:</b> educateos.io, www.educateos.io, educateos.dev and www.educateos.dev, including the guided install, the release mirror under /releases/ and the Clever launch at /clever/launch.</li>
+        <li><b>The project's hosted demos and consoles under *.educateos.io,</b> such as the demo districts (for example northfield.educateos.io) and admin.educateos.io. The demo districts hold synthetic data only.</li>
+        <li><b>The open-source code</b> at <a href="https://github.com/gmackie/educate-os">github.com/gmackie/educate-os</a>, and the signed releases built from it. A flaw in the code is in scope wherever it runs, including in a district's installation.</li>
+      </ul>
+      <p>A district's own installation runs in the district's Cloudflare account, and only the district can authorize testing of it. To research the code, install it in a Cloudflare account of your own. If you find a problem in the code that way, report it to us.</p>
+
+      <h2 id="out-of-scope">Out of scope</h2>
+      <ul>
+        <li>Denial of service, load or volume testing, and anything that degrades a service for other people.</li>
+        <li>Social engineering, phishing or impersonation of anyone, including our staff and district staff.</li>
+        <li>Physical attacks on offices, devices or data centers.</li>
+        <li>Third-party services, including Cloudflare's own platform, Clever, Google, Microsoft, Stripe and GitHub. Report those to the provider under its own policy. If a provider's flaw affects EducateOS, we'd still like to hear about it.</li>
+        <li>Testing a district's installation, or any system, without its owner's permission.</li>
+        <li>Reports from automated scanners with no demonstrated security impact.</li>
+      </ul>
+
+      <h2 id="report">How to report</h2>
+      <p>Email <a href="mailto:security@educateos.io?subject=Security%20report">security@educateos.io</a>, in English. Please include:</p>
+      <ul>
+        <li>what is affected: the URL, or the package, file, release or commit;</li>
+        <li>the steps to reproduce it, with any proof-of-concept code or requests;</li>
+        <li>what an attacker could do with it, as far as you know;</li>
+        <li>how to reach you, and whether you'd like to be credited and under what name.</li>
+      </ul>
+      <p>Please don't include real personal data or student records. If you came across any, describe it rather than sending it. We don't publish an encryption key yet. If your report needs one, send a short note first and we'll agree on a way to receive it.</p>
+
+      <h2 id="response">How we respond</h2>
+      <ul>
+        <li>We aim to acknowledge your report within <b>3 business days</b>.</li>
+        <li>We aim to send a triage update within <b>10 business days</b>: whether we could reproduce it, how serious we think it is, and what happens next.</li>
+        <li>We keep you updated while we work on a fix, and we tell you when a fixed release is published.</li>
+      </ul>
+      <p>These are targets, not guarantees. If we expect to miss one, we'll tell you.</p>
+
+      <h2 id="coordinated-disclosure">Coordinated disclosure</h2>
+      <p>Please keep the details private until a fix is available, and agree a publication date with us. We ask for up to 90 days from your report, less if a fixed release is out sooner. If we need longer, we'll explain why and work out a date with you. When we publish an advisory for the fix, we'll credit you if you want to be credited.</p>
+      <p>Districts run EducateOS in their own accounts and apply releases when they choose; there are no automatic updates. A fix reaches districts as a signed release with an advisory, which can mean a gap between the release and the public details.</p>
+
+      <h2 id="safe-harbor">Safe harbor</h2>
+      <p>We consider security research that follows this policy in good faith to be authorized by Gmacko Ventures LLC. We won't take legal action against you or report you to law enforcement for it, and if someone else brings an action against you over such research, we'll make clear that it was authorized by us. Good faith means that you:</p>
+      <ul>
+        <li>test only what is in scope above, and only what you need to show the problem;</li>
+        <li>use accounts you created yourself, and don't access, change, keep or share data that isn't yours. If you reach data that isn't yours, stop and tell us;</li>
+        <li>don't degrade or interrupt a service;</li>
+        <li>give us a reasonable chance to fix the problem before you publish it.</li>
+      </ul>
+      <p>We can only authorize research on systems we own. We can't authorize testing of a district's installation in the district's Cloudflare account, or of Cloudflare's or any other provider's systems. If you're unsure whether something is in scope, ask us first.</p>
+
+      <h2 id="no-bounty">No bug bounty</h2>
+      <p>We don't run a bug bounty and don't pay for reports. With your permission, we'll thank you by name in the advisory.</p>
+
+      <h2 id="districts">For districts</h2>
+      <p>If you run EducateOS and suspect a security incident in your installation, email <a href="mailto:security@educateos.io?subject=Suspected%20incident">security@educateos.io</a> as well as following your own response plan. Our <a href="/security/incident-response/">incident response and breach notification</a> page describes what we do and when we notify you.</p>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/" aria-current="page">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

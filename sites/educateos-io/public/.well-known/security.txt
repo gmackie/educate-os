@@ -1,0 +1,8 @@
+# Security contact for EducateOS (educateos.io), RFC 9116. SCHO-372.
+# How to report, what is in scope and how we respond: the Policy link below.
+# Renew Expires before it passes: the site's tests fail once it has.
+Contact: mailto:security@educateos.io
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://educateos.io/.well-known/security.txt
+Policy: https://educateos.io/security/disclosure/
