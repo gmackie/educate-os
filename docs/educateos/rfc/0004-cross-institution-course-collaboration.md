@@ -6,6 +6,7 @@
 - **Separate:** Student evidence and records portability (draft EducateOS RFC 0003)
 - **Independent standard:** https://github.com/gmackie/open-course-standard
 - **Experimental profile changes:** https://github.com/gmackie/open-course-standard/pull/7
+- **Expanded operating model:** [Course Commons blueprint](../course-commons-operating-model.md)
 
 ## 1. Decision
 
