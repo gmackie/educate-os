@@ -383,6 +383,42 @@ teacher-approved Classroom grading flow (SCHO-402):
 To close the loop, show the same grades in Harbor, in Kwame's gradebook and in Nia's own class
 page.
 
+### The narrated video (SCHO-429)
+
+`scripts/demo/record-walkthrough.ts` records this walkthrough as one narrated MP4, with a chapter
+per scene. Each scene is a browser signed in as its own person, recorded while macOS `say` reads
+its narration, with the page's loading cut out. ffmpeg joins the scenes. Canvas is opened as Kofi
+with a single-use session token from the Canvas console.
+
+Before recording, put one Access cookie file per sign-in in a mode-700 folder, named as `SIGN_INS`
+in the script:
+
+- `hb-admin`, the owner's own sign-in;
+- `hb-teacher` and `hb-student`;
+- `nf-admin`, `nf-teacher-68`, `nf-student-68` and `nf-guardian-rosa`;
+- `canvas-access`, for canvas.mackie.house.
+
+Cookies are read into the browser only. The video is written outside the repository, and
+`--only <scene,…>` re-records some scenes.
+
+```sh
+node scripts/demo/record-walkthrough.ts --cookies <dir> --out ~/Movies/EducateOS-two-school-demo.mp4
+```
+
+The 2026-11-15 recording is 2 minutes with 9 scenes:
+
+1. Harbor's administrator.
+2. Kwame's gradebook, with Rocky Shore Field Notes at 9/10 in EducateOS and in Classroom.
+3. Nia's class.
+4. Northfield's administrator.
+5. Hannah's classes.
+6. Kofi's grades.
+7. Kofi's own Canvas grades, 15/16, counted once.
+8. Rosa's family view.
+9. The AI workspace.
+
+Each frame was checked against its narration. The video is not committed.
+
 ## Live evidence, 2026-11-15
 
 Every check below was a read-only `verify` against the live systems, with reports under
