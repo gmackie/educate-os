@@ -1036,9 +1036,12 @@ export const CourseInstallInput = z.strictObject({ packageId: CoursePackageId, v
 
 /** Teacher-triggered goal presets prevent freeform student data in the model request. */
 export const CourseIntentGoal = z.enum(["low-equipment", "language-scaffolding", "accessibility-first", "hands-on-practice"]);
+export const CourseIntentRequestKey = z.string().min(8).max(120).regex(/^[A-Za-z0-9_-]+$/);
 export const CourseIntentInput = CourseInstallInput.extend({
   unitKey: z.string().min(1).max(500),
   goal: CourseIntentGoal,
+  /** Stable across retries; omission creates an explicitly new attempt. */
+  requestKey: CourseIntentRequestKey.optional(),
 });
 export const CourseIntentDraftBody = z.strictObject({
   source: z.strictObject({
@@ -1056,6 +1059,54 @@ export const CourseIntentDraftBody = z.strictObject({
   warnings: z.array(z.string()).min(1).max(8),
 });
 export type CourseIntentDraftBody = z.infer<typeof CourseIntentDraftBody>;
+
+/**
+ * Local, private draft history. Approving a planning memo is NOT activating a
+ * course update or creating an assignment; reviewed intent remains teacher-only.
+ */
+export const CourseIntentDraftId = z.string().regex(/^cid_[0-9a-f]{32}$/);
+export const CourseIntentDraftStatus = z.enum(["pending", "proposed", "reviewed", "discarded", "failed"]);
+export const CourseIntentSelection = z.strictObject({
+  goalIds: z.array(z.string()).min(1).max(25).refine((x) => new Set(x).size === x.length),
+  strategyIds: z.array(z.string()).max(15).refine((x) => new Set(x).size === x.length),
+});
+export const CourseIntentDraftRecord = z.strictObject({
+  id: CourseIntentDraftId,
+  offeringId: OfferingId,
+  ownerPrincipalId: PrincipalId,
+  requestKey: CourseIntentRequestKey,
+  source: CourseIntentDraftBody.shape.source,
+  goal: CourseIntentGoal,
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  revision: z.int().positive(),
+  status: CourseIntentDraftStatus,
+  result: CourseIntentDraftBody.optional(),
+  selection: CourseIntentSelection.optional(),
+  reviewedBy: PrincipalId.optional(),
+}).superRefine((record, ctx) => {
+  if (["proposed", "reviewed"].includes(record.status) && record.result === undefined) {
+    ctx.addIssue({ code: "custom", path: ["result"], message: "A reviewable draft must include its proposal." });
+  }
+  if (["pending", "failed", "discarded"].includes(record.status) && record.result !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["result"], message: "This status must not expose proposal content." });
+  }
+  if (record.status === "reviewed" && (record.selection === undefined || record.reviewedBy === undefined)) {
+    ctx.addIssue({ code: "custom", path: ["selection"], message: "Reviewed draft requires a named reviewer and selection." });
+  }
+});
+export type CourseIntentDraftRecord = z.infer<typeof CourseIntentDraftRecord>;
+export const CourseIntentCreatedDraftBody = CourseIntentDraftBody.extend({
+  draftId: CourseIntentDraftId,
+  revision: z.int().positive(),
+  status: z.literal("proposed"),
+});
+export type CourseIntentCreatedDraftBody = z.infer<typeof CourseIntentCreatedDraftBody>;
+export const CourseIntentReviewInput = z.discriminatedUnion("action", [
+  z.strictObject({ action: z.literal("review"), expectedRevision: z.int().positive(), selection: CourseIntentSelection }),
+  z.strictObject({ action: z.literal("discard"), expectedRevision: z.int().positive() }),
+]);
+
 
 /** One item of a unit, as installing it adds it. */
 export const CourseInstallItemBody = z.strictObject({
@@ -1311,7 +1362,22 @@ export const ROUTES = {
   "teacher.suggestCourseIntent": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-library/ai-intent",
     surface: "teacher", params: params({ offeringId: OfferingId }),
-    body: CourseIntentInput, response: CourseIntentDraftBody,
+    body: CourseIntentInput, response: CourseIntentCreatedDraftBody,
+  }),
+  "teacher.listCourseIntentDrafts": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library/ai-intent/drafts",
+    surface: "teacher", params: params({ offeringId: OfferingId }),
+    response: z.array(CourseIntentDraftRecord).max(25),
+  }),
+  "teacher.getCourseIntentDraft": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library/ai-intent/drafts/:draftId",
+    surface: "teacher", params: params({ offeringId: OfferingId, draftId: CourseIntentDraftId }),
+    response: CourseIntentDraftRecord,
+  }),
+  "teacher.reviewCourseIntentDraft": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-library/ai-intent/drafts/:draftId/review",
+    surface: "teacher", params: params({ offeringId: OfferingId, draftId: CourseIntentDraftId }),
+    body: CourseIntentReviewInput, response: CourseIntentDraftRecord,
   }),
   "teacher.previewCourseInstall": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",
