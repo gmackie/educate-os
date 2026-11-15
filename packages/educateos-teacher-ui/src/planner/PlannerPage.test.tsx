@@ -9,6 +9,10 @@ it("sends an attributed optional invitation through Teacher Studio and the real 
   const client = createDistrictApiClient({ baseUrl: "https://district.example", token: d.tokenFor(NF.rivera), fetch: (r) => d.app.fetch(r) });
   const user = await renderApp(client, `#/classes/${NF.eng9}/planner`);
   await screen.findByRole("heading", { name: "Personalized Learning Planner" });
+  const sections = screen.getByRole("navigation", { name: "Class sections" });
+  expect(within(sections).getByRole("link", { name: "Learning planner" }).getAttribute("aria-current")).toBe("page");
+  expect(within(sections).getByRole("link", { name: "Classroom setup" }).getAttribute("href")).toBe(`#/classes/${NF.eng9}/setup`);
+  expect(document.title).toBe("Personalized Learning Planner · Teacher Studio");
   await user.click(await screen.findByRole("combobox", { name: /Student/ }));
   await user.click(await screen.findByRole("option", { name: "Amara Okafor" }));
   await user.type(screen.getByRole("textbox", { name: "Optional invitation" }), "Compare cookie unit prices");
