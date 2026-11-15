@@ -44,7 +44,7 @@ No human review, issuer attestation, accessibility certification, legal license 
 - No student data or restricted answer keys appear in historical reports.
 - CI validates TypeScript, UI and worker-compatible storage.
 
-Current route tests cover in-memory authorization and idempotency; durable restart, corrupt-row and legacy migration test evidence remains a separate pre-production gate.
+Current tests include in-memory authorization/idempotency and real workerd SQLite restart, immutability-trigger, duplicate ID and corrupt-row checks. CI must pass before treating them as verified. Historical migration/backfill and recovery drills are still pre-production gates.
 
 ## Follow-on: teacher-governed AI proposals
 
