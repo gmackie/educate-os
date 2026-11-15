@@ -6,7 +6,6 @@ import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 import { z } from "zod";
 import { PedagogicalIntentV0 } from "@educateos/curriculum";
 import { ModelRef } from "@educateos/ai-governance";
-import { UsdNano } from "@educateos/contracts";
 // Devices (SCHO-261)
 import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
 // Operations (SCHO-263)
