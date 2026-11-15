@@ -26,7 +26,7 @@ describe("private district inference service-binding adapter", () => {
           actualUsdNano: "20000000",
         });
       },
-    } as unknown as Pick<Fetcher, "fetch">;
+    } as unknown as { fetch(request: Request): Promise<Response> };
     const provider = boundCourseIntentProvider(binding, configuration);
     const result = await provider.generate(payload);
     expect(provider.model).toStrictEqual({ provider: "cloudflare", modelId: "synthetic-model" });
@@ -36,7 +36,7 @@ describe("private district inference service-binding adapter", () => {
   });
 
   it("refuses missing or malformed deploy settings and invalid inference cost records", async () => {
-    const valid = { fetch: async () => Response.json({ usage: {}, intent: {}, actualUsdNano: "-1" }) } as unknown as Pick<Fetcher, "fetch">;
+    const valid = { fetch: async () => Response.json({ usage: {}, intent: {}, actualUsdNano: "-1" }) } as unknown as { fetch(request: Request): Promise<Response> };
     expect(() => boundCourseIntentProvider(valid, undefined)).toThrow(/COURSE_INTENT_MODEL/);
     expect(() => boundCourseIntentProvider(valid, "not-json")).toThrow(/JSON/);
     expect(() => boundCourseIntentProvider(valid, JSON.stringify({
@@ -46,9 +46,9 @@ describe("private district inference service-binding adapter", () => {
   });
 
   it("refuses oversized or failed provider responses", async () => {
-    const big = { fetch: async () => new Response("x", { headers: { "content-length": "131073" } }) } as unknown as Pick<Fetcher, "fetch">;
+    const big = { fetch: async () => new Response("x", { headers: { "content-length": "131073" } }) } as unknown as { fetch(request: Request): Promise<Response> };
     await expect(boundCourseIntentProvider(big, configuration).generate(payload)).rejects.toThrow(/too large/);
-    const failed = { fetch: async () => new Response("upstream failed", { status: 503 }) } as unknown as Pick<Fetcher, "fetch">;
+    const failed = { fetch: async () => new Response("upstream failed", { status: 503 }) } as unknown as { fetch(request: Request): Promise<Response> };
     await expect(boundCourseIntentProvider(failed, configuration).generate(payload)).rejects.toThrow(/failed/);
   });
 });
