@@ -950,6 +950,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     });
   }
 
+  /** A guardian's home-learning status for `me.get` (ADR-0016): whether they have a family, and who is practicing here. */
+  async function homeLearningStatus(ctx: RequestContext): Promise<NonNullable<RouteResponse<"me.get">["homeLearning"]>> {
+    const hasFamily = await stores.homeLearning.familyOfAdult(ctx.subject.principalId) !== undefined;
+    if (ctx.childSession === undefined) return { hasFamily, childSession: null };
+    const { learner } = await ctx.homeLearning().practiceHome(ctx.subject, ctx.childSession);
+    return { hasFamily, childSession: { learnerId: learner.id, displayName: learner.displayName, avatar: learner.avatar } };
+  }
+
   type Handlers = { [N in Exclude<RouteName, GuardianRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   /**
@@ -985,6 +993,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         enrollments: ctx.snapshot.enrollments
           .filter((e) => e.principalId === me.id && e.status === "active")
           .map(({ offeringId, role }) => ({ offeringId, role })),
+        ...(options.homeLearning !== undefined && me.kind === "guardian" ? { homeLearning: await homeLearningStatus(ctx) } : {}),
       };
     },
 

@@ -39,6 +39,7 @@ describe("home learning in a community installation", () => {
   it("answers not-found where the installation doesn't offer it", async () => {
     const d = await bootDistrict(NORTHFIELD);
     expectError(await d.call(d.tokenFor("prn_nf-guardian-rosa"), "family.home"), 404, "not-found");
+    expect((await d.ok(d.tokenFor("prn_nf-guardian-rosa"), "me.get")).homeLearning).toBeUndefined();
     expect(await d.ok(d.idp.issue("nf-stranger"), "onboarding.community")).toEqual({ homeLearning: false, signup: null });
     expectError(await d.call(d.idp.issue("nf-stranger"), "onboarding.joinCommunity", { body: { displayName: "S" } }), 403, "forbidden");
   });
@@ -56,6 +57,7 @@ describe("home learning in a community installation", () => {
     expect(await d.ok(newcomer, "onboarding.joinCommunity", { body: { displayName: "Alex Kim" } })).toEqual({ outcome: "joined" });
     expect(await d.ok(newcomer, "me.get")).toMatchObject({ kind: "guardian", displayName: "Alex Kim" });
     expect(await d.ok(newcomer, "family.home")).toEqual({ family: null });
+    expect((await d.ok(newcomer, "me.get")).homeLearning).toEqual({ hasFamily: false, childSession: null });
     const family = await d.ok(newcomer, "family.create", { body: { name: "The Kims", pin: "1357" } });
     expect(family.name).toBe("The Kims");
     expectError(await d.call(newcomer, "onboarding.joinCommunity", { body: { displayName: "Again" } }), 409, "conflict");
@@ -97,6 +99,7 @@ describe("child sessions", () => {
     const d = await bootDistrict(WILLOWCREEK, { homeLearning: { signup: "open" } });
     const { rivers, maya } = await riversWithChild(d);
     expect(await d.ok(rivers, "learner.session")).toEqual({ active: false });
+    expect((await d.ok(rivers, "me.get")).homeLearning).toEqual({ hasFamily: true, childSession: null });
     expectError(await d.call(rivers, "learner.home"), 403, "forbidden");
 
     const started = await d.call(rivers, "family.startChildSession", { params: { learnerId: maya.id } });
@@ -107,7 +110,7 @@ describe("child sessions", () => {
     expectError(await d.call(rivers, "family.home", {}, child), 403, "forbidden");
     expectError(await d.call(rivers, "family.progress", { params: { learnerId: maya.id } }, child), 403, "forbidden");
     expectError(await d.call(rivers, "me.preferences", {}, child), 403, "forbidden");
-    expect((await d.call(rivers, "me.get", {}, child)).status).toBe(200);
+    expect(((await d.call(rivers, "me.get", {}, child)).body as { homeLearning?: unknown }).homeLearning).toEqual({ hasFamily: true, childSession: { learnerId: maya.id, displayName: "Maya", avatar: "🦊" } });
     expect((await d.call(rivers, "learner.session", {}, child)).body).toEqual({ active: true, learnerId: maya.id, displayName: "Maya", avatar: "🦊" });
 
     // The child practices the queued activity to the end.

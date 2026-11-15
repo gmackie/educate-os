@@ -398,6 +398,14 @@ export const MeBody = z.strictObject({
   roles: z.array(RoleAssignment.pick({ role: true, scope: true })),
   /** Active enrollments. */
   enrollments: z.array(Enrollment.pick({ offeringId: true, role: true })),
+  /**
+   * Present for a guardian where the installation offers home learning (ADR-0016): whether they have
+   * a family yet, and the child practicing on this browser, if a child session is open.
+   */
+  homeLearning: z.strictObject({
+    hasFamily: z.boolean(),
+    childSession: z.strictObject({ learnerId: LearnerId, displayName: z.string(), avatar: z.string() }).nullable(),
+  }).optional(),
 });
 /** The signed-in principal. */
 export type MeBody = z.infer<typeof MeBody>;
