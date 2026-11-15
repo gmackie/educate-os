@@ -37,9 +37,10 @@ import { FamilySettingsPage } from "./family/FamilySettingsPage.tsx";
 import { InvitationPage } from "./family/InvitationPage.tsx";
 // Home learning (ADR-0016)
 import { HomeSettingsPage } from "./homeLearning/HomeSettingsPage.tsx";
+import { JoinFamilyPage } from "./homeLearning/JoinFamilyPage.tsx";
 import { JoinCommunity } from "./homeLearning/JoinCommunity.tsx";
 import { LibraryPage } from "./homeLearning/LibraryPage.tsx";
-import { HOME_PATH, HOME_SETTINGS_PATH, LIBRARY_PATH, PROGRESS_PATH, SHELF_PATH } from "./homeLearning/paths.ts";
+import { HOME_PATH, HOME_SETTINGS_PATH, JOIN_FAMILY_PATH, LIBRARY_PATH, PROGRESS_PATH, SHELF_PATH } from "./homeLearning/paths.ts";
 import { PracticeApp } from "./homeLearning/practice/PracticeApp.tsx";
 import { FirstProgressPage, ProgressPage } from "./homeLearning/ProgressPage.tsx";
 import { QueuePage } from "./homeLearning/QueuePage.tsx";
@@ -232,6 +233,7 @@ const homeRouteFamily = createRoute({ getParentRoute: () => rootRoute, path: HOM
 const libraryRoute = createRoute({ getParentRoute: () => rootRoute, path: LIBRARY_PATH, component: LibraryPage });
 const shelfRoute = createRoute({ getParentRoute: () => rootRoute, path: SHELF_PATH, component: ShelfPage });
 const homeSettingsRoute = createRoute({ getParentRoute: () => rootRoute, path: HOME_SETTINGS_PATH, component: HomeSettingsPage });
+const joinFamilyRoute = createRoute({ getParentRoute: () => rootRoute, path: JOIN_FAMILY_PATH, component: JoinFamilyPage });
 const firstProgressRoute = createRoute({ getParentRoute: () => rootRoute, path: PROGRESS_PATH, component: FirstProgressPage });
 const planRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -264,7 +266,7 @@ const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: DEVICE
 const connectPhoneRoute = createRoute({ getParentRoute: () => rootRoute, path: CONNECT_PHONE_PATH, component: ConnectPhonePage });
 
 const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, familySettingsRoute, invitationRoute, childRoute, childCourseRoute, devicesRoute, connectPhoneRoute,
-  homeRouteFamily, libraryRoute, shelfRoute, homeSettingsRoute, firstProgressRoute, planRoute, progressRoute, sessionRoute]);
+  homeRouteFamily, libraryRoute, shelfRoute, homeSettingsRoute, joinFamilyRoute, firstProgressRoute, planRoute, progressRoute, sessionRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>

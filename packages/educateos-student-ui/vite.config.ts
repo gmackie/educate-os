@@ -30,6 +30,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5181,
-    proxy: { "/api": process.env.EDUCATEOS_DISTRICT_URL ?? "http://127.0.0.1:4801" },
+    // Keeps the page's Host, so the district sees its own pages' writes as same-origin rather than
+    // refusing them as cross-site (the shorthand string form rewrites Host to the target's).
+    proxy: { "/api": { target: process.env.EDUCATEOS_DISTRICT_URL ?? "http://127.0.0.1:4801", changeOrigin: false } },
   },
 });

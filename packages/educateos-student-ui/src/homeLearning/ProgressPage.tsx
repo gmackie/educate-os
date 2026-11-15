@@ -119,6 +119,6 @@ export const FirstProgressPage = () => {
   if (home.status === "error") return <ErrorState error={home.error} title="We couldn't load progress" onRetry={reload} />;
   const first = home.data.family?.learners[0];
   if (home.data.family === null) return <Navigate to={HOME_PATH} replace />;
-  if (first === undefined) return <Empty title="No children yet" description="Add a child from Children and PIN." />;
+  if (first === undefined) return <Empty title="No children yet" description="Add a child from Family settings." />;
   return <Navigate to={progressPath(first.id)} replace />;
 };

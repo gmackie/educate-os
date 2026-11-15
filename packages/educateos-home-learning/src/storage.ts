@@ -43,8 +43,10 @@ export interface HomeLearningStore {
   getChildSession(digest: string): Promise<ChildSession | undefined>;
   /** Writes a child session whole, by digest. */
   putChildSession(session: ChildSession): Promise<void>;
-  /** Ends every open child session of a family, as of `at`. Returns how many it ended. */
-  endChildSessionsOf(familyId: FamilyId, at: string): Promise<number>;
+  /** Ends every open child session of a family (only those `startedBy` started, if given), as of `at`. Returns how many it ended. */
+  endChildSessionsOf(familyId: FamilyId, at: string, startedBy?: PrincipalId): Promise<number>;
+  /** Deletes every practice session started before `before`, in any family. Returns how many. */
+  deleteSessionsStartedBefore(before: string): Promise<number>;
 }
 
 const conflict = () => new EducateOsError("conflict", HOME_LEARNING_CONFLICT);
@@ -126,10 +128,21 @@ export class InMemoryHomeLearningStore implements HomeLearningStore {
     this.#children.set(parsed.digest, structuredClone(parsed));
   }
 
-  async endChildSessionsOf(familyId: FamilyId, at: string) {
+  async deleteSessionsStartedBefore(before: string) {
+    let deleted = 0;
+    for (const [key, session] of this.#sessions) {
+      if (session.startedAt < before) {
+        this.#sessions.delete(key);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
+  async endChildSessionsOf(familyId: FamilyId, at: string, startedBy?: PrincipalId) {
     let ended = 0;
     for (const child of this.#children.values()) {
-      if (child.familyId === familyId && child.endedAt === undefined) {
+      if (child.familyId === familyId && child.endedAt === undefined && (startedBy === undefined || child.startedBy === startedBy)) {
         child.endedAt = at;
         ended += 1;
       }

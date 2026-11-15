@@ -21,6 +21,7 @@ async function family(id: string, adult: string, revision = 1): Promise<FamilyRe
     learners: [],
     queues: {},
     shelf: [],
+    invitations: [],
     pin: await hashPin("2468", 10_000),
     createdAt: "2026-11-16T12:00:00.000Z",
     revision,

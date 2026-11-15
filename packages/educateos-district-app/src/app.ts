@@ -342,6 +342,8 @@ export interface DistrictApp {
   readonly communication: CommunicationJobs;
   /** The roster sync job (SCHO-203). Not on the `/api` surface. */
   readonly rostering: RosterJobs;
+  /** Home learning's scheduled job (ADR-0016): deletes practice older than the retention period. */
+  readonly homeLearning: { purgeExpired(): Promise<{ ran: false } | { ran: true; deleted: number; before: string }> };
   /**
    * The device token service (SCHO-261): device registration for the pairing relay and the browser
    * sign-in path, and revocation for administrators and operators. Not on the `/api` surface itself.
@@ -631,7 +633,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     homeLearning(): HomeLearningService {
       if (options.homeLearning === undefined) throw new EducateOsError("not-found", "Home learning isn't offered here.");
-      return new HomeLearningService({ store: stores.homeLearning, authorizer: this.authorizer, districtId, now });
+      return new HomeLearningService({ store: stores.homeLearning, authorizer: this.authorizer, districtId, now, ...homeLearningRetention() });
     }
 
     academics(): AcademicDirectory {
@@ -1919,6 +1921,10 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
   // Home learning (ADR-0016)
   const homeLearningRoutes = homeLearningHandlers<RequestContext>();
+  function homeLearningRetention() {
+    const days = options.homeLearning?.retentionDays;
+    return days === undefined ? {} : { retentionDays: days };
+  }
 
   /**
    * Serves one `/api` request. Without `servedAs`, the caller is whoever the request's credential
@@ -2092,6 +2098,12 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     communication: {
       runNotificationJob: async () => communicationFor(jobDecider).runNotificationJob(await notificationScreen()),
       runWeeklyDigest: () => familyDigest(communicationFor(jobDecider)).runWeeklyJob(),
+    },
+    homeLearning: {
+      // A system job: it deletes by age alone and reads nobody's records, so it asks no policy.
+      purgeExpired: () => options.homeLearning === undefined
+        ? Promise.resolve({ ran: false as const })
+        : new HomeLearningService({ store: stores.homeLearning, authorizer: { authorize: async () => ({ effect: "deny", reason: "no-matching-grant" }) }, districtId, now, ...homeLearningRetention() }).purgeExpired(),
     },
     rostering: {
       async runScheduledSync() {

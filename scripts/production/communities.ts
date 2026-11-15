@@ -20,4 +20,6 @@ export const COMMUNITY_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   accountId: OWNER_ACCOUNT,
   hostname: `${slug}.educateos.io`,
   oneOrigin: { enabled: true, aiDemoUrl: AI_DEMO_URL },
+  // Families' data stays in the US (ADR-0015). Set before any family used safranek (2026-11-15).
+  dataJurisdiction: "us" as const,
 }));

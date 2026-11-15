@@ -106,13 +106,35 @@ export const StoredPin = z.strictObject({
 /** A stored PIN. */
 export type StoredPin = z.infer<typeof StoredPin>;
 
-/** One adult of a family. */
+/** One adult of a family. Every adult sees and manages the whole family's home learning. */
 export const FamilyAdult = z.strictObject({
   principalId: PrincipalId,
+  /** Their name as the directory had it when they joined, for the other adults to recognize. */
+  displayName: DisplayName.optional(),
   joinedAt: Timestamp,
 });
 /** A family adult. */
 export type FamilyAdult = z.infer<typeof FamilyAdult>;
+
+/** Identifies an invitation for another adult to join a family. */
+export const AdultInvitationId = z.string().regex(/^hai_[a-z0-9]{1,64}$/, "expected an invitation ID");
+/** An adult invitation identifier. */
+export type AdultInvitationId = z.infer<typeof AdultInvitationId>;
+
+/**
+ * An invitation for another adult to join the family: single use, expiring, stored as the SHA-256
+ * digest of its token. Whoever redeems it while signed in becomes an adult of the family with the
+ * same access as the inviter, so it is shared only with the person meant to join.
+ */
+export const AdultInvitation = z.strictObject({
+  id: AdultInvitationId,
+  digest: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  createdAt: Timestamp,
+  expiresAt: Timestamp,
+  createdBy: PrincipalId,
+});
+/** An adult invitation. */
+export type AdultInvitation = z.infer<typeof AdultInvitation>;
 
 /** A family, as stored. */
 export const FamilyRecord = z.strictObject({
@@ -124,6 +146,8 @@ export const FamilyRecord = z.strictObject({
   /** Each child's queue, by learner ID. */
   queues: z.record(z.string(), z.array(QueueEntry).max(MAX_QUEUE)),
   shelf: z.array(ShelfItem).max(MAX_SHELF),
+  /** Open invitations for more adults. Absent in records from before invitations existed. */
+  invitations: z.array(AdultInvitation).max(MAX_ADULTS).default([]),
   pin: StoredPin,
   createdAt: Timestamp,
   revision: z.int().min(1),

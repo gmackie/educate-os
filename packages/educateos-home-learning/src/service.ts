@@ -11,6 +11,7 @@ import {
   EducateOsError,
   FamilyId,
   LearnerId,
+  PrincipalId,
   type Authorizer,
   type DistrictId,
   type ResourceRef,
@@ -35,7 +36,9 @@ import {
   type Track,
 } from "./content/index.ts";
 import {
+  AdultInvitationId,
   DisplayName,
+  MAX_ADULTS,
   LearnerAvatar,
   MAX_LEARNERS,
   MAX_QUEUE,
@@ -65,7 +68,15 @@ export interface HomeLearningServiceOptions {
   now?: () => Date;
   /** The shipped packs; tests may pass others. */
   packs?: readonly Pack[];
+  /**
+   * How many days a practice session is kept after it started; {@link HomeLearningService.purgeExpired}
+   * deletes older ones. Undefined keeps them until the family deletes them.
+   */
+  retentionDays?: number;
 }
+
+/** How long an invitation for another adult stays usable. */
+export const ADULT_INVITATION_DAYS = 7;
 
 // Inputs
 
@@ -104,10 +115,16 @@ export interface QueueEntryView {
   inProgress: boolean;
 }
 
-/** A family, as its adults see it. Never carries the PIN. */
+/** A family, as its adults see it. Never carries the PIN or an invitation's token. */
 export interface FamilyView {
   id: string;
   name: string;
+  /** Every adult of the family, the caller marked. */
+  adults: { principalId: string; displayName?: string; joinedAt: string; you: boolean }[];
+  /** Open invitations for more adults. */
+  invitations: { id: string; createdAt: string; expiresAt: string }[];
+  /** How long practice is kept, in days; undefined until the family deletes it. */
+  retentionDays?: number;
   learners: Learner[];
   queues: Record<string, QueueEntryView[]>;
   shelf: ShelfItem[];
@@ -234,6 +251,12 @@ export interface FamilyExport {
 
 const notFound = () => new EducateOsError("not-found", "We couldn't find that.");
 
+/** An adult's stored name, when the directory gave one that fits. */
+const adultName = (displayName: string | undefined) => {
+  const parsed = DisplayName.safeParse(displayName);
+  return parsed.success ? { displayName: parsed.data } : {};
+};
+
 function fnv(text: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i += 1) {
@@ -250,6 +273,7 @@ export class HomeLearningService {
   readonly #districtId: DistrictId;
   readonly #now: () => Date;
   readonly #packs: readonly Pack[];
+  readonly #retentionDays: number | undefined;
 
   constructor(options: HomeLearningServiceOptions) {
     this.#store = options.store;
@@ -257,6 +281,7 @@ export class HomeLearningService {
     this.#districtId = options.districtId;
     this.#now = options.now ?? (() => new Date());
     this.#packs = options.packs ?? PACKS;
+    this.#retentionDays = options.retentionDays;
   }
 
   // Family
@@ -266,7 +291,7 @@ export class HomeLearningService {
     const familyId = await this.#store.familyOfAdult(subject.principalId);
     if (familyId === undefined) return { family: null };
     const family = await this.#read(subject, "read", familyId);
-    return { family: await this.#view(family) };
+    return { family: await this.#view(family, subject) };
   }
 
   /**
@@ -274,7 +299,7 @@ export class HomeLearningService {
    *
    * @throws EducateOsError `conflict` if the adult already has one.
    */
-  async createFamily(subject: VerifiedPrincipal, input: unknown): Promise<FamilyView> {
+  async createFamily(subject: VerifiedPrincipal, input: unknown, displayName?: string): Promise<FamilyView> {
     const { name, pin } = CreateFamilyInput.parse(input);
     await this.#require(subject, "create", this.#familyRef());
     if (await this.#store.familyOfAdult(subject.principalId) !== undefined) {
@@ -285,16 +310,109 @@ export class HomeLearningService {
       id: FamilyId.parse(`fam_${idBody()}`),
       districtId: this.#districtId,
       name,
-      adults: [{ principalId: subject.principalId, joinedAt: at }],
+      adults: [{ principalId: subject.principalId, ...adultName(displayName), joinedAt: at }],
       learners: [],
       queues: {},
       shelf: [],
+      invitations: [],
       pin: await hashPin(pin),
       createdAt: at,
       revision: 1,
     };
     await this.#store.commitFamily(family, undefined);
-    return this.#view(family);
+    return this.#view(family, subject);
+  }
+
+  // Adults
+
+  /**
+   * Invites another adult. Returns the token once; only its digest is kept. Whoever redeems it
+   * while signed in joins with the same access as every other adult of the family.
+   *
+   * @throws EducateOsError `conflict` if the family's adults and open invitations are at the limit.
+   */
+  async inviteAdult(subject: VerifiedPrincipal): Promise<{ token: string; id: string; expiresAt: string }> {
+    const now = this.#now();
+    const id = AdultInvitationId.parse(`hai_${idBody()}`);
+    const familyId = await this.#familyIdOf(subject);
+    const token = `${familyId}.${newToken()}`;
+    const expiresAt = new Date(now.getTime() + ADULT_INVITATION_DAYS * 86_400_000).toISOString();
+    const digest = await tokenDigest(token);
+    await this.#change(subject, (family) => {
+      const open = family.invitations.filter((i) => Date.parse(i.expiresAt) > now.getTime());
+      if (family.adults.length + open.length >= MAX_ADULTS) {
+        throw new EducateOsError("conflict", `A family can have up to ${MAX_ADULTS} grown-ups, counting open invitations.`);
+      }
+      return { ...family, invitations: [...open, { id, digest, createdAt: now.toISOString(), expiresAt, createdBy: subject.principalId }] };
+    });
+    return { token, id, expiresAt };
+  }
+
+  /** Withdraws an open invitation. */
+  async revokeInvitation(subject: VerifiedPrincipal, invitationId: unknown): Promise<FamilyView> {
+    const id = AdultInvitationId.parse(invitationId);
+    return this.#change(subject, (family) => {
+      if (!family.invitations.some((i) => i.id === id)) throw notFound();
+      return { ...family, invitations: family.invitations.filter((i) => i.id !== id) };
+    });
+  }
+
+  /**
+   * Joins the family an invitation names. Every refusal of a token (unknown, expired, used, or a
+   * family that no longer exists) is the same `not-found`.
+   *
+   * @throws EducateOsError `conflict` if the caller already belongs to a family.
+   */
+  async acceptInvitation(subject: VerifiedPrincipal, token: unknown, displayName?: string): Promise<FamilyView> {
+    await this.#require(subject, "create", this.#familyRef());
+    if (await this.#store.familyOfAdult(subject.principalId) !== undefined) {
+      throw new EducateOsError("conflict", "You already belong to a family here. Leave it first to join another.");
+    }
+    const invalid = () => new EducateOsError("not-found", "This invitation can't be used. Ask for a new one.");
+    if (typeof token !== "string" || token.length > 200) throw invalid();
+    const familyId = FamilyId.safeParse(token.split(".")[0]).data;
+    const family = familyId === undefined ? undefined : await this.#store.loadFamily(familyId);
+    if (family === undefined) throw invalid();
+    const digest = await tokenDigest(token);
+    const now = this.#now();
+    const invitation = family.invitations.find((i) => i.digest === digest && Date.parse(i.expiresAt) > now.getTime());
+    if (invitation === undefined) throw invalid();
+    if (family.adults.length >= MAX_ADULTS) throw new EducateOsError("conflict", `A family can have up to ${MAX_ADULTS} grown-ups.`);
+    const next: FamilyRecord = {
+      ...family,
+      adults: [...family.adults, { principalId: subject.principalId, ...adultName(displayName), joinedAt: now.toISOString() }],
+      invitations: family.invitations.filter((i) => i.id !== invitation.id),
+      revision: family.revision + 1,
+    };
+    await this.#store.commitFamily(next, family.revision);
+    // Read back through policy, so the new adult's first view is audited under the family.
+    return (await this.home(subject)).family!;
+  }
+
+  /**
+   * Removes an adult from the family: oneself (leaving), or another adult. The last adult can't
+   * leave; they delete the family instead. Child sessions the removed adult started end.
+   */
+  async removeAdult(subject: VerifiedPrincipal, principalId: unknown): Promise<HomeView> {
+    const id = PrincipalId.parse(principalId);
+    const familyId = await this.#familyIdOf(subject);
+    await this.#change(subject, (family) => {
+      if (!family.adults.some((a) => a.principalId === id)) throw notFound();
+      if (family.adults.length === 1) throw new EducateOsError("conflict", "The last grown-up can't leave. Delete the family instead.");
+      return { ...family, adults: family.adults.filter((a) => a.principalId !== id) };
+    }, id === subject.principalId);
+    await this.#store.endChildSessionsOf(familyId, this.#iso(), id);
+    return id === subject.principalId ? { family: null } : this.home(subject);
+  }
+
+  /**
+   * Deletes practice sessions older than the retention period, across every family. A system job,
+   * run by the installation's schedule: it reads no family and decides nothing on anyone's behalf.
+   */
+  async purgeExpired(): Promise<{ ran: false } | { ran: true; deleted: number; before: string }> {
+    if (this.#retentionDays === undefined) return { ran: false };
+    const before = new Date(this.#now().getTime() - this.#retentionDays * 86_400_000).toISOString();
+    return { ran: true, deleted: await this.#store.deleteSessionsStartedBefore(before), before };
   }
 
   /** Renames the family. */
@@ -729,11 +847,22 @@ export class HomeLearningService {
     return views;
   }
 
-  async #view(family: FamilyRecord): Promise<FamilyView> {
+  async #view(family: FamilyRecord, subject: VerifiedPrincipal): Promise<FamilyView> {
     const queues: Record<string, QueueEntryView[]> = {};
     for (const learner of family.learners) queues[learner.id] = await this.#queueView(family, learner.id);
     const locked = family.pin.lockedUntil !== undefined && Date.parse(family.pin.lockedUntil) > this.#now().getTime();
-    return { id: family.id, name: family.name, learners: family.learners, queues, shelf: family.shelf, pinLocked: locked };
+    const now = this.#now().getTime();
+    return {
+      id: family.id,
+      name: family.name,
+      adults: family.adults.map((a) => ({ principalId: a.principalId, ...(a.displayName === undefined ? {} : { displayName: a.displayName }), joinedAt: a.joinedAt, you: a.principalId === subject.principalId })),
+      invitations: family.invitations.filter((i) => Date.parse(i.expiresAt) > now).map(({ id, createdAt, expiresAt }) => ({ id, createdAt, expiresAt })),
+      ...(this.#retentionDays === undefined ? {} : { retentionDays: this.#retentionDays }),
+      learners: family.learners,
+      queues,
+      shelf: family.shelf,
+      pinLocked: locked,
+    };
   }
 
   #resolve(ref: ActivityRef) {
@@ -789,12 +918,12 @@ export class HomeLearningService {
     return session;
   }
 
-  async #change(subject: VerifiedPrincipal, update: (family: FamilyRecord) => FamilyRecord): Promise<FamilyView> {
+  async #change(subject: VerifiedPrincipal, update: (family: FamilyRecord) => FamilyRecord, leaving = false): Promise<FamilyView> {
     const familyId = await this.#familyIdOf(subject);
     const family = await this.#read(subject, "update", familyId);
     const next = { ...update(family), revision: family.revision + 1 };
     await this.#store.commitFamily(next, family.revision);
-    return this.#view(next);
+    return leaving ? this.#view(family, subject) : this.#view(next, subject);
   }
 
   async #changeForLearner(subject: VerifiedPrincipal, learnerId: LearnerId, action: Action, update: (family: FamilyRecord) => FamilyRecord): Promise<FamilyRecord> {

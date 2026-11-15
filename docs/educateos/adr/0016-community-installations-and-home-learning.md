@@ -111,11 +111,13 @@ EducateOS assumed a school district in four places that block this:
 - The public school manifest (`/.well-known/educateos.json`) is unchanged: the mobile app parses its
   feature keys strictly. The web app learns home learning from `me.get` (`homeLearning`) and, before
   sign-up, from `onboarding.community`.
-- Multiple adults per family are modelled (`adults`, up to four) but there is no way to invite a
-  second adult yet. Consent, recovery and per-adult visibility must be decided before there is.
+- Up to four adults per family. An adult invites another by a single-use, week-long link; every
+  adult has the same access (amended 2026-11-15). Whether more is needed for custody disputes is a
+  question in the [counsel brief](../legal/home-learning-counsel-brief.md).
 - Child sessions are web-only. The phone app's device tokens act as the adult with no child session.
 - The packs are drafts. Before a community offers them as reviewed content, a qualified reviewer
   checks the scope and sequence, the phoneme guide, decodability and distractors, and the pack
   records that review.
-- Sessions are kept until a family deletes them. A retention period for practice evidence is still
-  to be chosen.
+- `homeLearning.retentionDays` deletes practice sessions older than the period, hourly; Safranek
+  keeps two years (amended 2026-11-15). Community installations pin storage to the US
+  jurisdiction (ADR-0015).

@@ -28,8 +28,9 @@ const who = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse
 const RIVERS = who("prn_wc-parent-rivers");
 const NAIR = who("prn_wc-parent-nair");
 const ORGANIZER = who("prn_wc-organizer");
+const ORTIZ = who("prn_wc-parent-ortiz");
 
-function setup() {
+function setup(options: { retentionDays?: number } = {}) {
   const store = new InMemoryHomeLearningStore();
   const audit = new InMemoryPolicyAuditSink();
   const clock = { at: Date.parse("2026-11-16T15:00:00.000Z") };
@@ -39,7 +40,7 @@ function setup() {
     audit,
     now,
   });
-  const service = new HomeLearningService({ store, authorizer: engine, districtId: D, now });
+  const service = new HomeLearningService({ store, authorizer: engine, districtId: D, now, ...options });
   return { store, audit, service, clock };
 }
 
@@ -267,5 +268,68 @@ describe("child sessions and practice", () => {
     const { service, child, token } = await startedSession();
     await service.endChildSession(RIVERS, child, "2468");
     expect(await service.childSession(RIVERS, token)).toBeUndefined();
+  });
+});
+
+describe("more grown-ups", () => {
+  it("lets an invited adult join with the same access, once, and shows who is in the family", async () => {
+    const { service } = setup();
+    const { maya } = await riversFamily(service);
+    const { token } = await service.inviteAdult(RIVERS);
+    expect((await service.home(RIVERS)).family?.invitations).toHaveLength(1);
+    const joined = await service.acceptInvitation(ORTIZ, token, "Sam Ortiz");
+    expect(joined.adults.map((a) => [a.displayName, a.you])).toEqual([[undefined, false], ["Sam Ortiz", true]]);
+    expect(joined.invitations).toEqual([]);
+    expect((await service.progress(ORTIZ, maya.id)).learner.displayName).toBe("Maya");
+    // Used once; another adult can't reuse it.
+    await service.createFamily(NAIR, { name: "Nair", pin: "1357" });
+    expect(await code(service.acceptInvitation(NAIR, token))).toBe("conflict");
+    await service.deleteFamily(NAIR);
+    expect(await code(service.acceptInvitation(NAIR, token))).toBe("not-found");
+  });
+
+  it("refuses an expired, revoked or forged invitation the same way", async () => {
+    const { service, clock } = setup();
+    await riversFamily(service);
+    const expired = await service.inviteAdult(RIVERS);
+    clock.at += 8 * 86_400_000;
+    expect(await code(service.acceptInvitation(ORTIZ, expired.token))).toBe("not-found");
+    const revoked = await service.inviteAdult(RIVERS);
+    await service.revokeInvitation(RIVERS, revoked.id);
+    expect(await code(service.acceptInvitation(ORTIZ, revoked.token))).toBe("not-found");
+    expect(await code(service.acceptInvitation(ORTIZ, `${revoked.token.split(".")[0]}.${"A".repeat(43)}`))).toBe("not-found");
+    expect(await code(service.acceptInvitation(ORTIZ, "nonsense"))).toBe("not-found");
+  });
+
+  it("removes an adult, ending their access and child sessions, but never the last one", async () => {
+    const { service } = setup();
+    const { maya } = await riversFamily(service);
+    await service.acceptInvitation(ORTIZ, (await service.inviteAdult(RIVERS)).token);
+    const { token } = await service.startChildSession(ORTIZ, maya.id);
+    await service.removeAdult(RIVERS, ORTIZ.principalId);
+    expect(await code(service.progress(ORTIZ, maya.id))).toBe("not-found");
+    expect(await service.home(ORTIZ)).toEqual({ family: null });
+    expect(await service.childSession(ORTIZ, token)).toBeUndefined();
+    expect(await code(service.removeAdult(RIVERS, RIVERS.principalId))).toBe("conflict");
+  });
+});
+
+describe("retention", () => {
+  it("purges practice older than the retention period and nothing newer", async () => {
+    const { service, clock } = setup({ retentionDays: 730 });
+    const { maya } = await riversFamily(service);
+    await service.addToQueue(RIVERS, maya.id, { pack: "number-sense", activity: "count-to-5" });
+    await service.addToQueue(RIVERS, maya.id, { pack: "number-sense", activity: "count-to-10" });
+    const { token } = await service.startChildSession(RIVERS, maya.id);
+    const child = (await service.childSession(RIVERS, token))!;
+    const [first, second] = (await service.practiceHome(RIVERS, child)).queue;
+    await service.startPractice(RIVERS, child, first!.entryId);
+    clock.at += 400 * 86_400_000;
+    await service.startPractice(RIVERS, child, second!.entryId);
+    clock.at += 400 * 86_400_000;
+    expect(await service.purgeExpired()).toMatchObject({ ran: true, deleted: 1 });
+    expect((await service.exportFamily(RIVERS)).sessions.map((s) => s.ref.activity)).toEqual(["count-to-10"]);
+    expect((await service.home(RIVERS)).family?.retentionDays).toBe(730);
+    expect(await setup().service.purgeExpired()).toEqual({ ran: false });
   });
 });
