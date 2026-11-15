@@ -129,6 +129,10 @@ test('expired records disappear from exports before cleanup and retention purges
 test('pages have no analytics, keep closed defaults and expose only bounded controls', () => {
   const page = readFileSync(new URL('../public/have-your-say/index.html', import.meta.url), 'utf8');
   assert.doesNotMatch(page, /dataflare.js|<textarea|name="email"|localStorage/);
+  for (const [key, choices] of Object.entries(QUESTIONS)) {
+    const rendered = [...page.matchAll(new RegExp('name="' + key + '" value="([^"]+)"', 'g'))].map(match => match[1]);
+    assert.deepEqual(rendered, choices, key + ' options match the API schema');
+  }
   assert.match(page, /fieldset id="fields" disabled/); assert.match(page, /MagicSchool/); assert.match(page, /not registered as a nonprofit/);
   assert.match(page, /No AI use in education/); assert.match(page, /Existing tools meet my needs/);
   const headers = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8'); assert.match(headers, /\/have-your-say\/\*/);

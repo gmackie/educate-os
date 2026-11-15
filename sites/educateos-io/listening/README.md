@@ -47,7 +47,8 @@ interest review attestation or enable its unrelated funnel. These deployment pre
    backup/PITR handling. This implementation does not assert legal compliance or review completion.
 2. In an isolated Cloudflare test deployment, prove real SQLite DO persistence after object restart,
    retention alarm delivery, transaction/idempotency behavior, private exports and erasure.
-   Fake-runtime tests exercise the real application adapter but do not prove Cloudflare configuration.
+   The local `runtime-check.mjs` smoke proves SQLite restart persistence/export/erasure using real
+   workerd; it does not prove deployed Cloudflare settings or delivery of scheduled alarms.
 3. Provision a hostname-restricted production Turnstile widget for `educateos.io`, action `listening`.
    Configure public var `LISTENING_TURNSTILE_SITE_KEY` and secret `LISTENING_TURNSTILE_SECRET`.
    Production guards reject published Cloudflare test keys. Verify keyboard and challenge behavior
@@ -109,8 +110,15 @@ issues, PRs, chat or this repo. Save files mode 0600 on private encrypted storag
 node --test sites/educateos-io/listening/listening.test.mjs sites/educateos-io/intake/*.test.mjs
 node sites/educateos-io/build.mjs --check
 node --test sites/educateos-io/*.test.mjs
+node sites/educateos-io/listening/browser.test.mjs
+pnpm exec wrangler deploy -c sites/educateos-io/wrangler.jsonc --dry-run --outdir /tmp/educateos-listening-worker
+node sites/educateos-io/listening/runtime-check.mjs /tmp/educateos-listening-worker/worker.js
 pnpm lint
 ```
 
 Existing `site-config.test.mjs` runs listening security tests in the current site CI path.
 Tests use fake Cloudflare storage and fake Siteverify, not production secrets or real people.
+
+The browser smoke uses installed Chrome and fixture API/Turnstile responses, with no live server.
+The runtime smoke uses the Wrangler-bundled real Worker in Miniflare/workerd and a temporary
+on-disk SQLite store. It has no production bindings and removes its synthetic data afterward.

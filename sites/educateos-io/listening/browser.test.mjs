@@ -1,5 +1,5 @@
 // Offline UI smoke: real static pages/scripts; network APIs and Turnstile are fixtures.
-// Run: node sites/educateos-io/listening/browser-check.mjs
+// Run: node sites/educateos-io/listening/browser.test.mjs
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
