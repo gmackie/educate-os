@@ -1,5 +1,6 @@
 import { WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
 import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
+import { PlannerPlan, PlannerTeacherView, PlannerGoalInput, PlannerReviewInput, PlannerAssistance } from "./planner.ts";
 // The district application's HTTP contract: every route's method, path, surface and Zod schemas.
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
@@ -1283,6 +1284,13 @@ function route<const S extends RouteSpec>(spec: S): S {
  * typed client calls.
  */
 export const ROUTES = {
+  "student.planner": route({ method: "GET", path: "/api/student/offerings/:offeringId/planner", surface: "student", params: params({ offeringId: OfferingId }), response: z.array(PlannerPlan) }),
+  "student.planGoal": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner", surface: "student", params: params({ offeringId: OfferingId }), body: PlannerGoalInput, response: PlannerPlan, status: 201 }),
+  "student.plannerDecision": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/decision", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), decision: z.enum(["accepted", "skipped"]) }), response: PlannerPlan }),
+  "student.plannerShare": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/share", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), text: z.string().trim().min(1).max(10000), assistance: PlannerAssistance }), response: PlannerPlan }),
+  "teacher.planner": route({ method: "GET", path: "/api/teacher/offerings/:offeringId/planner", surface: "teacher", params: params({ offeringId: OfferingId }), response: z.array(PlannerTeacherView) }),
+  "teacher.plannerInvite": route({ method: "POST", path: "/api/teacher/offerings/:offeringId/planner", surface: "teacher", params: params({ offeringId: OfferingId }), body: PlannerGoalInput.extend({ studentId: PrincipalId }), response: PlannerTeacherView, status: 201 }),
+  "teacher.plannerReview": route({ method: "POST", path: "/api/teacher/offerings/:offeringId/planner/:planId/:opportunityId/review", surface: "teacher", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: PlannerReviewInput.extend({ revision: z.number().int().positive() }), response: PlannerTeacherView }),
   // Me
   "me.get": route({ method: "GET", path: "/api/me", surface: "me", response: MeBody }),
   /**
