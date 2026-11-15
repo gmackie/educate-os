@@ -120,3 +120,5 @@ export type ReleaseOutcome = RouteResponse<"teacher.releaseQuizScores">;
 export type LibraryCourse = RouteResponse<"teacher.libraryCourses">[number];
 /** What installing a library course in a class does, or has done (SCHO-331). */
 export type CourseInstallPlan = RouteResponse<"teacher.previewCourseInstall">;
+/** Unapproved model-suggested pedagogical intent, returned only to this teacher. */
+export type CourseIntentDraft = RouteResponse<"teacher.suggestCourseIntent">;

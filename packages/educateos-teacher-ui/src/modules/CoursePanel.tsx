@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge, Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
 import { Books, DownloadSimple } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
-import type { CourseInstallPlan, LibraryCourse } from "../types.ts";
+import type { CourseInstallPlan, CourseIntentDraft, LibraryCourse } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { useAction } from "./useAction.ts";
 
@@ -40,12 +40,25 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
     courses.reload();
   });
   const [plan, setPlan] = useState<CourseInstallPlan | undefined>();
+  const [suggestion, setSuggestion] = useState<CourseIntentDraft | undefined>();
+  const intentAvailability = useLoad(`course-ai:${offeringId}`, (client) => client.call("teacher.courseIntentAvailability", { params: { offeringId } }));
 
   const preview = (course: LibraryCourse) =>
     action.run("preview", async (client) => {
       const result = await client.call("teacher.previewCourseInstall", { params: { offeringId }, body: { packageId: course.packageId, version: course.version } });
+      setSuggestion(undefined);
       setPlan(result);
       return `${course.title} would add ${plural(remaining(result), "module")} to this class.`;
+    });
+
+  const suggestIntent = (planned: CourseInstallPlan, unitKey: string) =>
+    action.run("suggest-intent", async (client) => {
+      const draft = await client.call("teacher.suggestCourseIntent", {
+        params: { offeringId },
+        body: { packageId: planned.packageId, version: planned.version, unitKey, goal: "low-equipment" },
+      });
+      setSuggestion(draft);
+      return "Private AI suggestion ready for review. Nothing has been published or installed.";
     });
 
   const install = (planned: CourseInstallPlan) =>
@@ -106,9 +119,40 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
               <li key={unit.key}>
                 <span className="font-medium">{unit.title}</span>
                 <Text variant="secondary" size="sm" as="span">{` · ${UNIT_STATUS[unit.status]} · ${unitContents(unit)}`}</Text>
+                {intentAvailability.status === "ready" && intentAvailability.data.available && (
+                  <div>
+                    <Button size="sm" variant="secondary" loading={action.running("suggest-intent")}
+                      disabled={action.busy} onClick={() => void suggestIntent(plan, unit.key)}>
+                      Suggest low-equipment adaptation (AI)
+                    </Button>
+                  </div>
+                )}
               </li>
             ))}
           </ol>
+          {suggestion !== undefined && (
+            <section aria-label="AI course intent draft" className="flex flex-col gap-2">
+              <h3><Text variant="heading" as="span">Private suggested adaptation</Text></h3>
+              <Banner title="Draft — not approved"
+                description="This is an AI-generated suggestion for the selected course unit. It has not been verified, installed, assigned, or published." />
+              <Text variant="secondary" size="sm">
+                {"Source " + suggestion.source.version + " · " + suggestion.goal.replaceAll("-", " ") +
+                  " · estimated ledger charge $" + (Number(suggestion.actualUsdNano) / 1e9).toFixed(6)}
+              </Text>
+              <Text variant="secondary" size="sm">Learning goals proposed:</Text>
+              <ul className="list-disc pl-5">
+                {suggestion.intent.learningGoals.map((goal) => <li key={goal.id}>{goal.statement}</li>)}
+              </ul>
+              <Text variant="secondary" size="sm">Teaching strategies proposed:</Text>
+              <ul className="list-disc pl-5">
+                {suggestion.intent.strategies.map((strategy) => <li key={strategy.id}>{strategy.approach}</li>)}
+              </ul>
+              <Text variant="secondary" size="sm">
+                This preview is not saved. You can review these suggestions and manually adapt the lesson; publishing requires separate teacher and district approvals.
+              </Text>
+              <div><Button variant="secondary" onClick={() => setSuggestion(undefined)}>Discard suggestion</Button></div>
+            </section>
+          )}
           {plan.reusedDefinitions > 0 && (
             <Text variant="secondary" size="sm">{`${plural(plan.reusedDefinitions, "activity", "activities")} this class already has from an earlier course will be reused.`}</Text>
           )}
