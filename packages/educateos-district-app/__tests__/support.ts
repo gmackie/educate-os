@@ -107,7 +107,7 @@ export async function bootDistrict(
     // Course library (SCHO-331)
     | "courseLibraryTrust"
     // Product analytics (SCHO-350)
-    | "productAnalytics">> & { standards?: readonly string[] } = {},
+    | "productAnalytics" | "courseIntentProvider">> & { standards?: readonly string[] } = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);
