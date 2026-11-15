@@ -10,8 +10,8 @@ export interface ZipEntry {
   deflate?: boolean;
 }
 
-async function deflateRaw(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+async function deflateRaw(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+  const stream = new Blob([bytes.slice()]).stream().pipeThrough(new CompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
