@@ -1,6 +1,6 @@
 // End to end: the bundled CLI, as npm ships it, run as a child process against the installer's
 // Cloudflare fake (over the loopback bridge) and a local release mirror serving signed releases.
-// Then the npm path itself: `npm pack` and `npx ./launch-educate-os-0.1.0.tgz`.
+// Then the npm path itself: `npm pack` and `npx ./launch-educate-os-<version>.tgz`.
 import { execFile } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -26,6 +26,9 @@ import {
   writeReleaseDir,
   writeTrustFile,
 } from "./harness.ts";
+
+// The package's own version, so a release bump needs no test edit.
+const PACKAGE_VERSION: string = JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")).version;
 
 const PACKAGE = fileURLToPath(new URL("..", import.meta.url));
 
@@ -79,7 +82,7 @@ describe("the bundled CLI", () => {
     const help = await run(process.execPath, [cli, "--help"], { cwd: dir });
     expect(help.code).toBe(0);
     expect(help.stdout).toContain("npx launch-educate-os [install]");
-    expect((await run(process.execPath, [cli, "--version"], { cwd: dir })).stdout.trim()).toBe("0.1.0");
+    expect((await run(process.execPath, [cli, "--version"], { cwd: dir })).stdout.trim()).toBe(PACKAGE_VERSION);
     expect((await run(process.execPath, [cli, "frobnicate"], { cwd: dir })).code).toBe(2);
   });
 
@@ -196,13 +199,13 @@ describe("the npm package", () => {
     const packed = await run("npm", ["pack", "--json", "--pack-destination", stage], { cwd: stage });
     expect(packed.code, packed.stderr).toBe(0);
     const [{ filename, files }] = JSON.parse(packed.stdout) as [{ filename: string; files: { path: string }[] }];
-    expect(filename).toBe("launch-educate-os-0.1.0.tgz");
+    expect(filename).toBe(`launch-educate-os-${PACKAGE_VERSION}.tgz`);
     expect(files.map((f) => f.path).toSorted()).toEqual(["LICENSE", "README.md", "dist/launch-educate-os.mjs", "package.json"]);
 
     const work = mkdtempSync(join(tmpdir(), "launch-npx-"));
     const cache = mkdtempSync(join(tmpdir(), "launch-npm-cache-"));
     const npxEnv = { npm_config_cache: cache, npm_config_update_notifier: "false", npm_config_fund: "false", npm_config_audit: "false" };
-    // As an operator would run a downloaded tarball: `npx ./launch-educate-os-0.1.0.tgz`.
+    // As an operator would run a downloaded tarball: `npx ./launch-educate-os-<version>.tgz`.
     cpSync(join(stage, filename), join(work, filename));
     const help = await run("npx", ["--yes", `./${filename}`, "--help"], { cwd: work, env: npxEnv });
     expect(help.code, help.stderr).toBe(0);
