@@ -129,11 +129,19 @@ export type ClassroomGradingPeriodSettings = { gradingPeriods: ClassroomGradingP
 /**
  * Session interface for one Google Classroom course.
  *
- * Classroom lets an app change only the coursework it created itself, so this session shows only
- * that coursework: what `createCourseWork` made through this Google connection. Assignments made in
- * the Classroom UI or by other apps are never listed, read, or graded.
+ * `listTeachingMaterials` reads existing coursework as teaching sources, including work made in
+ * Classroom itself. The other coursework and grading methods remain restricted to work created
+ * through this connection. A material link does not grant access to the linked Google file.
  */
 export interface GoogleClassroomCourseSession {
+  /**
+   * Read published and draft coursework in the bound course for lesson reuse, including titles,
+   * instructions and material links created in Classroom or other apps. Requires the connected
+   * account to teach the course. Does not read student work or fetch linked files; connect those
+   * files separately through Drive. This does not enable grading or changing external coursework.
+   */
+  listTeachingMaterials(): Promise<ClassroomCourseWork[]>;
+
   /** Read the bound course's grading periods. No cross-course lookup is accepted. */
   getGradingPeriodSettings(): Promise<ClassroomGradingPeriodSettings>;
 

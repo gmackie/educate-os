@@ -2,8 +2,8 @@
 //
 // Classroom binds coursework to the Cloud project of the OAuth client that created it: only that
 // project may change it or grade its submissions, and Google refuses anyone else with
-// `@ProjectPermissionDenied`. So the client lists only coursework Classroom reports as
-// `associatedWithDeveloper`, and refuses locally what Google would refuse remotely.
+// `@ProjectPermissionDenied`. The grading path therefore accepts only coursework marked
+// `associatedWithDeveloper`. A separate read-only teaching-source listing includes existing work.
 // docs/educateos/integrations/google-classroom.md is the design record.
 
 import { AccessTokenProvider, fetchWithAuthRetry } from "./auth-retry";
@@ -307,6 +307,7 @@ export class ClassroomApi {
       : Promise<unknown[]> {
     let items: unknown[] = [];
     let pageToken: string | undefined;
+    const seenTokens = new Set<string>();
     do {
       let query = new URLSearchParams(params);
       query.set("pageSize", String(PAGE_SIZE));
@@ -318,6 +319,10 @@ export class ClassroomApi {
         throw new Error(`Google Classroom returned more than ${MAX_LIST_ITEMS} items.`);
       }
       pageToken = text(page.nextPageToken);
+      if (pageToken && (seenTokens.has(pageToken) || seenTokens.size >= MAX_LIST_ITEMS)) {
+        throw new Error("Google Classroom pagination exceeded its limit or repeated a page.");
+      }
+      if (pageToken) seenTokens.add(pageToken);
     } while (pageToken);
     return items;
   }
@@ -476,6 +481,16 @@ export class ClassroomApi {
       .map(classroomCourseWorkFromRaw)
       .filter(({ owned }) => owned)
       .map(({ courseWork }) => courseWork);
+  }
+
+  /** Existing teaching sources, including work created in Classroom itself; never reads submissions. */
+  async listTeachingMaterials(courseId: string): Promise<ClassroomCourseWork[]> {
+    if (!(await this.isTeacher(courseId))) {
+      throw new Error("The connected Google account does not teach this Classroom course.");
+    }
+    const params = new URLSearchParams([["courseWorkStates", "PUBLISHED"], ["courseWorkStates", "DRAFT"]]);
+    return (await this.#listAll(`${this.#course(courseId)}/courseWork`, params, "courseWork", "read teaching materials"))
+      .map(classroomCourseWorkFromRaw).map(({ courseWork }) => courseWork);
   }
 
   /** One coursework item, refused locally unless this connection's project created it. */

@@ -106,6 +106,21 @@ export class GoogleClassroomGatekeeperImpl
   }
 
   async removeObserver(_id: string): Promise<void> {}
+
+  /** Verifies the course reported by teaching-source reads; legacy admission above stays intact. */
+  async verifyObserverAccess(
+    observers: { id: string; verifier: Fetcher<GatekeeperUserVerifier> }[], subresources: string[],
+  ): Promise<{ allowedObserverIds: string[] }> {
+    if (subresources.some(id => id !== `classroom/course/${this.ctx.props.courseId}`)) {
+      throw new Error("Unknown Classroom course subresource.");
+    }
+    const allowed = await Promise.all(observers.map(async observer => {
+      const verifier = observer.verifier as unknown as Fetcher<GoogleVerifierApi>;
+      return subresources.length === 0 || await verifier.hasClassroomTeacherAccess(this.ctx.props.courseId)
+        ? [observer.id] : [];
+    }));
+    return { allowedObserverIds: allowed.flat() };
+  }
 }
 
 function pendingCourseWork({ id, action }: JournalEntry<ClassroomAction>): ClassroomCourseWork[] {
@@ -208,6 +223,16 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
         `Google Classroom course ${this.#courseId}.`,
     });
     return courseWork;
+  }
+
+  async listTeachingMaterials(): Promise<ClassroomCourseWork[]> {
+    const materials = await this.#api.listTeachingMaterials(this.#courseId);
+    await this.#queue.authorizeObservation({
+      title: "Read existing Classroom teaching materials",
+      description: `Read ${materials.length} coursework source(s) in Google Classroom course ${this.#courseId}; linked files require separate access.`,
+      subresources: [`classroom/course/${this.#courseId}`],
+    });
+    return materials;
   }
 
   async getCourseWork(courseWorkId: string): Promise<ClassroomCourseWork> {
