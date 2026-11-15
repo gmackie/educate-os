@@ -1,4 +1,5 @@
 import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
+import { InMemoryPlannerStore, type PlannerStore } from "./planner.ts";
 import {
   EducateOsError,
   IntegrationSyncRun,
@@ -241,6 +242,8 @@ export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReade
  * one without the application changing.
  */
 export interface DistrictAppStores {
+  /** Private goals, optional invitations and explicitly shared planner evidence. */
+  planner: PlannerStore;
   /** The academic directory (A01). */
   directory: AcademicStore;
   /** Which directory records the roster owns (A03). */
@@ -330,6 +333,7 @@ export interface DistrictAppStores {
 /** In-memory stores for one district, seeded with its directory. */
 export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): DistrictAppStores {
   return {
+    planner: new InMemoryPlannerStore(),
     directory: InMemoryAcademicStore.seeded(directory),
     rosterSources: new InMemoryRosterSourceStore(),
     rosterSync: new InMemoryRosterSyncStore(),

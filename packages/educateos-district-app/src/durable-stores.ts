@@ -1,4 +1,5 @@
 import { GadgetAssessmentBinding, sameGadgetAssessmentPin, type GadgetAssessmentStore } from "./gadget-assessment.ts";
+import { PlannerPlan, plannerConflict, type PlannerStore } from "./planner.ts";
 // Durable stores for one district (SCHO-171), published as their own entry point
 // (`@educateos/district-app/durable-stores`). Every `DistrictAppStores` member lives in one
 // SQLite-backed Durable Object's storage: the domain packages' own Durable Object stores where they
@@ -1176,6 +1177,7 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
   const directory = DurableObjectAcademicStore.open(storage, seed);
   return {
     directory,
+    planner: new DurableObjectPlannerStore(storage),
     rosterSources: new DurableObjectRosterSourceStore(storage),
     rosterSync: new DurableObjectDistrictRosterSyncStore(storage),
     workspaces: new DurableObjectWorkspaceStore(storage),
@@ -1223,6 +1225,26 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     // Student archive (SCHO-371)
     exportMappings: new DurableObjectExportMappingStore(storage),
   };
+}
+
+/** District-local planner records survive restarts; revisions prevent concurrent lost updates. */
+export class DurableObjectPlannerStore implements PlannerStore {
+  readonly storage: DistrictSqlStorage;
+  constructor(storage: DistrictSqlStorage) {
+    this.storage = storage;
+    storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_planner (id TEXT PRIMARY KEY, offering_id TEXT NOT NULL, revision INTEGER NOT NULL, plan_json TEXT NOT NULL)");
+  }
+  async list(offeringId: string): Promise<PlannerPlan[]> {
+    return this.storage.sql.exec("SELECT plan_json FROM educateos_planner WHERE offering_id = ? ORDER BY rowid", offeringId).toArray().map((row) => parseStored(PlannerPlan, row.plan_json, "a learning plan"));
+  }
+  async save(raw: PlannerPlan, expectedRevision: number): Promise<void> {
+    const plan = PlannerPlan.parse(raw);
+    this.storage.transactionSync(() => {
+      const [row] = this.storage.sql.exec("SELECT revision FROM educateos_planner WHERE id = ?", plan.id).toArray();
+      if ((row?.revision ?? 0) !== expectedRevision || plan.revision !== expectedRevision + 1) throw plannerConflict();
+      this.storage.sql.exec("INSERT INTO educateos_planner (id, offering_id, revision, plan_json) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET revision = excluded.revision, plan_json = excluded.plan_json", plan.id, plan.offeringId, plan.revision, JSON.stringify(plan));
+    });
+  }
 }
 
 // Gradebook (SCHO-187)

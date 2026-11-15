@@ -20,6 +20,7 @@ import { SubmissionsPage } from "../submissions/SubmissionsPage.tsx";
 import type { TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { classLabel } from "./classLabel.ts";
+import { PlannerPage } from "../planner/PlannerPage.tsx";
 
 type ClassRoute = Exclude<Route, { screen: "classes" }>;
 
@@ -88,6 +89,8 @@ export const ClassPage = ({ route }: { route: ClassRoute }) => {
 
 const ClassSection = ({ route, teaching }: { route: Exclude<ClassRoute, { screen: "setup" }>; teaching: TeachingOffering }) => {
   switch (route.screen) {
+    case "planner":
+      return <PlannerPage key={teaching.offering.id} teaching={teaching} />;
     case "roster":
       return <RosterPage teaching={teaching} />;
     case "modules":

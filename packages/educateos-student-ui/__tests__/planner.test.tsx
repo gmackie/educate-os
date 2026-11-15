@@ -1,0 +1,33 @@
+import { expect, it } from "vitest";
+import { screen, waitFor, within } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
+import { createDistrictApiClient } from "@educateos/api-client";
+import { bootDistrict, NF, NORTHFIELD } from "../../educateos-district-app/__tests__/support.ts";
+import { renderApp } from "./render.tsx";
+
+it("lets a learner plan, skip, accept and explicitly share evidence through the real district API", async () => {
+  const directory = { ...NORTHFIELD, courses: NORTHFIELD.courses.map((c) => ({ ...c, gradeBand: "6" })) };
+  const d = await bootDistrict(directory);
+  const token = d.tokenFor(NF.amara);
+  const client = createDistrictApiClient({ baseUrl: "https://district.example", token, fetch: (r) => d.app.fetch(r) });
+  const user = userEvent.setup();
+  await renderApp(client, `/courses/${NF.eng9}`);
+  await user.click(await screen.findByRole("button", { name: /Personalized Learning Planner/ }));
+  const planner = await screen.findByRole("region", { name: "Personalized Learning Planner" });
+  await user.type(within(planner).getByRole("textbox", { name: "What do you want to build or explore?" }), "My private Roblox Pizza Tycoon idea");
+  await user.click(within(planner).getByRole("button", { name: "Find optional opportunities" }));
+  const math = await within(planner).findByRole("article", { name: "6.RP.A.3b opportunity" });
+  const ela = await within(planner).findByRole("article", { name: "W.6.1 opportunity" });
+  expect(await d.ok(d.tokenFor(NF.rivera), "teacher.planner", { params: { offeringId: NF.eng9 } })).toEqual([]);
+  await user.click(within(ela).getByRole("button", { name: "Skip" }));
+  await waitFor(() => expect(within(ela).getByRole("button", { name: "Skip" }).hasAttribute("disabled")).toBe(true));
+  await user.click(within(math).getByRole("button", { name: "Accept" }));
+  await user.type(await within(math).findByRole("textbox", { name: "Your response for 6.RP.A.3b" }), "Oven A makes 4 pizzas/minute; oven B makes 3.");
+  await user.click(within(math).getByRole("radio", { name: "ai" }));
+  await user.click(within(math).getByRole("button", { name: "Share this response with my teachers" }));
+  await within(math).findByText("Shared response · help: ai");
+  const shared = await d.ok(d.tokenFor(NF.rivera), "teacher.planner", { params: { offeringId: NF.eng9 } });
+  expect(shared[0]!.opportunities).toHaveLength(1);
+  expect(shared[0]!.opportunities[0]!.response).toMatchObject({ assistance: "ai", text: "Oven A makes 4 pizzas/minute; oven B makes 3." });
+  expect(JSON.stringify(shared)).not.toContain("My private Roblox");
+});
