@@ -1261,6 +1261,9 @@ importers:
       '@educateos/fleet':
         specifier: workspace:*
         version: link:../educateos-fleet
+      '@educateos/home-learning':
+        specifier: workspace:*
+        version: link:../educateos-home-learning
       '@educateos/identity':
         specifier: workspace:*
         version: link:../educateos-identity
@@ -1422,6 +1425,9 @@ importers:
       '@educateos/fleet':
         specifier: workspace:*
         version: link:../educateos-fleet
+      '@educateos/home-learning':
+        specifier: workspace:*
+        version: link:../educateos-home-learning
       '@educateos/marketplace':
         specifier: workspace:*
         version: link:../educateos-marketplace
@@ -1622,6 +1628,31 @@ importers:
       '@educateos/zip':
         specifier: workspace:*
         version: link:../educateos-zip
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.5)(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.7(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/educateos-home-learning:
+    dependencies:
+      '@educateos/contracts':
+        specifier: workspace:*
+        version: link:../educateos-contracts
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@educateos/academics':
+        specifier: workspace:*
+        version: link:../educateos-academics
+      '@educateos/fixtures':
+        specifier: workspace:*
+        version: link:../educateos-fixtures
+      '@educateos/policy':
+        specifier: workspace:*
+        version: link:../educateos-policy
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
@@ -2312,6 +2343,9 @@ importers:
       '@educateos/api-client':
         specifier: workspace:*
         version: link:../educateos-api-client
+      '@educateos/home-learning':
+        specifier: workspace:*
+        version: link:../educateos-home-learning
       '@educateos/shell':
         specifier: workspace:*
         version: link:../educateos-shell
@@ -2340,6 +2374,9 @@ importers:
         specifier: ^0.1.3
         version: 0.1.3
     devDependencies:
+      '@educateos/contracts':
+        specifier: workspace:*
+        version: link:../educateos-contracts
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts

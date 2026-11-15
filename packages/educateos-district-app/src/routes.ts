@@ -4,6 +4,38 @@ import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
+// Home learning (ADR-0016)
+import {
+  AddLearnerInput,
+  CorrectionInput,
+  CreateFamilyInput,
+  Pin,
+  QueueAddInput,
+  QueueChangeInput,
+  ResponseInput,
+  ShelfAddInput,
+  UpdateLearnerInput,
+  ActivityKey,
+  PackId,
+  DisplayName,
+  QueueEntryId,
+  PracticeSessionId,
+  ShelfItemId,
+  type Activity as HomeActivity,
+  type FamilyExport,
+  type FamilyView,
+  type HomeView,
+  type Learner,
+  type LibraryView,
+  type PracticeHome,
+  type PracticeView,
+  type ProgressView,
+  type QueueEntryView,
+  type ScoredResponse,
+  type SessionDetail,
+  type ShelfItem,
+  type TodayLearner,
+} from "@educateos/home-learning";
 // Devices (SCHO-261)
 import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
 // Operations (SCHO-263)
@@ -47,6 +79,7 @@ import {
   TermId,
   TermState,
   WorkspaceId,
+  LearnerId,
 } from "@educateos/contracts";
 import { CourseWorkspace, PersonalWorkspace, PromotionLink, WorkspaceLifecycle, type TermRolloverPreview } from "@educateos/workspaces";
 import {
@@ -172,8 +205,10 @@ import { StudentClassroomGrades, TeacherClassroomGrades } from "./classroom-grad
  * teacher and admin routes only staff, and guardian routes only guardians; within a surface, every
  * decision is still the policy engine's. Onboarding routes answer a verified sign-in that may not
  * be anyone's principal yet, such as a guardian redeeming an invitation, and grant nothing.
+ * Family routes are a family adult's home-learning management, refused while a child session is
+ * on the browser; learner routes are a child's practice inside one (ADR-0016).
  */
-export type Surface = "me" | "student" | "teacher" | "admin" | "guardian" | "onboarding";
+export type Surface = "me" | "student" | "teacher" | "admin" | "guardian" | "onboarding" | "family" | "learner";
 
 /** One route of the district API. */
 export interface RouteSpec {
@@ -205,6 +240,17 @@ export interface RouteSpec {
    * `invokeOperation` exactly as an agent's tool call runs it, with no handler of its own.
    */
   readonly operation?: AcademicOperationName;
+  /**
+   * The route starts or ends the browser's child session (ADR-0016). Its handler returns a
+   * {@link WithCookie}: the response body, and the `Set-Cookie` value the server sends with it.
+   */
+  readonly cookie?: "child-session";
+}
+
+/** What a {@link RouteSpec.cookie} route's handler returns. */
+export interface WithCookie<T> {
+  readonly body: T;
+  readonly setCookie: string;
 }
 
 /** A response type the domain package declares as an interface rather than a schema. */
@@ -352,6 +398,14 @@ export const MeBody = z.strictObject({
   roles: z.array(RoleAssignment.pick({ role: true, scope: true })),
   /** Active enrollments. */
   enrollments: z.array(Enrollment.pick({ offeringId: true, role: true })),
+  /**
+   * Present for a guardian where the installation offers home learning (ADR-0016): whether they have
+   * a family yet, and the child practicing on this browser, if a child session is open.
+   */
+  homeLearning: z.strictObject({
+    hasFamily: z.boolean(),
+    childSession: z.strictObject({ learnerId: LearnerId, displayName: z.string(), avatar: z.string() }).nullable(),
+  }).optional(),
 });
 /** The signed-in principal. */
 export type MeBody = z.infer<typeof MeBody>;
@@ -667,6 +721,7 @@ export const DISTRICT_EXPORT_EXCLUSIONS = [
   "notifications, calendar feeds, email preferences and the digest ledger",
   "roster sync mirror and run history",
   "student archive export mappings, which the district keeps to reconcile a later import",
+  "families' home learning (ADR-0016), which is each family's own: its adults export it themselves; and child-session tokens",
   "the bytes of content held outside the district's storage: external links and registered providers (listed in notCopied)",
 ] as const;
 
@@ -1836,6 +1891,99 @@ export const ROUTES = {
     method: "POST", path: "/api/onboarding/guardian-invitations/redeem", surface: "onboarding",
     body: z.strictObject({ token: z.string().min(1).max(100) }),
     response: z.strictObject({ outcome: GuardianInvitationRedemption.shape.outcome }),
+  }),
+  // Home learning (ADR-0016): a family adult manages their family and their children's practice.
+  // Every family route is refused while a child session is on the browser.
+  /** Whether this installation offers home learning, and how a newcomer joins: asked before they are anyone's principal. */
+  "onboarding.community": route({
+    method: "GET", path: "/api/onboarding/community", surface: "onboarding",
+    response: z.strictObject({ homeLearning: z.boolean(), signup: z.enum(["open", "approval", "invite-only"]).nullable() }),
+  }),
+  "onboarding.joinCommunity": route({
+    method: "POST", path: "/api/onboarding/community/join", surface: "onboarding",
+    body: z.strictObject({ displayName: DisplayName }),
+    response: z.strictObject({ outcome: z.enum(["joined", "awaiting-approval"]) }),
+  }),
+  "family.home": route({ method: "GET", path: "/api/family/home", surface: "family", response: declared<HomeView>() }),
+  "family.create": route({ method: "POST", path: "/api/family/create", surface: "family", status: 201, body: CreateFamilyInput, response: declared<FamilyView>() }),
+  "family.rename": route({ method: "POST", path: "/api/family/rename", surface: "family", body: z.strictObject({ name: DisplayName }), response: declared<FamilyView>() }),
+  "family.changePin": route({ method: "POST", path: "/api/family/pin", surface: "family", body: z.strictObject({ pin: Pin }), response: declared<FamilyView>() }),
+  "family.delete": route({ method: "POST", path: "/api/family/delete", surface: "family", body: z.strictObject({ confirm: z.literal("delete") }), response: z.strictObject({ deleted: z.literal(true) }) }),
+  "family.export": route({ method: "GET", path: "/api/family/export", surface: "family", response: declared<FamilyExport>() }),
+  "family.addLearner": route({ method: "POST", path: "/api/family/learners", surface: "family", status: 201, body: AddLearnerInput, response: declared<Learner>() }),
+  "family.updateLearner": route({
+    method: "POST", path: "/api/family/learners/:learnerId", surface: "family",
+    params: params({ learnerId: LearnerId }), body: UpdateLearnerInput, response: declared<Learner>(),
+  }),
+  "family.removeLearner": route({
+    method: "POST", path: "/api/family/learners/:learnerId/remove", surface: "family",
+    params: params({ learnerId: LearnerId }), body: NoBody, response: z.strictObject({ removed: z.literal(true) }),
+  }),
+  "family.library": route({ method: "GET", path: "/api/family/library", surface: "family", response: declared<LibraryView>() }),
+  "family.previewActivity": route({
+    method: "GET", path: "/api/family/library/:pack/:version/:activity", surface: "family",
+    params: params({ pack: PackId, version: z.string().regex(/^\d{1,3}\.\d{1,3}\.\d{1,3}$/), activity: ActivityKey }), response: declared<HomeActivity>(),
+  }),
+  "family.today": route({ method: "GET", path: "/api/family/today", surface: "family", response: declared<TodayLearner[]>() }),
+  "family.queueAdd": route({
+    method: "POST", path: "/api/family/learners/:learnerId/queue", surface: "family",
+    params: params({ learnerId: LearnerId }), body: QueueAddInput, response: declared<QueueEntryView[]>(),
+  }),
+  "family.queueChange": route({
+    method: "POST", path: "/api/family/learners/:learnerId/queue/:entryId", surface: "family",
+    params: params({ learnerId: LearnerId, entryId: QueueEntryId }), body: QueueChangeInput, response: declared<QueueEntryView[]>(),
+  }),
+  "family.queueRemove": route({
+    method: "POST", path: "/api/family/learners/:learnerId/queue/:entryId/remove", surface: "family",
+    params: params({ learnerId: LearnerId, entryId: QueueEntryId }), body: NoBody, response: declared<QueueEntryView[]>(),
+  }),
+  "family.progress": route({
+    method: "GET", path: "/api/family/learners/:learnerId/progress", surface: "family",
+    params: params({ learnerId: LearnerId }), response: declared<ProgressView>(),
+  }),
+  "family.session": route({
+    method: "GET", path: "/api/family/learners/:learnerId/sessions/:sessionId", surface: "family",
+    params: params({ learnerId: LearnerId, sessionId: PracticeSessionId }), response: declared<SessionDetail>(),
+  }),
+  "family.correct": route({
+    method: "POST", path: "/api/family/learners/:learnerId/sessions/:sessionId/corrections", surface: "family",
+    params: params({ learnerId: LearnerId, sessionId: PracticeSessionId }), body: CorrectionInput, response: declared<SessionDetail>(),
+  }),
+  "family.shelfAdd": route({ method: "POST", path: "/api/family/shelf", surface: "family", status: 201, body: ShelfAddInput, response: declared<ShelfItem>() }),
+  "family.shelfRemove": route({
+    method: "POST", path: "/api/family/shelf/:itemId/remove", surface: "family",
+    params: params({ itemId: ShelfItemId }), body: NoBody, response: z.strictObject({ removed: z.literal(true) }),
+  }),
+  /** Hands this browser to a child: sets the child-session cookie, after which only learner routes answer. */
+  "family.startChildSession": route({
+    method: "POST", path: "/api/family/learners/:learnerId/child-session", surface: "family", cookie: "child-session",
+    params: params({ learnerId: LearnerId }), body: NoBody, response: z.strictObject({ learnerId: LearnerId, displayName: z.string() }),
+  }),
+  /** Ends every child session of the family, from a device that isn't in one (a forgotten or locked PIN). */
+  "family.endChildSessions": route({ method: "POST", path: "/api/family/child-sessions/end", surface: "family", body: NoBody, response: z.strictObject({ ended: z.int() }) }),
+  // A child's practice, inside a child session.
+  "learner.session": route({
+    method: "GET", path: "/api/learner/session", surface: "learner",
+    response: z.discriminatedUnion("active", [
+      z.strictObject({ active: z.literal(false) }),
+      z.strictObject({ active: z.literal(true), learnerId: LearnerId, displayName: z.string(), avatar: z.string() }),
+    ]),
+  }),
+  "learner.home": route({ method: "GET", path: "/api/learner/home", surface: "learner", response: declared<PracticeHome>() }),
+  "learner.start": route({
+    method: "POST", path: "/api/learner/queue/:entryId/start", surface: "learner",
+    params: params({ entryId: QueueEntryId }), body: NoBody, response: declared<PracticeView>(),
+  }),
+  "learner.save": route({
+    method: "POST", path: "/api/learner/sessions/:sessionId/responses", surface: "learner",
+    params: params({ sessionId: PracticeSessionId }), body: ResponseInput, response: declared<{ response: ScoredResponse; completed: boolean }>(),
+  }),
+  /** Ends this browser's child session with the family PIN and clears its cookie. */
+  "learner.exit": route({ method: "POST", path: "/api/learner/exit", surface: "learner", cookie: "child-session", body: z.strictObject({ pin: z.string().max(16) }), response: z.strictObject({ ended: z.literal(true) }) }),
+  /** Community sign-ups awaiting an administrator (ADR-0016): approve or reject each as an identity request. */
+  "admin.familySignups": route({
+    method: "GET", path: "/api/admin/family-signups", surface: "admin",
+    response: z.array(z.strictObject({ requestId: IdentityRequestId, displayName: z.string(), signIn: z.strictObject({ issuer: z.string(), subject: z.string() }), requestedAt: z.string() })),
   }),
   "admin.guardianStudents": route({
     method: "GET", path: "/api/admin/guardians/students", surface: "admin",

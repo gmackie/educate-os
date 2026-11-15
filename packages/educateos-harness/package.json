@@ -13,7 +13,8 @@
     "./showcase": "./src/showcase.ts"
   },
   "scripts": {
-    "start": "node src/cli.ts"
+    "start": "node src/cli.ts",
+    "community": "node src/community.ts"
   },
   "dependencies": {
     "@educateos/api-client": "workspace:*",

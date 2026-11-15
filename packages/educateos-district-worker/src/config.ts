@@ -125,6 +125,13 @@ export const DistrictWorkerConfig = z.strictObject({
    */
   unscreenedStudentPosts: z.enum(["hold", "publish"]).optional(),
   /**
+   * Home learning for families (ADR-0016): set on a community installation, with how it admits
+   * newcomers (`open`, `approval` or `invite-only`). Absent (the default), the family and learner
+   * routes answer `not-found`. A community also sets `authority: "local"`, and its Access policy
+   * must admit the people who may sign up.
+   */
+  homeLearning: z.strictObject({ signup: z.enum(["open", "approval", "invite-only"]) }).optional(),
+  /**
    * The organization MCP endpoint (SCHO-174). Absent (the default), `/mcp` and its metadata are
    * 404. Turn it on only once the district's authorization server issues tokens for it (NATH-6)
    * and the Access application exempts `/mcp` and `/.well-known/oauth-protected-resource*`.

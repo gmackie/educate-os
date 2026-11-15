@@ -45,6 +45,7 @@
     "@educateos/catalog": "workspace:*",
     "@educateos/config": "workspace:*",
     "@educateos/fleet": "workspace:*",
+    "@educateos/home-learning": "workspace:*",
     "@educateos/marketplace": "workspace:*",
     "@educateos/provider-fakes": "workspace:*",
     "@gadgets/scripts": "workspace:*",
