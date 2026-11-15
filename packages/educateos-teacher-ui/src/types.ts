@@ -122,3 +122,5 @@ export type LibraryCourse = RouteResponse<"teacher.libraryCourses">[number];
 export type CourseInstallPlan = RouteResponse<"teacher.previewCourseInstall">;
 /** Unapproved model-suggested pedagogical intent, returned only to this teacher. */
 export type CourseIntentDraft = RouteResponse<"teacher.suggestCourseIntent">;
+/** Teacher-owned persistent versioned intent record. */
+export type CourseIntentDraftRecord = RouteResponse<"teacher.getCourseIntentDraft">;
