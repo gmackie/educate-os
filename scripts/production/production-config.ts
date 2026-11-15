@@ -54,6 +54,7 @@ import {
   PACKAGES_DIR, ROOT, backendGatekeeperServices, gatekeeperBaseUrl, routerServices,
   type StagingConfig,
 } from "../preview/staging-config.ts";
+import { COMMUNITY_DEPLOYMENTS } from "./communities.ts";
 import { DEMO_DISTRICT_DEPLOYMENTS } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
@@ -670,7 +671,7 @@ export function renderProductionConfig(config: ProductionConfig): string {
 export function generateProductionConfigs({
   check,
   instance = SCHOOLOS_GMAC_IO,
-  districts = DEMO_DISTRICT_DEPLOYMENTS,
+  districts = [...DEMO_DISTRICT_DEPLOYMENTS, ...COMMUNITY_DEPLOYMENTS],
 }: {
   check: boolean;
   instance?: ProductionInstance;

@@ -16,6 +16,7 @@ import {
   demoDistrictConfigName, demoDistrictWorkerName, generateProductionConfigs, productionBuildEnv, productionPackageNames,
   productionWorkerName, renderProductionConfig, type DemoDistrictDeployment, type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
+import { COMMUNITY_DEPLOYMENTS } from "./communities.ts";
 import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST, DEMO_PRODUCT_ANALYTICS, EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
@@ -601,4 +602,19 @@ test("the course library pin is the committed educateos.io publisher key, public
   const publisher = JSON.parse(readFileSync(join(import.meta.dirname, "../../curriculum/educateos.io/publisher.json"), "utf8"));
   assert.deepEqual(JSON.parse(EDUCATEOS_COURSE_LIBRARY_TRUST), { localDomains: [], publishers: [publisher] });
   for (const key of publisher.keys) assert.deepEqual(Object.keys(key).toSorted(), ["keyId", "publicKey"]);
+});
+
+// Community installations (ADR-0016): district Workers that hold real families' data.
+test("deploys each community as its own district Worker with no demo, marketplace or analytics vars", () => {
+  const communities = buildDemoDistrictConfigs({ districts: [...DEMO_DISTRICT_DEPLOYMENTS, ...COMMUNITY_DEPLOYMENTS], packages: PACKAGES, instance: SCHOOLOS_GMAC_IO });
+  // As for the demo districts: a changed name would start the community's Durable Object empty.
+  const deployed: Record<string, string> = { safranek: "educateos-safranek-district" };
+  for (const { slug, hostname } of COMMUNITY_DEPLOYMENTS) {
+    const config = communities.get(slug)!;
+    assert.equal(config.name, deployed[slug], `${slug} would deploy as a new Worker, with an empty Durable Object`);
+    assert.deepEqual(config.routes, [{ pattern: hostname, custom_domain: true }]);
+    for (const name of ["DEMO_SHOWCASE", "PRODUCT_ANALYTICS", "MARKETPLACE_TRUST", "COURSE_LIBRARY_TRUST"]) {
+      assert.equal((config.vars as Record<string, unknown> | undefined)?.[name], undefined, `${slug} sets ${name}`);
+    }
+  }
 });
