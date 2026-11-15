@@ -123,6 +123,7 @@ Northfield and Riverbend) landing on a different principal in each. `EDUCATEOS_H
 ## Course Commons design (proposed)
 
 - [Cross-institution curriculum collaboration RFC 0004](rfc/0004-cross-institution-course-collaboration.md) — exact OCS identities, detached contribution profiles, institutional permissions and safe updates.
+- [Course Commons technical delivery plan](course-commons-technical-delivery-plan.md) — state machines, exact contracts, APIs, CI gates, engineering work packages, pilot design and budget.
 - [Course Commons operating model](course-commons-operating-model.md) — publisher roles, end-to-end educator journeys, federation, licensing, curriculum review and the phased build gates.
 
 ## Decisions

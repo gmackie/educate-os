@@ -7,6 +7,7 @@
 - **Independent standard:** https://github.com/gmackie/open-course-standard
 - **Experimental profile changes:** https://github.com/gmackie/open-course-standard/pull/7
 - **Expanded operating model:** [Course Commons blueprint](../course-commons-operating-model.md)
+- **Technical delivery and pilot program:** [Detailed implementation plan](../course-commons-technical-delivery-plan.md)
 
 ## 1. Decision
 

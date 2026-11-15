@@ -4,6 +4,8 @@
 
 **Related implementation:** independent OCS PR #7 (draft profiles), EducateOS PR #33 (durable local item mappings), PR #34 (read-only teacher update inspector, stacked on #33), and EducateOS RFC 0004 (PR #32). This document elaborates operating behavior and review gates, not an alternative normative specification.
 
+**Detailed implementation:** [Technical delivery and pilot program](course-commons-technical-delivery-plan.md), including versioned data contracts, update activation safeguards and acceptance tests.
+
 ## 1. Purpose: curriculum as a maintained scholarly artifact
 
 University professors routinely exchange lectures, slides and problem sets. K-12 teachers share lessons and adapt materials to local needs. Those exchanges are useful, but improvements often remain disconnected from their source. The Course Commons should let teachers and professors:
