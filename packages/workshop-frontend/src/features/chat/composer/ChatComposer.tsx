@@ -23,6 +23,7 @@ import type {
   SlashCommandRequest,
 } from "@gadgets/workshop-shared/api";
 import { isTransientRpcError } from "../../../rpcErrors";
+import { useToastClearance } from "./useToastClearance";
 import { slashCommandTokenKey } from "./slash-commands/slashCommandInput";
 import {
   ComposerMirror, composerTextareaClass, type ComposerMirrorHandle, type MirrorToken,
@@ -166,6 +167,8 @@ export const ChatComposer = ({
    * pre-approval catalog and proactively offer to pre-approve its actions. */
 }) => {
   const toasts = useKumoToastManager();
+  const composerRef = useRef<HTMLDivElement>(null);
+  useToastClearance(composerRef);
   const {
     attachments: pendingAttachments,
     addFiles,
@@ -708,7 +711,7 @@ export const ChatComposer = ({
     // captured-log floating chip with z-10, the textarea/mirror with z-[1])
     // so they can't paint on top of body-level portaled popovers like the
     // model picker dropdown opening above the composer.
-    <div className="relative isolate px-2 py-2 sm:px-4 sm:py-4">
+    <div ref={composerRef} className="relative isolate px-2 py-2 sm:px-4 sm:py-4">
       <input
         ref={attachmentInputRef}
         type="file"
