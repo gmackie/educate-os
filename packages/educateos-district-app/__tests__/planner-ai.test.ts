@@ -13,12 +13,12 @@ async function fixture() {
   const d = await bootDistrict(directory);
   const plan = await d.ok(d.tokenFor(NF.amara), "student.planGoal", { params, body: { goal: "PRIVATE pizza game", skills: [] } });
   const opportunity = plan.opportunities[0]!;
-  const completeGuarded = vi.fn<PlannerAiProvider["completeGuarded"]>(async (input) => ({ released: true, output: { competencyUri: input.competencyUri, releaseDigest: input.releaseDigest, step: input.step, explanation: "For your game, divide the number made by minutes to find the amount per minute. Keep those units on your table." }, usage, actualUsdNano: usdNano(1000n) }));
+  const completeGuarded = vi.fn<PlannerAiProvider["completeGuarded"]>(async (input) => ({ released: true, output: { competencyUri: input.competencyUri, releaseDigest: input.releaseDigest, step: input.step, explanation: "For your game, divide the number made by minutes to find the amount per minute. Keep those units on your table." }, settlement: { usage, actualUsdNano: usdNano(1000n) } }));
   const options: PlannerAiOptions = { provider: { completeGuarded }, model: { provider: "cloudflare", modelId: "synthetic-model" }, estimatedMaxUsdNano: usdNanoFromCents(1), enabledFor: async () => true };
   return { d, completeGuarded, options, input: { options, policy: full, governor: d.app.aiGovernor, scope, levels: new Set(["06"]), plan, opportunity, allowAi: true } };
 }
 
-describe("guarded planner provider seam (production unwired)", () => {
+describe("guarded planner explanations", () => {
   it("reserves through the existing ledger, verifies structured alignment and settles actual usage", async () => {
     const { d, input, completeGuarded } = await fixture();
     // The seam is called after the state machine creates its help event.
@@ -27,11 +27,20 @@ describe("guarded planner provider seam (production unwired)", () => {
     expect(input.opportunity.coaching).toMatchObject({ source: "governed-ai", guidance: expect.stringContaining("For your game") });
     const sent = completeGuarded.mock.calls[0]![0];
     expect(sent.maxOutputTokens).toBe(600);
-    expect(Object.keys(sent).toSorted()).toEqual(["code", "competencyUri", "goal", "instruction", "maxOutputTokens", "releaseDigest", "request", "step"].toSorted());
+    expect(Object.keys(sent).toSorted()).toEqual(["authorize", "code", "competencyUri", "goal", "instruction", "maxOutputTokens", "releaseDigest", "request", "step"].toSorted());
     expect(sent.goal).toBe("PRIVATE pizza game");
     const report = await d.app.ledger.report();
     expect(report.district).toMatchObject({ requests: 1, usageUsdNano: "1000" });
     expect(JSON.stringify(report)).not.toContain("PRIVATE");
+  });
+
+  it.each(["06", "07", "08", "09", "10", "11", "12"])("allows opted-in, funded grade %s explanations without changing evidence", async (level) => {
+    const { input, completeGuarded } = await fixture();
+    const contract = structuredClone(input.opportunity.contract);
+    expect(await plannerExplanation({ ...input, levels: new Set([level]) })).toBe("used");
+    expect(completeGuarded).toHaveBeenCalledOnce();
+    expect(input.opportunity.contract).toEqual(contract);
+    expect(input.opportunity.reviews).toEqual([]);
   });
 
   it.each([new Set(["KG"]), new Set(["05"]), new Set(["05", "06"]), new Set(["13"]), new Set<string>()])("never calls the provider for K–5, mixed or unknown ages (%s)", async (levels) => {
@@ -63,7 +72,7 @@ describe("guarded planner provider seam (production unwired)", () => {
   it.each(["wrong-uri", "wrong-digest", "wrong-step", "extra-mastery", "screen-withheld"])("rejects invalid/screened output (%s) while settling billed usage", async (kind) => {
     const { d, input, completeGuarded } = await fixture();
     const before = structuredClone(input.opportunity.coaching);
-    completeGuarded.mockImplementationOnce(async (request) => ({ released: kind !== "screen-withheld", output: { competencyUri: kind === "wrong-uri" ? "urn:bogus" : request.competencyUri, releaseDigest: kind === "wrong-digest" ? "bogus" : request.releaseDigest, step: kind === "wrong-step" ? 99 : request.step, explanation: "Do something", ...(kind === "extra-mastery" ? { mastery: "demonstrated" } : {}) }, usage, actualUsdNano: usdNano(1000n) }));
+    completeGuarded.mockImplementationOnce(async (request) => ({ released: kind !== "screen-withheld", output: { competencyUri: kind === "wrong-uri" ? "urn:bogus" : request.competencyUri, releaseDigest: kind === "wrong-digest" ? "bogus" : request.releaseDigest, step: kind === "wrong-step" ? 99 : request.step, explanation: "Do something", ...(kind === "extra-mastery" ? { mastery: "demonstrated" } : {}) }, settlement: { usage, actualUsdNano: usdNano(1000n) } }));
     expect(await plannerExplanation(input)).toBe("invalid-output");
     expect(input.opportunity.coaching).toEqual(before);
     expect((await d.app.ledger.report()).district.usageUsdNano).toBe("1000");

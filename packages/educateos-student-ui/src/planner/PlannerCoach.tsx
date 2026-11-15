@@ -24,6 +24,7 @@ export const PlannerCoach = ({ plan, opportunity: o, onChanged }: { plan: Plan; 
   const params = { offeringId: plan.offeringId, planId: plan.id, opportunityId: o.id };
   const act = async (action: CoachAction | "share-challenge") => {
     setBusy(true); setError("");
+    if (action === "show") setAllowAi(false);
     try {
       if (action === "share-challenge") {
         await api.call("student.plannerChallenge", { params, body: { revision: plan.revision, text, reflection, assistance } });
@@ -43,7 +44,7 @@ export const PlannerCoach = ({ plan, opportunity: o, onChanged }: { plan: Plan; 
     {coach.mode === "instruction" && !o.challenge && <>
       <Text as="h6" variant="heading">{step.title}</Text><Text>{step.instruction}</Text><Text>Your turn: {step.action}</Text>
       <Checkbox label="Allow a district-approved AI explanation using my goal (optional)" checked={allowAi} onCheckedChange={(v) => setAllowAi(v === true)} />
-      <Text variant="secondary">AI explanations require district permission and available budget. If unavailable, a reviewed lesson works here. There is no open chat.</Text>
+      <Text variant="secondary">Only Show me how requests AI when selected; this choice resets after each request. AI explanations require district permission, guardian authorization and available budget. If unavailable, a reviewed lesson works here. There is no open chat.</Text>
       <div className="flex flex-wrap gap-2">
         <Button disabled={busy} onClick={() => void act("show")}>Show me how</Button>
         <Button disabled={busy} onClick={() => void act("hint")}>Hint</Button>
@@ -52,7 +53,16 @@ export const PlannerCoach = ({ plan, opportunity: o, onChanged }: { plan: Plan; 
       </div>
     </>}
     {coach.guidance && <p className="whitespace-pre-wrap" role="status">{coach.guidance}</p>}
-    {coach.events.length > 0 && <Text variant="secondary">Guidance: {coach.source === "governed-ai" ? "district-governed AI" : "reviewed curriculum"}. {coach.aiStatus && !["not-requested", "used"].includes(coach.aiStatus) ? "AI explanation unavailable; the curriculum lesson is shown." : ""} Help requests are recorded separately from your assessment.</Text>}
+    {coach.events.length > 0 && <Text variant="secondary">Guidance: {coach.source === "governed-ai" ? "district-governed AI" : "reviewed curriculum"}.  Help requests are recorded separately from your assessment.</Text>}
+    {coach.aiStatus && <p role="status">{{
+      "not-requested": "AI was not requested. You can use the reviewed lesson at any time.",
+      "not-wired": "Your school has not connected planner AI. Continue with the reviewed lesson.",
+      "policy-denied": "AI explanations are not enabled for you here. Continue with the reviewed lesson or ask your teacher for help.",
+      "budget-denied": "AI help is unavailable under your school's model or budget limits. Continue with the reviewed lesson.",
+      "invalid-output": "The AI explanation could not be verified. The reviewed lesson is shown; try again later or ask your teacher.",
+      "provider-unavailable": "AI help is temporarily unavailable. Continue with the reviewed lesson or try again later.",
+      used: "A district-approved AI explanation is shown. It can make mistakes; check it against the lesson.",
+    }[coach.aiStatus]}</p>}
     {coach.mode === "independent" && !o.challenge && <Button disabled={busy} onClick={() => void act("reflect")}>Reflect and transfer</Button>}
     {coach.mode !== "instruction" && !o.challenge && <>
       <Text>{coach.lesson.challenge}</Text><Text>{coach.lesson.transfer}</Text>

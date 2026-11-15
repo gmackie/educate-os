@@ -1,3 +1,4 @@
+import { districtPlannerRuntime } from "./planner-runtime.ts";
 import type { GadgetAssessmentResponse } from "@educateos/district-app";
 // The district's Durable Object: one per district, named by its district ID, holding every store
 // of the district application in its SQLite storage and running the application itself
@@ -448,6 +449,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         productAnalytics: this.env.PRODUCT_ANALYTICS,
       },
       {
+        plannerRuntime: (policy, table) => districtPlannerRuntime(policy, { model: this.env.PLANNER_AI, guard: this.env.PLANNER_AI_GUARD }, table),
         importFetch: (url, init) => this.importFetch(url, init),
         ...(this.env.WORKSHOP_ASSESSMENT_RELEASES === undefined ? {} : {
           workshopReleases: this.env.WORKSHOP_ASSESSMENT_RELEASES,
