@@ -48,7 +48,7 @@ export interface PilotDistrict {
 }
 
 /** The options a pilot run may inject. `plannerAi` is for adversarial tests only; it is absent by default. */
-export type PilotOptions = Partial<Pick<DistrictAppOptions, "plannerAi" | "aiHelp">> & {
+export type PilotOptions = Partial<Pick<DistrictAppOptions, "plannerAi" | "aiHelp" | "fundingPools" | "modelCatalog">> & {
   /** The district's starting clock. Defaults to a fixed instant so every run replays identically. */
   startsAt?: string;
   /** The approved catalog seeds. Defaults to Common Core ELA and math; `[]` approves none. */
@@ -82,6 +82,8 @@ export async function bootPilotDistrict(options: PilotOptions = {}): Promise<Pil
     unscreenedStudentPosts: "publish",
     ...(options.plannerAi === undefined ? {} : { plannerAi: options.plannerAi }),
     ...(options.aiHelp === undefined ? {} : { aiHelp: options.aiHelp }),
+    ...(options.fundingPools === undefined ? {} : { fundingPools: options.fundingPools }),
+    ...(options.modelCatalog === undefined ? {} : { modelCatalog: options.modelCatalog }),
   });
   const admin = directory.roleAssignments.find((r) => r.role === "district-admin")!.principalId;
   const actor = { by: admin, at: clock.toISOString() };
