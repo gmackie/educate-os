@@ -72,11 +72,21 @@ function world() {
     if (path.startsWith("courses/896/courseWork?")) return { courseWork: coursework } as T;
     if (path.startsWith("courses/896/students")) return { students: [{ userId: "g-nia", profile: { emailAddress: "hb-student-nia@gedu.example" } }] } as T;
     if (path === "courses/896/courseWork/cw_1/studentSubmissions?userId=g-nia") return { studentSubmissions: [{ id: "s1", ...classroomGrade }] } as T;
-    if (path === "courses/896/courseWork/cw_1/studentSubmissions/s1:return") { classroomGrade.state = "RETURNED"; return {} as T; }
+    if (path === "courses/896/courseWork/cw_1/studentSubmissions/s1:return") {
+      // As Classroom: only turned-in work can be returned.
+      if (classroomGrade.state !== "TURNED_IN") throw new Error("HTTP 400 (FAILED_PRECONDITION)");
+      classroomGrade.state = "RETURNED"; return {} as T;
+    }
     throw new Error(`unexpected Classroom ${method} ${path}`);
   };
-  const student: ClassroomAs = async <T>(email: string, _method: string, path: string) => {
+  const student: ClassroomAs = async <T>(email: string, method: string, path: string) => {
     assert.equal(email, "hb-student-nia@gedu.example");
+    if (method === "POST") {
+      writes.push(`nia ${path}`);
+      assert.equal(path, "courses/896/courseWork/cw_1/studentSubmissions/s1:turnIn");
+      classroomGrade.state = "TURNED_IN";
+      return {} as T;
+    }
     assert.equal(path, "courses/896/courseWork/cw_1/studentSubmissions?userId=me");
     return { studentSubmissions: [{ ...classroomGrade }] } as T;
   };
@@ -100,6 +110,7 @@ test("each step is done by its own person, and Nia reads her approved grade in C
     "admin /api/lti/classroom/columns",
     "teacher /api/lti/passback",
     "admin /api/lti/passback",
+    "nia courses/896/courseWork/cw_1/studentSubmissions/s1:turnIn",
     "owner courses/896/courseWork/cw_1/studentSubmissions/s1:return",
   ]);
   assert.equal(result.adminPublish, 403);

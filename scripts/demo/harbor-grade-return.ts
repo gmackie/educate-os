@@ -9,7 +9,8 @@
 //      the assignment its "[educateos-approved]" coursework.
 //   5. Kwame publishes the grade; an administrator's attempt to publish it is refused.
 //   6. Kwame returns her work in Classroom (as the course's owner, with the existing delegation),
-//      since Classroom shows a student a grade only once it is returned.
+//      since Classroom shows a student a grade only once it is returned. Classroom's API returns
+//      only turned-in work, so Nia first turns in her Classroom copy of the work, as herself.
 //   7. Nia reads the grade back from her own Classroom submission and from Harbor's "From Google
 //      Classroom" panel.
 //
@@ -162,6 +163,12 @@ export async function harborGradeReturn(o: HarborGradeReturnOptions): Promise<Ha
   const [theirs] = (await o.classroom.owner<{ studentSubmissions?: { id: string; state: string; assignedGrade?: number }[] }>(planned.ownerEmail, "GET", `${base}?userId=${nia.userId}`)).studentSubmissions ?? [];
   if (theirs === undefined) return fail("Nia has no Classroom submission for the column");
   if (theirs.state !== "RETURNED" && mode === "run") {
+    // Classroom's API returns only work that was turned in, so Nia first turns in her Classroom copy
+    // of the work she submitted in EducateOS, as herself (her token reaches only her own work).
+    if (theirs.state !== "TURNED_IN") {
+      await o.classroom.student(nia.profile.emailAddress!, "POST", `${base}/${theirs.id}:turnIn`, {});
+      step("turn in", "turned in by Nia in Classroom");
+    }
     await o.classroom.owner(planned.ownerEmail, "POST", `${base}/${theirs.id}:return`, {});
     step("return", "returned by Kwame in Classroom");
   }
@@ -198,7 +205,10 @@ async function main() {
       headers: { authorization: `Bearer ${await tokens.token(email)}`, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    if (!response.ok) { await response.body?.cancel(); throw new Error(`Classroom ${method} ${path.split("?")[0]}: HTTP ${response.status}`); }
+    if (!response.ok) {
+      const reason = await response.json().then((b) => (b as { error?: { status?: string } }).error?.status ?? "", () => "");
+      throw new Error(`Classroom ${method} ${path.split("?")[0]}: HTTP ${response.status}${reason ? ` (${reason})` : ""}`);
+    }
     return await response.json() as T;
   };
   const result = await harborGradeReturn({

@@ -177,10 +177,22 @@ the teacher's action.
 3. Kwame approves 9/10.
 4. The administrator sets up the route and column.
 5. Kwame publishes; the administrator's attempt is refused.
-6. Kwame returns the work in Classroom.
+6. Nia turns in her Classroom copy of the work, as herself, because Classroom's API returns only
+   turned-in work (a return of untouched work answers `FAILED_PRECONDITION`). Kwame then returns
+   it in Classroom.
 7. Nia reads 9 from her own Classroom submission and from Harbor's panel.
 
 `verify` writes nothing.
+
+Verified live on 2026-11-15, after the change deployed to Harbor (0e44380):
+
+- "Rocky Shore Field Notes" was assigned by Kwame and submitted by Nia, and Kwame approved 9/10.
+- The administrator created "[educateos-approved] Rocky Shore Field Notes" in Marine Science's
+  Classroom course.
+- Kwame published the grade (`posted`), and the administrator's publish answered 403.
+- In Classroom, Nia's submission is `RETURNED` with 9. Harbor's From Google Classroom panel shows
+  her 9.
+- A rerun answered `already-posted` and created nothing, and `verify` reported 0 problems.
 
 ```sh
 node scripts/demo/harbor-grade-return.ts run --admin-cookie <owner> --teacher-cookie <teacher@> \
