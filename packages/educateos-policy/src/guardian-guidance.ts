@@ -77,6 +77,8 @@ export interface GuardianGuidanceGrantStore {
   get(relationshipId: GuardianRelationshipId): Promise<GuardianGuidanceGrant | undefined>;
   /** Every grant for a student's relationships. */
   listForStudent(studentPrincipalId: PrincipalId): Promise<GuardianGuidanceGrant[]>;
+  /** Revokes active guidance grants only; preserves the guardian identity relationship and grant history. Trusted lifecycle use. */
+  revokeForStudent(studentId: PrincipalId, by: PrincipalId, at: string): void;
   /** Stores `next` if the stored revision is `expectedRevision` (0: none), else `conflict`. */
   save(next: GuardianGuidanceGrant, expectedRevision: number): Promise<void>;
 }
@@ -87,6 +89,15 @@ export const GUARDIAN_GUIDANCE_CONFLICT = "This guardian's learning-guidance acc
 /** A {@link GuardianGuidanceGrantStore} in memory, for tests and local development. */
 export class InMemoryGuardianGuidanceGrantStore implements GuardianGuidanceGrantStore {
   readonly #grants = new Map<GuardianRelationshipId, GuardianGuidanceGrant>();
+  readonly assertWritable: ((studentId: PrincipalId) => void) | undefined;
+  constructor(assertWritable?: (studentId: PrincipalId) => void) { this.assertWritable = assertWritable; }
+  revokeForStudent(studentId: PrincipalId, by: PrincipalId, at: string): void {
+    for (const grant of this.#grants.values()) {
+      if (grant.studentPrincipalId === studentId && grant.enabled) this.#grants.set(grant.relationshipId, revokedGuardianGuidanceGrant(grant, by, at));
+    }
+  }
+  /** Internal synchronous inventory for atomic in-memory subject erasure. */
+  activeForStudent(studentId: string): GuardianGuidanceGrant[] { return [...this.#grants.values()].filter((g) => g.studentPrincipalId === studentId && g.enabled); }
   async get(relationshipId: GuardianRelationshipId): Promise<GuardianGuidanceGrant | undefined> {
     return structuredClone(this.#grants.get(relationshipId));
   }
@@ -95,6 +106,7 @@ export class InMemoryGuardianGuidanceGrantStore implements GuardianGuidanceGrant
   }
   async save(raw: GuardianGuidanceGrant, expectedRevision: number): Promise<void> {
     const next = GuardianGuidanceGrant.parse(raw);
+    if (next.enabled) this.assertWritable?.(next.studentPrincipalId);
     if ((this.#grants.get(next.relationshipId)?.revision ?? 0) !== expectedRevision || next.revision !== expectedRevision + 1) {
       throw new EducateOsError("conflict", GUARDIAN_GUIDANCE_CONFLICT);
     }
@@ -189,4 +201,9 @@ export function guardianGuidanceRelationships(
       return facts;
     },
   };
+}
+
+/** Content-free revocation that preserves the existing access history. */
+export function revokedGuardianGuidanceGrant(grant: GuardianGuidanceGrant, by: PrincipalId, at: string): GuardianGuidanceGrant {
+  return GuardianGuidanceGrant.parse({ ...grant, revision: grant.revision + 1, enabled: false, capabilities: [], history: [...grant.history, { action: "revoked", by, at, capabilities: [] }] });
 }

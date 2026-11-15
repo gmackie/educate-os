@@ -31,3 +31,4 @@ export * from "./admin-review.ts";
 export * from "./classroom-grades.ts";
 
 export * from "./planner-ai.ts";
+export * from "./student-learning-lifecycle.ts";

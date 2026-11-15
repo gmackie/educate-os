@@ -1,3 +1,4 @@
+import type { StudentLearningLifecycle } from "./student-learning-lifecycle.ts";
 import { z } from "zod";
 import { PlannerActivityEvidence } from "./planner-activity-evidence.ts";
 import { EducateOsError, EvidenceContractId, OfferingId, PrincipalId } from "@educateos/contracts";
@@ -70,11 +71,18 @@ export interface PlannerStore {
 /** Development/test adapter; never used by the deployed district Worker. */
 export class InMemoryPlannerStore implements PlannerStore {
   readonly #plans = new Map<string, PlannerPlan>();
+  readonly lifecycle: StudentLearningLifecycle | undefined;
+  constructor(lifecycle?: StudentLearningLifecycle) { this.lifecycle = lifecycle; }
+  /** Internal lifecycle inventory, including classes no longer in the roster. */
+  subjectRecords(studentId: string): PlannerPlan[] { return [...this.#plans.values()].filter((p) => p.studentId === studentId); }
+  /** Called only by the authorized lifecycle coordinator. */
+  eraseSubject(studentId: string): void { for (const p of this.subjectRecords(studentId)) this.#plans.delete(p.id); }
   async list(offeringId: string): Promise<PlannerPlan[]> {
     return structuredClone([...this.#plans.values()].filter((p) => p.offeringId === offeringId));
   }
   async save(raw: PlannerPlan, expectedRevision: number): Promise<void> {
     const plan = PlannerPlan.parse(raw);
+    this.lifecycle?.assertWritable(plan.studentId);
     if ((this.#plans.get(plan.id)?.revision ?? 0) !== expectedRevision || plan.revision !== expectedRevision + 1) throw plannerConflict();
     this.#plans.set(plan.id, structuredClone(plan));
   }

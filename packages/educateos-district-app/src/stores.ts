@@ -1,3 +1,4 @@
+import { StudentLearningLifecycle, type StudentLearningState } from "./student-learning-lifecycle.ts";
 import { InMemoryHomeLearningStore, type HomeLearningStore } from "@educateos/home-learning";
 import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 import { InMemoryPlannerStore, type PlannerStore } from "./planner.ts";
@@ -244,6 +245,8 @@ export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReade
  * one without the application changing.
  */
 export interface DistrictAppStores {
+  /** Subject-scoped optional-learning retention, erasure and durable write fences. */
+  studentLearningLifecycle: StudentLearningLifecycle;
   /** Private goals, optional invitations and explicitly shared planner evidence. */
   planner: PlannerStore;
   /** Standards agendas, learning invitations and the explicit guardian guidance opt-in (Guidance and Evidence). */
@@ -339,9 +342,23 @@ export interface DistrictAppStores {
 
 /** In-memory stores for one district, seeded with its directory. */
 export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): DistrictAppStores {
+  const states = new Map<string, StudentLearningState>();
+  const lifecycle = new StudentLearningLifecycle({
+    atomic: (run) => run(),
+    get: (id) => structuredClone(states.get(id)),
+    put: (id, state) => { states.set(id, structuredClone(state)); },
+    counts: (id) => ({ plans: planner.subjectRecords(id).length, guidance: records.subjectRecords(id).length, guardianGrants: grantsFor(id).length }),
+    erase: (id, by, at) => { planner.eraseSubject(id); records.eraseSubject(id); guardianGrants.revokeForStudent(id, by, at); },
+  });
+  const planner = new InMemoryPlannerStore(lifecycle);
+  const records = new InMemoryGuidanceStore(lifecycle);
+  // Count only active grants. The identity relationship is held in another store and never erased.
+  const guardianGrants = new InMemoryGuardianGuidanceGrantStore((id) => lifecycle.assertWritable(id));
+  const grantsFor = (id: string) => guardianGrants.activeForStudent(id);
   return {
-    planner: new InMemoryPlannerStore(),
-    guidance: { records: new InMemoryGuidanceStore(), guardianGrants: new InMemoryGuardianGuidanceGrantStore() },
+    studentLearningLifecycle: lifecycle,
+    planner,
+    guidance: { records, guardianGrants },
     directory: InMemoryAcademicStore.seeded(directory),
     rosterSources: new InMemoryRosterSourceStore(),
     rosterSync: new InMemoryRosterSyncStore(),

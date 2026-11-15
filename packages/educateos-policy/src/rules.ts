@@ -699,6 +699,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "admin.student-learning.lifecycle",
+    description: "A district administrator explicitly inventories and disposes of a student's optional planner and guidance records. Retention and legal holds are checked by the lifecycle store; this authority creates no deletion obligation.",
+    when: { kinds: ["learning-guidance"], roles: ["district-admin"], classifications: ["restricted"], actions: ["read", "configure", "delete"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "admin.district.export",
     description: "A district admin, as a person rather than an agent, exports the district's records and its students' course work and submissions in one archive, to keep them or leave EducateOS with them (SCHO-364). Personal workspaces stay their owners' and are not in it.",
     when: { kinds: ["district"], roles: ["district-admin"], classifications: ["restricted"], actions: ["export"], channels: ["http"] },

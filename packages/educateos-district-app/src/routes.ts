@@ -1,3 +1,4 @@
+import { StudentLearningDisposition, StudentLearningPreview, StudentLearningState, StudentLearningReceipt } from "./student-learning-lifecycle.ts";
 import { PlannerCoachAction } from "./planner-coaching.ts";
 import { PlannerKnowledge } from "./planner-evidence.ts";
 import { WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
@@ -1329,6 +1330,9 @@ export const GUIDANCE_ROUTES = {
     method: "POST", path: "/api/guardian/children/:studentId/offerings/:offeringId/guidance/suggestions/:suggestionId/withdraw", surface: "guardian",
     params: params({ studentId: PrincipalId, offeringId: OfferingId, suggestionId: GuidanceId }), body: NoBody, response: GuardianGuidanceBody,
   }),
+  "admin.studentLearningPreview": route({ method: "GET", path: "/api/admin/students/:studentId/learning-records", surface: "admin", params: params({ studentId: PrincipalId }), response: StudentLearningPreview }),
+  "admin.studentLearningDisposition": route({ method: "POST", path: "/api/admin/students/:studentId/learning-records/disposition", surface: "admin", params: params({ studentId: PrincipalId }), body: StudentLearningDisposition.extend({ revision: z.int().nonnegative() }), response: StudentLearningState }),
+  "admin.purgeStudentLearning": route({ method: "POST", path: "/api/admin/students/:studentId/learning-records/purge", surface: "admin", params: params({ studentId: PrincipalId }), body: z.strictObject({ revision: z.int().nonnegative(), confirmStudentId: PrincipalId }), response: StudentLearningReceipt }),
   "admin.guardianGuidance": route({ method: "GET", path: "/api/admin/students/:studentId/guardian-guidance", surface: "admin", params: params({ studentId: PrincipalId }), response: AdminGuardianGuidanceBody }),
   "admin.setGuardianGuidance": route({
     method: "POST", path: "/api/admin/guardian-relationships/:relationshipId/guidance", surface: "admin", params: params({ relationshipId: GuardianRelationshipId }),
