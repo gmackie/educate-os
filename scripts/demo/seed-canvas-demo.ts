@@ -60,6 +60,8 @@ export class CanvasClient {
     const response = await this.#fetch(url, { method, redirect: "manual", headers: {
       authorization: `Bearer ${this.#token}`, "content-type": "application/json",
       "user-agent": "EducateOS-Demo-Seed/1.0", accept: "application/json",
+      // Not fetch's `*`, which Canvas reads as its first locale, Arabic, and names defaults in.
+      "accept-language": "en-US,en;q=0.9",
     }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }).catch(() => {
       throw new Error(`Canvas ${method} ${url.pathname}: transport failed. Check the provider before retrying a write.`);
     });
