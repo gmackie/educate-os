@@ -74,8 +74,32 @@ node scripts/demo/canvas-lti-acceptance.ts launches --access-cookie <file> --out
 node scripts/demo/canvas-lti-acceptance.ts deep-link --offering off_nf-eng8-fall-p2 --access-cookie <file> --out /tmp/deep-link.json
 ```
 
-Grade return through AGS is a separate, teacher-approved step: see "Connecting additional Canvas
-courses" below.
+### Northfield teacher-approved grade return (AGS)
+
+`scripts/demo/canvas-grade-return.ts` returns every teacher-approved EducateOS grade in the twelve
+showcase courses to Canvas, through LTI AGS (SCHO-413). For each assignment holding approved
+official grades, a district administrator routes the offering's grades to its Canvas course, finds
+or creates its Canvas column ("[educateos-approved] <title>", found again by the assignment ID on a
+rerun) and binds it to the assignment. Each grade is then published by the teacher who approved
+it, from their own EducateOS session: the district takes the score from that approval, never from
+the request, and refuses anyone else, which each run checks with the administrator's own attempt.
+Each learner then reads the score from their own Canvas submission with a short-lived credential.
+
+Teachers sign in as presenters. Each band has one presenter sign-in (agent-inbox's
+`teacher-k2|35|68|912@agents.gmac.io`). The script links it to the band teacher it acts as, through
+the showcase link route, and links every presenter back to its original persona when it ends,
+including after a failure. `verify` writes nothing but those links, and reports grades not yet
+returned. Reruns publish nothing twice (`already-posted`).
+
+```sh
+# Each cookie file holds a CF_Authorization value for northfield.educateos.io (access-sign-in.ts).
+node scripts/demo/canvas-grade-return.ts run    --admin-cookie <admin> \
+  --presenter K-2=<file> --presenter 3-5=<file> --presenter 6-8=<file> --presenter 9-12=<file> --out /tmp/grade-return.json
+node scripts/demo/canvas-grade-return.ts verify --admin-cookie <admin> --presenter ... --out /tmp/grade-return-verified.json
+```
+
+Canvas columns are looked up in the Canvas console (`ssh labnuc`, as for `canvas-actors.ts`), because
+the REST API does not list AGS line items by resource ID.
 
 ## Harbor and Classroom
 
