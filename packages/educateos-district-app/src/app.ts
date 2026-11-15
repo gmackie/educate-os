@@ -612,6 +612,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
   }
 
+  async function requireStudentLearning(ctx: RequestContext, studentId: PrincipalId, action: "read" | "configure" | "delete"): Promise<void> {
+    await ctx.require(action, { kind: "learning-guidance", id: studentId, ownerPrincipalId: studentId, scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can manage student learning-record disposition.");
+    if (!ctx.snapshot.principals.some((p) => p.id === studentId && p.kind === "student" && p.districtId === districtId)) throw new EducateOsError("not-found", "We couldn't find that student in this district.");
+  }
+
   /** Everything one request uses, built around a decider that audits under its correlation ID. */
   class RequestContext {
     readonly correlationId: string;
@@ -1742,6 +1747,29 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.renameDistrict": (ctx, { body }) => ctx.academics().renameDistrict(ctx.caller, body),
     // District export (SCHO-364): decided on the district as a restricted resource, so only the
     // export rule can allow it.
+    "admin.studentLearningPreview": async (ctx, { params }) => {
+      await requireStudentLearning(ctx, params.studentId, "read");
+      return stores.studentLearningLifecycle.preview(params.studentId, now().toISOString());
+    },
+    "admin.studentLearningDisposition": async (ctx, { params, body }) => {
+      await requireStudentLearning(ctx, params.studentId, "configure");
+      const { revision, ...disposition } = body;
+      return stores.studentLearningLifecycle.configure(params.studentId, disposition, revision);
+    },
+    "admin.purgeStudentLearning": async (ctx, { params, body }) => {
+      await requireStudentLearning(ctx, params.studentId, "delete");
+      if (body.confirmStudentId !== params.studentId) throw new EducateOsError("conflict", "Confirm the exact student ID before erasing learning records.");
+      const receipt = stores.studentLearningLifecycle.purge(params.studentId, ctx.principal.principalId, now().toISOString(), body.revision);
+      // The receipt is atomic with erasure. Await the existing audit sink; if it fails, a retry
+      // reuses the original receipt and can finish recording without re-erasing anything.
+      await stores.audit.record({
+        correlationId: ctx.correlationId, decidedAt: receipt.at, principalId: receipt.actorId,
+        districtId, action: "delete", resourceKind: "learning-guidance", resourceId: params.studentId,
+        channel: "http", effect: "allow", ruleId: "admin.student-learning.erased",
+        studentLearningDeletion: { receiptId: receipt.id, ...receipt.counts },
+      });
+      return receipt;
+    },
     "admin.exportDistrict": async (ctx) => {
       await ctx.require("export", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can export the district.");
       const exportedAt = now();

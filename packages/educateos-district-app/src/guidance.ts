@@ -1,3 +1,4 @@
+import type { StudentLearningLifecycle } from "./student-learning-lifecycle.ts";
 // Guidance and Evidence: teacher standards priorities and coverage, guardian and teacher
 // learning invitations, and optional social-emotional practice (CASEL). Browser-safe: this module
 // carries the schemas the routes and UIs share, the pure coverage calculation and the store contract,
@@ -112,11 +113,18 @@ export const guidanceConflict = () => new EducateOsError("conflict", "This chang
 /** Development and test adapter; the deployed Worker uses the Durable Object one. */
 export class InMemoryGuidanceStore implements GuidanceStore {
   readonly #records = new Map<string, GuidanceRecord>();
+  readonly lifecycle: StudentLearningLifecycle | undefined;
+  constructor(lifecycle?: StudentLearningLifecycle) { this.lifecycle = lifecycle; }
+  /** Agendas are class records and never enter a subject purge. */
+  subjectRecords(studentId: string): GuidanceRecord[] { return [...this.#records.values()].filter((r) => r.type !== "agenda" && r.studentId === studentId); }
+  /** Called only by the authorized lifecycle coordinator. */
+  eraseSubject(studentId: string): void { for (const r of this.subjectRecords(studentId)) this.#records.delete(r.id); }
   async list(scope: string): Promise<GuidanceRecord[]> {
     return structuredClone([...this.#records.values()].filter((r) => r.scope === scope));
   }
   async save(raw: GuidanceRecord, expectedRevision: number): Promise<void> {
     const record = GuidanceRecord.parse(raw);
+    if (record.type !== "agenda") this.lifecycle?.assertWritable(record.studentId);
     if ((this.#records.get(record.id)?.revision ?? 0) !== expectedRevision || record.revision !== expectedRevision + 1) throw guidanceConflict();
     this.#records.set(record.id, structuredClone(record));
   }
