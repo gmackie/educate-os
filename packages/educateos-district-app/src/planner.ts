@@ -134,7 +134,9 @@ export async function plannerOpportunities(catalog: CatalogMirror, goal: string,
         ? "Pizza Tycoon: oven A makes 12 pizzas in 3 minutes; oven B makes 15 in 5 minutes. Calculate pizzas per minute for each oven, predict production after 20 minutes, and explain your choice. Then solve a fresh unit-rate problem without help."
         : match.key === "ccss-math" && /\b(cookies?|baking|recipe)\b/i.test(goal)
           ? "Cookie project: compare 12 cookies for $6 with 20 for $8. Calculate cost per cookie, predict the cost of 30 at each rate, and explain your choice. Then solve a fresh unit-price problem without help."
-          : match.task,
+          : match.key === "ccss-math" && /\b(basketball|free throws?|soccer|running)\b/i.test(goal)
+            ? "Basketball practice: in drill A you make 18 free throws in 6 minutes; in drill B you make 14 in 4 minutes. Calculate free throws per minute for each drill, predict makes in 20 minutes of practice, and explain which drill fits your goal. Then solve a fresh unit-rate problem without help."
+            : match.task,
       priorEvidence: `${priorEvidence} Current trusted knowledge: ${knowledge?.status ?? "unverified"}. ${knowledge && ["demonstrated", "retained", "transferred"].includes(knowledge.status) ? "Why now: test this skill in a new setting or arrange a delayed check; skip repeated instruction if ready." : "Why now: build the idea with a worked example, then try independently; prerequisites are practice suggestions, not inferred deficits."}`, decision: "offered", reviews: [],
       coaching: { lesson, step: 0, mode: "instruction", hints: 0, events: [], source: "curriculum" },
       contract: EvidenceContract.parse({

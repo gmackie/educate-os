@@ -147,3 +147,4 @@ export {
   type ShowcaseWork,
   type YoungLearnerWork,
 } from "./showcase/index.ts";
+export { PILOT_LEARNING, PILOT_PERSONAS, PL, type PilotPersona, type PilotStandardCode, type PilotWork } from "./pilot-learning.ts";
