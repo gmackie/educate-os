@@ -6,10 +6,9 @@ import { z } from "zod";
 import { ModelRef, TokenUsage } from "@educateos/ai-governance";
 import { CourseIntentDraftBody } from "@educateos/district-app/routes";
 
-// Published on the official Workers AI price list 2026-11-12.
-// Revisit and test this gross rate before each deployment; Cloudflare's free
-// allocation, AI Gateway unified billing and other fees change actual invoices.
+/** The single model allowed by this experimental inference service. */
 export const COURSE_INTENT_WORKERS_AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+/** Gross Workers AI price-book estimate as of 2026-11-12; verify rates before deploying. */
 export const COURSE_INTENT_PRICE_BOOK = {
   model: COURSE_INTENT_WORKERS_AI_MODEL,
   updatedAt: "2026-11-12",
@@ -18,6 +17,7 @@ export const COURSE_INTENT_PRICE_BOOK = {
 } as const;
 
 const Source = CourseIntentDraftBody.shape.source;
+/** Strict bounded request contract for one district-owned inference operation. */
 export const InternalCourseIntentRequest = z.strictObject({
   model: ModelRef,
   source: Source,
@@ -54,6 +54,7 @@ const string = (maxLength: number) => ({ type: "string", maxLength });
 const strings = (maxItems: number, maxLength: number) => ({
   type: "array", maxItems, items: string(maxLength),
 });
+/** Model-facing JSON schema; recipient Zod validation remains authoritative. */
 export const COURSE_INTENT_JSON_SCHEMA = {
   type: "object", additionalProperties: false,
   properties: {
