@@ -34,6 +34,8 @@ export const ID_PREFIXES = {
   commercialAccount: "acct",
   guardianRelationship: "grl",
   delegation: "dlg",
+  family: "fam",
+  learner: "lrn",
 } as const;
 
 /** The entity kinds that have their own identifier type. */
@@ -204,3 +206,16 @@ export type GuardianRelationshipId = z.infer<typeof GuardianRelationshipId>;
 export const DelegationId = idSchema("delegation");
 /** A delegation identifier. */
 export type DelegationId = z.infer<typeof DelegationId>;
+
+/** Identifies a family that keeps home learning in a community installation (ADR-0016). */
+export const FamilyId = idSchema("family");
+/** A family identifier. */
+export type FamilyId = z.infer<typeof FamilyId>;
+
+/**
+ * Identifies one child's learner profile in a family (ADR-0016). A learner is not a principal: a
+ * child never signs in, and acts only inside a child session one of the family's adults started.
+ */
+export const LearnerId = idSchema("learner");
+/** A learner identifier. */
+export type LearnerId = z.infer<typeof LearnerId>;

@@ -48,7 +48,8 @@ export type DelegableAction = z.infer<typeof DelegableAction>;
 
 /**
  * The resource kinds a delegation may cover. Never official grades (no grade writes, RFC 0002 §6),
- * personal spaces, guardian relationships, identity links, access grants, delegations themselves,
+ * personal spaces, guardian relationships, families and their home practice (ADR-0016), identity
+ * links, access grants, delegations themselves,
  * governance settings, budgets or the audit trail.
  */
 export const DelegableKind = ResourceKind.exclude([
@@ -59,6 +60,8 @@ export const DelegableKind = ResourceKind.exclude([
   "delegation",
   "identity-link",
   "guardian-relationship",
+  "family",
+  "home-practice",
   "capability-config",
   "ai-budget",
   "audit-event",

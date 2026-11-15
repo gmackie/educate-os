@@ -115,6 +115,18 @@ export const ResourceKind = z.enum([
    * it expires (RFC 0002 §6): `restricted`, at the ceiling's scope, owned by its grantor.
    */
   "delegation",
+  /**
+   * A family's home-learning record (ADR-0016): its adults, its children's profiles, their practice
+   * queues and settings. `personal-private`, unowned, at the district scope, and reachable only
+   * through a `family-adult` relationship to that family.
+   */
+  "family",
+  /**
+   * One child's home practice in a family (ADR-0016): the sessions they worked, the responses and
+   * observations saved in them, and the progress derived from those. `personal-private`, at the
+   * district scope, named by the child's learner ID and reachable only by the family's adults.
+   */
+  "home-practice",
 ]);
 /** A resource kind. */
 export type ResourceKind = z.infer<typeof ResourceKind>;
