@@ -38,6 +38,7 @@
     "@gadgets/api-cli": "workspace:*",
     "@gadgets/scripts": "workspace:*",
     "@types/node": "26.1.0",
+    "playwright": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
