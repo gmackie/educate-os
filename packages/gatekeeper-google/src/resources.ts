@@ -399,6 +399,8 @@ export const RESOURCE_SCOPES: {resource: SupportedResource, scopes: string[]}[] 
       // Creating, reading and grading this project's coursework. Email addresses and photos
       // (`classroom.profile.*`) are deliberately not requested.
       "https://www.googleapis.com/auth/classroom.coursework.students",
+      // Standalone Classwork material posts are separate from assignments.
+      "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
     ],
   },
   {

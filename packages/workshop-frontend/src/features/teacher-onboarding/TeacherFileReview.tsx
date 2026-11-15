@@ -13,12 +13,12 @@ const recovery = {
   "too-large": "Share a smaller lesson export. Compressed contents can exceed the reading limit even when the upload fits.",
   "budget-exceeded": "This source is too complex for the local reader. Share a smaller lesson or paste the relevant text.",
   malformed: "This file could not be read in the expected format. Export a new PDF, DOCX, PPTX, XLSX, comma-separated CSV or Common Cartridge file, or paste the lesson text.",
-  "no-text": "No readable text was found. A scan may need OCR; an empty first worksheet needs the intended sheet moved first. Paste the text or export a readable document.",
+  "no-text": "No readable text was found. A scan may need OCR; a workbook needs stored cell values. Paste the text or export a readable document.",
 };
 
 const omissions = {
   csv: "Comma-separated teaching source only. Quoted multiline cells are preserved; formula-like text is not evaluated. This does not create a quiz. Keep answer keys and teacher notes separate from student-facing material.",
-  xlsx: "First worksheet only, including hidden rows and columns. Other sheets, styles, charts, images and comments are omitted. Dates may appear as serial numbers. Formula values are cached and may be stale or missing; formulas and external links are never evaluated or fetched. Review answer keys and teacher notes before adapting for students.",
+  xlsx: "Worksheets in workbook order, including hidden sheets, rows and columns. Check the coverage for full, partial or omitted sheet text. Styles, charts, images and comments are omitted. Dates may appear as serial numbers. Formula values are cached and may be stale or missing; formulas and external links are never evaluated or fetched. Review answer keys and teacher notes before adapting for students.",
   pdf: "Text preview only. Images, layout and some text encodings may be missing. A PDF-capable model may also read the original PDF after you send it.",
   docx: "Word body text only. Images, headers, footers, comments and embedded objects are omitted.",
   pptx: "Slide text in presentation order. Images, charts, speaker notes, animations and layout are omitted.",
@@ -60,7 +60,7 @@ export const TeacherFileReview = ({ attachment }: { attachment: ComposerAttachme
       <p role="status" className="text-kumo-subtle">{reviewSummary(review)}</p>
       {review.status === "reviewed" && (readable || review.type === "pdf") && <p className="text-kumo-subtle">{omissions[review.type]}</p>}
       {extraction?.status === "not-extractable" && <p className="text-kumo-subtle">{recovery[extraction.reason]}</p>}
-      {review.status === "reviewed" && (review.type === "csv" || review.type === "xlsx") && <p className="text-kumo-subtle">Share at most 1,000 rows and 100 columns. Move the intended XLSX worksheet first or export it as UTF-8 comma-separated CSV; older .xls and macro-enabled .xlsm files need a supported export.</p>}
+      {review.status === "reviewed" && (review.type === "csv" || review.type === "xlsx") && <p className="text-kumo-subtle">Share at most 1,000 rows across up to 100 XLSX worksheets and 100 columns per sheet. If the excerpt misses your lesson, export the intended sheet as UTF-8 comma-separated CSV; older .xls and macro-enabled .xlsm files need a supported export.</p>}
       {review.status === "unsupported" && <p className="text-kumo-subtle">Use PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), UTF-8 CSV or Common Cartridge (.imscc / supported .zip), or paste readable text. Other attachments may use the conversation’s existing readers. An ordinary ZIP or vendor backup is not a course import.</p>}
       {review.status === "unavailable" && <div className="flex flex-col items-start gap-2">
         <p className="text-kumo-subtle">Retry the check or share a readable excerpt. You can still send the original and ask the conversation to check coverage.</p>

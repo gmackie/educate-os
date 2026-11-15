@@ -245,7 +245,7 @@ it.concurrent.each(["docx", "pdf", "pptx", "imscc", "zip"])("an uploaded %s less
 
 it.concurrent.each(["text/csv", "text/plain", "application/octet-stream", "application/vnd.ms-excel", "xlsx"])("spreadsheet source %s uses bounded model replay and preserves originals", async mime => {
   const bytes = mime === "xlsx"
-    ? await workbook([{ name: "Teaching bank", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Question</t></is></c><c r="C1" t="inlineStr"><is><t>Answer</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Garden food chain?</t></is></c><c r="C2"><f>1+1</f><v>17</v></c></row>' }, { name: "Omitted", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>NOT SHARED</t></is></c></row>' }])
+    ? await workbook([{ name: "Teaching bank", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Question</t></is></c><c r="C1" t="inlineStr"><is><t>Answer</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Garden food chain?</t></is></c><c r="C2"><f>1+1</f><v>17</v></c></row>' }, { name: "Answer key", state: "veryHidden", rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>LATER TEACHER SOURCE</t></is></c></row>' }])
     : new TextEncoder().encode('Question,,Answer\nGarden food chain?,,17');
   const model = models.script([{ text: "Here are options." }, { text: "Reuse the source." }]);
   using owner = await newWorkspace(model, "spreadsheetlesson");
@@ -257,9 +257,12 @@ it.concurrent.each(["text/csv", "text/plain", "application/octet-stream", "appli
     await settle(ws, model, chatId, turn + 1);
     const text = userTexts(model.requests[turn])[0]!;
     expect(text).toContain("Question,,Answer\nGarden food chain?,,17");
-    expect(text).toContain(mime === "xlsx" ? "First XLSX worksheet only" : "CSV teaching source only");
+    expect(text).toContain(mime === "xlsx" ? "XLSX worksheets in workbook order" : "CSV teaching source only");
     expect(text).toContain("Keep answer keys and teacher notes separate");
-    expect(text).not.toContain("NOT SHARED");
+    if (mime === "xlsx") {
+      expect(text).toContain("LATER TEACHER SOURCE");
+      expect(text).toContain('2. "Answer key" (veryHidden): full');
+    }
     expect(text).toContain(`workspace file env.SCRATCH/${upload.name}`);
   }
   const message = (await history(ws, chatId)).find(message => message.type === "message" && message.attachments?.length);

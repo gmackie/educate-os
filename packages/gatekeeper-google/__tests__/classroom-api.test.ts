@@ -49,6 +49,45 @@ describe("ClassroomApi reads", () => {
     await expect(api.listTeachingMaterials("101")).rejects.toThrow("repeated a page");
   });
 
+  it("reads standalone posts across pages, dropping teacher identities and grades without fetching links", async () => {
+    classroom.courseMaterials = ["301", "302", "303"].map(id => ({
+      id, state: id === "303" ? "DRAFT" : "PUBLISHED", title: `Material ${id}`,
+      description: "My existing lesson", creatorUserId: "1001", maxPoints: 99,
+      materials: [{ link: { title: "Source", url: "https://example.test/source" } }, { youtubeVideo: { title: "Video", alternateLink: "https://youtube.com/watch?v=lesson" } }],
+    }));
+    const result = await api.listCourseMaterials("101");
+    expect(result.map(item => item.id)).toEqual(["301", "302", "303"]);
+    expect(result[0]).toEqual({ id: "301", state: "PUBLISHED", title: "Material 301", description: "My existing lesson", materials: [
+      { kind: "link", title: "Source", url: "https://example.test/source" }, { kind: "youtubeVideo", title: "Video", url: "https://youtube.com/watch?v=lesson" },
+    ] });
+    const pages = classroom.requests.filter(request => request.path.endsWith("/courseWorkMaterials"));
+    expect(pages.map(request => request.query.get("pageToken"))).toEqual([null, "2"]);
+    expect(pages[0]?.query.getAll("courseWorkMaterialStates")).toEqual(["PUBLISHED", "DRAFT"]);
+    expect(classroom.requests.every(request => request.method === "GET" && !request.path.includes("student"))).toBe(true);
+  });
+
+  it("refuses standalone reads for nonteachers and gives consent recovery without hiding failures", async () => {
+    classroom.teachers = [];
+    await expect(api.listCourseMaterials("101")).rejects.toThrow("does not teach");
+    expect(classroom.requests.map(request => request.path)).toEqual(["/courses/101/teachers/me"]);
+    classroom.teachers = [{ userId: "1001" }];
+    classroom.intercept = request => request.path.endsWith("/courseWorkMaterials") ? googleError(403, "PERMISSION_DENIED") : undefined;
+    await expect(api.listCourseMaterials("101")).rejects.toThrow("reconnect Google");
+    // Existing coursework can still be read independently with the older consent.
+    expect(await api.listTeachingMaterials("101")).toHaveLength(3);
+  });
+
+  it("refuses repeated standalone pages and invalid/cross-course paths without substituting another course", async () => {
+    classroom.intercept = request => request.path.endsWith("/courseWorkMaterials")
+      ? Response.json({ courseWorkMaterial: [], nextPageToken: "again" }) : undefined;
+    await expect(api.listCourseMaterials("101")).rejects.toThrow("repeated a page");
+    classroom.requests = [];
+    await expect(api.listCourseMaterials("101/../102")).rejects.toThrow("Invalid Google Classroom course ID");
+    expect(classroom.requests).toEqual([]);
+    await expect(api.listCourseMaterials("102")).rejects.toThrow("does not teach");
+    expect(classroom.requests.map(request => request.path)).toEqual(["/courses/102/teachers/me"]);
+  });
+
   it("pages through the whole roster by nextPageToken", async () => {
     let roster = await api.getRoster("101");
 

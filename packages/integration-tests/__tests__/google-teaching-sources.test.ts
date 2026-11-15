@@ -29,7 +29,7 @@ afterAll(async () => {
   } finally { network.uninstall(); }
 });
 
-it("brings a teacher's existing coursework into model context without changing or grading it", async () => {
+it("brings a teacher's existing coursework and standalone material posts into model context without changing or grading it", async () => {
   const [username] = nextUsernames("teachingsources");
   if (!username) throw new Error("Missing test user");
   using client = connect(harness.url);
@@ -41,9 +41,12 @@ it("brings a teacher's existing coursework into model context without changing o
     description: "Investigate food chains using the lesson I already teach.",
     materials: [{ driveFile: { driveFile: { title: "My existing slides", alternateLink: "https://drive.google.com/file/d/lesson/view" } } }],
   });
+  classroom.courseMaterials = [{ id: "301", title: "Food web resource", state: "PUBLISHED", description: "STANDALONE: compare the producer and consumer evidence.", materials: [
+    { youtubeVideo: { title: "Food web video", alternateLink: "https://www.youtube.com/watch?v=food-web" } },
+  ] }];
   const model = models.script([
     { toolCall: { id: "sources", name: "executeCode", arguments: { code: `export default async function(self, env) {
-      return JSON.stringify(await env.CLASSROOM.listTeachingMaterials());
+      return JSON.stringify({ coursework: await env.CLASSROOM.listTeachingMaterials(), standalone: await env.CLASSROOM.listCourseMaterials() });
     }` } } },
     { text: "Here are three ways to reuse your existing lesson. The linked slides need their own Drive connection." },
     { text: "Reusing the instructions changes the least." },
@@ -65,10 +68,13 @@ it("brings a teacher's existing coursework into model context without changing o
       expect.objectContaining({ role: "tool", tool_call_id: "sources", content: expect.stringContaining("Investigate food chains") }),
     ]) });
     expect(JSON.stringify(request)).toContain("My existing slides");
+    expect(JSON.stringify(request)).toContain("STANDALONE: compare the producer");
+    expect(JSON.stringify(request)).toContain("Food web video");
     expect(JSON.stringify(request)).not.toContain("assignedGrade");
   }
   const observations = await ws.listActions({ filter: "observation" });
   expect(observations.entries.some(entry => entry.description.title === "Read existing Classroom teaching materials")).toBe(true);
+  expect(observations.entries.some(entry => entry.description.title === "Read standalone Classroom materials")).toBe(true);
   expect((await ws.listActions({ filter: "pending" })).entries).toEqual([]);
   expect(classroom.requests.every(request => request.method === "GET")).toBe(true);
   expect(classroom.requests.some(request => request.path.endsWith("/students") || request.path.includes("studentSubmissions"))).toBe(false);

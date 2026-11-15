@@ -233,6 +233,7 @@ describe("resourceUrlPatternsToOAuthScopes", () => {
       "https://www.googleapis.com/auth/classroom.courses",
       "https://www.googleapis.com/auth/classroom.rosters.readonly",
       "https://www.googleapis.com/auth/classroom.coursework.students",
+      "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
     ];
     expect(resourceUrlPatternsToOAuthScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern]))
       .toEqual([...IDENTITY_SCOPES, ...classroomScopes]);
@@ -248,6 +249,7 @@ describe("resourceUrlPatternsToOAuthScopes", () => {
       "https://www.googleapis.com/auth/classroom.courses",
       "https://www.googleapis.com/auth/classroom.rosters",
       "https://www.googleapis.com/auth/classroom.coursework.students",
+      "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
     ])).toEqual([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern]);
     expect(resourcesCoveredByScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern], classroomScopes.slice(0, 2)))
       .toEqual([]);

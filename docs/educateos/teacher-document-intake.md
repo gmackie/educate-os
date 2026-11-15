@@ -3,7 +3,7 @@
 An individual teacher can prepare an editable classroom brief at `/ai/teacher-onboarding`, then
 attach a lesson through the existing composer. Preparing the brief does not send it to AI. Sending
 uses the normal chat upload, workspace and model paths; it does not publish an activity or enroll
-students. SCHO-408 introduced the flow; SCHO-412 makes lesson documents readable in its conversation; SCHO-416 adds slides, course previews and existing Google Classroom teaching sources. SCHO-418 adds CSV teaching tables and first-worksheet XLSX previews.
+students. SCHO-408 introduced the flow; SCHO-412 makes lesson documents readable in its conversation; SCHO-416 adds slides, course previews and existing Google Classroom teaching sources. SCHO-418 adds CSV teaching tables and XLSX previews. SCHO-421 extends previews to all worksheets and adds standalone Classroom materials and web/video source guidance.
 
 The original upload stays in the chat and scratch worktree. Extraction is a model-input projection,
 not a conversion of the stored file, a school Content Studio submission or a claim that every part
@@ -18,9 +18,12 @@ of the document was imported.
 | PowerPoint `.pptx` | Bounded slide text in presentation relationship order, with explicit omissions of images, charts, speaker notes, animations and layout |
 | Common Cartridge 1.1–1.3 `.imscc` or a ZIP containing the same format | Read-only course outline, pages, links, discussions and supported QTI quizzes using the existing course planner; package digest and skipped, unplaced, flattened and truncated coverage precede the excerpt |
 | UTF-8 comma-separated `.csv` | Validated table text with original quoting, column positions and multiline fields; formula-like values remain inert source text |
-| Excel `.xlsx` | First worksheet converted to bounded CSV values; includes hidden rows/columns, cached formulas and unformatted date serials. Other worksheets, styles, charts, images and comments are omitted |
+| Excel `.xlsx` | Worksheets in workbook order as bounded CSV values, with names, visibility and full/partial/empty/omitted coverage. Includes hidden sheets/rows/columns, cached formulas and unformatted date serials. Styles, charts, images and comments are omitted |
 | Google Drive file or folder | Existing scoped read-only connection; native Docs, Sheets, Slides and PDF reads use the connector's normal access checks |
-| Google Classroom course | `listTeachingMaterials()` reads existing coursework instructions and material links in a course the connected account teaches, including work made outside EducateOS; linked Drive files need a separate connection |
+| Google Classroom course | `listTeachingMaterials()` reads existing coursework; `listCourseMaterials()` reads standalone published/draft Classwork material posts. Both check that the connected account teaches the bound course. Linked Drive files need a separate connection |
+| Public web pages | Paste the URL and request a read through existing web tools. A URL or search result alone does not establish full-page coverage; blocked/private pages need an excerpt or export |
+| Videos | Share a link plus transcript, captions or teaching notes (timestamps when useful). A page fetch does not watch the video or hear its audio |
+| Pasted instructions, rubrics and transcripts | Source text in the editable brief or conversation, labeled as teaching material |
 | Older `.doc`/`.ppt` files, vendor-specific LMS backups and other binaries | Original workspace file; teachers should export supported documents or Common Cartridge, or paste readable text |
 
 The bounded `@educateos/doc-extract` parser runs without network or storage. Chat extraction accepts
@@ -42,8 +45,10 @@ the existing Google consent/resource picker: prefer one read-only Drive file/fol
 Classroom course. Classroom's new source read records `classroom/course/<id>` even for an empty
 listing and verifies each observer teaches that course. Legacy admission checks stay in place.
 Grading/submission methods still require app-owned coursework. Lesson onboarding asks for no roster,
-student submissions, grades, source-file changes or ongoing sync. Standalone Classroom course materials
-are not listed; share their Drive files directly. An unavailable/blocked Google connector needs a file
+student submissions, grades, source-file changes or ongoing sync. Standalone Classroom course materials are read separately with `listCourseMaterials()`. Older Google
+connections need reconnecting to grant `classroom.courseworkmaterials.readonly`; denied consent
+keeps the source unavailable rather than silently returning no posts. Existing coursework reads
+remain independent. Material links do not fetch Drive files, web pages or video transcripts. An unavailable/blocked Google connector needs a file
 export or pasted excerpt.
 
 Scans have no OCR path here. Encrypted files, malformed archives, unsupported encodings and inputs
@@ -87,15 +92,22 @@ Recognized CSV is validated before the generic text-file path, including `.csv` 
 paths. The declared type or extension is a hint: malformed quoting, non-UTF-8/binary data, invalid
 workbooks, external worksheet relationships and unsafe archives are refused.
 
-Teaching tables accept at most 1,000 rows (including a CSV header) and 100 columns, plus the existing
+Teaching tables accept at most 1,000 rows (including CSV headers and sparse XLSX row gaps)
+across up to 100 worksheets, and 100 columns per sheet, plus the existing
 lesson byte, inflated-byte, work and text caps. XML bytes, table traversal and repeated shared-string
 output spend from the work budget. XLSX output is capped while it is built, so a small shared-string
 table cannot cause an unbounded CSV allocation. A shortened excerpt can end inside a row or quoted
 cell; it is source text to review, not a complete CSV export or a machine-importable question bank.
 
-Move the intended XLSX worksheet first, or export that sheet as UTF-8 comma-separated CSV. Hidden
-rows and columns in the first worksheet are included: review them alongside answer keys and teacher
-notes before adapting material for students. Other worksheets are omitted. Formula values come only
+XLSX previews enumerate worksheets in workbook relationship order, including hidden and very-hidden
+sheets. Each sheet has a named coverage entry: full values in the excerpt, partial values, empty
+(no stored cell values), or omitted after the shared text cap. An empty cover sheet does not hide
+later lesson sheets. The archive, shared strings and workbook metadata are read once; row, work
+and CSV output limits are shared across the workbook. The final 32,768-character cap includes
+the coverage inventory and sheet labels. Very small excerpts may end inside the inventory itself.
+Export the intended sheet as UTF-8 CSV when a later sheet falls beyond the excerpt.
+Hidden sheets, rows and columns are included: review answer keys and teacher notes before adapting
+material for students. Formula values come only
 from the workbook's cache and can be stale or absent; formulas, macros and external links are never
 evaluated or fetched. Formatting is not read, so dates may be serial numbers and merged cells retain
 only their stored values. Older `.xls`, macro-enabled `.xlsm`, UTF-16/legacy CSV and vendor-specific
