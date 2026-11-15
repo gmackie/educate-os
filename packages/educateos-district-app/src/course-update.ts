@@ -2,6 +2,7 @@
 // library version. This does not merge, import, publish or mutate classroom content.
 // See docs/educateos/rfc/0004-cross-institution-course-collaboration.md (draft).
 import type { CourseInstallPlan, PlannedItem, PlannedUnit } from "@educateos/ocs";
+import type { OfferingId } from "@educateos/contracts";
 import type { CourseOutline } from "@educateos/curriculum";
 import type { InstalledCourse, InstalledUnit } from "./course-library.ts";
 
@@ -28,7 +29,7 @@ export interface CourseUpdateUnitReview {
 }
 
 export interface CourseUpdatePreview {
-  offeringId: string;
+  offeringId: OfferingId;
   packageId: string;
   fromVersion: string;
   toVersion: string;
@@ -169,7 +170,7 @@ function statusExplanation(status: UpdateReviewStatus): string {
  * portable local-release mapping yet and are always marked for reconciliation.
  */
 export function previewCourseVersionUpdate(args: {
-  offeringId: string;
+  offeringId: OfferingId;
   from: CourseInstallPlan;
   to: CourseInstallPlan;
   installed: InstalledCourse;
@@ -222,7 +223,9 @@ export function previewCourseVersionUpdate(args: {
       : localState === "changed" ? "conflict" : "upstream-removed";
     if (items.some((item) => item.status === "reconcile")) status = "reconcile";
     else if (items.some((item) => item.status === "conflict")) status = "conflict";
-    else if (items.some((item) => item.status === "local-change") && upstreamChanged) status = "conflict";
+    else if (items.some((item) => item.status === "local-change")) {
+      status = upstreamChanged ? "conflict" : "local-change";
+    }
     return { key, title: (next ?? base).title, status, items,
       explanation: localState === "unknown" ? explanation : statusExplanation(status) };
   });
