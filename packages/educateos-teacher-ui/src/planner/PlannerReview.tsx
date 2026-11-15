@@ -42,7 +42,7 @@ export const PlannerReview = ({ plan, opportunity: o, onChanged }: { plan: Plan;
     {!o.response && <Text>No response shared yet.</Text>}
     {o.response && <>
       <Text>Student-disclosed help: {o.response.assistance}</Text><p className="whitespace-pre-wrap">{o.response.text}</p>
-      <ul>{o.reviews.map((r, i) => <li key={i}>{r.level} · {r.assistance} · {r.decision} · {r.rationale} · {r.at}</li>)}</ul>
+      <ul>{o.reviews.map((r) => <li key={`${r.by}:${r.at}`}>{r.level} · {r.assistance} · {r.decision} · {r.rationale} · {r.at}</li>)}</ul>
       <form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <Select label="Evidence level" value={level} items={LEVELS} onValueChange={(v) => v && setLevel(v as Review["level"])} />
         <Select label="Observed assistance" value={assistance} items={HELP} onValueChange={(v) => v && setAssistance(v as Review["assistance"])} />
