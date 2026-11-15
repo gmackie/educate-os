@@ -301,6 +301,29 @@ Check `/api/me` if a run was interrupted.
    the acceptance scripts do) and passes the sign-in link to the browser without printing it. The
    synthetic people have no passwords.
 
+### Northfield's families (guardians)
+
+A guardian sees each of their children's classes, but only what the teachers have shared with
+that child. They never see the child's own work or personal space. Verified 2026-11-15 (SCHO-426):
+
+1. **Rosa Delgado (`guardian-rosa@`)** goes straight to **Family**, which has a tab for each child.
+   - Lucía: Biology I · Period 2, graded so far 6 of 8 points. The class page shows the teacher's
+     announcement ("Lab day Tuesday: closed-toe shoes") and each activity's due date, with "No
+     feedback yet" until the teacher shares some.
+   - Mateo: Grade 1 Reading Foundations and Grade 1 Mathematics, 10 of 10 points in each.
+2. **Kwame Mensah (`guardian-kwame@`)** has the same view for Abena (grade 4) and Kofi (grade 8).
+3. **What a guardian cannot reach:**
+   - Another family's child (Rosa asking for Kofi, or Kwame for Mateo) answers 404, as if the
+     child did not exist.
+   - Teacher, student and administrator pages answer 403.
+
+| Request, as Rosa | Status |
+|---|---|
+| `/api/guardian/children` | 200: Lucía Delgado, Mateo Delgado |
+| `/api/guardian/children/prn_nf-student-lucia/offerings` | 200 |
+| `/api/guardian/children/prn_nf-student-kofi/offerings` | 404 |
+| `/api/teacher/offerings`, `/api/student/offerings`, `/api/admin/health` | 403 |
+
 ### The AI workspace (Workshop, `/ai` on either district)
 
 As Hannah at Northfield, open **AI workspace**. The home page greets her by name and offers a
