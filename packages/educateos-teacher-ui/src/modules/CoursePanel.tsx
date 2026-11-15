@@ -170,7 +170,7 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
         <section aria-label="Read-only course update preview" className="flex flex-col gap-3">
           <h3><Text variant="heading" as="span">Review course changes</Text></h3>
           <Text>{update.packageId + " · " + update.fromVersion + " → " + update.toVersion}</Text>
-          <Banner variant="info" title="No automatic changes"
+          <Banner title="No automatic changes"
             description="This comparison makes no changes. Existing lessons, assignments, student work and grades remain unchanged. Future adoption will require teacher approval." />
           <ol className="flex list-decimal flex-col gap-3 pl-6">
             {update.units.map((unit) => {
