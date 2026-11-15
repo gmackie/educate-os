@@ -18,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type ClassroomGradeSource, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, classroomCourseOf, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type ClassroomGradeSource, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -29,7 +29,7 @@ import { ReleaseTrust } from "@educateos/releases";
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 import type { DiscussionScreening, DiscussionScreeningSettings } from "@educateos/discussions";
 // LTI 1.3 Tool (SCHO-177)
-import { startDistrictLti, type DistrictLti } from "./lti.ts";
+import { startDistrictLti, type DistrictLti, type DistrictLtiOptions } from "./lti.ts";
 import { ltiPlatformEnabled } from "./lti-platform.ts";
 import { platformToolPolicySources, TablePlatformAgsStore, TablePlatformToolStore } from "@educateos/lti-district";
 import { DurableObjectRecordTable } from "@educateos/lti-district/durable-object";
@@ -217,6 +217,15 @@ function withClassroomGrades(
   return { classroomGrades: source, ...(onUnavailable === undefined ? {} : { onClassroomGradesUnavailable: onUnavailable }) };
 }
 
+/** The LTI Tool's Classroom grade passback (SCHO-428), when the district has a Classroom writer. */
+function withClassroomPassback(
+  provider: googleclassroom.GoogleClassroomProvider | undefined,
+  stores: Parameters<typeof classroomCourseOf>[0],
+): Pick<DistrictLtiOptions, "classroom"> {
+  if (provider === undefined) return {};
+  return { classroom: { provider, courseOf: (offeringId) => classroomCourseOf(stores, offeringId) } };
+}
+
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
 export function configuredDistrictId(config: string | undefined): string {
   return readDistrictWorkerConfig(config).directory.district.id;
@@ -281,6 +290,39 @@ export function workerClassroomGrades(
     limits: { maxResponseBytes: 4 * 1024 * 1024, maxListItems: 10_000, requestTimeoutMs: 8_000 },
   }));
 }
+
+/**
+ * Publishing approved grades to Google Classroom (SCHO-428), when the deployment has a Classroom
+ * connection and its key; otherwise `undefined`, and no offering can be routed to Classroom. Each
+ * write acts as the course's owner, with the delegated roster scopes plus
+ * `classroom.coursework.students`: the read-write roster scopes for a read-write domain, the
+ * read-only ones otherwise (that domain must then delegate `coursework.students` too, or writes are
+ * refused). The provider never retries a create, and only coursework this project created is graded.
+ */
+export function workerClassroomWriter(
+  classroom: { config: NonNullable<DistrictWorkerConfig["classroom"]>; key: string | undefined } | undefined,
+  classroomFetch: typeof fetch,
+): googleclassroom.GoogleClassroomProvider | undefined {
+  if (classroom === undefined || !classroom.key) return undefined;
+  const tokens = googleclassroom.serviceAccountTokens({
+    key: classroom.key,
+    scopes: classroom.config.rosterScopes === "read-write"
+      ? googleclassroom.CLASSROOM_GRADE_READ_SCOPES_READ_WRITE
+      : googleclassroom.CLASSROOM_GRADE_SCOPES,
+    fetch: classroomFetch,
+    retry: CLASSROOM_WRITE_RETRY,
+  });
+  return new googleclassroom.GoogleClassroomProvider(new googleclassroom.GoogleClassroomClient({
+    tokens,
+    admin: classroom.config.admin,
+    fetch: classroomFetch,
+    retry: CLASSROOM_WRITE_RETRY,
+    limits: { maxResponseBytes: 4 * 1024 * 1024, maxListItems: 10_000, requestTimeoutMs: 15_000 },
+  }));
+}
+
+/** An administrator or teacher is waiting, but a grade is worth one more try than a page view. */
+const CLASSROOM_WRITE_RETRY = { maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2_000, maxRetryAfterMs: 5_000 };
 
 /** Two attempts, a short wait, and no long `Retry-After`: a page is waiting. */
 const CLASSROOM_GRADE_RETRY = { maxAttempts: 2, baseDelayMs: 250, maxDelayMs: 1_000, maxRetryAfterMs: 2_000 };
@@ -430,6 +472,10 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
       // The issuers people sign in with are never an LMS's (SCHO-306).
       reservedIssuers: [...(settings.accessIssuer ? [settings.accessIssuer] : []), CLEVER_ISSUER],
+      ...withClassroomPassback(workerClassroomWriter(
+        config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey },
+        seams.rosterFetch ?? ((input, init) => fetch(input, init)),
+      ), stores),
     });
   // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
   // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.

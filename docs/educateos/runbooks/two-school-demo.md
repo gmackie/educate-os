@@ -142,6 +142,45 @@ These are provider-side workflows by each actual synthetic account, through the 
 calls the Google connector makes. They are not a Workshop approval flow (see
 [Classroom verification](classroom-verification.md)).
 
+### Harbor teacher-approved grade return to Classroom (SCHO-428)
+
+A Harbor teacher's approved EducateOS grade goes to Google Classroom, just as Northfield's go to
+Canvas. Grades travel through the district's passback gate, which only the approving teacher can
+drive, into coursework the district's own Cloud project created. Classroom lets a project grade
+only its own coursework, and existing coursework is never touched.
+
+The district Worker publishes over its Classroom connection (`DISTRICT_CONFIG.classroom` and its
+key), acting as each course's owner with `classroom.coursework.students`. It has two
+administrator routes:
+
+- `POST /api/lti/classroom/grade-routes` with `{offeringId}` routes the offering's grades to the
+  Classroom course the roster imported it from. The course comes from the roster's source map
+  and is never supplied by the caller. An offering not imported from Classroom answers 404.
+- `POST /api/lti/classroom/columns` with `{offeringId, assignmentId, maxPoints}` finds or creates
+  the assignment's "[educateos-approved] <title>" coursework and binds it as the grade column. A
+  rerun creates nothing.
+
+The teacher then publishes with `POST /api/lti/passback`, naming the coursework ID as the
+`column`. The grade is set but not returned: in Classroom, returning work to the student stays
+the teacher's action.
+
+`scripts/demo/harbor-grade-return.ts` runs the whole flow, each step as its own person:
+
+1. Kwame assigns "Rocky Shore Field Notes" in Marine Science.
+2. Nia submits.
+3. Kwame approves 9/10.
+4. The administrator sets up the route and column.
+5. Kwame publishes; the administrator's attempt is refused.
+6. Kwame returns the work in Classroom.
+7. Nia reads 9 from her own Classroom submission and from Harbor's panel.
+
+`verify` writes nothing.
+
+```sh
+node scripts/demo/harbor-grade-return.ts run --admin-cookie <owner> --teacher-cookie <teacher@> \
+  --student-cookie <student@> --out /tmp/harbor-grade-return.json
+```
+
 ### Harbor's "From Google Classroom" panel
 
 Grades teachers return in Classroom show in EducateOS read-only (SCHO-403). A student's class
