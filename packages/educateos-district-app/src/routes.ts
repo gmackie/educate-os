@@ -1060,6 +1060,29 @@ export const CurriculumPreflightBody = z.strictObject({
 });
 export type CurriculumPreflightBody = z.infer<typeof CurriculumPreflightBody>;
 
+/** Immutable, historical quality check; even a passing check is not publication authority. */
+export const CourseQualityRunId = z.string().regex(/^cqr_[0-9a-f]{32}$/);
+export const CourseQualityRequestKey = z.string().min(8).max(120).regex(/^[A-Za-z0-9_-]+$/);
+export const CourseQualityRunBody = z.strictObject({
+  id: CourseQualityRunId,
+  offeringId: OfferingId,
+  requestedBy: PrincipalId,
+  requestKey: CourseQualityRequestKey,
+  createdAt: z.iso.datetime({ offset: true }),
+  checkVersion: z.literal("curriculum-preflight-v0.1"),
+  reportFingerprint: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  context: z.strictObject({
+    standardsDecisionDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    /** Snapshot of district settings, not an exhaustive statement about policy validity. */
+    districtSettingsDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    configRevisionId: z.string().min(1).optional(),
+  }),
+  report: CurriculumPreflightBody,
+  historicalOnly: z.literal(true),
+});
+export type CourseQualityRun = z.infer<typeof CourseQualityRunBody>;
+
+
 /** One item of a unit, as installing it adds it. */
 export const CourseInstallItemBody = z.strictObject({
   key: z.string(),
@@ -1310,6 +1333,22 @@ export const ROUTES = {
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-library/preflight",
     surface: "teacher", params: params({ offeringId: OfferingId }),
     body: CourseInstallInput, response: CurriculumPreflightBody,
+  }),
+  "teacher.runCurriculumQuality": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-library/quality-runs",
+    surface: "teacher", params: params({ offeringId: OfferingId }),
+    body: CourseInstallInput.extend({ idempotencyKey: CourseQualityRequestKey }),
+    response: CourseQualityRunBody,
+  }),
+  "teacher.listCurriculumQualityRuns": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library/quality-runs",
+    surface: "teacher", params: params({ offeringId: OfferingId }),
+    response: z.array(CourseQualityRunBody).max(25),
+  }),
+  "teacher.getCurriculumQualityRun": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library/quality-runs/:runId",
+    surface: "teacher", params: params({ offeringId: OfferingId, runId: CourseQualityRunId }),
+    response: CourseQualityRunBody,
   }),
   "teacher.previewCourseInstall": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",

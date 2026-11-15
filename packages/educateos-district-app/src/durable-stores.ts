@@ -134,6 +134,8 @@ import { KeyId, OpsScope } from "@educateos/fleet/ops";
 import { InstalledPack, sameRelease, type MarketplacePackStore } from "./marketplace.ts";
 // Course library (SCHO-331)
 import { DurableObjectPackageLibrary } from "@educateos/ocs/durable-object-library";
+import { CourseQualityRunBody, type CourseQualityRun } from "./routes.ts";
+import { checkedReplay, type CourseQualityRunStore } from "./course-quality-runs.ts";
 import { LibraryCourse, OfferingCourseInstalls, type CourseLibrary, type CourseLibraryStore, type LibraryPolicies } from "./course-library.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
@@ -227,6 +229,7 @@ export const DISTRICT_TABLES = {
   // tables (`OCS_LIBRARY_TABLE`, `OCS_EXPORT_TABLE` in `@educateos/ocs/durable-object-library`).
   courseLibraryCourses: "educateos_course_library_courses",
   courseInstalls: "educateos_course_installs",
+  courseQualityRuns: "educateos_course_quality_runs",
   // Delegations (SCHO-175)
   delegations: "educateos_delegations",
 } as const;
@@ -1211,6 +1214,7 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     marketplacePacks: new DurableObjectMarketplacePackStore(storage),
     // Course library (SCHO-331)
     courseLibrary: new DurableObjectCourseLibraryStore(storage),
+    courseQualityRuns: new DurableObjectCourseQualityRunStore(storage),
     // Delegations (SCHO-175)
     delegations: new DurableObjectDelegationStore(storage),
   };
@@ -2364,5 +2368,68 @@ export class DurableObjectCourseLibraryStore implements CourseLibraryStore {
   #installs(sql: DistrictSqlStorage["sql"], offeringId: string): OfferingCourseInstalls | undefined {
     const [row] = sql.exec(`SELECT installs_json FROM ${DISTRICT_TABLES.courseInstalls} WHERE offering_id = ?`, offeringId).toArray();
     return row === undefined ? undefined : parseStored(OfferingCourseInstalls, row.installs_json, `the course installs of ${offeringId}`);
+  }
+}
+
+
+
+/**
+ * Append-only district-owned history of curriculum checks. Store rows are content-free
+ * except for the bounded, teacher-scoped preflight metadata and exact digest references.
+ * DB triggers reject UPDATE and DELETE even outside the store interface.
+ */
+export class DurableObjectCourseQualityRunStore implements CourseQualityRunStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES.courseQualityRuns;
+    this.#tables = new Tables(storage, [
+      "CREATE TABLE IF NOT EXISTS " + t + " ("
+        + "seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, offering_id TEXT NOT NULL,"
+        + "requested_by TEXT NOT NULL, request_key TEXT NOT NULL, run_json TEXT NOT NULL,"
+        + "UNIQUE (offering_id, requested_by, request_key))",
+      "CREATE INDEX IF NOT EXISTS " + t + "_offering ON " + t + " (offering_id, seq)",
+      "CREATE TRIGGER IF NOT EXISTS " + t + "_no_update BEFORE UPDATE ON " + t
+        + " BEGIN SELECT RAISE(ABORT, 'course quality run is immutable'); END",
+      "CREATE TRIGGER IF NOT EXISTS " + t + "_no_delete BEFORE DELETE ON " + t
+        + " BEGIN SELECT RAISE(ABORT, 'course quality run is immutable'); END",
+    ], []);
+  }
+
+  async append(input: CourseQualityRun): Promise<CourseQualityRun> {
+    const run = CourseQualityRunBody.parse(input);
+    const table = DISTRICT_TABLES.courseQualityRuns;
+    return this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(
+        "SELECT run_json FROM " + table + " WHERE offering_id = ? AND requested_by = ? AND request_key = ?",
+        run.offeringId, run.requestedBy, run.requestKey,
+      ).toArray();
+      if (existing !== undefined) {
+        return checkedReplay(parseStored(CourseQualityRunBody, existing.run_json, "a course quality run"), run);
+      }
+      sql.exec(
+        "INSERT INTO " + table + " (id, offering_id, requested_by, request_key, run_json) VALUES (?, ?, ?, ?, ?)",
+        run.id, run.offeringId, run.requestedBy, run.requestKey, JSON.stringify(run),
+      );
+      return run;
+    });
+  }
+
+  async get(offeringId: string, runId: string): Promise<CourseQualityRun | undefined> {
+    const table = DISTRICT_TABLES.courseQualityRuns;
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(
+        "SELECT run_json FROM " + table + " WHERE offering_id = ? AND id = ?", offeringId, runId,
+      ).toArray();
+      return row === undefined ? undefined : parseStored(CourseQualityRunBody, row.run_json, "a course quality run");
+    });
+  }
+
+  async list(offeringId: string, limit = 25): Promise<CourseQualityRun[]> {
+    const table = DISTRICT_TABLES.courseQualityRuns;
+    const rows = this.#tables.transaction((sql) => sql.exec(
+      "SELECT run_json FROM " + table + " WHERE offering_id = ? ORDER BY seq DESC LIMIT ?", offeringId, Math.max(1, Math.min(25, limit)),
+    ).toArray());
+    return rows.map((row) => parseStored(CourseQualityRunBody, row.run_json, "a course quality run"));
   }
 }

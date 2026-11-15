@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge, Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
 import { Books, DownloadSimple } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
-import type { CourseInstallPlan, CurriculumPreflight, LibraryCourse } from "../types.ts";
+import type { CourseInstallPlan, CourseQualityRun, CurriculumPreflight, LibraryCourse } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { useAction } from "./useAction.ts";
 
@@ -41,11 +41,15 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
   });
   const [plan, setPlan] = useState<CourseInstallPlan | undefined>();
   const [preflight, setPreflight] = useState<CurriculumPreflight | undefined>();
+  const [savedRun, setSavedRun] = useState<CourseQualityRun | undefined>();
+  const [history, setHistory] = useState<CourseQualityRun[] | undefined>();
 
   const preview = (course: LibraryCourse) =>
     action.run("preview", async (client) => {
       const result = await client.call("teacher.previewCourseInstall", { params: { offeringId }, body: { packageId: course.packageId, version: course.version } });
       setPreflight(undefined);
+      setSavedRun(undefined);
+      setHistory(undefined);
       setPlan(result);
       return `${course.title} would add ${plural(remaining(result), "module")} to this class.`;
     });
@@ -57,9 +61,34 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
         body: { packageId: course.packageId, version: course.version },
       });
       setPlan(undefined);
+      setSavedRun(undefined);
+      setHistory(undefined);
       setPreflight(result);
       return "Course checks ready: " + result.summary.attention + " items need attention; " +
         result.summary.notVerified + " areas still need separate review.";
+    });
+
+  const saveQuality = (report: CurriculumPreflight) =>
+    action.run("save-quality", async (client) => {
+      // The server re-runs the exact course checks and binds its own report snapshot
+      // to the district policy context. The browser's preview is never a trusted input.
+      const recorded = await client.call("teacher.runCurriculumQuality", {
+        params: { offeringId },
+        body: { packageId: report.packageId, version: report.version, idempotencyKey: crypto.randomUUID() },
+      });
+      setPreflight(recorded.report);
+      setSavedRun(recorded);
+      return "Saved this course quality report as historical evidence; no classroom content changed.";
+    });
+
+  const showHistory = () =>
+    action.run("quality-history", async (client) => {
+      const reports = await client.call("teacher.listCurriculumQualityRuns", { params: { offeringId } });
+      setPlan(undefined);
+      setPreflight(undefined);
+      setSavedRun(undefined);
+      setHistory(reports);
+      return reports.length + " historical quality reports available for this class.";
     });
 
   const install = (planned: CourseInstallPlan) =>
@@ -81,13 +110,17 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
   const list = courses.status === "ready" ? courses.data : [];
   return (
     <LayerCard className="flex flex-col gap-4 p-4">
-      <h2><Text variant="heading" as="span">Add a course</Text></h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2><Text variant="heading" as="span">Add a course</Text></h2>
+        <Button size="sm" variant="secondary" loading={action.running("quality-history")}
+          disabled={action.busy} onClick={() => void showHistory()}>Saved quality reports</Button>
+      </div>
       {courses.status === "loading" && <Text variant="secondary">Loading your district's courses…</Text>}
       {courses.status === "error" && <Problem error={courses.error} onRetry={courses.reload} />}
       {courses.status === "ready" && list.length === 0 && (
         <Text variant="secondary">Your district hasn't added any courses to its course library yet.</Text>
       )}
-      {list.length > 0 && plan === undefined && preflight === undefined && (
+      {list.length > 0 && plan === undefined && preflight === undefined && history === undefined && (
         <ul aria-label="Courses" className="flex flex-col divide-y divide-kumo-line">
           {list.map((course) => (
             <li key={course.packageId} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -115,6 +148,34 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
             </li>
           ))}
         </ul>
+      )}
+      {history !== undefined && (
+        <section aria-label="Saved historical course quality runs" className="flex flex-col gap-3">
+          <h3><Text variant="heading" as="span">Saved quality reports</Text></h3>
+          <Banner title="Historical checks only"
+            description="Every report records what was checked at the time. It is not a current legal, accessibility or instructional approval." />
+          {history.length === 0 && <Text variant="secondary">No reports saved for this class yet.</Text>}
+          <ul className="flex flex-col divide-y divide-kumo-line">
+            {history.map((run) => (
+              <li key={run.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">{run.report.title + " · " + run.report.version}</span>
+                  <Text variant="secondary" size="sm" as="span">
+                    {new Date(run.createdAt).toLocaleString() + " · " +
+                      run.report.summary.attention + " need attention · " +
+                      run.report.summary.notVerified + " not verified"}
+                  </Text>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => {
+                  setPreflight(run.report);
+                  setSavedRun(run);
+                  setHistory(undefined);
+                }}>View report</Button>
+              </li>
+            ))}
+          </ul>
+          <div><Button variant="secondary" onClick={() => setHistory(undefined)}>Back to courses</Button></div>
+        </section>
       )}
       {plan !== undefined && (
         <section aria-label="Course preview" className="flex flex-col gap-3">
@@ -153,6 +214,11 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
         <section aria-label="Curriculum CI preflight" className="flex flex-col gap-3">
           <h3><Text variant="heading" as="span">Curriculum quality checks</Text></h3>
           <Text>{preflight.title + " · " + preflight.version}</Text>
+          {savedRun !== undefined && (
+            <Text variant="secondary" size="sm">
+              {"Historical record saved " + new Date(savedRun.createdAt).toLocaleString() + " · " + savedRun.id}
+            </Text>
+          )}
           <Banner title="Review still required"
             description="These checks verify specific technical and metadata properties. They do not certify accessibility, copyright ownership, instructional quality or learning outcomes, and they do not approve publication." />
           <Text variant="secondary" size="sm">
@@ -170,7 +236,13 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
             ))}
           </ul>
           <div>
-            <Button variant="secondary" onClick={() => setPreflight(undefined)}>Back to courses</Button>
+            {savedRun === undefined && (
+              <Button variant="primary" disabled={action.busy} loading={action.running("save-quality")}
+                onClick={() => void saveQuality(preflight)}>Save historical report</Button>
+            )}
+            <Button variant="secondary" onClick={() => { setPreflight(undefined); setSavedRun(undefined); }}>
+              Back to courses
+            </Button>
           </div>
         </section>
       )}
