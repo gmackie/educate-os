@@ -67,6 +67,7 @@ import type { PublisherTrust } from "@educateos/ocs";
 import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
 import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
 import { inspectCurriculumPreflight } from "./curriculum-preflight.ts";
+import { qualityFingerprint } from "./course-quality-runs.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -1030,6 +1031,64 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         signedAtImport: indexed.publisher.signed,
         isApproved: services.isApproved,
       });
+    },
+    "teacher.runCurriculumQuality": async (ctx, { params, body }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can save curriculum quality runs.");
+      const library = stores.courseLibrary.library(libraryPolicies(courseTrust(), now));
+      const plan = await planLibraryInstall(library, body.packageId, body.version);
+      const indexed = (await stores.courseLibrary.listCourses()).find(
+        (course) => course.packageId === body.packageId && course.version === body.version,
+      );
+      if (indexed === undefined) {
+        throw new EducateOsError("not-found", "This course is not in the district's approved library.");
+      }
+      const services = await ctx.courseInstall(params.offeringId, plan);
+      const decisions = new Map<string, { frameworkKey: string; competencyUri: string; approved: boolean }>();
+      const report = await inspectCurriculumPreflight(plan, {
+        digest: indexed.digest,
+        signedAtImport: indexed.publisher.signed,
+        isApproved: async (frameworkKey, competencyUri) => {
+          const approved = await services.isApproved(frameworkKey, competencyUri);
+          decisions.set(JSON.stringify([frameworkKey, competencyUri]), { frameworkKey, competencyUri, approved });
+          return approved;
+        },
+      });
+      const configRevisionId = (await stores.config.list()).at(-1)?.id;
+      const run = {
+        id: "cqr_" + crypto.randomUUID().replaceAll("-", ""),
+        offeringId: params.offeringId,
+        requestedBy: ctx.principal.principalId,
+        requestKey: body.idempotencyKey,
+        createdAt: now().toISOString(),
+        checkVersion: "curriculum-preflight-v0.1" as const,
+        reportFingerprint: await qualityFingerprint(report),
+        context: {
+          standardsDecisionDigest: await qualityFingerprint([...decisions.values()].toSorted(
+            (a, b) => JSON.stringify([a.frameworkKey, a.competencyUri]).localeCompare(JSON.stringify([b.frameworkKey, b.competencyUri])),
+          )),
+          districtSettingsDigest: await qualityFingerprint(ctx.snapshot.district),
+          ...(configRevisionId === undefined ? {} : { configRevisionId }),
+        },
+        report,
+        historicalOnly: true as const,
+      };
+      return stores.courseQualityRuns.append(run);
+    },
+    "teacher.listCurriculumQualityRuns": async (ctx, { params }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can view curriculum quality history.");
+      return stores.courseQualityRuns.list(params.offeringId, 25);
+    },
+    "teacher.getCurriculumQualityRun": async (ctx, { params }) => {
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" },
+        "Only the class's teachers can read curriculum quality history.");
+      const run = await stores.courseQualityRuns.get(params.offeringId, params.runId);
+      if (run === undefined) throw new EducateOsError("not-found", "That quality report is not in this class.");
+      return run;
     },
     "teacher.previewCourseInstall": async (ctx, { params, body }) => {
       const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
