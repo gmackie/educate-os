@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge, Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
 import { Books, DownloadSimple } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
-import type { CourseInstallPlan, LibraryCourse } from "../types.ts";
+import type { CourseInstallPlan, CurriculumPreflight, LibraryCourse } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { useAction } from "./useAction.ts";
 
@@ -40,12 +40,26 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
     courses.reload();
   });
   const [plan, setPlan] = useState<CourseInstallPlan | undefined>();
+  const [preflight, setPreflight] = useState<CurriculumPreflight | undefined>();
 
   const preview = (course: LibraryCourse) =>
     action.run("preview", async (client) => {
       const result = await client.call("teacher.previewCourseInstall", { params: { offeringId }, body: { packageId: course.packageId, version: course.version } });
+      setPreflight(undefined);
       setPlan(result);
       return `${course.title} would add ${plural(remaining(result), "module")} to this class.`;
+    });
+
+  const checkQuality = (course: LibraryCourse) =>
+    action.run("quality", async (client) => {
+      const result = await client.call("teacher.previewCurriculumPreflight", {
+        params: { offeringId },
+        body: { packageId: course.packageId, version: course.version },
+      });
+      setPlan(undefined);
+      setPreflight(result);
+      return "Course checks ready: " + result.summary.attention + " items need attention; " +
+        result.summary.notVerified + " areas still need separate review.";
     });
 
   const install = (planned: CourseInstallPlan) =>
@@ -73,7 +87,7 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
       {courses.status === "ready" && list.length === 0 && (
         <Text variant="secondary">Your district hasn't added any courses to its course library yet.</Text>
       )}
-      {list.length > 0 && plan === undefined && (
+      {list.length > 0 && plan === undefined && preflight === undefined && (
         <ul aria-label="Courses" className="flex flex-col divide-y divide-kumo-line">
           {list.map((course) => (
             <li key={course.packageId} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -89,7 +103,11 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
                   {`${plural(course.units.length, "unit")} · ${plural(course.activities, "activity", "activities")} · from ${course.publisher.domain} · version ${course.version}`}
                 </Text>
               </div>
-              <div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" loading={action.running("quality")} disabled={action.busy}
+                  onClick={() => void checkQuality(course)}>
+                  Quality checks
+                </Button>
                 <Button size="sm" variant="secondary" loading={action.running("preview")} disabled={action.busy} onClick={() => void preview(course)}>
                   {course.installed !== undefined && !course.installed.done ? `Finish adding ${course.title}` : `Preview ${course.title}`}
                 </Button>
@@ -128,6 +146,31 @@ export const CoursePanel = ({ offeringId, onInstalled }: { offeringId: string; o
               {plan.done ? "Already added" : `Add ${plural(remaining(plan), "module")}`}
             </Button>
             <Button variant="secondary" disabled={installing} onClick={() => setPlan(undefined)}>Cancel</Button>
+          </div>
+        </section>
+      )}
+      {preflight !== undefined && (
+        <section aria-label="Curriculum CI preflight" className="flex flex-col gap-3">
+          <h3><Text variant="heading" as="span">Curriculum quality checks</Text></h3>
+          <Text>{preflight.title + " · " + preflight.version}</Text>
+          <Banner title="Review still required"
+            description="These checks verify specific technical and metadata properties. They do not certify accessibility, copyright ownership, instructional quality or learning outcomes, and they do not approve publication." />
+          <Text variant="secondary" size="sm">
+            {preflight.summary.passed + " passed · " + preflight.summary.attention +
+              " need attention · " + preflight.summary.notVerified + " not independently verified"}
+          </Text>
+          <ul className="flex flex-col divide-y divide-kumo-line" aria-label="Curriculum checks">
+            {preflight.checks.map((item) => (
+              <li key={item.id} className="flex flex-col gap-1 py-2">
+                <span className="font-medium">{item.id.replaceAll("-", " ") + " · " +
+                  (item.status === "pass" ? "Checked" : item.status === "attention" ? "Needs attention" : "Not verified")}
+                </span>
+                <Text variant="secondary" size="sm" as="span">{item.explanation}</Text>
+              </li>
+            ))}
+          </ul>
+          <div>
+            <Button variant="secondary" onClick={() => setPreflight(undefined)}>Back to courses</Button>
           </div>
         </section>
       )}
