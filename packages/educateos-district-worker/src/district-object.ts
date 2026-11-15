@@ -31,6 +31,7 @@ import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/ide
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { MCP_PATHS, startDistrict, type District } from "./district.ts";
+import { boundCourseIntentProvider } from "./course-intent.ts";
 import { discussionHallMonitor } from "./hall-monitor.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
@@ -384,6 +385,9 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
+        ...(this.env.COURSE_INTENT_INFERENCE === undefined ? {} : {
+          courseIntentProvider: boundCourseIntentProvider(this.env.COURSE_INTENT_INFERENCE, this.env.COURSE_INTENT_MODEL),
+        }),
         ...(this.env.WORKSHOP_ASSESSMENT_RELEASES === undefined ? {} : {
           workshopReleases: this.env.WORKSHOP_ASSESSMENT_RELEASES,
         }),

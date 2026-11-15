@@ -18,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type CourseIntentProvider, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -130,6 +130,8 @@ export interface DistrictSettings {
 
 /** What a district reaches outside its storage. */
 export interface DistrictSeams {
+  /** Optional deployer-owned internal inference gateway for teacher draft suggestions. */
+  courseIntentProvider?: CourseIntentProvider;
   /** Installer-provided release verification binding; no caller-supplied URL or publisher. */
   workshopReleases?: NonNullable<Parameters<typeof createDistrictApp>[0]["workshopReleases"]>;
   /** The fetch the Content Studio imports URLs with, after its own URL checks. */
@@ -300,6 +302,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),
     ...(config.cloudflareAccount === undefined ? {} : { cloudflareAccount: config.cloudflareAccount }),
     ...(config.modelCatalog === undefined ? {} : { modelCatalog: config.modelCatalog }),
+    ...(seams.courseIntentProvider === undefined ? {} : { courseIntentProvider: seams.courseIntentProvider }),
     ...(config.approvedExternalHosts === undefined ? {} : { approvedExternalHosts: config.approvedExternalHosts }),
     ...(config.retention === undefined ? {} : { retention: config.retention }),
     // Communication (SCHO-189): email only with both the binding and a configured sender. The family
