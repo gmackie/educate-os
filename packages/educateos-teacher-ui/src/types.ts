@@ -122,3 +122,5 @@ export type LibraryCourse = RouteResponse<"teacher.libraryCourses">[number];
 export type CourseInstallPlan = RouteResponse<"teacher.previewCourseInstall">;
 /** Read-only course-wide quality and provenance coverage report. */
 export type CurriculumPreflight = RouteResponse<"teacher.previewCurriculumPreflight">;
+/** Immutable historical Curriculum CI run, scoped to an offering. */
+export type CourseQualityRun = RouteResponse<"teacher.runCurriculumQuality">;
