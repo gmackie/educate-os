@@ -7,6 +7,7 @@ import { DiscussionsPage } from "../discussions/DiscussionsPage.tsx";
 import { QuizBuilderPage } from "../quizzes/QuizBuilderPage.tsx";
 import { QuizResultsPage } from "../quizzes/QuizResultsPage.tsx";
 import { QuizzesPage } from "../quizzes/QuizzesPage.tsx";
+import { ClassroomSetupPage } from "../onboarding/ClassroomSetupPage.tsx";
 import { Loading } from "../Loading.tsx";
 import { ModulesPage } from "../modules/ModulesPage.tsx";
 import { Problem } from "../Problem.tsx";
@@ -78,12 +79,14 @@ export const ClassPage = ({ route }: { route: ClassRoute }) => {
           ))}
         </ul>
       </nav>
-      <ClassSection route={route} teaching={teaching} />
+      {route.screen === "setup"
+        ? <ClassroomSetupPage key={teaching.offering.id} teaching={teaching} />
+        : <ClassSection route={route} teaching={teaching} />}
     </div>
   );
 };
 
-const ClassSection = ({ route, teaching }: { route: ClassRoute; teaching: TeachingOffering }) => {
+const ClassSection = ({ route, teaching }: { route: Exclude<ClassRoute, { screen: "setup" }>; teaching: TeachingOffering }) => {
   switch (route.screen) {
     case "roster":
       return <RosterPage teaching={teaching} />;
