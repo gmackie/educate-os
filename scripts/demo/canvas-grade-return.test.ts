@@ -31,7 +31,8 @@ function world() {
   const scores = new Map<string, number>();
   let linked = "prn_nf-morgan-lee";
   const links: string[] = [];
-  let columns: { lineItemId: number; canvasAssignmentId: number } | undefined;
+  let columns: { lineItemId: number; canvasAssignmentId: number; omitted: boolean } | undefined;
+  const canvasWrites: string[] = [];
   const approver = (studentId: string) => (studentId === students[1] ? "prn_nf-teacher-chen" : "prn_nf-teacher-rivera");
   const district: DistrictRequest = async <T>(cookie: string, method: string, path: string, body?: unknown) => {
     const who = cookie === "admin" ? "admin" : linked;
@@ -47,7 +48,7 @@ function world() {
           rows: students.slice(0, 2).map((s, i) => ({ studentPrincipalId: s, cells: [{ assignmentId: "asg_essay", score: { points: 15 + i, maxPoints: 20 }, version: 1 }] })),
         } as T;
       case "/api/lti/grade-routes": case "/api/lti/grade-columns": assert.equal(who, "admin"); return {} as T;
-      case "/api/lti/line-items": assert.equal(who, "admin"); columns = { lineItemId: 7, canvasAssignmentId: 70 }; return { id: "li" } as T;
+      case "/api/lti/line-items": assert.equal(who, "admin"); columns = { lineItemId: 7, canvasAssignmentId: 70, omitted: false }; return { id: "li" } as T;
       case "/api/lti/passback": {
         const student = String(b!.studentId);
         if (who !== approver(student)) throw new DistrictError(403, "forbidden");
@@ -70,11 +71,18 @@ function world() {
   const canvasColumns: CanvasColumns = { find: async () => columns, forget: () => {} };
   const tokens = new Map(students.map((s, i) => [s, { principalId: s, userId: i, token: `tok-${s}` }]));
   return {
-    calls, links, posted, linked: () => linked,
+    calls, links, posted, canvasWrites, linked: () => linked, column: () => columns,
     options: {
       adminCookie: "admin", presenters: { "9-12": "presenter" }, district, showcase,
       subjectOf: async () => "subject-912",
-      canvas: { list: async <T>() => [{ id: CANVAS_COURSE, sis_course_id: course.sisId }] as T[] },
+      canvas: {
+        list: async <T>() => [{ id: CANVAS_COURSE, sis_course_id: course.sisId }] as T[],
+        request: async <T>(method: string, path: string, body?: unknown) => {
+          canvasWrites.push(`${method} ${path} ${JSON.stringify(body)}`);
+          if (path === `courses/${CANVAS_COURSE}/assignments/70` && columns) columns.omitted = (body as { assignment: { omit_from_final_grade: boolean } }).assignment.omit_from_final_grade;
+          return { value: {} as T };
+        },
+      },
       canvasClient: (token: string) => ({
         request: async <T>(_m: string, path: string) => {
           const student = token.slice(4);
@@ -121,4 +129,20 @@ test("verify writes nothing and reports grades not yet returned", async () => {
   assert.ok(!w.calls.some((c) => !c.startsWith("admin") && c.includes("/api/lti/passback")));
   assert.ok(result.problems.some((p) => p.includes("no Canvas column for asg_essay")));
   assert.equal(w.linked(), "prn_nf-morgan-lee");
+});
+
+test("the approved column is left out of the course total, so no work counts twice", async () => {
+  const w = world();
+  await canvasGradeReturn({ ...w.options, mode: "run" });
+  assert.deepEqual(w.canvasWrites, [`PUT courses/${CANVAS_COURSE}/assignments/70 {"assignment":{"omit_from_final_grade":true}}`]);
+  assert.equal(w.column()!.omitted, true);
+  // Already omitted: a rerun changes nothing, and verify is satisfied.
+  await canvasGradeReturn({ ...w.options, mode: "run" });
+  assert.equal(w.canvasWrites.length, 1);
+  assert.ok(!(await canvasGradeReturn({ ...w.options, mode: "verify" })).problems.some((p) => p.includes("course total")));
+  // A teacher who counts it again is reported by verify, not overridden.
+  w.column()!.omitted = false;
+  const verified = await canvasGradeReturn({ ...w.options, mode: "verify" });
+  assert.ok(verified.problems.includes(`${course.offeringId}: the Canvas column for asg_essay counts toward the course total`));
+  assert.equal(w.canvasWrites.length, 1);
 });
