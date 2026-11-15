@@ -1090,6 +1090,45 @@ export const CourseInstallPlanBody = z.strictObject({
 /** A course install plan or progress. */
 export type CourseInstallPlanBody = z.infer<typeof CourseInstallPlanBody>;
 
+/** Read-only comparison of an installed course and a newer publisher release. */
+export const CourseUpdatePreviewInput = z.strictObject({
+  packageId: CoursePackageId,
+  fromVersion: CoursePackageVersion,
+  toVersion: CoursePackageVersion,
+});
+export const CourseUpdateReviewStatus = z.enum([
+  "unchanged", "upstream-added", "upstream-removed", "upstream-changed",
+  "local-change", "conflict", "reconcile",
+]);
+export const CourseUpdateItemReviewBody = z.strictObject({
+  key: z.string(),
+  title: z.string(),
+  kind: z.enum(["activity", "page", "teacher-note", "resource"]),
+  status: CourseUpdateReviewStatus,
+  sensitive: z.boolean(),
+  explanation: z.string(),
+});
+export const CourseUpdateUnitReviewBody = z.strictObject({
+  key: z.string(),
+  title: z.string(),
+  status: CourseUpdateReviewStatus,
+  explanation: z.string(),
+  items: z.array(CourseUpdateItemReviewBody),
+});
+export const CourseUpdatePreviewBody = z.strictObject({
+  offeringId: OfferingId,
+  packageId: CoursePackageId,
+  fromVersion: CoursePackageVersion,
+  toVersion: CoursePackageVersion,
+  fromDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  toDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  units: z.array(CourseUpdateUnitReviewBody),
+  requiresTeacherApproval: z.literal(true),
+  canApply: z.literal(false),
+  warnings: z.array(z.string()),
+});
+export type CourseUpdatePreviewBody = z.infer<typeof CourseUpdatePreviewBody>;
+
 /** Defines a route, keeping its literal types. */
 function route<const S extends RouteSpec>(spec: S): S {
   return spec;
@@ -1281,6 +1320,11 @@ export const ROUTES = {
   "teacher.previewCourseInstall": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",
     params: params({ offeringId: OfferingId }), body: CourseInstallInput, response: CourseInstallPlanBody,
+  }),
+  "teacher.previewCourseUpdate": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-updates/preview", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: CourseUpdatePreviewInput,
+    response: CourseUpdatePreviewBody,
   }),
   "teacher.installCourse": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/course-install", surface: "teacher",
