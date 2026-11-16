@@ -1,0 +1,33 @@
+{
+  "enabled": false,
+  "gatewayId": "district-planner-pilot",
+  "offeringIds": ["off_nf-eng9-fall-p3"],
+  "grants": [],
+  "maxRequestsPerStudentDay": 5,
+  "priceBook": {
+    "id": "planner-example-replace-with-reviewed-rates",
+    "reviewedAt": "2026-11-15T00:00:00Z",
+    "rates": [
+      {
+        "providerId": "cloudflare",
+        "sku": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+        "unit": "input_tokens",
+        "numeratorUsdNano": "1000",
+        "denominator": "1",
+        "effectiveFrom": "2026-11-15T00:00:00Z",
+        "effectiveTo": "2026-12-01T00:00:00Z",
+        "sourceUrl": "https://developers.cloudflare.com/workers-ai/platform/pricing/"
+      },
+      {
+        "providerId": "cloudflare",
+        "sku": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+        "unit": "output_tokens",
+        "numeratorUsdNano": "1000",
+        "denominator": "1",
+        "effectiveFrom": "2026-11-15T00:00:00Z",
+        "effectiveTo": "2026-12-01T00:00:00Z",
+        "sourceUrl": "https://developers.cloudflare.com/workers-ai/platform/pricing/"
+      }
+    ]
+  }
+}

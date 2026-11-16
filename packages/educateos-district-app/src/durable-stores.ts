@@ -1,3 +1,5 @@
+import { StudentLearningLifecycle, StudentLearningState, type StudentLearningRuntimePersistence } from "./student-learning-lifecycle.ts";
+import { revokedGuardianGuidanceGrant } from "@educateos/policy";
 import {
   ChildSession,
   FamilyRecord,
@@ -8,6 +10,8 @@ import {
   type PracticeSessionId,
 } from "@educateos/home-learning";
 import { GadgetAssessmentBinding, sameGadgetAssessmentPin, type GadgetAssessmentStore } from "./gadget-assessment.ts";
+import { PlannerPlan, plannerConflict, type PlannerStore } from "./planner.ts";
+import { GuidanceRecord, guidanceConflict, type GuidanceStore } from "./guidance.ts";
 // Durable stores for one district (SCHO-171), published as their own entry point
 // (`@educateos/district-app/durable-stores`). Every `DistrictAppStores` member lives in one
 // SQLite-backed Durable Object's storage: the domain packages' own Durable Object stores where they
@@ -88,12 +92,15 @@ import { DurableObjectLedgerStore } from "@educateos/ai-governance/durable-objec
 import {
   checkGuardianRelationshipCommit,
   Delegation,
+  GUARDIAN_GUIDANCE_CONFLICT,
   GUARDIAN_RELATIONSHIP_CONFLICT,
+  GuardianGuidanceGrant,
   GuardianRelationshipAuditEvent,
   OPEN_APPROVAL_STATES,
   PendingToolAction,
   sameGuardianRelationship,
   type DelegationStore,
+  type GuardianGuidanceGrantStore,
   type GuardianRelationshipStore,
   type ToolApprovalId,
   type ToolApprovalState,
@@ -1189,10 +1196,13 @@ export class DurableObjectGuardianInvitationStore implements GuardianInvitationS
  * once per object instance: several stores cache what they read, which stays true only while this
  * object is the one writer.
  */
-export function durableDistrictStores(storage: DistrictSqlStorage, seed: DistrictDirectorySnapshot): DistrictAppStores {
+export function durableDistrictStores(storage: DistrictSqlStorage, seed: DistrictDirectorySnapshot, runtime?: StudentLearningRuntimePersistence): DistrictAppStores {
   const directory = DurableObjectAcademicStore.open(storage, seed);
   return {
     directory,
+    studentLearningLifecycle: durableStudentLearningLifecycle(storage, runtime),
+    planner: new DurableObjectPlannerStore(storage),
+    guidance: { records: new DurableObjectGuidanceStore(storage), guardianGrants: new DurableObjectGuardianGuidanceGrantStore(storage) },
     rosterSources: new DurableObjectRosterSourceStore(storage),
     rosterSync: new DurableObjectDistrictRosterSyncStore(storage),
     workspaces: new DurableObjectWorkspaceStore(storage),
@@ -1437,6 +1447,82 @@ export class DurableObjectHomeLearningStore implements HomeLearningStore {
 }
 
 const refKey = (ref: HomeActivityRef) => `${ref.pack}@${ref.version}/${ref.activity}`;
+
+/** District-local planner records survive restarts; revisions prevent concurrent lost updates. */
+export class DurableObjectPlannerStore implements PlannerStore {
+  readonly storage: DistrictSqlStorage;
+  constructor(storage: DistrictSqlStorage) {
+    this.storage = storage;
+    storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_planner (id TEXT PRIMARY KEY, offering_id TEXT NOT NULL, revision INTEGER NOT NULL, plan_json TEXT NOT NULL)");
+  }
+  async list(offeringId: string): Promise<PlannerPlan[]> {
+    return this.storage.sql.exec("SELECT plan_json FROM educateos_planner WHERE offering_id = ? ORDER BY rowid", offeringId).toArray().map((row) => parseStored(PlannerPlan, row.plan_json, "a learning plan"));
+  }
+  async save(raw: PlannerPlan, expectedRevision: number): Promise<void> {
+    const plan = PlannerPlan.parse(raw);
+    this.storage.transactionSync(() => {
+      assertStudentLearningWritable(this.storage, plan.studentId);
+      const [row] = this.storage.sql.exec("SELECT revision FROM educateos_planner WHERE id = ?", plan.id).toArray();
+      if ((row?.revision ?? 0) !== expectedRevision || plan.revision !== expectedRevision + 1) throw plannerConflict();
+      this.storage.sql.exec("INSERT INTO educateos_planner (id, offering_id, revision, plan_json) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET revision = excluded.revision, plan_json = excluded.plan_json", plan.id, plan.offeringId, plan.revision, JSON.stringify(plan));
+    });
+  }
+}
+
+/** Guidance records (agendas, suggestions, practice invitations, preferences) in one table, with revision checks. */
+export class DurableObjectGuidanceStore implements GuidanceStore {
+  readonly storage: DistrictSqlStorage;
+  constructor(storage: DistrictSqlStorage) {
+    this.storage = storage;
+    storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_guidance (id TEXT PRIMARY KEY, scope TEXT NOT NULL, revision INTEGER NOT NULL, record_json TEXT NOT NULL)");
+    storage.sql.exec("CREATE INDEX IF NOT EXISTS educateos_guidance_scope ON educateos_guidance (scope)");
+  }
+  async list(scope: string): Promise<GuidanceRecord[]> {
+    return this.storage.sql.exec("SELECT record_json FROM educateos_guidance WHERE scope = ? ORDER BY rowid", scope).toArray().map((row) => parseStored(GuidanceRecord, row.record_json, "a guidance record"));
+  }
+  async save(raw: GuidanceRecord, expectedRevision: number): Promise<void> {
+    const record = GuidanceRecord.parse(raw);
+    this.storage.transactionSync(() => {
+      if ("studentId" in record) assertStudentLearningWritable(this.storage, record.studentId);
+      const [row] = this.storage.sql.exec("SELECT revision FROM educateos_guidance WHERE id = ?", record.id).toArray();
+      if ((row?.revision ?? 0) !== expectedRevision || record.revision !== expectedRevision + 1) throw guidanceConflict();
+      this.storage.sql.exec("INSERT INTO educateos_guidance (id, scope, revision, record_json) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET revision = excluded.revision, record_json = excluded.record_json", record.id, record.scope, record.revision, JSON.stringify(record));
+    });
+  }
+}
+
+/** Administrator opt-ins for guardian learning guidance: one row per relationship, off until a row says otherwise. */
+export class DurableObjectGuardianGuidanceGrantStore implements GuardianGuidanceGrantStore {
+  readonly storage: DistrictSqlStorage;
+  constructor(storage: DistrictSqlStorage) {
+    this.storage = storage;
+    storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_guardian_guidance (relationship_id TEXT PRIMARY KEY, student_id TEXT NOT NULL, revision INTEGER NOT NULL, grant_json TEXT NOT NULL)");
+  }
+  revokeForStudent(studentId: PrincipalId, by: PrincipalId, at: string): void {
+    for (const row of this.storage.sql.exec("SELECT grant_json FROM educateos_guardian_guidance WHERE student_id = ?", studentId).toArray()) {
+      const grant = parseStored(GuardianGuidanceGrant, row.grant_json, "a guardian guidance grant");
+      if (!grant.enabled) continue;
+      const next = revokedGuardianGuidanceGrant(grant, by, at);
+      this.storage.sql.exec("UPDATE educateos_guardian_guidance SET revision = ?, grant_json = ? WHERE relationship_id = ?", next.revision, JSON.stringify(next), next.relationshipId);
+    }
+  }
+  async get(relationshipId: GuardianRelationshipId): Promise<GuardianGuidanceGrant | undefined> {
+    const [row] = this.storage.sql.exec("SELECT grant_json FROM educateos_guardian_guidance WHERE relationship_id = ?", relationshipId).toArray();
+    return row === undefined ? undefined : parseStored(GuardianGuidanceGrant, row.grant_json, "a guardian guidance grant");
+  }
+  async listForStudent(studentPrincipalId: PrincipalId): Promise<GuardianGuidanceGrant[]> {
+    return this.storage.sql.exec("SELECT grant_json FROM educateos_guardian_guidance WHERE student_id = ?", studentPrincipalId).toArray().map((row) => parseStored(GuardianGuidanceGrant, row.grant_json, "a guardian guidance grant"));
+  }
+  async save(raw: GuardianGuidanceGrant, expectedRevision: number): Promise<void> {
+    const grant = GuardianGuidanceGrant.parse(raw);
+    this.storage.transactionSync(() => {
+      if (grant.enabled) assertStudentLearningWritable(this.storage, grant.studentPrincipalId);
+      const [row] = this.storage.sql.exec("SELECT revision FROM educateos_guardian_guidance WHERE relationship_id = ?", grant.relationshipId).toArray();
+      if ((row?.revision ?? 0) !== expectedRevision || grant.revision !== expectedRevision + 1) throw new EducateOsError("conflict", GUARDIAN_GUIDANCE_CONFLICT);
+      this.storage.sql.exec("INSERT INTO educateos_guardian_guidance (relationship_id, student_id, revision, grant_json) VALUES (?, ?, ?, ?) ON CONFLICT (relationship_id) DO UPDATE SET revision = excluded.revision, grant_json = excluded.grant_json", grant.relationshipId, grant.studentPrincipalId, grant.revision, JSON.stringify(grant));
+    });
+  }
+}
 
 // Gradebook (SCHO-187)
 
@@ -2640,5 +2726,46 @@ export class DurableObjectExportMappingStore implements ExportMappingStore {
         mapping.exportId, mapping.principalId, mapping.exportedAt, JSON.stringify(mapping),
       );
     });
+  }
+}
+
+/** The same DO transaction holds disposition, inventory, erasure, revocation and the terminal receipt.
+ * JSON subject predicates cover legacy records and removed enrollments without a roster dependency.
+ */
+export function durableStudentLearningLifecycle(storage: DistrictSqlStorage, runtime?: StudentLearningRuntimePersistence): StudentLearningLifecycle {
+  storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_student_learning_lifecycle (student_id TEXT PRIMARY KEY, state_json TEXT NOT NULL)");
+  const participants = {
+    planner: new DurableObjectPlannerStore(storage),
+    guidance: new DurableObjectGuidanceStore(storage),
+    grants: new DurableObjectGuardianGuidanceGrantStore(storage),
+  };
+  // Constructors create the participant tables; no participant data is read or cached here.
+  return new StudentLearningLifecycle({
+    runtime,
+    atomic: (run) => storage.transactionSync(run),
+    get: (id) => {
+      const [row] = storage.sql.exec("SELECT state_json FROM educateos_student_learning_lifecycle WHERE student_id = ?", id).toArray();
+      return row === undefined ? undefined : parseStored(StudentLearningState, row.state_json, "a student learning lifecycle decision");
+    },
+    put: (id, state) => { storage.sql.exec("INSERT INTO educateos_student_learning_lifecycle (student_id, state_json) VALUES (?, ?) ON CONFLICT (student_id) DO UPDATE SET state_json = excluded.state_json", id, JSON.stringify(StudentLearningState.parse(state))); },
+    counts: (id) => ({
+      plans: Number(storage.sql.exec("SELECT COUNT(*) AS n FROM educateos_planner WHERE json_extract(plan_json, '$.studentId') = ?", id).toArray()[0]!.n),
+      guidance: Number(storage.sql.exec("SELECT COUNT(*) AS n FROM educateos_guidance WHERE json_extract(record_json, '$.type') != 'agenda' AND json_extract(record_json, '$.studentId') = ?", id).toArray()[0]!.n),
+      guardianGrants: Number(storage.sql.exec("SELECT COUNT(*) AS n FROM educateos_guardian_guidance WHERE student_id = ? AND json_extract(grant_json, '$.enabled') = 1", id).toArray()[0]!.n),
+    }),
+    erase: (id, by, at) => {
+      storage.sql.exec("DELETE FROM educateos_planner WHERE json_extract(plan_json, '$.studentId') = ?", id);
+      storage.sql.exec("DELETE FROM educateos_guidance WHERE json_extract(record_json, '$.type') != 'agenda' AND json_extract(record_json, '$.studentId') = ?", id);
+      participants.grants.revokeForStudent(id, by, at);
+    },
+  });
+}
+
+/** A save checks the persistent fence in the same transaction as its revision and write. */
+function assertStudentLearningWritable(storage: DistrictSqlStorage, studentId: PrincipalId): void {
+  storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_student_learning_lifecycle (student_id TEXT PRIMARY KEY, state_json TEXT NOT NULL)");
+  const [row] = storage.sql.exec("SELECT state_json FROM educateos_student_learning_lifecycle WHERE student_id = ?", studentId).toArray();
+  if (row !== undefined && parseStored(StudentLearningState, row.state_json, "a student learning lifecycle decision").receipt !== undefined) {
+    throw new EducateOsError("conflict", "This student's optional planner and guidance records were erased. Return to the class page.");
   }
 }

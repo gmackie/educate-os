@@ -29,5 +29,8 @@ export * from "./district-export.ts";
 export * from "./admin-review.ts";
 // From Google Classroom (SCHO-403)
 export * from "./classroom-grades.ts";
+
+export * from "./planner-ai.ts";
+export * from "./student-learning-lifecycle.ts";
 // Harbor grade return to Classroom (SCHO-428)
 export * from "./classroom-course.ts";

@@ -25,12 +25,22 @@ import { APP_NAME } from "./PageHeading.tsx";
 import { routeName } from "./routeName.ts";
 import { useDistrictShell } from "./shell.tsx";
 import { ShellLayout } from "./ShellLayout.tsx";
+const childGuidanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/family/children/$studentId/guidance",
+  component: () => {
+    const { studentId } = childGuidanceRoute.useParams();
+    return <ChildGuidancePage key={studentId} studentId={studentId} />;
+  },
+});
+
 // Your devices and Connect phone (SCHO-260)
 import { ConnectPhonePage } from "./devices/ConnectPhonePage.tsx";
 import { DevicesPage } from "./devices/DevicesPage.tsx";
 import { CONNECT_PHONE_PATH, DEVICES_PATH } from "./devices/paths.ts";
 // Family view (ADR-0012, SCHO-188)
 import { ChildCoursePage } from "./family/ChildCoursePage.tsx";
+import { ChildGuidancePage } from "./family/ChildGuidancePage.tsx";
 import { ChildPage } from "./family/ChildPage.tsx";
 import { FamilyHomePage } from "./family/FamilyHomePage.tsx";
 import { FamilySettingsPage } from "./family/FamilySettingsPage.tsx";
@@ -269,7 +279,7 @@ const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: DEVICE
 
 const connectPhoneRoute = createRoute({ getParentRoute: () => rootRoute, path: CONNECT_PHONE_PATH, component: ConnectPhonePage });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, familySettingsRoute, invitationRoute, childRoute, childCourseRoute, devicesRoute, connectPhoneRoute,
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, familySettingsRoute, invitationRoute, childRoute, childCourseRoute, childGuidanceRoute, devicesRoute, connectPhoneRoute,
   homeRouteFamily, libraryRoute, shelfRoute, homeSettingsRoute, joinFamilyRoute, firstProgressRoute, planRoute, progressRoute, sessionRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
@@ -292,6 +302,9 @@ export const quizResultPath = (offeringId: string, quizId: string, attemptId: st
 
 /** The path of a guardian's child's screen. */
 export const childPath = (studentId: string): string => `/family/children/${encodeURIComponent(studentId)}`;
+
+/** The path of a guardian's child's learning guidance (shown only where the district opted the family in). */
+export const childGuidancePath = (studentId: string): string => `${childPath(studentId)}/guidance`;
 
 /** The path of one of a guardian's child's classes. */
 export const childCoursePath = (studentId: string, offeringId: string): string =>

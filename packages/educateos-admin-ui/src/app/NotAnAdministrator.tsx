@@ -1,10 +1,8 @@
 import { Link, Text } from "@cloudflare/kumo";
 import { BookOpen, ChalkboardTeacher } from "@phosphor-icons/react";
-import { useConsoleTitle } from "./consoleTitle.ts";
 
 /** What someone the school has added, but not as a district administrator, sees instead of the console. */
 export const NotAnAdministrator = () => {
-  useConsoleTitle("Not an administrator");
   return (
     <section aria-labelledby="not-admin-heading" className="flex max-w-xl flex-col gap-4">
       <Text as="h2" variant="heading" size="lg">

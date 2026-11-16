@@ -1,0 +1,25 @@
+{
+  "name": "@educateos/activity-adapters",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Approval-bound project activity adapters and verifiable learning evidence; no ambient tool execution",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts.ts",
+    "./evidence": "./src/evidence.ts",
+    "./runtime": "./src/runtime.ts"
+  },
+  "scripts": { "test:run": "vitest run", "example": "node examples/pizza-tycoon.ts" },
+  "dependencies": {
+    "@educateos/assessment-sdk": "workspace:*",
+    "@educateos/registry": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@gadgets/workshop-shared": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

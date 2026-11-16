@@ -467,6 +467,31 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.5)(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.7(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
+  packages/educateos-activity-adapters:
+    dependencies:
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
+      '@educateos/registry':
+        specifier: workspace:*
+        version: link:../educateos-registry
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 5.20261027.1
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      '@gadgets/workshop-shared':
+        specifier: workspace:*
+        version: link:../workshop-shared
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.5)(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.7(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
   packages/educateos-ai-guard:
     dependencies:
       '@educateos/ai-governance':
@@ -1222,6 +1247,9 @@ importers:
 
   packages/educateos-district-app:
     dependencies:
+      '@educateos/activity-adapters':
+        specifier: workspace:*
+        version: link:../educateos-activity-adapters
       '@educateos/academics':
         specifier: workspace:*
         version: link:../educateos-academics

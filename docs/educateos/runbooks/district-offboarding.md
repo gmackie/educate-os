@@ -261,3 +261,7 @@ own planner. Not yet run against the live zone.
 
 For anything else, or if the installing operator can no longer sign in, email Gmacko Ventures with
 the instance ID and slug, and keep the reply with the offboarding record.
+
+For a single student's optional planner and guidance records, use the separate
+[student learning disposition runbook](student-learning-deletion.md). District uninstall and roster
+removal do not verify subject-scoped erasure or discharge retention obligations.

@@ -59,14 +59,17 @@ const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigStat
  * person who is not an administrator, or an administrator. Any other failure leaves the console up,
  * where each screen reports what it could not load.
  */
-const accessGate = ({ config }: DistrictConfigState): ReactNode | undefined => {
+const accessGate = ({ config }: DistrictConfigState): { title: string; content: ReactNode } | undefined => {
   if (config.status === "loading") {
-    return <div className="flex items-center gap-2" role="status"><Loader size="sm" /><Text>Checking your access...</Text></div>;
+    return {
+      title: "Checking your access",
+      content: <div className="flex items-center gap-2" role="status"><Loader size="sm" /><Text>Checking your access...</Text></div>,
+    };
   }
   if (config.status === "ready") return undefined;
   const unlinked = unlinkedSignInOf(config.error);
-  if (unlinked !== undefined) return <NotAddedYet signIn={unlinked} />;
-  if (config.error instanceof DistrictApiError && config.error.code === "forbidden") return <NotAnAdministrator />;
+  if (unlinked !== undefined) return { title: "Not added to this school yet", content: <NotAddedYet signIn={unlinked} /> };
+  if (config.error instanceof DistrictApiError && config.error.code === "forbidden") return { title: "Not an administrator", content: <NotAnAdministrator /> };
   return undefined;
 };
 
@@ -119,9 +122,10 @@ const Console = () => {
   const first = useRef(true);
   const gate = accessGate(config);
   const announce = useAnnounce();
-  // Each screen names itself in the document title; a school's page refines it with the school's name.
+  // The access screen owns the title while it replaces the requested route. Set both in the same
+  // layout effect so an admin section's title never appears over a denied or loading screen.
   const screenLabel = SCREENS.find((screen) => screen.path === path)!.label;
-  useRouteTitle(documentTitle(schoolId === undefined ? screenLabel : "School", APP_NAME), `${path}/${schoolId ?? ""}`);
+  useRouteTitle(documentTitle(gate?.title ?? (schoolId === undefined ? screenLabel : "School"), APP_NAME), `${path}/${schoolId ?? ""}`);
 
   // Moving between screens moves focus to the new screen, as a page load would, so keyboard and
   // screen-reader users start at its top. Not on first load, where focus belongs to the browser.
@@ -136,7 +140,7 @@ const Console = () => {
     (main.current ?? document.getElementById("main"))?.focus();
   }, [path, schoolId, announce]);
 
-  if (shell !== undefined) return <ShellConsole shell={shell} gate={gate} path={path} schoolId={schoolId} config={config} />;
+  if (shell !== undefined) return <ShellConsole shell={shell} gate={gate?.content} path={path} schoolId={schoolId} config={config} />;
 
   return (
     <div className="min-h-screen bg-kumo-base text-kumo-default">
@@ -150,7 +154,7 @@ const Console = () => {
       </header>
       {gate !== undefined ? (
         <main id="main" ref={main} tabIndex={-1} className="mx-auto max-w-7xl p-4 outline-none md:p-6">
-          {gate}
+          {gate.content}
         </main>
       ) : (
         <div className="mx-auto flex max-w-7xl flex-col md:flex-row">

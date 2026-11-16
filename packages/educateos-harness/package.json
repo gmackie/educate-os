@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./demo-district": "./src/demo-district.ts",
+    "./pilot": "./src/pilot/index.ts",
     "./pinned-fetch": "./src/pinned-fetch.ts",
     "./sample-courses": "./src/sample-courses.ts",
     "./school-day": "./src/school-day.ts",
@@ -14,7 +15,8 @@
   },
   "scripts": {
     "start": "node src/cli.ts",
-    "community": "node src/community.ts"
+    "community": "node src/community.ts",
+    "pilot": "node src/pilot-cli.ts"
   },
   "dependencies": {
     "@educateos/api-client": "workspace:*",
