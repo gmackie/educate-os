@@ -28,9 +28,38 @@ export async function handleListening(request, env, dependencies = {}) {
     // Operators retain export and erasure access when public collection is paused.
     const isAdmin = url.pathname.startsWith('/api/listening/admin/');
     if (isAdmin) {
-      const erase = url.pathname === '/api/listening/admin/privacy';
+      const challengeCheck = url.pathname === '/api/listening/admin/challenge-check';
+      const erase = url.pathname === '/api/listening/admin/privacy' || challengeCheck;
       if (!await authorized(request, env[erase ? 'LISTENING_PRIVACY_TOKEN' : 'LISTENING_EXPORT_TOKEN'])) return reply(401);
       if (!env.INTEREST || typeof env.LISTENING_HMAC_SECRET !== 'string' || env.LISTENING_HMAC_SECRET.length < 32) return reply(503);
+      if (challengeCheck) {
+        if (request.method !== 'POST') return reply(405, {ok: false}, {Allow: 'POST'});
+        const body = await boundedJson(request);
+        if (Object.keys(body).length !== 1 || typeof body.turnstileToken !== 'string' ||
+            !body.turnstileToken || body.turnstileToken.length > 2048) return reply(400);
+        // Staff-only preflight, including while collection is paused. Never persist or echo
+        // the challenge, secret, IP, provider response or request headers. No store dispatch.
+        const provider = {responded: false, httpOk: false, success: false,
+          hostnameMatches: false, actionMatches: false, timestampValid: false,
+          secretRejected: false, responseRejected: false, expiredOrReused: false};
+        const verified = await verifyTurnstile({INTEREST_TURNSTILE_SECRET: env.LISTENING_TURNSTILE_SECRET},
+          body.turnstileToken, request.headers.get('CF-Connecting-IP') ?? '', now, async (target, init) => {
+            const response = await (dependencies.fetch ?? fetch)(target, init);
+            provider.responded = true; provider.httpOk = response.ok;
+            const result = await response.clone().json();
+            provider.success = result.success === true;
+            const codes = Array.isArray(result['error-codes']) ? result['error-codes'] : [];
+            provider.secretRejected = codes.includes('invalid-input-secret') || codes.includes('missing-input-secret');
+            provider.responseRejected = codes.includes('invalid-input-response') || codes.includes('missing-input-response');
+            provider.expiredOrReused = codes.includes('timeout-or-duplicate');
+            provider.hostnameMatches = result.hostname === 'educateos.io';
+            provider.actionMatches = result.action === 'listening';
+            const age = now - Date.parse(result.challenge_ts);
+            provider.timestampValid = age >= -30000 && age <= 300000;
+            return response;
+          }, 'listening');
+        return reply(200, {verified, provider});
+      }
       if (url.pathname === '/api/listening/admin/export') {
         if (request.method !== 'GET') return reply(405, {ok: false}, {Allow: 'GET'});
         const kind = url.searchParams.get('kind');
