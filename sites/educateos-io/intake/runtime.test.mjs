@@ -11,7 +11,7 @@ const moduleUrl = code => 'data:text/javascript,' + encodeURIComponent(code);
 registerHooks({
   resolve(specifier, context, next) {
     if (specifier === 'cloudflare:workers') return {shortCircuit: true, url: moduleUrl('export class DurableObject {constructor(ctx, env) {this.ctx=ctx; this.env=env;}}')};
-    if (specifier.endsWith('educateos-control-plane/src/worker.ts')) return {shortCircuit: true, url: moduleUrl(`export class ControlPlane {};
+    if (specifier.endsWith('educateos-control-plane/src/worker.ts')) return {shortCircuit: true, url: moduleUrl(`export class ControlPlane {}; export class ControlPlaneExporter {};
       export const siteWorker = shell => ({fetch(request, env) {env.fallbackCalls.push(new URL(request.url).pathname);return new Response(shell.header + shell.footer);}});`)};
     return next(specifier, context);
   },
@@ -68,4 +68,26 @@ test('retention alarm failures abort intake instead of accepting records without
   const object = new InterestIntake(ctx, {});
   await assert.rejects(object.fetch(new Request('https://intake.internal/unsubscribe', {method: 'POST', body: JSON.stringify({now: Date.now(), address: 'hashed', workEmail: 'fake@example.invalid'})})), /alarm unavailable/);
   assert.equal(ctx.storage.values.size, 0);
+});
+
+
+test('listening uses the real isolated adapter and private export even while collection is closed', async () => {
+  const ctx = new FakeContext();
+  const object = new InterestIntake(ctx, {});
+  const receipt = 'r'.repeat(64);
+  await object.fetch(new Request('https://intake.internal/submit', {method: 'POST', body: JSON.stringify({
+    now: Date.now(), record: {kind: 'survey', tools: ['MagicSchool']}, address: 'hashed-receipt',
+    idem: receipt, fingerprint: 'hashed-payload', tokenHash: 'hashed-challenge',
+  })}));
+  const env = {fallbackCalls: [], LISTENING_EXPORT_TOKEN: 'e'.repeat(40), LISTENING_HMAC_SECRET: 'h'.repeat(40),
+    INTEREST: {idFromName(name) {assert.equal(name, 'community-listening-v1-survey'); return name;},
+      get() {return {fetch: (url, init) => object.fetch(new Request(url, init))};}},
+  };
+  const response = await site.fetch(new Request('https://educateos.io/api/listening/admin/export?kind=survey', {
+    headers: {authorization: 'Bearer ' + env.LISTENING_EXPORT_TOKEN},
+  }), env, {});
+  assert.equal(response.status, 200); assert.equal((await response.json()).records[0].tools[0], 'MagicSchool');
+  assert.equal(env.fallbackCalls.length, 0); assert.ok(await ctx.storage.getAlarm() > Date.now());
+  const closed = await site.fetch(new Request('https://educateos.io/api/listening/config'), env, {});
+  assert.equal(closed.status, 503); assert.equal(env.fallbackCalls.length, 0);
 });
