@@ -15,7 +15,8 @@ export default defineGadgetsWorker({
   compatibilityFlags: ["allow_irrevocable_stub_storage", "global_fetch_strictly_public"],
 
   // Every var here is deployment configuration, so this file deliberately sets none of them to a
-  // real value. `MCP_PORTAL_URL` in particular must come from the deployment's own config -- for
+  // real value. A release-based install supplies them as this package's deploy inputs
+  // (deploy-inputs.json: the URL asked for, the rest optional). `MCP_PORTAL_URL` in particular must come from the deployment's own config -- for
   // Cloudflare's internal deployment, the per-package overrides in `gadgets-internal` -- because a
   // URL committed here would become the default portal for anyone who deploys this repo, and would
   // send their users' OAuth flows to whichever host it named.

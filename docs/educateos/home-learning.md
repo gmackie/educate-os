@@ -109,11 +109,30 @@ is 2468. A newcomer's token shows the sign-up page.
 | Durable Object storage, resume after eviction | `packages/educateos-district-worker/__tests__/home-learning-store.test.ts` |
 | Parent and child screens | `packages/educateos-student-ui/__tests__/home-learning.test.tsx` |
 
+## More grown-ups and retention
+
+Any adult of a family can invite another from Family settings: a single-use link, valid for a week,
+whose token travels in the link's fragment (never in a server log). The invitee must also be
+admitted by the installation's Access policy. Joining gives the same view and controls as every
+other adult. An adult can remove another, or leave, but never the last one; the removed adult's
+child sessions end.
+
+`DISTRICT_CONFIG.homeLearning.retentionDays` (30–3650) makes the hourly district job delete practice
+sessions started longer ago than that. Family settings states the period. Safranek keeps practice
+for 730 days.
+
+## Reviews
+
+- Content: [home-learning-content-review.md](home-learning-content-review.md) (packet, engineer's
+  audit, checklist, sign-off). Packs stay labelled draft until a named reviewer role signs off.
+- Legal: [legal/home-learning-counsel-brief.md](legal/home-learning-counsel-brief.md) (data
+  inventory, questions, draft family notice). Until counsel answers, community installations admit
+  only the operator's own family.
+
 ## Not yet
 
-- A second adult per family (invitation, consent, visibility).
 - Child sessions on the phone app.
 - Reviewed packs, recorded phoneme models, and later patterns (digraphs, final e, vowel teams).
 - Adult-reviewed adaptation of shelf items into practice.
-- A retention period for practice evidence.
+- Purging audit entries and spent tokens; self-service deletion of an adult's account.
 - A family pilot: see [pilot/home-learning-pilot.md](pilot/home-learning-pilot.md).

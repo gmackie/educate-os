@@ -169,3 +169,27 @@ describe("home learning (ADR-0016)", () => {
     expect(today.find((t) => t.learner.displayName === "Leo")?.next).toEqual([]);
   });
 });
+
+describe("more grown-ups (ADR-0016)", () => {
+  it("invites a second grown-up who joins from the link and sees the same children", async () => {
+    const user = userEvent.setup();
+    const jordan = await fakeCommunity({ children: ["Maya"], retentionDays: 730 });
+    const { unmount } = await renderApp(jordan, "/family/home-settings");
+    const adults = await screen.findByRole("region", { name: "Grown-ups" });
+    expect(within(adults).getByText("You")).toBeTruthy();
+    expect(screen.getByText("Practice older than 2 years is deleted automatically.")).toBeTruthy();
+    await user.click(within(adults).getByRole("button", { name: "Invite another grown-up" }));
+    const copy = await within(adults).findByRole("button", { name: "Copy the invitation link" });
+    expect(copy).toBeTruthy();
+    const link = within(adults).getByText(/\/family\/join#invitation=/).textContent!;
+    unmount();
+
+    const sam = await fakeCommunity({ as: { service: jordan.service, principalId: "prn_g-sam", displayName: "Sam Safranek" } });
+    await renderApp(sam, `/family/join#${new URL(link).hash.slice(1)}`);
+    await user.click(await screen.findByRole("button", { name: "Join the family" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
+    expect(await screen.findByRole("region", { name: /Maya/ })).toBeTruthy();
+    const family = (await jordan.service.home({ principalId: "prn_g-jordan" as never, districtId: "dst_willowcreek" as never })).family!;
+    expect(family.adults.map((a) => a.displayName)).toEqual(["Jordan Rivers", "Sam Safranek"]);
+  });
+});

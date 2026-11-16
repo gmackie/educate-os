@@ -148,7 +148,7 @@ Send the same day. Repeat what was agreed, not what was hoped for.
 >
 > - [For example: Canvas: passed live LTI runs against a current Canvas; no 1EdTech certification
 >   is claimed.]
-> - [For example: Clever sign-in: running against Clever's live sandbox; roster sync not needed
+> - [For example: Clever sign-in: harness-tested against our Clever fakes, no live sign-in yet; roster sync not needed
 >   for a teachers-first pilot.]
 >
 > **What we said we'd do:** [for example, send the pilot agreement and the DPA template by

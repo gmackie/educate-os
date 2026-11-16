@@ -15,12 +15,13 @@
 //   district's policy engine.
 import { z } from "zod";
 import { ERROR_STATUS } from "@educateos/academics";
-import { EducateOsError, type ActivityId, type Caller, type DistrictId } from "@educateos/contracts";
+import { EducateOsError, type ActivityId, type Caller, type DistrictId, type OfferingId } from "@educateos/contracts";
 import type { DistrictApp, DistrictAppStores, RequestVerifier } from "@educateos/district-app";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { recordPendingIdentityLink } from "@educateos/identity-links";
 import {
   AgsClient,
+  ClassroomGradeSink,
   createLtiHandler,
   DynamicRegistration,
   GradePassback,
@@ -29,6 +30,8 @@ import {
   LtiServiceClient,
   NrpsClient,
   PlatformJwksCache,
+  type ClassroomProvider,
+  type GradeSink,
   type ResolvedLaunch,
   type ToolKeySet,
 } from "@educateos/lti";
@@ -41,6 +44,7 @@ import {
   LtiAdvantageService,
   OfficialGradeApprovals,
   authorizeDeepLinking,
+  ClassroomGradeAdminService,
   policySelectActivities,
   recordLaunchServices,
   type ActivityCatalog,
@@ -73,6 +77,17 @@ export interface DistrictLtiOptions {
    * `/lti/platform/` paths are 404 and its administrators' routes do not exist.
    */
   platform?: boolean;
+  /**
+   * The district's Google Classroom connection, when it has one (SCHO-428): approved grades of an
+   * offering routed to its Classroom course are published there, and administrators get the
+   * `classroom/*` routes. Absent, those routes do not exist and a Classroom route cannot publish.
+   */
+  classroom?: {
+    /** Writes to Classroom as each course's owner. */
+    provider: ClassroomProvider;
+    /** The Classroom course an offering was imported from, if its roster is Classroom. */
+    courseOf: (offeringId: OfferingId) => Promise<string | undefined>;
+  };
 }
 
 /** The district's LTI Tool and its administrators' surface. */
@@ -131,6 +146,18 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     fetch,
   });
   const approvals = new OfficialGradeApprovals({ districtId, columns: lti.gradeColumns, assessments: stores.assessment });
+  const sinks: GradeSink[] = [new LtiAgsGradeSink({ services, registrations: lti.registrations })];
+  if (options.classroom !== undefined) sinks.push(new ClassroomGradeSink(options.classroom.provider));
+  const classroomAdmin = options.classroom === undefined ? undefined : new ClassroomGradeAdminService({
+    districtId,
+    authorizer: app.engine,
+    directory,
+    provider: options.classroom.provider,
+    courseOf: options.classroom.courseOf,
+    gradeRoutes: lti.gradeRoutes,
+    gradeColumns: lti.gradeColumns,
+    assessments: stores.assessment,
+  });
   const admin = new LtiAdminService({
     districtId,
     authorizer: app.engine,
@@ -159,7 +186,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
       routes: lti.gradeRoutes,
       approvals,
       ledger: lti.passbackLedger,
-      sinks: [new LtiAgsGradeSink({ services, registrations: lti.registrations })],
+      sinks,
     }),
     approvals,
     toolKeys: lti.toolKeys,
@@ -245,6 +272,10 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     { method: "POST", path: "line-items", run: async (caller, request) => advantage.createLineItem(caller, await jsonBody(request)) },
     { method: "POST", path: "roster", run: async (caller, request) => advantage.readRoster(caller, await jsonBody(request)) },
     { method: "POST", path: "passback", run: async (caller, request) => advantage.publishGrade(caller, await jsonBody(request)) },
+    ...classroomAdmin === undefined ? [] : [
+      { method: "POST", path: "classroom/grade-routes", run: async (caller, request) => classroomAdmin.routeGradesToClassroom(caller, await jsonBody(request)) },
+      { method: "POST", path: "classroom/columns", run: async (caller, request) => classroomAdmin.classroomColumn(caller, await jsonBody(request)) },
+    ] satisfies LtiAdminRoute[],
     { method: "GET", path: "tool-keys", run: async (caller) => ({ kids: await advantage.toolKeyIds(caller) }) },
     { method: "POST", path: "tool-keys/rotate", run: (caller) => advantage.rotateToolKeys(caller) },
     ...platform?.adminRoutes ?? [],

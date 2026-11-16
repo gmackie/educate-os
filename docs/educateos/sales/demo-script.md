@@ -6,7 +6,9 @@
   against a synthetic district. Nothing is sent to a server. Northfield and Cedar Valley are fictional,
   and so is every person and school in them.
 - Verified: every click below was performed in headless Chromium at 1440×900 against a production
-  build of `packages/educateos-demo` on 2026-11-14. Labels are quoted as they appear on screen.
+  build of `packages/educateos-demo` on 2026-11-14, and the steps SCHO-410 changed (the tutor
+  label, the gradebook, export and Roster sync) again on 2026-11-16. Labels are quoted as they
+  appear on screen.
 
 ## Before the meeting
 
@@ -72,7 +74,7 @@ Start in Tab A, on the start page ("Try EducateOS").
 | 5 | Type a comment in **Comment**, then **Add comment**, then **Share feedback with student** | Feedback changes to "Shared with the student" | "Feedback stays private until the teacher shares it." |
 | 6 | Under Official grade, check that Points and Out of read 10 and 12, then **Approve official grade** | A dialog: "Approve the official grade? This is the official grade: 10 out of 12 for Hana Suzuki…" | "A grade only becomes official when the teacher approves it. Nothing goes to a gradebook before that." |
 | 7 | **Yes, approve official grade** | "Official · 10 out of 12 · Approved …" | – |
-| 8 | **Gradebook** tab | "Official grades only." Scroll the table right to the Kite column: Hana's cell reads 10/12 and her row ends 83.3%, B | "The gradebook only shows grades the teacher approved." |
+| 8 | **Gradebook** tab | "Official grades only." The line above the table says it is wider than the screen. Scroll it sideways (or click a cell and use the arrow keys; End jumps to the totals) to the Kite column: Hana's cell reads 10/12 and her row ends 83.3%, B | "The gradebook only shows grades the teacher approved." |
 | 9 | **Announcements** tab. Fill in **Title** ("Opinion pieces due Monday") and **Message**, then **Post announcement** | The announcement appears under "Posted and scheduled" | "Now let's see what a student sees." |
 
 The **Things to try** button in the top bar ticks off steps as you do them (2/3 after step 8). You can
@@ -83,7 +85,7 @@ open it to show the room what is left.
 | # | Click | The room sees | Say |
 | --- | --- | --- | --- |
 | 1 | **Switch persona** (top bar), then the **Grade 4 student · Abena Mensah** card | Learning Home: "Hi, Abena Mensah". Fatima's "Opinion pieces due Monday" is first under Announcements. | "Same district, same data. The announcement the teacher just posted is here." |
-| 2 | **Grade 4 English Language Arts · Room 12**, then **Should Recess Be Longer?** | The activity: Instructions, the **Read to me** buttons, the "Homework Helper (simulated)" panel with a "Simulated preview" badge, and My work in Plan, Draft and Revise | "Grade 4 gets read-aloud on request and a step-by-step workspace." |
+| 2 | **Grade 4 English Language Arts · Room 12**, then **Should Recess Be Longer?** | The activity: Instructions, the **Read to me** buttons, the "Homework Helper (simulated)" panel with a "Simulated preview" badge and the line "Simulated preview — scripted, with no AI behind it. Student-facing AI stays off in the founding pilot.", and My work in Plan, Draft and Revise | "Grade 4 gets read-aloud on request and a step-by-step workspace." |
 | 3 | **Ask Homework Helper**, then the quick reply **What's the first step?** | The helper answers with a planning step. A line reads "Hall Monitor checked this for grades 3–5: allowed, sent to Homework Helper." | "This tutor is scripted. There is no AI behind it." |
 | 4 | Quick reply **Just write it for me** | "Hall Monitor: asks the tutor to do the graded work. Not sent to the AI; Homework Helper steers back kindly." Then: "I can't write it for you…" | "This shows the design: hints, not answers. Student-facing AI is a pilot preview with synthetic students only. In the founding pilot it stays off." |
 | 5 | Type a sentence in **Your work for Plan**, then the **Save** under it | "Saved …" and "Plan saved." | – |
@@ -102,9 +104,12 @@ Homework Helper is thinking…" while it waits.
 | 4 | **Apply policy** | "District policy updated. Version 2 of the configuration is now in force." | – |
 | 5 | **AI budgets** | Gross model cost $0.00. Free allowance and Net estimated bill read "Not available". "No safety reserve is configured. Without one, safety checks cannot run, and student-facing AI that needs them stays off." | "Spend caps and a separate safety reserve. Without a reserve, student-facing AI stays off." |
 | 6 | **Admin audit log** | "Administrators' changes, newest first": Avery Admin, "Configure capability config", Allowed, with the rule and a reference | "Every admin change is logged, including the one I just made." |
-| 7 | **Dashboard**, then **Export** under "Export the district" | "The district export is downloading." The browser saves `dst_northfield-<date>.zip` after about 1.5 seconds. | "The district can take all of its records out at any time, in one file." |
+| 7 | **Dashboard**, then **Export** under "Export the district" | The button spins, then the browser saves `dst_northfield-<date>.zip` after about 1.5 seconds. | "The district can take all of its records out at any time, in one file." |
 
-Optional if the audience is IT: **Operations** says "No admin is enrolled. Nobody can use this
+Optional if the audience is IT: **Roster sync** says "This roster is imported, not synced" and links
+to **Roster**, where a district imports OneRoster CSV files with a preview before anything applies
+(the live **Preview import** needs a CSV export from disk, which this script does not use; Cedar
+Valley shows a real sync). **Operations** says "No admin is enrolled. Nobody can use this
 district's operations API." **Safety decisions** lists every policy decision with its rule.
 **Sign-in** lists the trusted issuers and says "Synthetic sign-ins: this is a demo district".
 
@@ -170,7 +175,7 @@ Press **?** at any time for the list of steps.
 | Default-deny policy, AI spend caps, Hall Monitor, admin console | In development | Policy engine harness-tested; AI guard deployed from source |
 | LTI 1.3 | Passed live runs against Canvas and Moodle 4.5. No 1EdTech certification is claimed. | External-conformance-tested |
 | Google Classroom | Validated live on one course only | Harness-tested, plus one live course |
-| Clever sign-in | Being validated against a live Clever sandbox | Harness-tested |
+| Clever sign-in | Tested against our Clever fakes. No live Clever sign-in yet. | Harness-tested |
 | Clever roster sync | Tested against our Clever fakes | Harness-tested |
 | OneRoster import | Preview before apply | Unit-tested |
 | District export | Harness-tested. Not yet run in a live district. | Harness-tested |
@@ -178,7 +183,7 @@ Press **?** at any time for the list of steps.
 > **What not to say**
 >
 > - Never claim compliance or certification of any kind. If asked, say that no certification is claimed.
-> - Don't say "AI" without "simulated" while the tutor is on screen. Don't let the tutor's "the live district runs this on real AI" line stand alone: in the founding pilot, student-facing AI is off.
+> - Don't say "AI" without "simulated" while the tutor is on screen. In the founding pilot, student-facing AI is off.
 > - Don't say the demo is connected to Clever, Google Classroom or Canvas. It runs on fakes.
 > - Don't name real districts, schools or customers. Northfield, Cedar Valley and everyone in them are fictional.
 > - Don't say "students are using it", "districts are running it" or "deployed in schools". None are yet.
@@ -187,8 +192,6 @@ Press **?** at any time for the list of steps.
 
 ## Known rough edges in the demo
 
-- In Northfield, the admin **Roster sync** page shows "The roster cannot sync. The roster has no
-  identity mapping." Use **Roster** instead. Its live **Preview import** needs a OneRoster CSV export
-  from disk, which this script does not use.
-- After you click **Export**, the "The district export is downloading." message follows you to other admin pages.
-- The gradebook is wider than the screen. Scroll it sideways to reach the column you graded.
+- The gradebook is wider than a laptop screen for a class with a full semester of assignments. It
+  scrolls sideways inside its own frame, says so above the table, and takes keyboard focus; it does
+  not shrink to fit.

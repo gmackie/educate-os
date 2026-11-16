@@ -1370,6 +1370,14 @@ export class DurableObjectHomeLearningStore implements HomeLearningStore {
     });
   }
 
+  async deleteSessionsStartedBefore(before: string): Promise<number> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT COUNT(*) AS n FROM ${DISTRICT_TABLES.practiceSessions} WHERE started_at < ?`, before).toArray();
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.practiceSessions} WHERE started_at < ?`, before);
+      return Number(row?.n ?? 0);
+    });
+  }
+
   async deleteSessionsOf(learnerId: LearnerId): Promise<void> {
     this.#tables.transaction((sql) => {
       sql.exec(`DELETE FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ?`, learnerId);
@@ -1395,11 +1403,11 @@ export class DurableObjectHomeLearningStore implements HomeLearningStore {
     });
   }
 
-  async endChildSessionsOf(familyId: FamilyId, at: string): Promise<number> {
+  async endChildSessionsOf(familyId: FamilyId, at: string, startedBy?: PrincipalId): Promise<number> {
     return this.#tables.transaction((sql) => {
       const open = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.childSessions} WHERE family_id = ?`, familyId).toArray()
         .map((row) => parseStored(ChildSession, row.session_json, "a child session"))
-        .filter((child) => child.endedAt === undefined);
+        .filter((child) => child.endedAt === undefined && (startedBy === undefined || child.startedBy === startedBy));
       for (const child of open) {
         sql.exec(`UPDATE ${DISTRICT_TABLES.childSessions} SET session_json = ? WHERE digest = ?`, JSON.stringify({ ...child, endedAt: at }), child.digest);
       }

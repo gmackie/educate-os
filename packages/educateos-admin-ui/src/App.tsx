@@ -129,13 +129,16 @@ const Console = () => {
 
   // Moving between screens moves focus to the new screen, as a page load would, so keyboard and
   // screen-reader users start at its top. Not on first load, where focus belongs to the browser.
+  // The last screen's announcement, such as an export downloading, is about that screen: clear it,
+  // so it is not still in the live region on the next one.
   useEffect(() => {
     if (first.current) {
       first.current = false;
       return;
     }
+    announce("");
     (main.current ?? document.getElementById("main"))?.focus();
-  }, [path, schoolId]);
+  }, [path, schoolId, announce]);
 
   if (shell !== undefined) return <ShellConsole shell={shell} gate={gate?.content} path={path} schoolId={schoolId} config={config} />;
 

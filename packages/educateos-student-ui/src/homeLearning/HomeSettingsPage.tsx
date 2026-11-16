@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Button, Input, Surface, Text } from "@cloudflare/kumo";
+import { Button, ClipboardText, Input, Surface, Text } from "@cloudflare/kumo";
 import { DownloadSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { Navigate } from "@tanstack/react-router";
 import { useAnnounce } from "../AppContext.tsx";
 import { messageFor, useApi } from "../api.tsx";
+import { formatDateTime } from "../labels.ts";
+import { useRefreshSignIn } from "./signInRefresh.ts";
 import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { PageHeading } from "../PageHeading.tsx";
@@ -75,6 +77,83 @@ const Children = ({ family, onChanged }: { family: FamilyView; onChanged: () => 
   );
 };
 
+/**
+ * The family's grown-ups: who they are, invitations for another one, and removing one (or leaving).
+ * Every grown-up sees and changes everything, so an invitation link goes only to the person meant
+ * to join.
+ */
+const GrownUps = ({ family, onChanged }: { family: FamilyView; onChanged: () => void }) => {
+  const api = useApi();
+  const announce = useAnnounce();
+  const refresh = useRefreshSignIn();
+  const [link, setLink] = useState<{ link: string; expiresAt: string } | undefined>(undefined);
+  const [removing, setRemoving] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const nameOf = (adult: FamilyView["adults"][number]) => adult.you ? "You" : adult.displayName ?? "Another grown-up";
+  return (
+    <Surface className="flex flex-col gap-4 rounded-xl border border-kumo-hairline p-5">
+      <section aria-labelledby="settings-adults" className="flex flex-col gap-4">
+        <h2 id="settings-adults" className="text-lg font-semibold">Grown-ups</h2>
+        <Text>Every grown-up here sees the children's plans and progress and can change them, start practice, and use the family PIN.</Text>
+        <ul className="flex flex-col gap-3">
+          {family.adults.map((adult) => (
+            <li key={adult.principalId} className="flex flex-wrap items-center justify-between gap-3">
+              <span>{nameOf(adult)}</span>
+              {family.adults.length < 2 ? null : removing === adult.principalId ? (
+                <span className="flex flex-wrap items-center gap-2" role="group" aria-label={adult.you ? "Leave this family?" : `Remove ${nameOf(adult)}?`}>
+                  <Button size="sm" variant="destructive" onClick={() => {
+                    api.call("family.removeAdult", { params: { principalId: adult.principalId }, body: {} }).then(() => {
+                      announce(adult.you ? "You left the family" : `Removed ${nameOf(adult)}`);
+                      setRemoving(undefined);
+                      if (adult.you) refresh();
+                      else onChanged();
+                    }, (caught: unknown) => setError(messageFor(caught)));
+                  }}>{adult.you ? "Leave this family" : `Remove ${nameOf(adult)}`}</Button>
+                  <Button size="sm" onClick={() => setRemoving(undefined)}>Cancel</Button>
+                </span>
+              ) : (
+                <Button size="sm" variant="secondary-destructive" onClick={() => setRemoving(adult.principalId)}>{adult.you ? "Leave" : `Remove ${nameOf(adult)}`}</Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {family.invitations.length === 0 ? null : (
+          <ul className="flex flex-col gap-2" aria-label="Open invitations">
+            {family.invitations.map((invitation) => (
+              <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3">
+                <span>{`Invitation, usable until ${formatDateTime(invitation.expiresAt)}`}</span>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  api.call("family.revokeInvitation", { params: { invitationId: invitation.id }, body: {} }).then(() => {
+                    announce("Invitation withdrawn");
+                    setLink(undefined);
+                    onChanged();
+                  }, (caught: unknown) => setError(messageFor(caught)));
+                }}>Withdraw</Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {link === undefined ? (
+          <Button className="self-start" onClick={() => {
+            setError(undefined);
+            api.call("family.inviteAdult", { body: {} }).then((made) => {
+              setLink(made);
+              announce("Invitation link made");
+              onChanged();
+            }, (caught: unknown) => setError(messageFor(caught)));
+          }}>Invite another grown-up</Button>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Text>{`Send this link to the grown-up you're inviting. It works once, until ${formatDateTime(link.expiresAt)}. They also need to be allowed to sign in to this site.`}</Text>
+            <ClipboardText text={link.link} labels={{ copyAction: "Copy the invitation link" }} tooltip={{ text: "Copy", copiedText: "Link copied" }} />
+          </div>
+        )}
+        {error === undefined ? null : <p role="alert" className="text-kumo-danger">{error}</p>}
+      </section>
+    </Surface>
+  );
+};
+
 const PinAndDevices = ({ family, onChanged }: { family: FamilyView; onChanged: () => void }) => {
   const api = useApi();
   const announce = useAnnounce();
@@ -113,7 +192,7 @@ const PinAndDevices = ({ family, onChanged }: { family: FamilyView; onChanged: (
   );
 };
 
-const YourData = ({ onDeleted }: { onDeleted: () => void }) => {
+const YourData = ({ retentionDays, onDeleted }: { retentionDays: number | undefined; onDeleted: () => void }) => {
   const api = useApi();
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
@@ -121,7 +200,10 @@ const YourData = ({ onDeleted }: { onDeleted: () => void }) => {
     <Surface className="flex flex-col gap-4 rounded-xl border border-kumo-hairline p-5">
       <section aria-labelledby="settings-data" className="flex flex-col gap-4">
         <h2 id="settings-data" className="text-lg font-semibold">Your family's data</h2>
-        <Text>Kept: each child's name, picture and starting grade; their plan; and the answers they saved. No audio, photos or birth dates. Only you can see it; the community's organizers can't.</Text>
+        <Text>Kept: each child's name, picture and starting grade; their plan; and the answers they saved. No audio, photos or birth dates. Only your family's grown-ups can see it; the community's organizers can't.</Text>
+        <Text>{retentionDays === undefined
+          ? "Practice is kept until you delete it."
+          : `Practice older than ${retentionDays % 365 === 0 ? `${retentionDays / 365} ${retentionDays === 365 ? "year" : "years"}` : `${retentionDays} days`} is deleted automatically.`}</Text>
         <Button className="self-start" icon={<DownloadSimpleIcon aria-hidden />} onClick={() => {
           api.call("family.export").then((data) => download("home-learning-export.json", data), (caught: unknown) => setError(messageFor(caught)));
         }}>Download everything</Button>
@@ -147,11 +229,12 @@ export const HomeSettingsPage = () => {
   if (family === null) return <Navigate to={HOME_PATH} replace />;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeading>Children and PIN</PageHeading>
+      <PageHeading>Family settings</PageHeading>
       <HomeLearningNav />
       <Children family={family} onChanged={reload} />
+      <GrownUps family={family} onChanged={reload} />
       <PinAndDevices family={family} onChanged={reload} />
-      <YourData onDeleted={reload} />
+      <YourData retentionDays={family.retentionDays} onDeleted={reload} />
     </div>
   );
 };

@@ -5,7 +5,7 @@
 //
 //   node packages/educateos-district-worker/scripts/community-config.ts safranek \
 //     --name "Safranek Family" --time-zone America/Chicago --signup open \
-//     --organizer-subject <Access user_uuid> --organizer-name "EducateOS operations" |
+//     --organizer-subject <Access user_uuid> --organizer-name "EducateOS operations" --retention-days 730 |
 //     FG_APP=educateos-safranek forge secret set DISTRICT_CONFIG --stage production --stdin
 //
 // The directory is the community and its one organizer, a district administrator signed in by the
@@ -27,6 +27,8 @@ export interface CommunityConfigInput {
   signup: "open" | "approval" | "invite-only";
   organizerSubject: string;
   organizerName: string;
+  /** Days practice is kept; unset keeps it until the family deletes it. */
+  retentionDays?: number;
 }
 
 /** A community's `DISTRICT_CONFIG`, as a `DistrictWorkerConfig` document. */
@@ -50,7 +52,7 @@ export function communityConfig(input: CommunityConfigInput): Record<string, unk
       roleAssignments: [{ principalId: organizerId, role: "district-admin", scope: { level: "district", districtId }, source: "local-grant" }],
     },
     authority: "local",
-    homeLearning: { signup: input.signup },
+    homeLearning: { signup: input.signup, ...(input.retentionDays === undefined ? {} : { retentionDays: input.retentionDays }) },
   };
 }
 
@@ -63,6 +65,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       signup: { type: "string", default: "open" },
       "organizer-subject": { type: "string" },
       "organizer-name": { type: "string", default: "Community organizer" },
+      "retention-days": { type: "string" },
     },
   });
   const signup = values.signup as CommunityConfigInput["signup"];
@@ -73,6 +76,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.stdout.write(JSON.stringify(communityConfig({
       slug: positionals[0]!, name: values.name, timeZone: values["time-zone"], signup,
       organizerSubject: values["organizer-subject"], organizerName: values["organizer-name"]!,
+      ...(values["retention-days"] === undefined ? {} : { retentionDays: Number(values["retention-days"]) }),
     })));
   }
 }
