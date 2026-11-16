@@ -245,7 +245,7 @@ npx launch-educate-os mcp add --connector portal --portal-url https://portal.exa
   teachers may not). It shows the changes and asks first (`--yes` without a terminal). Apply them
   with `npx launch-educate-os --config educateos-install.json`, then connect the server in the
   Workshop: it prints the steps.
-- **`mcp add --connector portal`** sets up the MCP Server Portal connector instead: one portal (such
+- **`mcp add --connector portal`** (added in 0.3.0) sets up the MCP Server Portal connector instead: one portal (such
   as a Cloudflare MCP server portal) for the whole install. It writes the portal's URL and, if given,
   its display name (`--portal-name`) and sign-in (`--portal-auth oauth|token|none`, default oauth) to
   `gatekeeperInputs`, adds `gatekeeper-mcp-portal` to `gatekeepers`, and grants `mcpportal` to
