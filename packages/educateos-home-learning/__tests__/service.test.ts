@@ -290,6 +290,22 @@ describe("more grown-ups", () => {
     expect(await code(service.acceptInvitation(NAIR, token, NOTICE))).toBe("not-found");
   });
 
+  it("tells each earlier adult who joined, until they dismiss it", async () => {
+    const { service, clock } = setup();
+    await riversFamily(service);
+    clock.at += 60_000;
+    await service.acceptInvitation(ORTIZ, (await service.inviteAdult(RIVERS)).token, NOTICE, "Sam Ortiz");
+    expect((await service.home(RIVERS)).family?.newAdults.map((a) => a.displayName)).toEqual(["Sam Ortiz"]);
+    expect((await service.home(ORTIZ)).family?.newAdults).toEqual([]);
+    clock.at += 60_000;
+    expect((await service.acknowledgeNewAdults(RIVERS)).newAdults).toEqual([]);
+    // Dismissing is per adult, and a later join is news again.
+    clock.at += 60_000;
+    await service.acceptInvitation(NAIR, (await service.inviteAdult(ORTIZ)).token, NOTICE, "Priya Nair");
+    expect((await service.home(RIVERS)).family?.newAdults.map((a) => a.displayName)).toEqual(["Priya Nair"]);
+    expect((await service.home(ORTIZ)).family?.newAdults.map((a) => a.displayName)).toEqual(["Priya Nair"]);
+  });
+
   it("refuses an expired, revoked or forged invitation the same way", async () => {
     const { service, clock } = setup();
     await riversFamily(service);

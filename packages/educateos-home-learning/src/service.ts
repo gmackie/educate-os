@@ -145,6 +145,11 @@ export interface FamilyView {
   adults: { principalId: string; displayName?: string; joinedAt: string; you: boolean }[];
   /** Open invitations for more adults. */
   invitations: { id: string; createdAt: string; expiresAt: string }[];
+  /**
+   * Adults who joined after the caller did and after the caller last dismissed this news, so every
+   * adult learns who else can see the children.
+   */
+  newAdults: { principalId: string; displayName?: string; joinedAt: string }[];
   /** How long practice is kept, in days; undefined until the family deletes it. */
   retentionDays?: number;
   /** Whether the child's practice screen reads aloud. */
@@ -281,6 +286,16 @@ export interface FamilyExport {
 
 const notFound = () => new EducateOsError("not-found", "We couldn't find that.");
 
+/** The adults `principalId` hasn't been told joined: after they joined, and after they last dismissed it. */
+function newAdultsFor(family: FamilyRecord, principalId: string): FamilyView["newAdults"] {
+  const me = family.adults.find((a) => a.principalId === principalId);
+  if (me === undefined) return [];
+  const since = me.joinsSeenAt !== undefined && me.joinsSeenAt > me.joinedAt ? me.joinsSeenAt : me.joinedAt;
+  return family.adults
+    .filter((a) => a.principalId !== principalId && a.joinedAt > since)
+    .map((a) => ({ principalId: a.principalId, ...(a.displayName === undefined ? {} : { displayName: a.displayName }), joinedAt: a.joinedAt }));
+}
+
 /** An adult's stored name, when the directory gave one that fits. */
 const adultName = (displayName: string | undefined) => {
   const parsed = DisplayName.safeParse(displayName);
@@ -348,6 +363,15 @@ export class HomeLearningService {
       adults: family.adults.map((a) => (a.principalId === subject.principalId ? { ...a, noticeAccepted: accepted } : a)),
     }));
     return this.home(subject);
+  }
+
+  /** Dismisses the news of adults who joined, for the caller only. */
+  async acknowledgeNewAdults(subject: VerifiedPrincipal): Promise<FamilyView> {
+    const at = this.#iso();
+    return this.#change(subject, (family) => ({
+      ...family,
+      adults: family.adults.map((a) => (a.principalId === subject.principalId ? { ...a, joinsSeenAt: at } : a)),
+    }));
   }
 
   /** Turns the practice screen's reading aloud on or off for every child of the family. */
@@ -958,6 +982,7 @@ export class HomeLearningService {
       name: family.name,
       adults: family.adults.map((a) => ({ principalId: a.principalId, ...(a.displayName === undefined ? {} : { displayName: a.displayName }), joinedAt: a.joinedAt, you: a.principalId === subject.principalId })),
       invitations: family.invitations.filter((i) => Date.parse(i.expiresAt) > now).map(({ id, createdAt, expiresAt }) => ({ id, createdAt, expiresAt })),
+      newAdults: newAdultsFor(family, subject.principalId),
       ...(this.#retentionDays === undefined ? {} : { retentionDays: this.#retentionDays }),
       readAloud: family.readAloud,
       learners: family.learners,

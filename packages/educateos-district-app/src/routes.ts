@@ -1984,7 +1984,12 @@ export const ROUTES = {
   /** Whether this installation offers home learning, and how a newcomer joins: asked before they are anyone's principal. */
   "onboarding.community": route({
     method: "GET", path: "/api/onboarding/community", surface: "onboarding",
-    response: z.strictObject({ homeLearning: z.boolean(), signup: z.enum(["open", "approval", "invite-only"]).nullable() }),
+    response: z.strictObject({
+      homeLearning: z.boolean(),
+      signup: z.enum(["open", "approval", "invite-only"]).nullable(),
+      /** The family notice a newcomer reads before joining, where home learning is offered (ADR-0016). */
+      notice: z.strictObject({ version: z.string(), title: z.string(), paragraphs: z.array(z.string()) }).nullable(),
+    }),
   }),
   "onboarding.joinCommunity": route({
     method: "POST", path: "/api/onboarding/community/join", surface: "onboarding",
@@ -2064,6 +2069,10 @@ export const ROUTES = {
   "family.acceptNotice": route({
     method: "POST", path: "/api/family/notice/accept", surface: "family",
     body: z.strictObject({ version: NoticeAcceptance }), response: declared<HomeView>(),
+  }),
+  /** Dismisses, for the caller, the news of grown-ups who joined the family. */
+  "family.acknowledgeNewAdults": route({
+    method: "POST", path: "/api/family/adults/news/dismiss", surface: "family", body: NoBody, response: declared<FamilyView>(),
   }),
   /** Turns the practice screen's reading aloud on or off for the whole family. */
   "family.readAloud": route({

@@ -42,7 +42,7 @@ export type HomeLearningRouteName =
   | "family.shelfAdd" | "family.shelfRemove"
   | "family.startChildSession" | "family.endChildSessions"
   | "family.inviteAdult" | "family.revokeInvitation" | "family.acceptInvitation" | "family.removeAdult"
-  | "family.acceptNotice" | "family.readAloud" | "family.deleteAccount"
+  | "family.acceptNotice" | "family.readAloud" | "family.deleteAccount" | "family.acknowledgeNewAdults"
   | "learner.session" | "learner.home" | "learner.start" | "learner.save" | "learner.exit"
   | "admin.familySignups";
 
@@ -126,6 +126,7 @@ export function homeLearningHandlers<C extends HomeLearningRequestContext>(): Ho
     "family.acceptInvitation": (ctx, { body }) => ctx.homeLearning().acceptInvitation(ctx.subject, body.token, body.acceptNotice, nameOf(ctx)),
     "family.acceptNotice": (ctx, { body }) => ctx.homeLearning().acceptNotice(ctx.subject, body.version),
     "family.readAloud": (ctx, { body }) => ctx.homeLearning().setReadAloud(ctx.subject, body.on),
+    "family.acknowledgeNewAdults": (ctx) => ctx.homeLearning().acknowledgeNewAdults(ctx.subject),
     "family.deleteAccount": async (ctx) => {
       // The family first, through policy, so a refusal there leaves the sign-in in place.
       const { familyDeleted } = await ctx.homeLearning().leaveForAccountDeletion(ctx.subject);

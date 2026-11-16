@@ -133,6 +133,10 @@ expired invitations. Family settings states the period. Safranek keeps practice 
 - **Read-aloud.** On by default; any adult turns it off in Family settings (`family.readAloud`).
   Off, the practice screen speaks nothing, hides its "Hear" buttons, and where an item needs a
   spoken word or story, shows the grown-up what to say behind "Grown-up: what to say".
+- **Join news.** When an adult joins, each adult already in the family sees who joined on Today
+  until they dismiss it (`family.acknowledgeNewAdults`), with a pointer to remove them.
+- **Sign-up.** `onboarding.community` returns the notice, so a newcomer reads it before joining;
+  they agree to it at family setup.
 - **Account deletion.** `family.deleteAccount` removes the adult from their family (or deletes it, as
   its last adult), then removes their guardian principal and sign-in identifier from the
   directory. Signing in again starts over as a newcomer.

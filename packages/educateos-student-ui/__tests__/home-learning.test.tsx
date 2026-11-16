@@ -48,6 +48,8 @@ describe("home learning (ADR-0016)", () => {
     const community = await fakeCommunity({ joined: false });
     await renderApp(community, "/");
     expect(await screen.findByRole("heading", { level: 1, name: "Join this learning community" })).toBeTruthy();
+    // The notice is there to read before joining; agreeing comes at family setup.
+    expect(await screen.findByRole("heading", { name: "Your family's information" })).toBeTruthy();
     await user.type(screen.getByLabelText("Your name"), "Jordan Rivers");
     await user.click(screen.getByRole("button", { name: "Join" }));
 
@@ -190,7 +192,7 @@ describe("more grown-ups (ADR-0016)", () => {
     unmount();
 
     const sam = await fakeCommunity({ as: { service: jordan.service, principalId: "prn_g-sam", displayName: "Sam Safranek" } });
-    await renderApp(sam, `/family/join#${new URL(link).hash.slice(1)}`);
+    const samView = await renderApp(sam, `/family/join#${new URL(link).hash.slice(1)}`);
     const join = await screen.findByRole("button", { name: "Join the family" });
     expect(join.hasAttribute("disabled")).toBe(true);
     await user.click(screen.getByRole("checkbox", { name: "I've read this and agree" }));
@@ -199,6 +201,13 @@ describe("more grown-ups (ADR-0016)", () => {
     expect(await screen.findByRole("region", { name: /Maya/ })).toBeTruthy();
     const family = (await jordan.service.home({ principalId: "prn_g-jordan" as never, districtId: "dst_willowcreek" as never })).family!;
     expect(family.adults.map((a) => a.displayName)).toEqual(["Jordan Rivers", "Sam Safranek"]);
+    samView.unmount();
+
+    // Jordan hears who joined, until they dismiss it.
+    await renderApp(jordan, "/family/home");
+    const news = await screen.findByRole("region", { name: "Sam Safranek joined your family" });
+    await user.click(within(news).getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Sam Safranek joined your family" })).toBeNull());
   });
 });
 

@@ -135,5 +135,7 @@ EducateOS assumed a school district in four places that block this:
     older than `retentionDays`. Decisions about anything else can't be deleted by any statement.
   - **Spent tokens.** The hourly job also deletes child sessions a day after they end (or once
     their 30-day cookie has expired) and expired invitations.
+  - **Join news.** Each adult already in a family is told, in the app, who joined after them,
+    until they dismiss it. The newcomer sign-up page shows the notice before anything is entered.
   - **Read-aloud.** A family turns the practice screen's read-aloud off in Family settings; items
     that need a spoken word then show the grown-up what to say.

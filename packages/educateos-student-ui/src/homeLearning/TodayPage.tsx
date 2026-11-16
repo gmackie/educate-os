@@ -8,9 +8,9 @@ import { PageHeading } from "../PageHeading.tsx";
 import { FamilySetup } from "./FamilySetup.tsx";
 import { HomeLearningNav } from "./HomeLearningNav.tsx";
 import { TRACK_LABEL, avatarName } from "./labels.ts";
-import { LIBRARY_PATH, progressPath, queuePath, sessionPath } from "./paths.ts";
+import { HOME_SETTINGS_PATH, LIBRARY_PATH, progressPath, queuePath, sessionPath } from "./paths.ts";
 import { StartPracticeButton } from "./StartPracticeButton.tsx";
-import { useFamily } from "./useFamily.ts";
+import { useFamily, type FamilyView } from "./useFamily.ts";
 
 type Today = RouteResponse<"family.today">[number];
 
@@ -96,6 +96,26 @@ const TodayList = () => {
   );
 };
 
+/** Tells this grown-up who else joined the family since they last looked, until they dismiss it. */
+const NewAdults = ({ family, onDismissed }: { family: FamilyView; onDismissed: () => void }) => {
+  const api = useApi();
+  const announce = useAnnounce();
+  if (family.newAdults.length === 0) return null;
+  const names = family.newAdults.map((a) => a.displayName ?? "A grown-up");
+  return (
+    <Surface className="flex flex-col gap-3 rounded-xl border border-kumo-hairline p-5">
+      <section aria-labelledby="new-adults" className="flex flex-col gap-3">
+        <h2 id="new-adults" className="text-lg font-semibold">{names.length === 1 ? `${names[0]} joined your family` : "New grown-ups joined your family"}</h2>
+        {names.length > 1 ? <ul className="list-disc ps-6">{names.map((name, index) => <li key={`${name}-${index}`}>{name}</li>)}</ul> : null}
+        <Text>They can see and change your children's plans and progress, as you can. If you don't know them, remove them in <Link href={HOME_SETTINGS_PATH}>Family settings</Link>.</Text>
+        <Button className="self-start" onClick={() => {
+          api.call("family.acknowledgeNewAdults", { body: {} }).then(onDismissed, () => announce("That didn't work. Try again."));
+        }}>Got it</Button>
+      </section>
+    </Surface>
+  );
+};
+
 /** Home learning's Today: set up a family first, then each child's next practice. */
 export const TodayPage = () => {
   const [home, reload] = useFamily();
@@ -106,6 +126,7 @@ export const TodayPage = () => {
     <div className="flex flex-col gap-6">
       <PageHeading>Today</PageHeading>
       <HomeLearningNav />
+      <NewAdults family={home.data.family} onDismissed={reload} />
       <TodayList />
     </div>
   );
