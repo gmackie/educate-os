@@ -57,6 +57,7 @@ export const PlannerCoach = ({ plan, opportunity: o, onChanged }: { plan: Plan; 
     {coach.aiStatus && <p role="status">{{
       "not-requested": "AI was not requested. You can use the reviewed lesson at any time.",
       "not-wired": "Your school has not connected planner AI. Continue with the reviewed lesson.",
+      "consent-revoked": "Your AI permission has been revoked. Use the reviewed lesson or return to your class page.",
       "policy-denied": "AI explanations are not enabled for you here. Continue with the reviewed lesson or ask your teacher for help.",
       "budget-denied": "AI help is unavailable under your school's model or budget limits. Continue with the reviewed lesson.",
       "invalid-output": "The AI explanation could not be verified. The reviewed lesson is shown; try again later or ask your teacher.",

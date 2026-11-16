@@ -60,6 +60,24 @@ describe("guarded planner explanations", () => {
     expect(completeGuarded).not.toHaveBeenCalled();
   });
 
+  it("reports revoked consent before reservation and after settlement without discarding financial usage", async () => {
+    const f = await fixture();
+    f.options.consentRevoked = async () => true;
+    expect(await plannerExplanation(f.input)).toBe("consent-revoked");
+    expect(f.completeGuarded).not.toHaveBeenCalled();
+    expect((await f.d.app.ledger.report()).district.requests).toBe(0);
+    let revoked = false;
+    f.options.consentRevoked = async () => revoked;
+    f.options.enabledFor = async () => !revoked;
+    f.completeGuarded.mockImplementation(async () => {
+      revoked = true;
+      return { released: false, output: null, settlement: { usage, actualUsdNano: usdNano(1000n) } };
+    });
+    expect(await plannerExplanation(f.input)).toBe("consent-revoked");
+    expect(f.input.opportunity.coaching!.source).toBe("curriculum");
+    expect((await f.d.app.ledger.report()).district.usageUsdNano).toBe("1000");
+  });
+
   it("never sends a denied model or an unfunded request and keeps the deterministic fallback", async () => {
     const { input, completeGuarded } = await fixture();
     const before = structuredClone(input.opportunity.coaching);

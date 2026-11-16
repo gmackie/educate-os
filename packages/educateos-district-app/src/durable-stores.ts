@@ -1,4 +1,4 @@
-import { StudentLearningLifecycle, StudentLearningState } from "./student-learning-lifecycle.ts";
+import { StudentLearningLifecycle, StudentLearningState, type StudentLearningRuntimePersistence } from "./student-learning-lifecycle.ts";
 import { revokedGuardianGuidanceGrant } from "@educateos/policy";
 import {
   ChildSession,
@@ -1196,11 +1196,11 @@ export class DurableObjectGuardianInvitationStore implements GuardianInvitationS
  * once per object instance: several stores cache what they read, which stays true only while this
  * object is the one writer.
  */
-export function durableDistrictStores(storage: DistrictSqlStorage, seed: DistrictDirectorySnapshot): DistrictAppStores {
+export function durableDistrictStores(storage: DistrictSqlStorage, seed: DistrictDirectorySnapshot, runtime?: StudentLearningRuntimePersistence): DistrictAppStores {
   const directory = DurableObjectAcademicStore.open(storage, seed);
   return {
     directory,
-    studentLearningLifecycle: durableStudentLearningLifecycle(storage),
+    studentLearningLifecycle: durableStudentLearningLifecycle(storage, runtime),
     planner: new DurableObjectPlannerStore(storage),
     guidance: { records: new DurableObjectGuidanceStore(storage), guardianGrants: new DurableObjectGuardianGuidanceGrantStore(storage) },
     rosterSources: new DurableObjectRosterSourceStore(storage),
@@ -2704,7 +2704,7 @@ export class DurableObjectExportMappingStore implements ExportMappingStore {
 /** The same DO transaction holds disposition, inventory, erasure, revocation and the terminal receipt.
  * JSON subject predicates cover legacy records and removed enrollments without a roster dependency.
  */
-export function durableStudentLearningLifecycle(storage: DistrictSqlStorage): StudentLearningLifecycle {
+export function durableStudentLearningLifecycle(storage: DistrictSqlStorage, runtime?: StudentLearningRuntimePersistence): StudentLearningLifecycle {
   storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_student_learning_lifecycle (student_id TEXT PRIMARY KEY, state_json TEXT NOT NULL)");
   const participants = {
     planner: new DurableObjectPlannerStore(storage),
@@ -2713,6 +2713,7 @@ export function durableStudentLearningLifecycle(storage: DistrictSqlStorage): St
   };
   // Constructors create the participant tables; no participant data is read or cached here.
   return new StudentLearningLifecycle({
+    runtime,
     atomic: (run) => storage.transactionSync(run),
     get: (id) => {
       const [row] = storage.sql.exec("SELECT state_json FROM educateos_student_learning_lifecycle WHERE student_id = ?", id).toArray();

@@ -23,10 +23,12 @@ export interface PlannerAiOptions {
   model: z.infer<typeof ModelRef>;
   estimatedMaxUsdNano: GovernedAiRequest["estimatedMaxUsdNano"];
   /** Explicit district authorization in addition to curriculum help policy and ledger policy. */
+  /** Durable subject revocation or an explicitly revoked deployment grant. */
+  consentRevoked?(studentId: PlannerPlan["studentId"]): Promise<boolean>;
   enabledFor(offeringId: PlannerPlan["offeringId"], studentId: PlannerPlan["studentId"]): Promise<boolean>;
 }
 /** Why the working curriculum fallback was used. No provider errors or policy secrets are returned. */
-export const PlannerAiStatus = z.enum(["not-requested", "not-wired", "policy-denied", "budget-denied", "invalid-output", "provider-unavailable", "used"]);
+export const PlannerAiStatus = z.enum(["not-requested", "not-wired", "consent-revoked", "policy-denied", "budget-denied", "invalid-output", "provider-unavailable", "used"]);
 
 /** Fail closed around age, consent, policy, reservation, screening and alignment verification. */
 export async function plannerExplanation(input: {
@@ -38,6 +40,7 @@ export async function plannerExplanation(input: {
   const coach = o.coaching!;
   if (!input.allowAi) return "not-requested";
   if (!options) return "not-wired";
+  try { if (await options.consentRevoked?.(plan.studentId)) return "consent-revoked"; } catch { return "policy-denied"; }
   if (!input.levels?.size || [...input.levels].some((l) => !/^(0[6-9]|1[0-2])$/.test(l)) || !input.policy) return "policy-denied";
   // Bounds apply before a reservation or any external screening/model call.
   if (plan.goal.length > 2000 || o.code.length > 100 || o.node.uri.length > 2048 || o.releaseDigest.length > 256
@@ -49,7 +52,7 @@ export async function plannerExplanation(input: {
   };
   let request: GovernedAiRequest;
   try {
-    if (!await allowed()) return "policy-denied";
+    if (!await allowed()) return await options.consentRevoked?.(plan.studentId) ? "consent-revoked" : "policy-denied";
     request = { requestId: AiRequestId.parse(`plp:${crypto.randomUUID()}`), principal: { districtId: input.scope.districtId, principalId: plan.studentId }, workspace: { kind: "course", offeringId: plan.offeringId }, model: options.model, estimatedMaxUsdNano: options.estimatedMaxUsdNano };
     if ((await input.governor.beforeRequest(request)).effect !== "allow") return "budget-denied";
   } catch { return "policy-denied"; }
@@ -67,7 +70,7 @@ export async function plannerExplanation(input: {
       ? { status: "failed", requestId: request.requestId }
       : { status: "completed", requestId: request.requestId, ...AiSettlement.parse(completion.settlement) });
     // Revocation or a policy tightening while screening/model I/O ran withholds the response.
-    if (!await allowed()) return "policy-denied";
+    if (!await allowed()) return await options.consentRevoked?.(plan.studentId) ? "consent-revoked" : "policy-denied";
   } catch { return "provider-unavailable"; }
   const parsed = PlannerExplanation.safeParse(completion.output);
   if (!completion.released || !parsed.success || parsed.data.competencyUri !== o.node.uri || parsed.data.releaseDigest !== o.releaseDigest || parsed.data.step !== coach.step) return "invalid-output";

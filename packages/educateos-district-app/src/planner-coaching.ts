@@ -20,7 +20,7 @@ export const PlannerCoaching = z.strictObject({
   hints: z.number().int().nonnegative().max(3),
   events: z.array(z.strictObject({ action: PlannerCoachAction, at: z.iso.datetime(), source: z.enum(["curriculum", "governed-ai"]) })).max(40),
   guidance: z.string().optional(),
-  aiStatus: z.enum(["not-requested", "not-wired", "policy-denied", "budget-denied", "invalid-output", "provider-unavailable", "used"]).optional(),
+  aiStatus: z.enum(["not-requested", "not-wired", "consent-revoked", "policy-denied", "budget-denied", "invalid-output", "provider-unavailable", "used"]).optional(),
   source: z.enum(["curriculum", "governed-ai"]).default("curriculum"),
 });
 /** A learner's practice challenge, explicitly shared separately from the project response. */
