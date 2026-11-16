@@ -100,6 +100,42 @@ it("refuses an otherwise consented model request with no district model or fundi
   expect(completeGuarded).not.toHaveBeenCalled();
 });
 
+it("withholds an in-flight explanation after authorized purge without erasing billed usage, audit or a peer's plan", async () => {
+  const model = { provider: "cloudflare" as const, modelId: "synthetic-purge-race" };
+  const completeGuarded = vi.fn<PlannerAiProvider["completeGuarded"]>();
+  const d = await bootPilotDistrict({
+    plannerAi: { model, estimatedMaxUsdNano: "1000000" as never, enabledFor: async () => true, provider: { completeGuarded } },
+    aiHelp: { layersFor: async () => ({ district: "full" }) },
+    modelCatalog: [{ ...model, mode: "enabled" }],
+    fundingPools: [{ id: "fpl_purge-race" as never, name: "Synthetic purge race", purpose: "course", scope: { level: "district", districtId: "dst_pilot-lakes" as never }, monthlyAllocationUsdNano: "1000000000" as never, allowedModels: [model] }],
+  });
+  const student = d.tokenFor(PL.jules), peer = d.tokenFor(PL.maribel), admin = d.tokenFor(PL.admin);
+  const params = { offeringId: PL.grade6 as never }, child = { studentId: PL.jules as never };
+  const peerPlan = await d.ok(peer, "student.planGoal", { params, body: { goal: "PRIVATE peer garden", skills: [] } });
+  let plan = await d.ok(student, "student.planGoal", { params, body: { goal: "PRIVATE basketball rates", skills: [] } });
+  const target = { ...params, planId: plan.id, opportunityId: plan.opportunities[0]!.id };
+  plan = await d.ok(student, "student.plannerDecision", { params: target, body: { revision: plan.revision, decision: "accepted" } });
+  const auditBefore = d.audit.events();
+  completeGuarded.mockImplementationOnce(async (input) => {
+    expect(await input.authorize()).toBe(true);
+    await d.ok(admin, "admin.studentLearningDisposition", { params: child, body: { revision: 0, legalHold: false, deletionAuthorized: true, archiveSatisfied: true } });
+    await d.ok(admin, "admin.purgeStudentLearning", { params: child, body: { revision: 1, confirmStudentId: child.studentId } });
+    // Even an adapter returning text after deletion cannot resurrect or release the erased plan.
+    return { released: true, output: { competencyUri: input.competencyUri, releaseDigest: input.releaseDigest, step: input.step, explanation: "WITHHOLD this late synthetic explanation" }, settlement: { actualUsdNano: "1000" as never, usage: { inputTokens: 10, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 } } };
+  });
+  const response = await d.call(student, "student.plannerCoach", { params: target, body: { revision: plan.revision, action: "show", allowAi: true } });
+  expect(completeGuarded).toHaveBeenCalledOnce();
+  expect(outcomeOf(response)).toBe("409 conflict");
+  expect(JSON.stringify(response)).not.toMatch(/PRIVATE|WITHHOLD/);
+  expect(await d.ok(student, "student.planner", { params })).toEqual([]);
+  expect(await d.ok(peer, "student.planner", { params })).toEqual([peerPlan]);
+  expect((await d.app.ledger.report()).district).toMatchObject({ requests: 1, usageUsdNano: "1000" });
+  expect(d.audit.events().slice(0, auditBefore.length)).toEqual(auditBefore);
+  const deletion = d.audit.events().find((event) => event.studentLearningDeletion !== undefined);
+  expect(deletion).toMatchObject({ principalId: PL.admin, resourceId: PL.jules, studentLearningDeletion: { plans: 1 } });
+  expect(JSON.stringify(deletion)).not.toMatch(/PRIVATE|WITHHOLD/);
+});
+
 it("blocks a legal hold then purges only the selected learner and revokes their guardian guidance", async () => {
   const d = await bootPilotDistrict();
   const params = { offeringId: PL.grade6 as never }, child = { studentId: PL.jules as never };
@@ -127,4 +163,71 @@ it("blocks a legal hold then purges only the selected learner and revokes their 
   expect((await d.ok(guardian.token, "guardian.guidance", { params: child })).capabilities).toEqual({ suggest: false, progress: false });
   expect(outcomeOf(await d.call(student, "student.planGoal", { params, body: { goal: "basketball", skills: [] } }))).toBe("409 conflict");
   expect(JSON.stringify(receipt)).not.toMatch(/PRIVATE|DELETE/);
+});
+
+it("retires withdrawn recipe versions on existing student plans while preserving class recipes through a subject purge", async () => {
+  const d = await bootPilotDistrict();
+  const params = { offeringId: PL.grade6 as never };
+  const student = d.tokenFor(PL.jules), teacher = d.tokenFor(PL.okoye), admin = d.tokenFor(PL.admin);
+  const recipes = await d.ok(teacher, "teacher.recipes", { params });
+  const starterId = "g6-unit-rate-basketball-practice";
+  expect(recipes.entries.find((e) => e.starterId === starterId)!.standardCheck.state).toBe("ok");
+  const approved = await d.ok(teacher, "teacher.recipeDecision", { params, body: { starterId, revision: 0, decision: "approve" } });
+  const entry = approved.entries.find((e) => e.starterId === starterId)!;
+  const peer = d.tokenFor(PL.maribel);
+  let plan = await d.ok(student, "student.planGoal", { params, body: { goal: "PRIVATE improve basketball practice", skills: [] } });
+  expect(plan.opportunities[0]!.recipe).toMatchObject({ version: 1, approvedBy: "Ada Okoye" });
+  expect(await d.ok(teacher, "teacher.planner", { params })).toEqual([]);
+  const target = { ...params, planId: plan.id, opportunityId: plan.opportunities[0]!.id };
+  plan = await d.ok(student, "student.plannerDecision", { params: target, body: { revision: plan.revision, decision: "skipped" } });
+  expect(plan.opportunities[0]!.decision).toBe("skipped");
+  const peerPlan = await d.ok(peer, "student.planGoal", { params, body: { goal: "basketball practice", skills: [] } });
+  const child = { studentId: PL.jules as never };
+  await d.ok(admin, "admin.studentLearningDisposition", { params: child, body: { revision: 0, legalHold: false, deletionAuthorized: true, archiveSatisfied: true } });
+  await d.ok(admin, "admin.purgeStudentLearning", { params: child, body: { revision: 1, confirmStudentId: child.studentId } });
+  expect(await d.ok(teacher, "teacher.recipes", { params })).toEqual(approved);
+  expect(await d.ok(peer, "student.planner", { params })).toEqual([peerPlan]);
+  await d.ok(teacher, "teacher.recipeDecision", { params, body: { starterId, revision: entry.revision, decision: "withdraw" } });
+  expect((await d.ok(peer, "student.planner", { params }))[0]!.opportunities[0]).toMatchObject({ unavailableReason: expect.stringContaining("withdrawn") });
+  const peerTarget = { ...params, planId: peerPlan.id, opportunityId: peerPlan.opportunities[0]!.id };
+  expect(outcomeOf(await d.call(peer, "student.plannerDecision", { params: peerTarget, body: { revision: peerPlan.revision, decision: "accepted" } }))).toBe("409 conflict");
+  expect((await d.stores.planner.list(params.offeringId))[0]!.opportunities).toHaveLength(1);
+});
+
+it.each(["withdrawn", "stale-digest", "standards-withdrawn"])("refuses future steps on %s recipes and preserves reviewed evidence without private goals", async (retirement) => {
+  const d = await bootPilotDistrict();
+  const params = { offeringId: PL.grade6 as never }, starterId = "g6-unit-rate-basketball-practice";
+  const student = d.tokenFor(PL.jules), teacher = d.tokenFor(PL.okoye);
+  const approved = await d.ok(teacher, "teacher.recipeDecision", { params, body: { starterId, revision: 0, decision: "approve" } });
+  const entry = approved.entries.find((e) => e.starterId === starterId)!;
+  const goal = "PRIVATE basketball practice";
+  let plan = await d.ok(student, "student.planGoal", { params, body: { goal, skills: [] } });
+  const target = { ...params, planId: plan.id, opportunityId: plan.opportunities[0]!.id };
+  plan = await d.ok(student, "student.plannerDecision", { params: target, body: { revision: plan.revision, decision: "accepted" } });
+  plan = await d.ok(student, "student.plannerShare", { params: target, body: { revision: plan.revision, text: "Shared synthetic project", assistance: "independent" } });
+  await d.ok(teacher, "teacher.plannerReview", { params: target, body: { revision: plan.revision, level: "practiced", assistance: "independent", independentlyAssessed: false, decision: "hold", rationale: "Practice only; unseen assessment still required." } });
+  let active = await d.ok(student, "student.planGoal", { params, body: { goal, skills: [] } });
+  const activeTarget = { ...params, planId: active.id, opportunityId: active.opportunities[0]!.id };
+  active = await d.ok(student, "student.plannerDecision", { params: activeTarget, body: { revision: active.revision, decision: "accepted" } });
+  const history = await d.stores.planner.list(params.offeringId);
+  const teacherBefore = await d.ok(teacher, "teacher.planner", { params });
+  if (retirement === "withdrawn") await d.ok(teacher, "teacher.recipeDecision", { params, body: { starterId, revision: entry.revision, decision: "withdraw" } });
+  else if (retirement === "standards-withdrawn") await d.ok(d.tokenFor(PL.admin), "admin.withdrawStandards", { params: { frameworkKey: "ccss-math" } });
+  else {
+    const record = (await d.stores.guidance.records.list(params.offeringId)).find((r) => r.type === "recipe")!;
+    if (record.type !== "recipe") throw new Error("missing recipe");
+    await d.stores.guidance.records.save({ ...record, revision: record.revision + 1, pin: { ...record.pin!, releaseDigest: "sha256:stale-release" } }, record.revision);
+  }
+  const archived = (await d.ok(student, "student.planner", { params }))[0]!;
+  expect(archived.opportunities[0]).toMatchObject({ unavailableReason: expect.any(String), response: { text: "Shared synthetic project" }, reviews: [{ level: "practiced", decision: "hold" }] });
+  const body = { revision: active.revision };
+  expect(outcomeOf(await d.call(student, "student.plannerDecision", { params: activeTarget, body: { ...body, decision: "accepted" } }))).toBe("409 conflict");
+  expect(outcomeOf(await d.call(student, "student.plannerCoach", { params: activeTarget, body: { ...body, action: "show", allowAi: true } }))).toBe("409 conflict");
+  expect(outcomeOf(await d.call(student, "student.plannerShare", { params: activeTarget, body: { ...body, text: "New synthetic evidence", assistance: "independent" } }))).toBe("409 conflict");
+  expect(await d.stores.planner.list(params.offeringId)).toEqual(history);
+  expect(JSON.stringify(history)).not.toContain("unavailableReason");
+  expect(await d.ok(teacher, "teacher.planner", { params })).toEqual(teacherBefore);
+  expect(JSON.stringify(teacherBefore)).not.toContain(goal);
+  expect(teacherBefore[0]!.opportunities[0]!.recipe!.matched).toEqual([]);
+  expect((await d.ok(student, "student.plannerKnowledge", { params })).competencies[0]!.status).toBe("practiced");
 });

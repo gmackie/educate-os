@@ -18,6 +18,7 @@ export const PlannerOpportunityCard = ({ plan, opportunity: o, onChanged }: { pl
   const [assistance, setAssistance] = useState<Assistance>("unknown");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const archived = o.unavailableReason !== undefined;
   const params = { offeringId: plan.offeringId, planId: plan.id, opportunityId: o.id };
   const act = async (action: "accepted" | "skipped" | "share") => {
     setBusy(true);
@@ -50,12 +51,13 @@ export const PlannerOpportunityCard = ({ plan, opportunity: o, onChanged }: { pl
       <ul className="list-disc pl-5">{o.contract.criteria.map((c) => <li key={c.id}>{c.description}</li>)}</ul>
       <Text>Practice may use help with disclosure. A teacher must independently assess unassisted work before recommending mastery. Generated code or artifacts alone do not establish mastery.</Text>
     </details>
+    {archived && <p role="status">Archived opportunity. {o.unavailableReason} Earlier evidence and teacher observations remain available below.</p>}
     {o.response === undefined && <div className="flex gap-2">
-      <Button disabled={busy || o.decision === "accepted"} onClick={() => void act("accepted")}>Accept</Button>
-      <Button disabled={busy || o.decision === "skipped"} onClick={() => void act("skipped")}>Skip</Button>
+      <Button disabled={busy || archived || o.decision === "accepted"} onClick={() => void act("accepted")}>Accept</Button>
+      <Button disabled={busy || archived || o.decision === "skipped"} onClick={() => void act("skipped")}>Skip</Button>
     </div>}
-    {o.decision === "accepted" && <PlannerCoach plan={plan} opportunity={o} onChanged={onChanged} />}
-    {o.decision === "accepted" && o.response === undefined && <form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void act("share"); }}>
+    {o.decision === "accepted" && !archived && <PlannerCoach plan={plan} opportunity={o} onChanged={onChanged} />}
+    {o.decision === "accepted" && !archived && o.response === undefined && <form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void act("share"); }}>
       <InputArea label={`Your response for ${o.code}`} value={text} onValueChange={setText} maxLength={10000} required />
       <Radio.Group legend={`Help used for ${o.code}`} value={assistance} onValueChange={(value) => setAssistance(value as Assistance)}>
         {HELP.map((value) => <Radio.Item key={value} value={value} label={value === "independent" ? "None — independently completed" : value} />)}

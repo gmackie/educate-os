@@ -36,3 +36,25 @@ it("shows a learner the teacher-approved recipe's origin and why it fits, and of
   expect((await d.ok(d.tokenFor(NF.amara), "student.plannerKnowledge", { params })).competencies.every((c) => c.status === "unverified")).toBe(true);
   expect(await d.ok(d.tokenFor(NF.rivera), "teacher.planner", { params })).toEqual([]);
 });
+
+it("marks a withdrawn opportunity as archived and disables future student actions", async () => {
+  const directory = { ...NORTHFIELD, courses: NORTHFIELD.courses.map((c) => ({ ...c, subject: "mathematics" as const, gradeBand: "6" })) };
+  const d = await bootDistrict(directory);
+  const params = { offeringId: NF.eng9 }, starterId = "g6-unit-rate-game-production";
+  const teacher = d.tokenFor(NF.rivera), student = d.tokenFor(NF.amara);
+  const approved = await d.ok(teacher, "teacher.recipeDecision", { params, body: { decision: "approve", starterId, revision: 0 } });
+  const plan = await d.ok(student, "student.planGoal", { params, body: { goal: "Build a Roblox pizza tycoon", skills: [] } });
+  await d.ok(student, "student.plannerDecision", { params: { ...params, planId: plan.id, opportunityId: plan.opportunities[0]!.id }, body: { revision: plan.revision, decision: "accepted" } });
+  await d.ok(teacher, "teacher.recipeDecision", { params, body: { decision: "withdraw", starterId, revision: approved.entries.find((e) => e.starterId === starterId)!.revision } });
+  const client = createDistrictApiClient({ baseUrl: "https://district.example", token: student, fetch: (r) => d.app.fetch(r) });
+  const user = userEvent.setup();
+  await renderApp(client, `/courses/${NF.eng9}`);
+  await user.click(await screen.findByRole("button", { name: /Personalized Learning Planner/ }));
+  const card = await screen.findByRole("article", { name: "6.RP.A.3b opportunity" });
+  expect(within(card).getByRole("status").textContent).toContain("Archived opportunity");
+  expect(within(card).getByRole("status").textContent).toContain("withdrawn");
+  expect((within(card).getByRole("button", { name: "Accept" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((within(card).getByRole("button", { name: "Skip" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(within(card).queryByRole("button", { name: "Show me how" })).toBeNull();
+  expect(within(card).queryByRole("textbox", { name: /Your response/ })).toBeNull();
+});

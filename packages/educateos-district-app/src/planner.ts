@@ -50,6 +50,8 @@ export const PlannerOpportunity = z.strictObject({
   challenge: PlannerChallenge.optional(),
   /** Present when a teacher-approved recipe, not the fixed mapping, produced this opportunity. */
   recipe: RecipeProvenance.optional(),
+  /** Derived on student reads only: archived work remains readable, but cannot be continued. */
+  unavailableReason: z.string().optional(),
 }).refine(
   // Both stores parse on every save and read, so no raw label can be credited to a standard it does not name:
   // the label is the pinned item's own code, or that code with one lettered component (6.RP.A.3 -> 6.RP.A.3b).

@@ -767,7 +767,22 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         this.plannerStudent(offeringId, this.principal.principalId);
         await this.require(write ? "update" : "read", { kind: write ? "submission" : "offering", scope, classification: "course", ...(write ? { ownerPrincipalId: this.principal.principalId } : {}) }, "You cannot use this class's planner.");
       }
-      return (await stores.planner.list(offeringId)).filter((p) => teacher || p.studentId === this.principal.principalId);
+      const plans = (await stores.planner.list(offeringId)).filter((p) => teacher || p.studentId === this.principal.principalId);
+      return teacher || write ? plans : Promise.all(plans.map((plan) => this.plannerStudentView(plan)));
+    }
+
+    /** Preserve archived evidence while showing current availability without rewriting stored history. */
+    async plannerStudentView(plan: PlannerPlan): Promise<PlannerPlan> {
+      const view = structuredClone(plan);
+      for (const opportunity of view.opportunities) {
+        delete opportunity.unavailableReason;
+        try { await this.plannerApproved(opportunity, plan.offeringId); }
+        catch (error) {
+          if (!(error instanceof EducateOsError) || error.code !== "conflict") throw error;
+          opportunity.unavailableReason = error.message;
+        }
+      }
+      return view;
     }
 
     plannerStudent(offeringId: OfferingId, studentId: PrincipalId) {
@@ -797,17 +812,24 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         createdAt, opportunities,
       };
       // Whatever produced an opportunity, its standard must be in the approved release now.
-      for (const opportunity of opportunities) await this.plannerApproved(opportunity);
+      for (const opportunity of opportunities) await this.plannerApproved(opportunity, offeringId);
       await stores.planner.save(plan, 0);
       return plan;
     }
 
     /** New work and recommendations cannot use a withdrawn release, a hidden item, or an item the release does not contain. */
-    async plannerApproved(opportunity: PlannerPlan["opportunities"][number]) {
+    async plannerApproved(opportunity: PlannerPlan["opportunities"][number], offeringId: OfferingId) {
       const state = await catalog.get(opportunity.frameworkKey);
       const release = state?.releases.find((r) => r.status === "approved" && r.release.contentDigest === opportunity.releaseDigest);
       const member = release?.release.content.nodes?.some((n) => n.uri === opportunity.node.uri && n.humanCodingScheme === opportunity.node.humanCodingScheme) === true;
       if (!member || state!.overlays.some((o) => o.nodeUri === opportunity.node.uri && o.hidden === true)) throw new EducateOsError("conflict", "These standards are no longer approved. Make a new plan with your teacher.");
+      if (opportunity.recipe) {
+        const recipes = await resolveClassRecipes(catalog, await stores.guidance.records.list(offeringId), recipeClassOf(this.snapshot, offeringId));
+        const recipe = opportunity.recipe;
+        if (!recipes.resolved.some((r) => r.record.recipeId === recipe.recipeId && r.record.version === recipe.version && r.record.contentDigest === recipe.contentDigest && r.releaseDigest === opportunity.releaseDigest && r.node.uri === opportunity.node.uri)) {
+          throw new EducateOsError("conflict", "This recipe version is withdrawn, replaced, paused or no longer approved for this class. Your earlier work is kept; make a new plan with your teacher.");
+        }
+      }
     }
 
     /** Requires the engine to allow `action` on a resource, answering `forbidden` otherwise. */
@@ -1051,7 +1073,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (!plan || !opportunity) throw new EducateOsError("not-found", "This opportunity was not found.");
       if (plan.revision !== body.revision) throw plannerConflict();
       if (opportunity.decision !== "accepted" || opportunity.challenge) throw new EducateOsError("conflict", "Accept this opportunity first. Shared challenge evidence cannot be changed.");
-      await ctx.plannerApproved(opportunity);
+      await ctx.plannerApproved(opportunity, params.offeringId);
       opportunity.coaching ??= { lesson: plannerLesson(opportunity.code), step: 0, mode: "instruction", hints: 0, events: [], source: "curriculum" };
       advancePlannerCoach(opportunity.coaching, body.action, now().toISOString());
       if (body.action === "show") {
@@ -1065,9 +1087,10 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           return options.aiHelp ? options.aiHelp.layersFor(scope) : { district: effective.aiHelp ?? "none" };
         } }, governor: ledgerGovernor(ledger), scope: ctx.offeringScope(params.offeringId), levels, plan, opportunity, allowAi: body.allowAi });
       }
+      await ctx.plannerApproved(opportunity, params.offeringId);
       plan.revision++;
       await stores.planner.save(plan, body.revision);
-      return plan;
+      return ctx.plannerStudentView(plan);
     },
     "student.plannerChallenge": async (ctx, { params, body }) => {
       const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
@@ -1076,11 +1099,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (plan.revision !== body.revision) throw plannerConflict();
       const start = opportunity.coaching?.events.find((e) => e.action === "try");
       if (opportunity.decision !== "accepted" || opportunity.response === undefined || !start || opportunity.challenge) throw new EducateOsError("conflict", "Share your project response and choose Try myself first. Each challenge is shared once.");
-      await ctx.plannerApproved(opportunity);
+      await ctx.plannerApproved(opportunity, params.offeringId);
       opportunity.challenge = { text: body.text, reflection: body.reflection, assistance: body.assistance, startedAt: start.at, sharedAt: now().toISOString(), source: "student-practice", helpEvents: opportunity.coaching!.events.filter((e) => e.action === "hint" || e.action === "show").length };
       plan.revision++;
       await stores.planner.save(plan, body.revision);
-      return plan;
+      return ctx.plannerStudentView(plan);
     },
     "student.planner": (ctx, { params }) => ctx.plannerAccess(params.offeringId, false),
     "student.planGoal": (ctx, { params, body }) => ctx.plannerCreate(params.offeringId, ctx.principal.principalId, body.goal, body.skills, false, body.focus),
@@ -1095,11 +1118,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (plan === undefined || opportunity === undefined) throw new EducateOsError("not-found", "This opportunity was not found.");
       if (plan.revision !== body.revision) throw plannerConflict();
       if (opportunity.response !== undefined) throw new EducateOsError("conflict", "This response has already been shared.");
-      if (body.decision === "accepted") await ctx.plannerApproved(opportunity);
+      if (body.decision === "accepted") await ctx.plannerApproved(opportunity, params.offeringId);
       opportunity.decision = body.decision;
       plan.revision++;
       await stores.planner.save(plan, body.revision);
-      return plan;
+      return ctx.plannerStudentView(plan);
     },
     "student.plannerShare": async (ctx, { params, body }) => {
       const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
@@ -1107,12 +1130,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (plan === undefined || opportunity === undefined) throw new EducateOsError("not-found", "This opportunity was not found.");
       if (plan.revision !== body.revision) throw plannerConflict();
       if (opportunity.decision !== "accepted" || opportunity.response !== undefined) throw new EducateOsError("conflict", "Accept the opportunity first. A shared response cannot be replaced.");
-      await ctx.plannerApproved(opportunity);
+      await ctx.plannerApproved(opportunity, params.offeringId);
       const activityEvidence = body.activityEvidenceId === undefined ? undefined : await plannerActivityEvidence({ source: options.plannerActivityEvidence, reference: body.activityEvidenceId, districtId, plan, opportunity, assistance: body.assistance });
+      await ctx.plannerApproved(opportunity, params.offeringId);
       opportunity.response = { text: body.text, assistance: body.assistance, ...(activityEvidence ? { activityEvidence } : {}), sharedAt: now().toISOString() };
       plan.revision++;
       await stores.planner.save(plan, body.revision);
-      return plan;
+      return ctx.plannerStudentView(plan);
     },
     "teacher.plannerReview": async (ctx, { params, body }) => {
       const plan = (await ctx.plannerAccess(params.offeringId, true, true)).find((p) => p.id === params.planId);
@@ -1123,7 +1147,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const prior = (await ctx.plannerAccess(params.offeringId, true)).filter((p) => p.studentId === plan.studentId);
       assertPlannerAssessment(body, opportunity, prior, now().toISOString());
       if (body.decision === "recommend") {
-        await ctx.plannerApproved(opportunity);
+        await ctx.plannerApproved(opportunity, params.offeringId);
 
       }
       const { revision: _revision, ...review } = body;

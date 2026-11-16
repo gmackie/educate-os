@@ -14,7 +14,7 @@ Teacher Studio → class → **Learning planner** → **Learning recipes**.
 
 - **Preview** shows the exact text a student would see, the words that make the recipe match, and what it does not cover.
 - **Edit before approving** changes *why now*, the student task and the independent challenge. An edit is saved as a new version.
-- **Approve for this class** is only available while the recipe's standard is usable (the card says why not). **Reject** records the decision. **Withdraw approval** stops new offers.
+- **Approve for this class** is only available while the recipe's standard is usable (the card says why not). **Reject** records the decision. **Withdraw approval** stops new offers and further steps on existing opportunities. Earlier work remains readable as archived history.
 - **Pause learning recipes** is a per-class switch: while paused, goals create no opportunities at all.
 - Every decision is audited (who, when, optional note).
 
@@ -55,3 +55,30 @@ pnpm --filter @educateos/district-app exec tsc --noEmit   # likewise teacher-ui 
 ```
 
 API routes: `teacher.recipes`, `teacher.recipeDecision`, `teacher.recipeSettings`.
+
+## Integrated release review (SCHO-434)
+
+The integration applies privacy commit `f7d0ce226d34d8245a8eec54668f5d6a111f5a2b` first,
+then final recipe commit `5f51da4659430dad33ca99e45fe07965013f9476`, on PR #414's
+`0952988043272017a9db2569a87a26e8807537f8`. This is a non-deploying WIP targeting
+`feat/plp-pilot-release-candidate`; no merge or deployment is authorized.
+
+Student reads derive `unavailableReason` on a clone when the exact recipe version, class approval
+or pinned catalog release is no longer usable. Stored plans, private goals and teacher-reviewed
+evidence are not rewritten. The student sees an archived notice and disabled actions; teacher
+history still excludes the private goal and matching words. Accept, coaching, sharing, challenges
+and new recommendations check current approval. Coaching and external evidence recheck after I/O.
+
+Synthetic release regressions cover in-flight purge with an unchanged deployment grant, preserved
+billing/audit and peer plans, recipe survival through subject deletion, withdrawal after plan creation,
+stale recipe release digests and withdrawn standards, archived history, private goals and no automatic
+mastery. Worker tests additionally cover durable revocation through eviction and subject quota erasure.
+
+These checks use invented students and fake model responses. No real students participated, no actual
+Roblox game was built or evaluated, and state standards (including TEKS and Michigan) were not imported.
+They do not establish learning outcomes or standards equivalence. There is no hidden SEL or psychological
+profiling in the recipe matcher.
+
+Tracker metadata could not be updated because the Kanbanger workspace credential is missing. Optional
+React Doctor did not run because pnpm's external cache was not writable. Local checks and hosted CI
+receipts are reported separately in the integration PR; producer receipts do not certify its head.
