@@ -72,7 +72,7 @@ export async function fakeCommunity(options: {
         },
       };
     },
-    "onboarding.community": async () => ({ homeLearning: true, signup: options.signup ?? "open" }),
+    "onboarding.community": async () => ({ homeLearning: true, signup: options.signup ?? "open", notice: service.notice() }),
     "onboarding.joinCommunity": async () => {
       if ((options.signup ?? "open") === "approval") return { outcome: "awaiting-approval" };
       joined = true;
@@ -88,6 +88,7 @@ export async function fakeCommunity(options: {
     "family.acceptInvitation": ({ body }) => service.acceptInvitation(ADULT, body.token, body.acceptNotice, displayName),
     "family.acceptNotice": ({ body }) => service.acceptNotice(ADULT, body.version),
     "family.readAloud": ({ body }) => service.setReadAloud(ADULT, body.on),
+    "family.acknowledgeNewAdults": () => service.acknowledgeNewAdults(ADULT),
     "family.deleteAccount": async () => {
       const { familyDeleted } = await service.leaveForAccountDeletion(ADULT);
       joined = false;

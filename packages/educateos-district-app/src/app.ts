@@ -52,7 +52,7 @@ import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCour
 import { Delegations, guardianGuidanceRelationships, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
-import { familyAdults, HomeLearningService, type ChildSession, type HomeLearningPurge } from "@educateos/home-learning";
+import { familyAdults, familyNotice, HomeLearningService, type ChildSession, type HomeLearningPurge } from "@educateos/home-learning";
 import { childSessionToken, deleteCommunityPrincipal, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
 import { guidanceHandlers, type GuidanceRouteName } from "./guidance-routes.ts";
 // Communication (SCHO-189)
@@ -2177,7 +2177,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // starts a request an administrator decides, so it needs no principal and grants nothing.
       if (spec.surface === "onboarding") {
         if ((matched.name as OnboardingRouteName) === "onboarding.community") {
-          return jsonResponse({ homeLearning: options.homeLearning !== undefined, signup: options.homeLearning?.signup ?? null }, 200, correlationId);
+          const offered = options.homeLearning;
+          const notice = offered === undefined ? null : familyNotice({
+            operator: (await stores.directory.load()).snapshot.district.name,
+            ...(offered.contact === undefined ? {} : { contact: offered.contact }),
+            ...(offered.retentionDays === undefined ? {} : { retentionDays: offered.retentionDays }),
+          });
+          return jsonResponse({ homeLearning: offered !== undefined, signup: offered?.signup ?? null, notice }, 200, correlationId);
         }
         if ((matched.name as OnboardingRouteName) === "onboarding.joinCommunity") {
           const { body } = await parseInput() as { body: { displayName: string } };

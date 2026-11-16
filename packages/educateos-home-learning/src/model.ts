@@ -114,6 +114,8 @@ export const FamilyAdult = z.strictObject({
   joinedAt: Timestamp,
   /** The family notice they last accepted. Absent in records from before the notice existed. */
   noticeAccepted: z.strictObject({ version: z.string().min(1).max(32), at: Timestamp }).optional(),
+  /** When they last dismissed the news of other adults joining; joins after it are shown to them. */
+  joinsSeenAt: Timestamp.optional(),
 });
 /** A family adult. */
 export type FamilyAdult = z.infer<typeof FamilyAdult>;

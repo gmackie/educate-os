@@ -5,6 +5,7 @@ import { useApi, useQuery } from "../api.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { NotAddedYet } from "../NotAddedYet.tsx";
 import { PageHeading } from "../PageHeading.tsx";
+import { NoticeText } from "./FamilyNotice.tsx";
 import { useRefreshSignIn } from "./signInRefresh.ts";
 
 /**
@@ -35,6 +36,12 @@ export const JoinCommunity = ({ signIn }: { signIn: UnlinkedSignIn }) => {
     <section aria-labelledby="join-heading" className="flex max-w-xl flex-col gap-4">
       <PageHeading id="join-heading">Join this learning community</PageHeading>
       <Text>Set up short reading and number practice for your children, and see what they can do. Your family's practice is visible only to you.</Text>
+      {community.status === "ready" && community.data.notice !== null ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-kumo-hairline p-5">
+          <NoticeText notice={community.data.notice} />
+          <Text variant="secondary">You'll be asked to agree to this when you set up your family.</Text>
+        </div>
+      ) : null}
       <form className="flex flex-col gap-4" onSubmit={(event) => {
         event.preventDefault();
         setBusy(true);

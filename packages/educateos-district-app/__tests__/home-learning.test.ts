@@ -40,7 +40,7 @@ describe("home learning in a community installation", () => {
     const d = await bootDistrict(NORTHFIELD);
     expectError(await d.call(d.tokenFor("prn_nf-guardian-rosa"), "family.home"), 404, "not-found");
     expect((await d.ok(d.tokenFor("prn_nf-guardian-rosa"), "me.get")).homeLearning).toBeUndefined();
-    expect(await d.ok(d.idp.issue("nf-stranger"), "onboarding.community")).toEqual({ homeLearning: false, signup: null });
+    expect(await d.ok(d.idp.issue("nf-stranger"), "onboarding.community")).toEqual({ homeLearning: false, signup: null, notice: null });
     expectError(await d.call(d.idp.issue("nf-stranger"), "onboarding.joinCommunity", { body: { displayName: "S" } }), 403, "forbidden");
   });
 
@@ -53,7 +53,9 @@ describe("home learning in a community installation", () => {
     const d = await bootDistrict(WILLOWCREEK, { homeLearning: { signup: "open" } });
     const newcomer = d.idp.issue("wc-newcomer");
     expectError(await d.call(newcomer, "me.get"), 401, "unauthenticated");
-    expect(await d.ok(newcomer, "onboarding.community")).toEqual({ homeLearning: true, signup: "open" });
+    const community = await d.ok(newcomer, "onboarding.community");
+    expect(community).toMatchObject({ homeLearning: true, signup: "open", notice: { version: NOTICE } });
+    expect(community.notice?.paragraphs.at(-1)).toBe("This installation is run by Willow Creek Learning Community (synthetic).");
     expect(await d.ok(newcomer, "onboarding.joinCommunity", { body: { displayName: "Alex Kim" } })).toEqual({ outcome: "joined" });
     expect(await d.ok(newcomer, "me.get")).toMatchObject({ kind: "guardian", displayName: "Alex Kim" });
     const before = await d.ok(newcomer, "family.home");
@@ -232,6 +234,10 @@ describe("family controls", () => {
     const token = new URLSearchParams(new URL(invited.link).hash.slice(1)).get("invitation")!;
     await d.ok(newcomer, "family.acceptInvitation", { body: { token, acceptNotice: NOTICE } });
     expectError(await d.call(newcomer, "family.deleteAccount", { body: { confirm: "yes" as "delete" } }), 400, "validation-failed");
+    // Rivers is told Casey joined, until they dismiss it; Casey isn't told about Rivers.
+    expect((await d.ok(rivers, "family.home")).family?.newAdults.map((a) => a.displayName)).toEqual(["Casey"]);
+    expect((await d.ok(newcomer, "family.home")).family?.newAdults).toEqual([]);
+    expect((await d.ok(rivers, "family.acknowledgeNewAdults", { body: {} })).newAdults).toEqual([]);
     expect(await d.ok(newcomer, "family.deleteAccount", { body: { confirm: "delete" } })).toEqual({ deleted: true, familyDeleted: false });
     // The sign-in is nobody's now: the next visit starts over as a newcomer.
     expectError(await d.call(newcomer, "me.get"), 401, "unauthenticated");

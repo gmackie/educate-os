@@ -114,8 +114,9 @@ Safranek:
 >
 > This installation is run by Safranek Family. [Contact, once `homeLearning.contact` is set.]
 
-It is shown, with an "I've read this and agree" checkbox, when an adult sets up a family or joins one
-by invitation, and to any adult who accepted an older version before any family page.
+It is shown to read on the community sign-up page, then with an "I've read this and agree" checkbox
+when an adult sets up a family or joins one by invitation, and to any adult who accepted an older
+version before any family page. It is always readable in Family settings.
 
 ## Built ahead of the answers (2026-11-16)
 
@@ -127,8 +128,12 @@ Each is built so that an answer changes a setting or the wording, not the design
 - Audit entries about family records, and spent tokens, are purged on schedule (question 4).
 - A family can turn off read-aloud (question 7).
 
-Still open: the notice at community sign-up (before family setup), notifying other adults when one
-joins (question 6), and anything counsel's answers add.
+- The notice is shown at community sign-up, before anything is entered (question 5).
+- When an adult joins, every adult already in the family sees "<name> joined your family" on Today,
+  with a pointer to remove them, until they dismiss it (question 6). This is in-app only: the
+  installation keeps no adult's email address and sends no email.
+
+Still open: anything counsel's answers add, such as email notice of a join or custody handling.
 
 ## Sign-off
 
