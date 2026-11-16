@@ -13,4 +13,3 @@ export function plannerRuntimeLifecycle(table: RecordTable): StudentLearningRunt
     erase: (id) => { table.delete(PLANNER_RUNTIME_COLLECTION, `student:${id}`); },
   };
 }
-
