@@ -133,6 +133,16 @@ describe("the Roster sync page", () => {
     expect(screen.getByRole("button", { name: "Run delta sync" }).hasAttribute("disabled")).toBe(true);
   });
 
+  it("sends a roster imported from OneRoster CSV files to the Roster screen, not to a setup it does not need (SCHO-410)", async () => {
+    renderConsole(fakeDistrict({ rosterSync: "csv-import" }).client, "roster-sync");
+    expect(await screen.findByText("This roster is imported, not synced")).toBeTruthy();
+    expect(screen.getByText("OneRoster CSV export")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Go to Roster" }).getAttribute("href")).toBe("#/roster");
+    expect(screen.queryByText("The roster cannot sync")).toBeNull();
+    expect(screen.queryByText(/identity mapping/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Run complete sync" })).toBeNull();
+  });
+
   it("reports a status it could not load, and loads it again on request", async () => {
     const district = fakeDistrict({ rosterSync: "unreadable" });
     const { user } = renderConsole(district.client, "roster-sync");

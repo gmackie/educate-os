@@ -360,9 +360,9 @@ export interface FakeDistrictOptions {
   /**
    * The roster sync: a Clever sync that runs (the default), one whose next run the feed rejects or
    * whose next run is held for a large removal, a OneRoster connection this deployment cannot run,
-   * or a status the district cannot read.
+   * a roster imported from OneRoster CSV files, which never syncs, or a status the district cannot read.
    */
-  rosterSync?: "runnable" | "feed-rejected" | "removal-held" | "not-runnable" | "unreadable";
+  rosterSync?: "runnable" | "feed-rejected" | "removal-held" | "not-runnable" | "csv-import" | "unreadable";
   /** Whether the deployment names an analytics service, so product analytics can be turned on (SCHO-350). Defaults to true. */
   productAnalyticsConfigured?: boolean;
 }
@@ -559,7 +559,7 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     { id: "opa_1", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "health", result: "ok", at: "2026-10-28T11:00:00.000Z" },
     { id: "opa_2", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "directory.action", target: "prn_fk-student-301/suspend", result: "applied", at: "2026-10-28T11:05:00.000Z" },
   ];
-  const syncRuns = options.rosterSync === "not-runnable" ? [] : initialSyncRuns();
+  const syncRuns = options.rosterSync === "not-runnable" || options.rosterSync === "csv-import" ? [] : initialSyncRuns();
   let approvedRemoval: string | undefined;
   const HELD_FINGERPRINT = "a".repeat(64);
   const libraryCourses: { packageId: string; version: string }[] = [];
@@ -681,6 +681,9 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       if (options.rosterSync === "unreadable") throw new DistrictApiError(503, { code: "unavailable", message: "The roster sync record could not be read.", correlationId: "req-sync" });
       if (options.rosterSync === "not-runnable") {
         return { provider: "oneroster-api", runnable: false, reason: "this deployment has no roster source for oneroster-api", runs: [] } as never;
+      }
+      if (options.rosterSync === "csv-import") {
+        return { provider: "oneroster-csv", runnable: false, reason: "the roster has no identity mapping", runs: [] } as never;
       }
       const latest = syncRuns.at(-1);
       const lastSuccess = syncRuns.findLast((run) => run.outcome === "succeeded");

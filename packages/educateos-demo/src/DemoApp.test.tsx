@@ -94,7 +94,7 @@ describe("the demo", () => {
     await userEvent.click(await findByRole(container, "link", { name: "Grade 1 Reading Foundations · Room 7" }, BOOT));
     await userEvent.click(await findByRole(container, "link", { name: "Retell The Little Seed" }, BOOT));
     const tutor = await findByRole(container, "complementary", { name: "Reading Buddy (simulated)" }, BOOT);
-    expect(tutor.textContent).toContain("Simulated preview — the live district runs this on real AI with safety screening.");
+    expect(tutor.textContent).toContain("Simulated preview — scripted, with no AI behind it. Student-facing AI stays off in the founding pilot.");
     await userEvent.click(within(tutor).getByRole("button", { name: "Ask Reading Buddy" }));
     const replies = within(tutor).getByRole("group", { name: "Quick replies" });
     await userEvent.click(within(replies).getByRole("button", { name: "What happened first?" }));

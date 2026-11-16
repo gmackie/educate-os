@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Badge, Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
-import { ArrowsClockwise, Lightning, Warning } from "@phosphor-icons/react";
+import { Badge, Banner, Button, LayerCard, Link, Text } from "@cloudflare/kumo";
+import { ArrowsClockwise, Info, Lightning, Warning } from "@phosphor-icons/react";
 import { useAdminClient } from "../app/AdminClientContext.tsx";
 import { useAnnounce } from "../app/Announcer.tsx";
 import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
@@ -20,9 +20,41 @@ const Fact = ({ term, children }: { term: string; children: ReactNode }) => (
   </div>
 );
 
+/**
+ * Rosters that never sync, because they come from files an administrator imports or are kept by
+ * hand: where each is kept up to date instead.
+ */
+const NOT_SYNCED: Readonly<Record<string, { title: string; description: string; screen: { href: string; label: string } }>> = {
+  "oneroster-csv": {
+    title: "This roster is imported, not synced",
+    description: "The district's roster comes from OneRoster CSV files. Import them on the Roster screen, where you preview what changes before you apply it.",
+    screen: { href: "#/roster", label: "Go to Roster" },
+  },
+  manual: {
+    title: "This roster is entered by hand, not synced",
+    description: "Add and change the district's schools, classes and people on the Classes and people screen.",
+    screen: { href: "#/classes-people", label: "Go to Classes and people" },
+  },
+};
+
 /** Where the roster comes from, whether it can sync, and how healthy its syncs have been. */
 const SyncSource = ({ status, provider }: { status: RosterSyncStatus; provider: string }) => {
   const health = status.health;
+  const notSynced = NOT_SYNCED[status.provider];
+  if (notSynced !== undefined) {
+    return (
+      <LayerCard className="flex flex-col gap-4 p-4">
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Fact term="Roster source"><Text bold>{provider}</Text></Fact>
+        </dl>
+        <Banner
+          icon={<Info weight="fill" />}
+          title={notSynced.title}
+          description={<>{notSynced.description} <Link href={notSynced.screen.href}>{notSynced.screen.label}</Link></>}
+        />
+      </LayerCard>
+    );
+  }
   return (
     <LayerCard className="flex flex-col gap-4 p-4">
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -130,7 +162,7 @@ export const RosterSyncPage = () => {
                   <Text variant="secondary">A removal is approved. The next sync applies it, if the roster still matches what was approved.</Text>
                 )}
               </section>
-              <section aria-labelledby="sync-run-heading" className="flex flex-col gap-3">
+              {NOT_SYNCED[s.provider] === undefined && <section aria-labelledby="sync-run-heading" className="flex flex-col gap-3">
                 <Text as="h3" variant="heading" id="sync-run-heading">Sync now</Text>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="flex flex-col items-start gap-2">
@@ -146,7 +178,7 @@ export const RosterSyncPage = () => {
                     <Text variant="secondary" size="sm">Reads only what changed since the last sync. Quicker, but only a complete sync notices records deleted outright.</Text>
                   </div>
                 </div>
-              </section>
+              </section>}
               {result !== undefined && <RosterSyncResult result={result} provider={provider} />}
               <RosterSyncHistory runs={s.runs} provider={provider} />
             </>
