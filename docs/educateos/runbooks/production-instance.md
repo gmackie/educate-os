@@ -54,7 +54,7 @@ gets `BASE_URL=https://schoolos.gmac.io/gatekeeper/<short>`.
 The guard reaches Hall Monitor by service binding, which it prefers over `HALL_MONITOR_URL`, so that
 var is not set. It signs its service tokens as `iss=educateos`, `aud=hall-monitor`, for tenant
 `educateos-gmacko-demo`. Hall Monitor (hall-monitor.gmac.io, HM-12) trusts that issuer with the
-public half of the signing key (`kid` `educateos-1`). The guard config names Hall Monitor's built-in
+public half of the signing key (`kid` `schoolos-1`, minted before the EducateOS rename). The guard config names Hall Monitor's built-in
 profiles at revision `builtin-1`: `educator`, `student-9-12`, and `student-6-8` for both the 6-8 and
 K-5 audience classes (Hall Monitor has no younger profile and moderates younger bands under the
 stricter 6-8 one). `student-k5` is still its own guard profile, with scaffolded answers and the K-2
