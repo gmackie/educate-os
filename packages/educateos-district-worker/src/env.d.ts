@@ -3,6 +3,10 @@
 
 declare namespace Cloudflare {
   interface Env {
+    /** Optional installer-owned Workers AI binding. No provider API key is needed. */
+    PLANNER_AI?: import("./planner-runtime.ts").PlannerModelBinding;
+    /** Mandatory existing EducateOsAiCallGuard entrypoint when planner AI is enabled. */
+    PLANNER_AI_GUARD?: import("./planner-runtime.ts").PlannerGuardBinding;
     /** Optional installer binding to the configured Workshop's WorkshopAssessmentReleases entrypoint. */
     WORKSHOP_ASSESSMENT_RELEASES?: import("./district.ts").DistrictSeams["workshopReleases"];
     /** The district's configuration as JSON (see `DistrictWorkerConfig` in config.ts). */

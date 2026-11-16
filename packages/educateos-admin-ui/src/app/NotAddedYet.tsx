@@ -1,7 +1,6 @@
 import { ClipboardText, Link, Text } from "@cloudflare/kumo";
 import { SignOut } from "@phosphor-icons/react";
 import type { UnlinkedSignIn } from "@educateos/api-client";
-import { useConsoleTitle } from "./consoleTitle.ts";
 
 /**
  * What someone sees when they signed in but their school has not added them: the sign-in ID an
@@ -9,7 +8,6 @@ import { useConsoleTitle } from "./consoleTitle.ts";
  * account, say).
  */
 export const NotAddedYet = ({ signIn }: { signIn: UnlinkedSignIn }) => {
-  useConsoleTitle("Not added to this school yet");
   return (
     <section aria-labelledby="not-added-heading" className="flex max-w-xl flex-col gap-4">
       <Text as="h2" variant="heading" size="lg">

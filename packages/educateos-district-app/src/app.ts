@@ -1,3 +1,7 @@
+import { plannerActivityEvidence, type PlannerActivityEvidenceSource } from "./planner-activity-evidence.ts";
+import { plannerExplanation, type PlannerAiOptions } from "./planner-ai.ts";
+import { advancePlannerCoach, plannerLesson } from "./planner-coaching.ts";
+import { assertPlannerAssessment, plannerKnowledge } from "./planner-evidence.ts";
 import { importWorkshopAssessmentBlueprint, verifyWorkshopAssessmentBlueprint, type WorkshopAssessmentReleaseSource } from "@educateos/assessment-sdk";
 import { GadgetAssessmentSubmission, GadgetCheckpointSubmission, checkpointContent, GADGET_CHECKPOINT_MEDIA_TYPE } from "./gadget-assessment.ts";
 import {
@@ -27,7 +31,9 @@ import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type Conte
 import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@educateos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
 import type { ReleaseTrust } from "@educateos/releases";
-import { approveStandards, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
+import { approveStandards, educationLevelsOf, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
+import { assertPlannerReview, plannerConflict, plannerOpportunities, plannerRecipeOpportunities, plannerTeacherView, type PlannerPlan } from "./planner.ts";
+import { recipeClassOf, resolveClassRecipes } from "./learning-recipe-approval.ts";
 import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
 import { createDraftRevision, DesiredState, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
 import { integrationHealth, oneroster } from "@educateos/integrations";
@@ -43,11 +49,12 @@ import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
 import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
-import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
+import { Delegations, guardianGuidanceRelationships, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 import { familyAdults, HomeLearningService, type ChildSession, type HomeLearningPurge } from "@educateos/home-learning";
 import { childSessionToken, deleteCommunityPrincipal, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
+import { guidanceHandlers, type GuidanceRouteName } from "./guidance-routes.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type Announcement, type MailSender } from "./communication/index.ts";
@@ -147,6 +154,10 @@ export interface DistrictAppOptions {
   modelCatalog?: readonly GovernedModel[];
   /** The AI-help levels above each offering. Defaults to `full` help allowed district-wide. */
   aiHelp?: AiHelpPolicySource;
+  /** Optional guarded planner gateway adapter. Missing bindings leave curriculum available. */
+  plannerAi?: PlannerAiOptions;
+  /** Optional paired activity evidence source. No external tool is available by default. */
+  plannerActivityEvidence?: PlannerActivityEvidenceSource;
   /** Verifies framework releases before the catalog mirror installs them. Defaults to the catalog's own seed releases only. */
   verifyCatalogRelease?: VerifyRelease;
   /**
@@ -449,6 +460,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const informationOver = (directory: AcademicStore) => directoryPolicyInformation(directory, policySource, {
     relationships: [
       guardianRelationships(stores.guardianRelationships, directory, now),
+      guardianGuidanceRelationships(stores.guidance.guardianGrants, stores.guardianRelationships, directory, now),
       familyAdults(stores.homeLearning),
       ...options.policySources?.relationships ?? [],
     ],
@@ -607,6 +619,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
   }
 
+  async function requireStudentLearning(ctx: RequestContext, studentId: PrincipalId, action: "read" | "configure" | "delete"): Promise<void> {
+    await ctx.require(action, { kind: "learning-guidance", id: studentId, ownerPrincipalId: studentId, scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can manage student learning-record disposition.");
+    if (!ctx.snapshot.principals.some((p) => p.id === studentId && p.kind === "student" && p.districtId === districtId)) throw new EducateOsError("not-found", "We couldn't find that student in this district.");
+  }
+
   /** Everything one request uses, built around a decider that audits under its correlation ID. */
   class RequestContext {
     readonly correlationId: string;
@@ -752,6 +769,81 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const offering = this.snapshot.offerings.find((o) => o.id === offeringId);
       if (offering === undefined) throw new EducateOsError("not-found", `offering ${offeringId} was not found.`);
       return { level: "offering", districtId: offering.districtId, schoolId: offering.schoolId, offeringId: offering.id };
+    }
+
+    /** Planner operations use the existing course policy, with explicit active enrollment checks. */
+    async plannerAccess(offeringId: OfferingId, teacher: boolean, write = false) {
+      const scope = this.offeringScope(offeringId);
+      if (teacher) {
+        if (!this.snapshot.enrollments.some((e) => e.offeringId === offeringId && e.principalId === this.principal.principalId && ["teacher", "co-teacher"].includes(e.role) && e.status === "active")) throw new EducateOsError("forbidden", "Only this class's active teachers can use its planner review.");
+        await this.require(write ? "create" : "read", { kind: write ? "activity" : "rubric", scope, classification: "teacher-only" }, "Only this class's teachers can manage planner invitations and shared evidence.");
+      } else {
+        this.plannerStudent(offeringId, this.principal.principalId);
+        await this.require(write ? "update" : "read", { kind: write ? "submission" : "offering", scope, classification: "course", ...(write ? { ownerPrincipalId: this.principal.principalId } : {}) }, "You cannot use this class's planner.");
+      }
+      const plans = (await stores.planner.list(offeringId)).filter((p) => teacher || p.studentId === this.principal.principalId);
+      return teacher || write ? plans : Promise.all(plans.map((plan) => this.plannerStudentView(plan)));
+    }
+
+    /** Preserve archived evidence while showing current availability without rewriting stored history. */
+    async plannerStudentView(plan: PlannerPlan): Promise<PlannerPlan> {
+      const view = structuredClone(plan);
+      for (const opportunity of view.opportunities) {
+        delete opportunity.unavailableReason;
+        try { await this.plannerApproved(opportunity, plan.offeringId); }
+        catch (error) {
+          if (!(error instanceof EducateOsError) || error.code !== "conflict") throw error;
+          opportunity.unavailableReason = error.message;
+        }
+      }
+      return view;
+    }
+
+    plannerStudent(offeringId: OfferingId, studentId: PrincipalId) {
+      if (!this.snapshot.principals.some((p) => p.id === studentId && p.kind === "student" && p.status === "active") || !this.snapshot.enrollments.some((e) => e.offeringId === offeringId && e.principalId === studentId && e.role === "student" && e.status === "active")) {
+        throw new EducateOsError("not-found", "This student is not actively enrolled in the class.");
+      }
+    }
+
+    async plannerCreate(offeringId: OfferingId, studentId: PrincipalId, goal: string, skills: PlannerPlan["skills"], teacher: boolean, focus?: string): Promise<PlannerPlan> {
+      const plans = await this.plannerAccess(offeringId, teacher, true);
+      this.plannerStudent(offeringId, studentId);
+      const offering = this.snapshot.offerings.find((o) => o.id === offeringId)!;
+      const course = this.snapshot.courses.find((c) => c.id === offering.courseId);
+      const levels = course === undefined ? undefined : educationLevelsOf(course.gradeBand);
+      if (levels === undefined || (!["06", "07"].some((l) => levels.has(l)))) throw new EducateOsError("conflict", "Reviewed coaching lessons currently cover grades 6 and 7. No alignment is inferred for other grades.");
+      if (focus && !levels.has(focus.startsWith("W.") ? focus.split(".")[1]!.padStart(2, "0") : focus[0]!.padStart(2, "0"))) throw new EducateOsError("conflict", "Choose a focus within this class grade band.");
+      const createdAt = now().toISOString();
+      const prior = plans.filter((p) => p.studentId === studentId);
+      // Teacher-approved recipes decide the connection. Until a class has made a recipe
+      // decision the fixed mapping still applies; after that, no recipe means no connection.
+      const recipes = await resolveClassRecipes(catalog, await stores.guidance.records.list(offeringId), recipeClassOf(this.snapshot, offeringId));
+      const opportunities = recipes.engaged ? plannerRecipeOpportunities(recipes.resolved, goal, prior, createdAt, focus) : await plannerOpportunities(catalog, goal, prior, createdAt, levels, focus);
+      const plan: PlannerPlan = {
+        id: crypto.randomUUID(), revision: 1, offeringId, studentId, goal, skills,
+        source: teacher ? "teacher" : "student", authorId: this.principal.principalId,
+        authorName: this.snapshot.principals.find((p) => p.id === this.principal.principalId)!.displayName,
+        createdAt, opportunities,
+      };
+      // Whatever produced an opportunity, its standard must be in the approved release now.
+      for (const opportunity of opportunities) await this.plannerApproved(opportunity, offeringId);
+      await stores.planner.save(plan, 0);
+      return plan;
+    }
+
+    /** New work and recommendations cannot use a withdrawn release, a hidden item, or an item the release does not contain. */
+    async plannerApproved(opportunity: PlannerPlan["opportunities"][number], offeringId: OfferingId) {
+      const state = await catalog.get(opportunity.frameworkKey);
+      const release = state?.releases.find((r) => r.status === "approved" && r.release.contentDigest === opportunity.releaseDigest);
+      const member = release?.release.content.nodes?.some((n) => n.uri === opportunity.node.uri && n.humanCodingScheme === opportunity.node.humanCodingScheme) === true;
+      if (!member || state!.overlays.some((o) => o.nodeUri === opportunity.node.uri && o.hidden === true)) throw new EducateOsError("conflict", "These standards are no longer approved. Make a new plan with your teacher.");
+      if (opportunity.recipe) {
+        const recipes = await resolveClassRecipes(catalog, await stores.guidance.records.list(offeringId), recipeClassOf(this.snapshot, offeringId));
+        const recipe = opportunity.recipe;
+        if (!recipes.resolved.some((r) => r.record.recipeId === recipe.recipeId && r.record.version === recipe.version && r.record.contentDigest === recipe.contentDigest && r.releaseDigest === opportunity.releaseDigest && r.node.uri === opportunity.node.uri)) {
+          throw new EducateOsError("conflict", "This recipe version is withdrawn, replaced, paused or no longer approved for this class. Your earlier work is kept; make a new plan with your teacher.");
+        }
+      }
     }
 
     /** Requires the engine to allow `action` on a resource, answering `forbidden` otherwise. */
@@ -972,7 +1064,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     return { hasFamily, childSession: { learnerId: learner.id, displayName: learner.displayName, avatar: learner.avatar } };
   }
 
-  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | GuidanceRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   /**
    * Runs a route bound to an academic operation (SCHO-173): its path parameters and body are the
@@ -988,6 +1080,96 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   }
 
   const handlers: Handlers = {
+    "student.plannerKnowledge": async (ctx, { params }) => plannerKnowledge(await ctx.plannerAccess(params.offeringId, false), params.offeringId, ctx.principal.principalId),
+    "student.plannerCoach": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (!plan || !opportunity) throw new EducateOsError("not-found", "This opportunity was not found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      if (opportunity.decision !== "accepted" || opportunity.challenge) throw new EducateOsError("conflict", "Accept this opportunity first. Shared challenge evidence cannot be changed.");
+      await ctx.plannerApproved(opportunity, params.offeringId);
+      opportunity.coaching ??= { lesson: plannerLesson(opportunity.code), step: 0, mode: "instruction", hints: 0, events: [], source: "curriculum" };
+      advancePlannerCoach(opportunity.coaching, body.action, now().toISOString());
+      if (body.action === "show") {
+        const learnerOfferings = new Set(ctx.snapshot.enrollments.filter((e) => e.principalId === plan.studentId && e.role === "student" && e.status === "active").map((e) => e.offeringId));
+        const learnerCourses = ctx.snapshot.offerings.filter((o) => learnerOfferings.has(o.id)).map((o) => ctx.snapshot.courses.find((c) => c.id === o.courseId));
+        const bands = learnerCourses.map((c) => c && educationLevelsOf(c.gradeBand));
+        const levels = bands.length > 0 && bands.every((b) => b !== undefined) ? new Set(bands.flatMap((b) => [...b!])) : undefined;
+        opportunity.coaching.aiStatus = await plannerExplanation({ options: options.plannerAi, policy: { layersFor: async (scope) => {
+          const effective = await policySource.effectivePolicy(scope);
+          if (effective.aiSpending === "disabled") return { district: "none" };
+          return options.aiHelp ? options.aiHelp.layersFor(scope) : { district: effective.aiHelp ?? "none" };
+        } }, governor: ledgerGovernor(ledger), scope: ctx.offeringScope(params.offeringId), levels, plan, opportunity, allowAi: body.allowAi });
+      }
+      await ctx.plannerApproved(opportunity, params.offeringId);
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return ctx.plannerStudentView(plan);
+    },
+    "student.plannerChallenge": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (!plan || !opportunity) throw new EducateOsError("not-found", "This opportunity was not found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      const start = opportunity.coaching?.events.find((e) => e.action === "try");
+      if (opportunity.decision !== "accepted" || opportunity.response === undefined || !start || opportunity.challenge) throw new EducateOsError("conflict", "Share your project response and choose Try myself first. Each challenge is shared once.");
+      await ctx.plannerApproved(opportunity, params.offeringId);
+      opportunity.challenge = { text: body.text, reflection: body.reflection, assistance: body.assistance, startedAt: start.at, sharedAt: now().toISOString(), source: "student-practice", helpEvents: opportunity.coaching!.events.filter((e) => e.action === "hint" || e.action === "show").length };
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return ctx.plannerStudentView(plan);
+    },
+    "student.planner": (ctx, { params }) => ctx.plannerAccess(params.offeringId, false),
+    "student.planGoal": (ctx, { params, body }) => ctx.plannerCreate(params.offeringId, ctx.principal.principalId, body.goal, body.skills, false, body.focus),
+    "teacher.planner": async (ctx, { params }) => (await ctx.plannerAccess(params.offeringId, true)).flatMap((p) => {
+      const view = plannerTeacherView(p);
+      return view === undefined ? [] : [view];
+    }),
+    "teacher.plannerInvite": async (ctx, { params, body }) => plannerTeacherView(await ctx.plannerCreate(params.offeringId, body.studentId, body.goal, body.skills, true, body.focus))!,
+    "student.plannerDecision": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (plan === undefined || opportunity === undefined) throw new EducateOsError("not-found", "This opportunity was not found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      if (opportunity.response !== undefined) throw new EducateOsError("conflict", "This response has already been shared.");
+      if (body.decision === "accepted") await ctx.plannerApproved(opportunity, params.offeringId);
+      opportunity.decision = body.decision;
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return ctx.plannerStudentView(plan);
+    },
+    "student.plannerShare": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, false, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (plan === undefined || opportunity === undefined) throw new EducateOsError("not-found", "This opportunity was not found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      if (opportunity.decision !== "accepted" || opportunity.response !== undefined) throw new EducateOsError("conflict", "Accept the opportunity first. A shared response cannot be replaced.");
+      await ctx.plannerApproved(opportunity, params.offeringId);
+      const activityEvidence = body.activityEvidenceId === undefined ? undefined : await plannerActivityEvidence({ source: options.plannerActivityEvidence, reference: body.activityEvidenceId, districtId, plan, opportunity, assistance: body.assistance });
+      await ctx.plannerApproved(opportunity, params.offeringId);
+      opportunity.response = { text: body.text, assistance: body.assistance, ...(activityEvidence ? { activityEvidence } : {}), sharedAt: now().toISOString() };
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return ctx.plannerStudentView(plan);
+    },
+    "teacher.plannerReview": async (ctx, { params, body }) => {
+      const plan = (await ctx.plannerAccess(params.offeringId, true, true)).find((p) => p.id === params.planId);
+      const opportunity = plan?.opportunities.find((o) => o.id === params.opportunityId);
+      if (plan === undefined || opportunity?.response === undefined) throw new EducateOsError("not-found", "No shared evidence was found.");
+      if (plan.revision !== body.revision) throw plannerConflict();
+      assertPlannerReview(body);
+      const prior = (await ctx.plannerAccess(params.offeringId, true)).filter((p) => p.studentId === plan.studentId);
+      assertPlannerAssessment(body, opportunity, prior, now().toISOString());
+      if (body.decision === "recommend") {
+        await ctx.plannerApproved(opportunity, params.offeringId);
+
+      }
+      const { revision: _revision, ...review } = body;
+      opportunity.reviews.push({ ...review, by: ctx.principal.principalId, at: now().toISOString() });
+      plan.revision++;
+      await stores.planner.save(plan, body.revision);
+      return plannerTeacherView(plan)!;
+    },
     // Anyone signed in learns whether their pages may send usage events (SCHO-350); nothing about who decided.
     "me.productAnalytics": async (ctx) => productAnalyticsForClient(ctx.snapshot.district, options.productAnalytics),
     "me.get": async (ctx) => {
@@ -1617,6 +1799,29 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.renameDistrict": (ctx, { body }) => ctx.academics().renameDistrict(ctx.caller, body),
     // District export (SCHO-364): decided on the district as a restricted resource, so only the
     // export rule can allow it.
+    "admin.studentLearningPreview": async (ctx, { params }) => {
+      await requireStudentLearning(ctx, params.studentId, "read");
+      return stores.studentLearningLifecycle.preview(params.studentId, now().toISOString());
+    },
+    "admin.studentLearningDisposition": async (ctx, { params, body }) => {
+      await requireStudentLearning(ctx, params.studentId, "configure");
+      const { revision, ...disposition } = body;
+      return stores.studentLearningLifecycle.configure(params.studentId, disposition, revision);
+    },
+    "admin.purgeStudentLearning": async (ctx, { params, body }) => {
+      await requireStudentLearning(ctx, params.studentId, "delete");
+      if (body.confirmStudentId !== params.studentId) throw new EducateOsError("conflict", "Confirm the exact student ID before erasing learning records.");
+      const receipt = stores.studentLearningLifecycle.purge(params.studentId, ctx.principal.principalId, now().toISOString(), body.revision);
+      // The receipt is atomic with erasure. Await the existing audit sink; if it fails, a retry
+      // reuses the original receipt and can finish recording without re-erasing anything.
+      await stores.audit.record({
+        correlationId: ctx.correlationId, decidedAt: receipt.at, principalId: receipt.actorId,
+        districtId, action: "delete", resourceKind: "learning-guidance", resourceId: params.studentId,
+        channel: "http", effect: "allow", ruleId: "admin.student-learning.erased",
+        studentLearningDeletion: { receiptId: receipt.id, ...receipt.counts },
+      });
+      return receipt;
+    },
     "admin.exportDistrict": async (ctx) => {
       await ctx.require("export", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can export the district.");
       const exportedAt = now();
@@ -1933,6 +2138,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
   // Home learning (ADR-0016)
   const homeLearningRoutes = homeLearningHandlers<RequestContext>();
+  // Guidance and Evidence: one mount point; the handlers and the policy grant live in their own modules.
+  const guidanceRoutes = guidanceHandlers<RequestContext>({ stores, catalog, now });
   function homeLearningRetention() {
     const days = options.homeLearning?.retentionDays;
     return days === undefined ? {} : { retentionDays: days };
@@ -2016,6 +2223,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
     const handler = (handlers[matched.name as keyof Handlers]
       ?? guardianRoutes[matched.name as GuardianRouteName]
+      ?? guidanceRoutes[matched.name as GuidanceRouteName]
       ?? homeLearningRoutes[matched.name as HomeLearningRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     if (spec.download !== undefined) return fileResponse(await handler(ctx, input) as FileDownload, spec.download, correlationId);
     if ((spec as RouteSpec).cookie !== undefined) {

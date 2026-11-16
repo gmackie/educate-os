@@ -1,0 +1,559 @@
+{
+  "version": 1,
+  "personas": {
+    "roblox-pizza": [
+      {
+        "actor": "student",
+        "action": "enter interest",
+        "result": {
+          "interest": "Build a Roblox Pizza Tycoon",
+          "offered": [
+            {
+              "code": "6.RP.A.3b",
+              "framework": "ccss-math",
+              "nodeCode": "6.RP.A.3",
+              "nodeUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.6.RP.A.3",
+              "release": "1.1.0 sha256:0113a6a894b1",
+              "nodeProvenance": "derived",
+              "task": "Pizza Tycoon: oven A makes 12 pizzas in 3 minutes; oven B makes ",
+              "decision": "offered"
+            },
+            {
+              "code": "W.6.1",
+              "framework": "ccss-ela",
+              "nodeCode": "W.6.1",
+              "nodeUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.6.1",
+              "release": "1.1.0 sha256:0739823743ad",
+              "nodeProvenance": "derived",
+              "task": "Choose a decision in your project. Write a claim, support it wit",
+              "decision": "offered"
+            }
+          ],
+          "alignmentAudit": "clean"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "learn 6.RP.A.3b",
+        "result": {
+          "decision": "accepted",
+          "mode": "instruction",
+          "step": "Name the quantities",
+          "hintsUsed": 2,
+          "source": "curriculum",
+          "evidence": "unverified"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "share project 6.RP.A.3b",
+        "result": {
+          "assistanceDisclosed": "ai",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "independent challenge 6.RP.A.3b",
+        "result": {
+          "mode": "independent",
+          "helpClosedDuringAttempt": "409 conflict",
+          "assistanceDisclosed": "independent",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "unseen assessment 6.RP.A.3b",
+        "result": {
+          "recommendation": "accepted",
+          "evidence": "demonstrated"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "skip W.6.1",
+        "result": {
+          "decision": "skipped",
+          "evidence": "unverified"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "privacy check",
+        "result": {
+          "teacherSeesPrivateInterest": false
+        }
+      }
+    ],
+    "cookie-business": [
+      {
+        "actor": "student",
+        "action": "enter interest",
+        "result": {
+          "interest": "Compare cookie prices and persuade our club to choose a recipe",
+          "offered": [
+            {
+              "code": "6.RP.A.3b",
+              "framework": "ccss-math",
+              "nodeCode": "6.RP.A.3",
+              "nodeUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.6.RP.A.3",
+              "release": "1.1.0 sha256:0113a6a894b1",
+              "nodeProvenance": "derived",
+              "task": "Cookie project: compare 12 cookies for $6 with 20 for $8. Calcul",
+              "decision": "offered"
+            },
+            {
+              "code": "W.6.1",
+              "framework": "ccss-ela",
+              "nodeCode": "W.6.1",
+              "nodeUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.6.1",
+              "release": "1.1.0 sha256:0739823743ad",
+              "nodeProvenance": "derived",
+              "task": "Choose a decision in your project. Write a claim, support it wit",
+              "decision": "offered"
+            }
+          ],
+          "alignmentAudit": "clean"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "learn 6.RP.A.3b",
+        "result": {
+          "decision": "accepted",
+          "mode": "instruction",
+          "step": "Name the quantities",
+          "hintsUsed": 2,
+          "source": "curriculum",
+          "evidence": "unverified"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "share project 6.RP.A.3b",
+        "result": {
+          "assistanceDisclosed": "adult",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "independent challenge 6.RP.A.3b",
+        "result": {
+          "mode": "independent",
+          "helpClosedDuringAttempt": "409 conflict",
+          "assistanceDisclosed": "independent",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "unseen assessment 6.RP.A.3b",
+        "result": {
+          "recommendation": "accepted",
+          "evidence": "demonstrated"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "learn W.6.1",
+        "result": {
+          "decision": "accepted",
+          "mode": "instruction",
+          "step": "Make a decision worth explaining",
+          "hintsUsed": 2,
+          "source": "curriculum",
+          "evidence": "unverified"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "share project W.6.1",
+        "result": {
+          "assistanceDisclosed": "peer",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "independent challenge W.6.1",
+        "result": {
+          "mode": "independent",
+          "helpClosedDuringAttempt": "409 conflict",
+          "assistanceDisclosed": "peer",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "recommend mastery W.6.1",
+        "result": {
+          "answer": "409 conflict",
+          "reason": "the learner's own challenge disclosed help"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "hold W.6.1",
+        "result": {
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "privacy check",
+        "result": {
+          "teacherSeesPrivateInterest": false
+        }
+      }
+    ],
+    "basketball": [
+      {
+        "actor": "student",
+        "action": "enter interest",
+        "result": {
+          "interest": "Track my basketball practice: free throws made per minute",
+          "offered": [
+            {
+              "code": "6.RP.A.3b",
+              "framework": "ccss-math",
+              "nodeCode": "6.RP.A.3",
+              "nodeUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.6.RP.A.3",
+              "release": "1.1.0 sha256:0113a6a894b1",
+              "nodeProvenance": "derived",
+              "task": "Basketball practice: in drill A you make 18 free throws in 6 min",
+              "decision": "offered"
+            }
+          ],
+          "alignmentAudit": "clean"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "learn 6.RP.A.3b",
+        "result": {
+          "decision": "accepted",
+          "mode": "instruction",
+          "step": "Name the quantities",
+          "hintsUsed": 2,
+          "source": "curriculum",
+          "evidence": "unverified"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "share project 6.RP.A.3b",
+        "result": {
+          "assistanceDisclosed": "independent",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "independent challenge 6.RP.A.3b",
+        "result": {
+          "mode": "independent",
+          "helpClosedDuringAttempt": "409 conflict",
+          "assistanceDisclosed": "ai",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "recommend mastery 6.RP.A.3b",
+        "result": {
+          "answer": "409 conflict",
+          "reason": "the learner's own challenge disclosed help"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "hold 6.RP.A.3b",
+        "result": {
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "privacy check",
+        "result": {
+          "teacherSeesPrivateInterest": false
+        }
+      }
+    ],
+    "no-alignment": [
+      {
+        "actor": "student",
+        "action": "enter interest",
+        "result": {
+          "interest": "I want to learn about black holes and write a poem about astronomy",
+          "offered": [],
+          "alignmentAudit": "clean"
+        }
+      },
+      {
+        "actor": "system",
+        "action": "no natural alignment",
+        "result": {
+          "lesson": "none",
+          "opportunities": 0,
+          "trackedStandards": 0
+        }
+      }
+    ],
+    "grade-seven-basketball": [
+      {
+        "actor": "student",
+        "action": "enter interest",
+        "result": {
+          "interest": "Track my basketball practice: free throws made per minute",
+          "offered": [
+            {
+              "code": "7.RP.A.1",
+              "framework": "ccss-math",
+              "nodeCode": "7.RP.A.1",
+              "nodeUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.1",
+              "release": "1.1.0 sha256:0113a6a894b1",
+              "nodeProvenance": "derived",
+              "task": "A unit rate tells how much of one quantity goes with one of anot",
+              "decision": "offered"
+            }
+          ],
+          "alignmentAudit": "clean"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "learn 7.RP.A.1",
+        "result": {
+          "decision": "accepted",
+          "mode": "instruction",
+          "step": "Name the quantities",
+          "hintsUsed": 2,
+          "source": "curriculum",
+          "evidence": "unverified"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "share project 7.RP.A.1",
+        "result": {
+          "assistanceDisclosed": "independent",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "student",
+        "action": "independent challenge 7.RP.A.1",
+        "result": {
+          "mode": "independent",
+          "helpClosedDuringAttempt": "409 conflict",
+          "assistanceDisclosed": "independent",
+          "evidence": "practiced"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "unseen assessment 7.RP.A.1",
+        "result": {
+          "recommendation": "accepted",
+          "evidence": "demonstrated"
+        }
+      },
+      {
+        "actor": "teacher",
+        "action": "privacy check",
+        "result": {
+          "teacherSeesPrivateInterest": false
+        }
+      }
+    ],
+    "grade-five": [
+      {
+        "actor": "student",
+        "action": "enter interest",
+        "result": {
+          "interest": "Build a Roblox Pizza Tycoon",
+          "answer": "409 conflict",
+          "message": "Reviewed coaching lessons currently cover grades 6 and 7. No alignment is inferred for other grades."
+        }
+      }
+    ]
+  },
+  "retention": [
+    {
+      "actor": "student",
+      "action": "new plan seven days later",
+      "result": {
+        "priorEvidence": "suggests a new setting or delayed check"
+      }
+    },
+    {
+      "actor": "teacher",
+      "action": "record delayed check",
+      "result": {
+        "answer": "ok"
+      }
+    },
+    {
+      "actor": "system",
+      "action": "advisory knowledge",
+      "result": [
+        {
+          "code": "6.RP.A.3b",
+          "status": "retained"
+        },
+        {
+          "code": "W.6.1",
+          "status": "unverified"
+        }
+      ]
+    }
+  ],
+  "family": [
+    {
+      "actor": "guardian",
+      "action": "view child after verified onboarding, before any opt-in",
+      "result": {
+        "capabilities": {
+          "suggest": false,
+          "progress": false
+        },
+        "classes": 0
+      }
+    },
+    {
+      "actor": "guardian",
+      "action": "send a suggestion",
+      "result": {
+        "answer": "403 forbidden"
+      }
+    },
+    {
+      "actor": "admin",
+      "action": "opt this one relationship in to suggestions",
+      "result": {
+        "capabilities": [
+          "suggest"
+        ]
+      }
+    },
+    {
+      "actor": "guardian",
+      "action": "send a suggestion",
+      "result": {
+        "answer": "ok"
+      }
+    },
+    {
+      "actor": "guardian",
+      "action": "link in a suggestion",
+      "result": {
+        "answer": "400 validation-failed"
+      }
+    },
+    {
+      "actor": "student",
+      "action": "see suggestions before teacher review",
+      "result": {
+        "count": 0
+      }
+    },
+    {
+      "actor": "student",
+      "action": "see the shared suggestion with its source",
+      "result": {
+        "kind": "suggestion",
+        "isAssignment": false,
+        "required": false,
+        "type": "family-topic",
+        "origin": {
+          "kind": "guardian",
+          "name": "Sam Park (synthetic guardian)"
+        },
+        "decision": "pending"
+      }
+    },
+    {
+      "actor": "teacher",
+      "action": "see that the student chose to accept",
+      "result": {
+        "studentAccepted": true
+      }
+    },
+    {
+      "actor": "guardian",
+      "action": "another family reads this child",
+      "result": {
+        "answer": "404 not-found"
+      }
+    },
+    {
+      "actor": "guardian",
+      "action": "another family suggests for this child",
+      "result": {
+        "answer": "404 not-found"
+      }
+    },
+    {
+      "actor": "guardian",
+      "action": "wrong child's class",
+      "result": {
+        "answer": "404 not-found"
+      }
+    },
+    {
+      "actor": "student",
+      "action": "switch family suggestions off",
+      "result": {
+        "guardianSuggestions": "off",
+        "nextSuggestion": "409 conflict"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "code": "6.RP.A.3",
+      "framework": "ccss-math",
+      "state": "approved",
+      "provenance": "derived",
+      "pathway": "planner",
+      "roster": 4,
+      "opportunities": {
+        "offered": 3,
+        "accepted": 3,
+        "skipped": 0,
+        "shared": 3,
+        "reviewed": 3
+      },
+      "evidenceByStudent": {
+        "needs-evidence": 1,
+        "encountered": 0,
+        "practiced": 1,
+        "independent-reviewed": 2
+      }
+    },
+    {
+      "code": "W.6.1",
+      "framework": "ccss-ela",
+      "state": "approved",
+      "provenance": "derived",
+      "pathway": "planner",
+      "roster": 4,
+      "opportunities": {
+        "offered": 1,
+        "accepted": 1,
+        "skipped": 0,
+        "shared": 1,
+        "reviewed": 1
+      },
+      "evidenceByStudent": {
+        "needs-evidence": 3,
+        "encountered": 0,
+        "practiced": 1,
+        "independent-reviewed": 0
+      }
+    }
+  ]
+}

@@ -3,7 +3,8 @@
 // pass on, a person who is not a district administrator is pointed to the apps that are theirs, and
 // neither sees the admin sections. An administrator gets the console, each section named for what
 // it is.
-import { describe, expect, it } from "vitest";
+import { act } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/dom";
 import { DistrictApiError, type DistrictApiClient } from "@educateos/api-client";
 import { fakeDistrict } from "../testing/fakeDistrict.ts";
@@ -32,6 +33,23 @@ describe("someone the school has not added yet", () => {
     await user.keyboard("{Enter}");
     expect(await navigator.clipboard.readText()).toBe("a1b2c3-new-person");
     await waitFor(() => expect([...document.querySelectorAll('[aria-live="polite"]')].some((region) => region.textContent === "Sign-in ID copied")).toBe(true));
+  });
+
+  it("keeps the access screen's title when the URL names another admin section", async () => {
+    renderConsole(fakeDistrict({ caller: "unlinked" }).client);
+    await screen.findByRole("heading", { level: 2, name: "You're signed in, but you haven't been added to this school yet" });
+    const titles = vi.spyOn(document, "title", "set");
+    try {
+      await act(async () => {
+        window.location.hash = "#/roster";
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+      });
+      expect(titles.mock.calls.length).toBeGreaterThan(0);
+      expect(titles.mock.calls.every(([title]) => title === "Not added to this school yet · EducateOS district admin")).toBe(true);
+      expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
+    } finally {
+      titles.mockRestore();
+    }
   });
 });
 

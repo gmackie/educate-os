@@ -11,6 +11,7 @@ pilot lead runs it with.
 
 | File | What it is | Audience |
 | --- | --- | --- |
+| [release-candidate.md](release-candidate.md) | SCHO-434 WIP integrated candidate: committed sources, reproducible acceptance checks, consent and open release gates. | Reviewers, pilot lead |
 | [program.md](program.md) | The program summary: who it's for, what each side gets and gives, the timeline, roles, readiness, the data rule, support and the end of the pilot. The public page mirrors it. | Districts, and us when we change the terms |
 | [playbook.md](playbook.md) | How we run a pilot: the kickoff agenda, the weekly 20-minute check-in, the issue log, and the mid-point and end-of-pilot reviews. | The EducateOS pilot lead |
 | [success-criteria.md](success-criteria.md) | A worksheet for the criteria agreed at kickoff, with example measurable criteria for teacher-facing AI and where each number comes from. | District sponsor, school lead, pilot lead |
@@ -19,6 +20,8 @@ pilot lead runs it with.
 | [teacher-training.md](teacher-training.md) | The 60-minute kickoff training, published at <https://educateos.io/pilot/teachers/training/>. | The trainer |
 | [family-letter.md](family-letter.md), [family-letter.es.md](family-letter.es.md) | The family letter in English and Spanish (Spanish pending native-speaker review), published at <https://educateos.io/pilot/families/>. | School lead |
 | [student-ai-guidelines.md](student-ai-guidelines.md) | Student AI guidelines by grade band, published at <https://educateos.io/pilot/students/>. | Teachers, students |
+| [learning-pilot-guide.md](learning-pilot-guide.md) | Student-led learning pilot (WIP, SCHO-432): what students, teachers and families see, safeguards, consent, opt-out, retention, and the synthetic replay. | Teachers, families, pilot lead |
+| [learning-pilot-evaluation.md](learning-pilot-evaluation.md) | Evaluation plan with an independent pre, post and delayed test. Plan only; no results. | Pilot lead, district sponsor |
 | [staff-ai-guidance.md](staff-ai-guidance.md) | Staff AI use guidance, published at <https://educateos.io/pilot/staff-ai-guidance/>. | All staff |
 
 ## Keeping things consistent

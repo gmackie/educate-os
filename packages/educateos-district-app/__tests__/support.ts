@@ -115,7 +115,7 @@ export async function bootDistrict(
     // From Google Classroom (SCHO-403)
     | "classroomGrades" | "onClassroomGradesUnavailable"
     // Home learning (ADR-0016)
-    | "homeLearning">> & { standards?: readonly string[] } = {},
+    | "homeLearning" | "plannerAi" | "aiHelp" | "plannerActivityEvidence">> & { standards?: readonly string[] } = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);

@@ -94,6 +94,9 @@ const CATALOG_SUBJECT: Partial<Record<Subject, CatalogSubject>> = {
   "social-emotional-learning": "social-emotional-learning",
 };
 
+/** The catalog subject a course subject is reported under, or undefined if the catalog does not cover it. */
+export const catalogSubjectOf = (subject: Subject): CatalogSubject | undefined => CATALOG_SUBJECT[subject];
+
 /**
  * The CEDS education levels (`KG`, `01` … `12`) a course grade band such as `K`, `7` or `9-12`
  * spans, or undefined for one this cannot read.

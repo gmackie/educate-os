@@ -111,6 +111,13 @@ export const ResourceKind = z.enum([
   /** A record that lets one guardian read one student's course records (ADR-0012). */
   "guardian-relationship",
   /**
+   * One student's learning guidance in one offering (Guidance and Evidence): suggestions a
+   * guardian sends, and the progress summary a guardian may read. Owned by the student, `course`.
+   * It is deliberately NOT one of the guardian-readable kinds: a guardian reaches it only through a
+   * separate, explicit `GuardianGuidanceGrant` that a district administrator turns on per relationship.
+   */
+  "learning-guidance",
+  /**
    * A principal's grant letting one registered client act for them within a scope ceiling until
    * it expires (RFC 0002 §6): `restricted`, at the ceiling's scope, owned by its grantor.
    */
