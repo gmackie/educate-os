@@ -40,8 +40,10 @@
   "vars": {
     // Closed by default. See intake/README.md. No site key, secrets or review attestation shipped.
     "INTEREST_ENABLED": "false",
-    // Adult listening collection opens only after the separate listening/README.md rollout.
-    "LISTENING_ENABLED": "false",
+    // Adult listening only: SCHO-430 rollout prerequisites and operator acceptance verified.
+    // Pause by setting this false and deploying; private export/erasure remain available.
+    "LISTENING_ENABLED": "true",
+    "LISTENING_REVIEWED": "community-listening-2026-11-15-v1",
     "LISTENING_TURNSTILE_SITE_KEY": "0x4AAAAAAGEJuErQSqWOCB_D",
     "INTEREST_OPTOUT_ENABLED": "false",
     // The Access application "EducateOS operator console" (9074c7b7) guards educateos.io/app: anyone
