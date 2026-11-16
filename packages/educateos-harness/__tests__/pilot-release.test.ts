@@ -3,6 +3,70 @@ import { expect, it, vi } from "vitest";
 import { PL, RIVERBEND } from "@educateos/fixtures";
 import type { PlannerAiProvider } from "@educateos/district-app";
 import { bootPilotDistrict, onboardGuardian, outcomeOf } from "../src/pilot/index.ts";
+import { syntheticCheckRubric } from "../src/pilot/synthetic-check.ts";
+
+it.each(["grant", "relationship"] as const)("keeps independent rubric evidence after guardian %s revocation, then fences deleted student records and model calls", async (revocation) => {
+  const model = { provider: "cloudflare" as const, modelId: "synthetic-combined-check" };
+  const completeGuarded = vi.fn<PlannerAiProvider["completeGuarded"]>(async (input) => ({
+    released: await input.authorize(),
+    output: { competencyUri: input.competencyUri, releaseDigest: input.releaseDigest, step: input.step, explanation: "Compare baskets per minute using matching units." },
+    settlement: { actualUsdNano: "1000" as never, usage: { inputTokens: 10, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 } },
+  }));
+  const d = await bootPilotDistrict({
+    plannerAi: { model, estimatedMaxUsdNano: "1000000" as never, enabledFor: async () => true, provider: { completeGuarded } },
+    aiHelp: { layersFor: async () => ({ district: "full" }) },
+    modelCatalog: [{ ...model, mode: "enabled" }],
+    fundingPools: [{ id: "fpl_combined" as never, name: "Synthetic combined check", purpose: "course", scope: { level: "district", districtId: "dst_pilot-lakes" as never }, monthlyAllocationUsdNano: "1000000000" as never, allowedModels: [model] }],
+  });
+  const params = { offeringId: PL.grade6 as never }, child = { studentId: PL.jules as never };
+  const student = d.tokenFor(PL.jules), teacher = d.tokenFor(PL.okoye), admin = d.tokenFor(PL.admin);
+  const guardian = await onboardGuardian(d, PL.jules, "combined-guardian", "Combined guardian (synthetic)");
+  const relationship = { relationshipId: guardian.relationshipId as never };
+  await d.ok(admin, "admin.setGuardianGuidance", { params: relationship, body: { revision: 0, capabilities: ["suggest", "progress"] } });
+  await d.ok(guardian.token, "guardian.guidanceSuggest", { params: { ...child, ...params }, body: { kind: "curiosity", topic: "Basketball rates" } });
+  const suggestion = (await d.ok(teacher, "teacher.guidance", { params })).suggestions[0]!;
+  await d.ok(teacher, "teacher.guidanceSuggestionReview", { params: { ...params, suggestionId: suggestion.id }, body: { revision: suggestion.revision, decision: "share" } });
+
+  let plan = await d.ok(student, "student.planGoal", { params, body: { goal: "PRIVATE basketball practice", skills: [] } });
+  const target = { ...params, planId: plan.id, opportunityId: plan.opportunities[0]!.id };
+  plan = await d.ok(student, "student.plannerDecision", { params: target, body: { revision: plan.revision, decision: "accepted" } });
+  plan = await d.ok(student, "student.plannerCoach", { params: target, body: { revision: plan.revision, action: "show", allowAi: true } });
+  expect(plan.opportunities[0]!.coaching!.aiStatus).toBe("used");
+  plan = await d.ok(student, "student.plannerShare", { params: target, body: { revision: plan.revision, text: "Shared AI-assisted project", assistance: "ai" } });
+  plan = await d.ok(student, "student.plannerCoach", { params: target, body: { revision: plan.revision, action: "try", allowAi: false } });
+  plan = await d.ok(student, "student.plannerChallenge", { params: target, body: { revision: plan.revision, text: "Separate independent practice", reflection: "Ready for an unseen check", assistance: "independent" } });
+  const rubric = syntheticCheckRubric(plan.opportunities[0]!);
+  await d.ok(teacher, "teacher.plannerReview", { params: target, body: {
+    revision: plan.revision, level: "demonstrated", assistance: "independent", independentlyAssessed: true, decision: "recommend", rationale: "Synthetic teacher observed every criterion on a separate unseen check.",
+    assessment: { method: "independent-task", observedAt: d.now().toISOString(), context: "Unseen constant-flow tap task, without assistance.", rubric },
+  } });
+  const teacherBefore = await d.ok(teacher, "teacher.planner", { params });
+  const evidenceParams = { ...params, frameworkKey: "ccss-math", code: "6.RP.A.3" };
+  const evidenceBefore = await d.ok(teacher, "teacher.guidanceEvidence", { params: evidenceParams });
+  expect(JSON.stringify(teacherBefore)).toContain(JSON.stringify(rubric));
+  expect(JSON.stringify([teacherBefore, evidenceBefore])).not.toContain("PRIVATE");
+  const knowledgeBefore = await d.ok(student, "student.plannerKnowledge", { params });
+  expect(knowledgeBefore.competencies[0]!.status).toBe("demonstrated");
+  const storedBefore = await d.stores.planner.list(params.offeringId);
+  if (revocation === "grant") await d.ok(admin, "admin.setGuardianGuidance", { params: relationship, body: { revision: 1, capabilities: [] } });
+  else await d.ok(admin, "admin.revokeGuardian", { params: relationship });
+  expect((await d.ok(student, "student.guidance", { params })).invitations).toEqual([]);
+  expect(await d.stores.planner.list(params.offeringId)).toEqual(storedBefore);
+  expect(await d.ok(teacher, "teacher.planner", { params })).toEqual(teacherBefore);
+  expect(await d.ok(teacher, "teacher.guidanceEvidence", { params: evidenceParams })).toEqual(evidenceBefore);
+  expect(await d.ok(student, "student.plannerKnowledge", { params })).toEqual(knowledgeBefore);
+
+  await d.ok(admin, "admin.studentLearningDisposition", { params: child, body: { revision: 0, legalHold: false, deletionAuthorized: true, archiveSatisfied: true } });
+  await d.ok(admin, "admin.purgeStudentLearning", { params: child, body: { revision: 1, confirmStudentId: child.studentId } });
+  expect(await d.ok(student, "student.planner", { params })).toEqual([]);
+  expect((await d.ok(student, "student.plannerKnowledge", { params })).competencies).toEqual([]);
+  expect((await d.ok(student, "student.guidance", { params })).invitations).toEqual([]);
+  expect(await d.ok(teacher, "teacher.planner", { params })).toEqual([]);
+  expect(outcomeOf(await d.call(teacher, "teacher.guidanceEvidence", { params: evidenceParams }))).toBe("404 not-found");
+  expect(outcomeOf(await d.call(student, "student.plannerCoach", { params: target, body: { revision: plan.revision, action: "show", allowAi: true } }))).toBe("404 not-found");
+  expect(outcomeOf(await d.call(student, "student.planGoal", { params, body: { goal: "basketball practice", skills: [] } }))).toBe("409 conflict");
+  expect(completeGuarded).toHaveBeenCalledOnce();
+});
 
 it("keeps opted-in family suggestions, shared evidence and subject/district boundaries separate", async () => {
   const d = await bootPilotDistrict();

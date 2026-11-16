@@ -55,11 +55,16 @@ it("shows separate opportunity and evidence counters, drills into shared work on
 
 it("lets the teacher share a family suggestion as an optional suggestion, and the student sees its origin", async () => {
   const d = await bootDistrict(gradeSix());
-  await d.stores.guidance.records.save({
-    type: "suggestion", id: crypto.randomUUID(), scope: NF.eng9, revision: 1, offeringId: NF.eng9 as never, studentId: NF.amara as never, guardianId: "prn_nf-guardian-gina" as never,
-    guardianName: "Gina Okafor", relationshipId: "grl_x", kind: "hobby", topic: "Skateboard physics", status: "awaiting-teacher",
-    createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
-  }, 0);
+  const admin = d.tokenFor(NF.admin), child = { studentId: NF.amara as never };
+  const invited = await d.ok(admin, "admin.inviteGuardian", { params: child, body: { guardianDisplayName: "Gina Okafor" } });
+  const guardian = d.idp.issue("guidance-ui-gina");
+  await d.ok(guardian, "onboarding.redeemGuardianInvitation", { body: { token: new URLSearchParams(new URL(invited.invitationUrl).hash.slice(1)).get("invitation")! } });
+  const { pendingSignIns } = await d.ok(admin, "admin.studentGuardians", { params: child });
+  await d.ok(admin, "admin.approveIdentityRequest", { params: { requestId: pendingSignIns.find((p) => p.invitationId === invited.invitation.id)!.requestId } });
+  await d.ok(admin, "admin.confirmGuardian", { params: { relationshipId: invited.relationship.id } });
+  await d.ok(admin, "admin.setGuardianGuidance", { params: { relationshipId: invited.relationship.id }, body: { revision: 0, capabilities: ["suggest"] } });
+  await d.ok(guardian, "guardian.guidanceSuggest", { params: { ...child, ...params }, body: { kind: "hobby", topic: "Skateboard physics" } });
+  expect((await d.ok(d.tokenFor(NF.amara), "student.guidance", { params })).invitations).toEqual([]);
   const user = await renderApp(clientFor(d, NF.rivera), `#/classes/${NF.eng9}/guidance`);
   const inbox = await screen.findByRole("region", { name: "Family suggestions" });
   expect(within(inbox).getByText(/never an assignment/)).toBeTruthy();
