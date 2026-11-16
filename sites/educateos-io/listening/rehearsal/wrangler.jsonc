@@ -1,0 +1,11 @@
+// Synthetic-only, temporary deployment. Never bind production objects or public site routes.
+{
+  "name": "educateos-listening-rehearsal",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {"REHEARSAL_UNTIL": "2026-11-18T00:00:00Z"},
+  "durable_objects": {"bindings": [{"name": "REHEARSAL", "class_name": "RehearsalIntake"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["RehearsalIntake"]}]
+}
