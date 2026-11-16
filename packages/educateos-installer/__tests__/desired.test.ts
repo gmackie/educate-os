@@ -150,6 +150,25 @@ describe("desired state", () => {
     expect(() => compile({ "gatekeeper-google": inputs, "gatekeeper-slack": { X: "y" } })).toThrow(/gatekeeper-slack, which this install does not include/);
   });
 
+  it("writes the MCP Server Portal's optional inputs only when the config supplies them", async () => {
+    const release = await goldenRelease();
+    const portal = (gatekeeperInputs: Record<string, Record<string, string>>) => {
+      const desired = compileDesiredState(release.manifest, configFor(NORTHFIELD, release, { gatekeepers: ["gatekeeper-mcp-portal"], gatekeeperInputs }));
+      const worker = desired.resources.find((r) => r.key === "worker:gatekeeper-mcp-portal");
+      const names = worker?.kind === "worker_script" ? worker.bindings.map((b) => b.name).filter((n) => n.startsWith("MCP_PORTAL_")) : [];
+      return { names: names.toSorted(), secret: desired.resources.find((r) => r.key === "secret:gatekeeper-mcp-portal:MCP_PORTAL_TOKEN") };
+    };
+    // The URL alone is enough; the token is a secret resource the plan may leave unset.
+    expect(portal({ "gatekeeper-mcp-portal": { MCP_PORTAL_URL: "https://portal.northfield.example/mcp" } })).toEqual({
+      names: ["MCP_PORTAL_URL"],
+      secret: expect.objectContaining({ kind: "worker_secret", optional: true, generated: false }),
+    });
+    expect(portal({ "gatekeeper-mcp-portal": { MCP_PORTAL_URL: "https://p.example/mcp", MCP_PORTAL_NAME: "District tools", MCP_PORTAL_AUTH: "token" } }).names)
+      .toEqual(["MCP_PORTAL_AUTH", "MCP_PORTAL_NAME", "MCP_PORTAL_URL"]);
+    expect(() => portal({})).toThrow(/needs a value for MCP_PORTAL_URL/);
+    expect(() => portal({ "gatekeeper-mcp-portal": { MCP_PORTAL_URL: "https://p.example/mcp", MCP_PORTAL_TOKEN: "synthetic" } })).toThrow(/MCP_PORTAL_TOKEN is a secret/);
+  });
+
   it("refuses an input that would replace a var the release sets", async () => {
     const golden = await goldenRelease();
     const release = await deriveRelease(golden, "r1-clash", (m) => {

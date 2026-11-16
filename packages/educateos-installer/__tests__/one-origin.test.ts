@@ -4,12 +4,14 @@
 import { describe, expect, it } from "vitest";
 import {
   ACCESS_BYPASS_PATHS,
+  ACCESS_MCP_BYPASS_PATHS,
   ACCESS_PAIRING_BROWSER_PATHS,
   compileDesiredState,
   type DesiredAccessApplication,
   type DesiredAccessPolicy,
   type DesiredWorker,
   type DesiredWorkerSecret,
+  districtMcpEnabled,
   dryRunDrift,
   install,
   rollback,
@@ -179,6 +181,52 @@ describe("one-origin desired state", () => {
     // The bypass is in place before either hostname serves.
     expect(order.indexOf("access:application:bypass")).toBeLessThan(order.indexOf("domain:public"));
     expect(order.indexOf("access:application:bypass")).toBeLessThan(order.indexOf("domain:managed"));
+  });
+
+  it("exempts the MCP endpoint and its metadata from Access only when DISTRICT_CONFIG has mcp", async () => {
+    const release = await goldenRelease();
+    const mcpVars = { DISTRICT_CONFIG: JSON.stringify({ synthetic: true, mcp: { origin: `https://${HOST}`, issuer: "https://id.northfield.example" } }) };
+    const withMcp = (vars: Record<string, string>, overrides: ConfigOverrides = {}) =>
+      compile(release, { services: { [DISTRICT]: { enabled: true, vars } }, ...overrides }).app("access:application:bypass")!;
+    const hosts = [HOST, "northfield.educateos.io"];
+
+    const on = withMcp(mcpVars, { managedHostname: { slug: "northfield" } });
+    expect(on.destinations.toSorted()).toEqual(hosts.flatMap((host) => [
+      ...ACCESS_BYPASS_PATHS, "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+    ].map((path) => host + path)).toSorted());
+    expect(ACCESS_MCP_BYPASS_PATHS).toHaveLength(3);
+    // The main application doesn't list them, so nothing more specific puts them back behind Access.
+    expect(compile(release, { services: { [DISTRICT]: { enabled: true, vars: mcpVars } } }).app("access:application")!.destinations
+      .some((d) => d.includes("/mcp") || d.includes("oauth-protected-resource"))).toBe(false);
+
+    // Without mcp (absent, null, or a config that isn't JSON) the bypass is exactly as before.
+    for (const config of [DISTRICT_VARS.DISTRICT_CONFIG, JSON.stringify({ mcp: null }), "not json", JSON.stringify({ mcp: [] })]) {
+      expect(withMcp({ DISTRICT_CONFIG: config }).destinations.toSorted(), config)
+        .toEqual(ACCESS_BYPASS_PATHS.map((path) => HOST + path).toSorted());
+    }
+    expect(districtMcpEnabled(undefined)).toBe(false);
+  });
+
+  it("adds the MCP bypass to an installed district when DISTRICT_CONFIG gains mcp, and removes it when it loses it", async () => {
+    const release = await goldenRelease();
+    const { fake, options, run } = setup();
+    const mcpOn = { services: { [DISTRICT]: { enabled: true, vars: { DISTRICT_CONFIG: JSON.stringify({ synthetic: true, mcp: { origin: `https://${HOST}` } }) } } } };
+    const mcpPaths = ACCESS_MCP_BYPASS_PATHS.map((path) => HOST + path);
+    const bypass = () => fake.accessApplication("educateos-northfield-bypass")!.destinations;
+
+    expect((await run(release)).status).toBe("applied");
+    expect(bypass().filter((d) => mcpPaths.includes(d))).toEqual([]);
+
+    const drift = await dryRunDrift(options(release, mcpOn), release.sha256);
+    expect(drift.changes).toEqual(expect.arrayContaining([expect.objectContaining({ resource: "access:application:bypass", action: "update" })]));
+    expect((await run(release, mcpOn)).status).toBe("applied");
+    expect(bypass()).toEqual(expect.arrayContaining(mcpPaths));
+    expect(bypass()).toHaveLength(ACCESS_BYPASS_PATHS.length + ACCESS_MCP_BYPASS_PATHS.length);
+    // The main application is unchanged, so its audience is too.
+    expect(fake.accessApplication("educateos-northfield")!.destinations.some((d) => d.includes("/mcp"))).toBe(false);
+
+    expect((await run(release)).status).toBe("applied");
+    expect(bypass().filter((d) => mcpPaths.includes(d))).toEqual([]);
   });
 
   it("admits listed people beside or instead of whole domains, and refuses a policy admitting nobody", async () => {

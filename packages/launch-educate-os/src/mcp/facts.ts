@@ -14,7 +14,7 @@ import { type Answers, installConfig } from "../answers.ts";
 export const MCP_GATEKEEPERS = {
   /** Any MCP server a person pastes the address of. */
   server: { pkg: "gatekeeper-mcp", vendorId: "mcp", name: "MCP Server" },
-  /** One portal the deployment configures (MCP_PORTAL_URL). */
+  /** One portal the install configures (its MCP_PORTAL_* deploy inputs, SCHO-409). */
   portal: { pkg: "gatekeeper-mcp-portal", vendorId: "mcpportal", name: "MCP Server Portal" },
 } as const;
 
@@ -74,6 +74,8 @@ export interface McpFacts {
   district: DistrictFacts | undefined;
   /** For each MCP gatekeeper: whether the answers install it, and its Worker name. */
   gatekeepers: Record<keyof typeof MCP_GATEKEEPERS, { inAnswers: boolean; scriptName: string }>;
+  /** The portal's non-secret deploy inputs in the answers' `gatekeeperInputs` (MCP_PORTAL_URL and the rest). */
+  portalInputs: Record<string, string>;
 }
 
 /** The enabled service whose vars carry a `DISTRICT_CONFIG`, if any. */
@@ -122,7 +124,8 @@ export function mcpFacts(answers: Pick<Answers, "install">): McpFacts {
     inAnswers: config.gatekeepers.includes(gatekeeper.pkg),
     scriptName: workerScriptName(config, gatekeeper.pkg),
   }])) as McpFacts["gatekeepers"];
-  return { config, origin, workshopUrl: district ? `${origin}/ai/` : `${origin}/`, district, gatekeepers };
+  const portalInputs = { ...config.gatekeeperInputs[MCP_GATEKEEPERS.portal.pkg] };
+  return { config, origin, workshopUrl: district ? `${origin}/ai/` : `${origin}/`, district, gatekeepers, portalInputs };
 }
 
 /** The district endpoint's resource, `<origin>/mcp`: from `DISTRICT_CONFIG.mcp.origin`, else the public origin. */

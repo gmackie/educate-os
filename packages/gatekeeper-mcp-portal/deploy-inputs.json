@@ -1,0 +1,43 @@
+[
+  {
+    "name": "MCP_PORTAL_URL",
+    "kind": "var",
+    "label": "MCP portal URL",
+    "help": "The portal's MCP endpoint (Streamable HTTP, https://), typically a Cloudflare MCP server portal, so Access decides who may connect and Gateway logs what crosses. Users never type a URL: this is the connector's whole portal. An unusable URL hides the connector."
+  },
+  {
+    "name": "MCP_PORTAL_NAME",
+    "kind": "var",
+    "label": "Display name",
+    "help": "Shown in the connector list and every approval prompt. Blank: \"MCP Server Portal (<host>)\".",
+    "optional": true
+  },
+  {
+    "name": "MCP_PORTAL_AUTH",
+    "kind": "var",
+    "label": "Sign-in (oauth, token or none)",
+    "help": "\"oauth\" (blank means oauth): each person signs in through the portal. \"token\": every call carries the MCP_PORTAL_TOKEN secret. \"none\": the portal needs no credential.",
+    "optional": true
+  },
+  {
+    "name": "MCP_PORTAL_TOKEN",
+    "kind": "secret",
+    "label": "Portal bearer token",
+    "help": "Only for MCP_PORTAL_AUTH \"token\": the bearer token sent on every call to the portal. Leave blank otherwise.",
+    "optional": true
+  },
+  {
+    "name": "MCP_PORTAL_TRUST_ANNOTATIONS",
+    "kind": "var",
+    "label": "Trust tool annotations (true or blank)",
+    "help": "\"true\" lets read-only annotations from servers behind the portal skip approval. Blank (off) unless you trust every upstream server the portal proxies: a portal's annotations are written by those servers, not by you.",
+    "optional": true
+  },
+  {
+    "name": "MCP_PORTAL_HIDDEN_SERVER_IDS",
+    "kind": "var",
+    "label": "Hidden upstream server IDs",
+    "help": "Comma-separated upstream server IDs to leave out of the resource configurator and refuse, such as servers reached through their own native connector instead. Blank hides none.",
+    "optional": true
+  }
+]

@@ -143,10 +143,12 @@ Limits:
   KiB, each request times out after 10 seconds, and an address the Workshop's connector would refuse
   (`isBlockedHost` from `@gadgets/mcp-shared/endpoint`, the same blocklist) is refused before any
   request. The checks run from the operator's machine, not Cloudflare, and say so.
-- **Gaps** (SCHO-409): the installer can't set `MCP_PORTAL_URL` and the portal's other vars
-  (`gatekeeper-mcp-portal` declares no deploy inputs), so `mcp add --connector portal` exits 1 and
-  changes nothing; and `ACCESS_BYPASS_PATHS` has no `/mcp` or `/.well-known/oauth-protected-resource*`,
-  so `status` fails an endpoint that is on in `DISTRICT_CONFIG` but behind Access.
+- **The portal** (SCHO-409): `mcp add --connector portal` writes the portal's non-secret deploy
+  inputs (`MCP_PORTAL_URL`, `MCP_PORTAL_NAME`, `MCP_PORTAL_AUTH`) to `gatekeeperInputs`; its token is
+  the optional `MCP_PORTAL_TOKEN` secret, read at apply from
+  `EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN`. The `/mcp` Access bypass is the
+  installer's (`ACCESS_MCP_BYPASS_PATHS`, added when `DISTRICT_CONFIG` has `mcp`), so `status` failing
+  an endpoint that is on but behind Access means the answers aren't applied yet.
 - **The wizard** doesn't offer MCP setup at its end yet. The LMS connect offer (SCHO-406) owns that
   hook; a "Set up MCP now?" offer can follow it.
 

@@ -263,6 +263,14 @@ export interface DeployInput {
    * rotates. The wizard does not ask for it. Such as the district's `DEVICE_TOKEN_SECRET` (SCHO-261).
    */
   generated?: true;
+  /**
+   * The worker runs without it, so the wizard may leave it blank: an unset optional var is not
+   * written, and an unsupplied optional secret is not set (its `secret_text` binding stays in the
+   * manifest, and the renderer drops it when no value is given). Such as the MCP Server Portal's
+   * display name, or its `MCP_PORTAL_TOKEN`, which only the `token` auth mode reads. Never on a
+   * generated secret, which is never asked for anyway.
+   */
+  optional?: true;
 }
 
 /** The size of a {@link DeployInput.generated} secret: 32 random bytes, base64url-encoded. */
@@ -445,15 +453,18 @@ const PREINSTALL = new Set(["gatekeeper-context", "gatekeeper-scheduler", "gatek
 //
 // Reason 2 turns on inputs, not on the vendor: google/github/slack take per-install
 // CLIENT_ID/CLIENT_SECRET, so two installs can front two different OAuth apps and must stay
-// multi-install. Independent of PREINSTALL in principle; the ambient three coincide with it today
-// only because every ambient gatekeeper we ship is also preinstalled.
+// multi-install. Likewise gatekeeper-mcp-portal: it was here under (2) while the portal came
+// from deployment vars no wizard could set, and left once its deploy-inputs.json made the portal
+// URL an input (SCHO-409), since two installs can now front two different portals.
+//
+// Independent of PREINSTALL in principle; the ambient three coincide with it today only because
+// every ambient gatekeeper we ship is also preinstalled.
 const SINGLETON = new Set([
   "gatekeeper-context",       // (1) ambient ContextLibrary
   "gatekeeper-scheduler",     // (1) ambient ScheduleSession
   "gatekeeper-websearch",     // (1) ambient WebSearchSession
   "gatekeeper-homeassistant", // (2) no inputs; users connect their own URL + token in-app
   "gatekeeper-mcp",           // (2) no inputs; users paste their own endpoints in-app
-  "gatekeeper-mcp-portal",    // (2) no inputs; the one portal comes from the deployment's vars
   "gatekeeper-educateos",      // (2) no inputs; the district's service binding is injected
 ]);
 
@@ -932,6 +943,9 @@ export function buildWorkerEntry(
   for (const input of inputs ?? []) {
     if (input.generated !== undefined && (input.generated !== true || input.kind !== "secret")) {
       throw new Error(`${pkgName}: deploy input ${input.name} is marked generated, which only a secret can be`);
+    }
+    if (input.optional !== undefined && (input.optional !== true || input.generated === true || input.kind === "workerName")) {
+      throw new Error(`${pkgName}: deploy input ${input.name} is marked optional, which only a var or an asked-for secret can be`);
     }
     if (input.kind === "secret") {
       bindings.push({ type: "secret_text", name: input.name, text: `$SECRET(${input.name})` });
