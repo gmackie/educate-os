@@ -64,12 +64,24 @@ can be opened only by its owner.
 ### The MCP Server Portal
 
 The portal connector reaches every server behind one portal, typically a Cloudflare MCP server
-portal, where Access decides who may connect and Gateway logs the traffic. Its portal comes from the
-Worker's vars (`MCP_PORTAL_URL`, `MCP_PORTAL_NAME`, `MCP_PORTAL_AUTH`, the `MCP_PORTAL_TOKEN` secret,
-`MCP_PORTAL_TRUST_ANNOTATIONS`, `MCP_PORTAL_HIDDEN_SERVER_IDS`; see
-`packages/gatekeeper-mcp-portal/README.md`), and **the installer can't set them yet** (SCHO-409):
-`npx launch-educate-os mcp add --connector portal` says so and changes nothing. Installed without
-them, the Workshop hides the connector.
+portal, where Access decides who may connect and Gateway logs the traffic. Its portal is the
+connector's deploy inputs (`MCP_PORTAL_URL`, `MCP_PORTAL_NAME`, `MCP_PORTAL_AUTH`,
+`MCP_PORTAL_TRUST_ANNOTATIONS`, `MCP_PORTAL_HIDDEN_SERVER_IDS`, and the `MCP_PORTAL_TOKEN` secret; see
+`packages/gatekeeper-mcp-portal/README.md`). Only the URL is required; the rest may be left out.
+
+```sh
+npx launch-educate-os mcp add --connector portal \
+  --portal-url https://portal.northfield.example/mcp --portal-name "District tools" --portal-auth oauth
+```
+
+It adds `gatekeeper-mcp-portal` to `gatekeepers`, the URL, name and sign-in to
+`gatekeeperInputs["gatekeeper-mcp-portal"]`, and a `{"vendorId": "mcpportal", "access": "all"}`
+grant to `DISTRICT_CONFIG.workshopPolicy.connectors`. On a terminal it asks for anything not given.
+The answers file never holds a secret, so for `--portal-auth token` the apply reads the token from
+`EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN`; once set, later applies keep it without
+being given it again, and `mcp status` fails a token portal whose Worker has none. The trust and
+hidden-server settings are set by hand in `gatekeeperInputs`. Each grant names one upstream server:
+the connector offers no grant over the whole portal.
 
 ## 2. Connect AI clients to your district
 
@@ -85,8 +97,6 @@ client's steps with the URL filled in.
 a simulated authorization server, but:
 
 - the district's authorization server, Nathan, doesn't issue tokens for it yet (NATH-6);
-- the installer doesn't exempt `/mcp` and `/.well-known/oauth-protected-resource[/mcp]` from
-  Cloudflare Access yet (SCHO-409), so Access would answer instead;
 - issuing a delegation has an API (`POST /api/teacher/delegations`) and no page yet (SCHO-176);
 - no outside client has connected to a district.
 
@@ -112,6 +122,12 @@ person's subject there linked to them; `mcp status` fails an issuer the district
 `allowedOrigins` lists the browser origins allowed to call it; clients that send no `Origin` header
 (desktop apps, editors, and services such as claude.ai and ChatGPT that call from their servers) need
 none.
+
+On a one-origin install, applying answers whose `DISTRICT_CONFIG` has `mcp` also exempts `/mcp`,
+`/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp` from
+Cloudflare Access (on every hostname the install serves), since MCP clients bring their own token and
+can't complete an Access sign-in. Without `mcp`, those paths stay behind Access, and taking `mcp` out
+removes the exemption on the next apply.
 
 ### How sign-in works
 

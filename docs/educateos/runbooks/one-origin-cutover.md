@@ -54,7 +54,9 @@ most specific matching path.
 The organization MCP endpoint (SCHO-174) is off in this cutover. Enabling it later (after NATH-6)
 adds `/mcp`, `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`
 to the bypass application, together with `DISTRICT_CONFIG.mcp`. Its callers authenticate with the
-district authorization server's bearer tokens, never an Access session.
+district authorization server's bearer tokens, never an Access session. The installer does this
+itself for an install it manages (`ACCESS_MCP_BYPASS_PATHS`, SCHO-409); this hand-cut instance needs
+the three destinations added by hand.
 
 Why `/api/pair/*` is bypassed while four paths under it are listed on the main application: the
 phone's pairing endpoints (`POST /api/pair/self-rooms`, `POST /api/pair/rooms/<room>/claim`, and the

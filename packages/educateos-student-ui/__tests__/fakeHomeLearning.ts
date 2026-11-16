@@ -8,7 +8,7 @@ import { DistrictId, PrincipalId } from "@educateos/contracts";
 import { HomeLearningService, InMemoryHomeLearningStore } from "@educateos/home-learning";
 
 const D = DistrictId.parse("dst_willowcreek");
-const ADULT = { principalId: PrincipalId.parse("prn_g-jordan"), districtId: D };
+const JORDAN = PrincipalId.parse("prn_g-jordan");
 
 /** A fake community with an optional, already set-up family. */
 export interface FakeCommunity extends DistrictApiClient {
@@ -21,14 +21,26 @@ export interface FakeCommunity extends DistrictApiClient {
 const forbidden = (message: string) => new DistrictApiError(403, { code: "forbidden", message });
 
 /** A community where `Jordan Rivers` signs in: not yet joined, joined, or with a family and children already. */
-export async function fakeCommunity(options: { joined?: boolean; children?: readonly string[]; signup?: "open" | "approval" } = {}): Promise<FakeCommunity> {
-  const service = new HomeLearningService({ store: new InMemoryHomeLearningStore(), authorizer: { authorize: async () => ({ effect: "allow" }) }, districtId: D });
+export async function fakeCommunity(options: {
+  joined?: boolean;
+  children?: readonly string[];
+  signup?: "open" | "approval";
+  /** Another adult's view of the same community, sharing its service. */
+  as?: { service: HomeLearningService; principalId: string; displayName: string };
+  retentionDays?: number;
+} = {}): Promise<FakeCommunity> {
+  const ADULT = { principalId: PrincipalId.parse(options.as?.principalId ?? JORDAN), districtId: D };
+  const displayName = options.as?.displayName ?? "Jordan Rivers";
+  const service = options.as?.service ?? new HomeLearningService({
+    store: new InMemoryHomeLearningStore(), authorizer: { authorize: async () => ({ effect: "allow" }) }, districtId: D,
+    ...(options.retentionDays === undefined ? {} : { retentionDays: options.retentionDays }),
+  });
   let joined = options.joined ?? true;
   let token: string | undefined;
   const calls: FakeCommunity["calls"] = [];
   const failures = new Map<RouteName, DistrictApiError>();
   if (options.children !== undefined) {
-    await service.createFamily(ADULT, { name: "The Rivers family", pin: "2468" });
+    await service.createFamily(ADULT, { name: "The Rivers family", pin: "2468" }, displayName);
     for (const name of options.children) await service.addLearner(ADULT, { displayName: name, avatar: "🦊", gradeBand: "K" });
   }
   const child = async () => (token === undefined ? undefined : service.childSession(ADULT, token));
@@ -45,7 +57,7 @@ export async function fakeCommunity(options: { joined?: boolean; children?: read
       const open = await child();
       const learner = open === undefined ? undefined : (await service.practiceHome(ADULT, open)).learner;
       return {
-        principalId: ADULT.principalId, districtId: D, kind: "guardian", displayName: "Jordan Rivers", roles: [], enrollments: [],
+        principalId: ADULT.principalId, districtId: D, kind: "guardian", displayName, roles: [], enrollments: [],
         homeLearning: {
           hasFamily: (await service.home(ADULT)).family !== null,
           childSession: learner === undefined ? null : { learnerId: learner.id, displayName: learner.displayName, avatar: learner.avatar },
@@ -59,7 +71,14 @@ export async function fakeCommunity(options: { joined?: boolean; children?: read
       return { outcome: "joined" };
     },
     "family.home": () => service.home(ADULT),
-    "family.create": ({ body }) => service.createFamily(ADULT, body),
+    "family.create": ({ body }) => service.createFamily(ADULT, body, displayName),
+    "family.inviteAdult": async () => {
+      const { token, id, expiresAt } = await service.inviteAdult(ADULT);
+      return { id, expiresAt, link: `https://safranek.example/family/join#invitation=${encodeURIComponent(token)}` };
+    },
+    "family.revokeInvitation": ({ params }) => service.revokeInvitation(ADULT, params.invitationId),
+    "family.acceptInvitation": ({ body }) => service.acceptInvitation(ADULT, body.token, displayName),
+    "family.removeAdult": ({ params }) => service.removeAdult(ADULT, params.principalId),
     "family.changePin": ({ body }) => service.changePin(ADULT, body.pin),
     "family.addLearner": ({ body }) => service.addLearner(ADULT, body),
     "family.removeLearner": async ({ params }) => (await service.removeLearner(ADULT, params.learnerId), { removed: true }),

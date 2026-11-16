@@ -1,11 +1,11 @@
 // SCHO-403: the read-only "From Google Classroom" routes. Each is authorized as the gradebook is
 // (a student their own row, the class's teachers its grid), maps the offering and people to
 // Classroom through the roster's source map, and never stores or writes anything.
-import { DistrictDirectorySnapshot } from "@educateos/contracts";
+import { DistrictDirectorySnapshot, OfferingId } from "@educateos/contracts";
 import type { googleclassroom } from "@educateos/integrations";
 import { oneroster } from "@educateos/integrations";
 import { describe, expect, it } from "vitest";
-import type { ClassroomGradeSource } from "../src/index.ts";
+import { classroomCourseOf, type ClassroomGradeSource } from "../src/index.ts";
 import { bootDistrict, expectError, NF, NORTHFIELD, RB, RIVERBEND } from "./support.ts";
 
 const GOOGLE = "https://accounts.google.com";
@@ -176,5 +176,25 @@ describe("without Classroom", () => {
     expect(await district.ok(district.tokenFor(NF.amara), "student.classroomGrades", ENG9)).toStrictEqual({ status: "unavailable" });
     expect(await district.ok(district.tokenFor(NF.rivera), "teacher.classroomGrades", ENG9)).toStrictEqual({ status: "unavailable" });
     expect(unavailable).toStrictEqual([{ surface: "student" }, { surface: "teacher" }]);
+  });
+});
+
+// SCHO-428: grade return to Classroom finds an offering's course by the same rule as the panel.
+describe("classroomCourseOf", () => {
+  it("is the offering's Classroom course when the head roster is Classroom and imported it", async () => {
+    const { district } = await setup();
+    expect(await classroomCourseOf(district.stores, OfferingId.parse(NF.eng9))).toBe(COURSE);
+    expect(await classroomCourseOf(district.stores, OfferingId.parse(NF.bio))).toBeUndefined();
+  });
+
+  it("is nothing when the roster is not Classroom, or did not import the offering", async () => {
+    expect(await classroomCourseOf((await setup({ provider: "oneroster-csv" })).district.stores, OfferingId.parse(NF.eng9))).toBeUndefined();
+    expect(await classroomCourseOf((await setup({ linked: false })).district.stores, OfferingId.parse(NF.eng9))).toBeUndefined();
+  });
+
+  it("refuses a source ID that is not a Classroom course ID", async () => {
+    const { district } = await setup();
+    await district.stores.rosterSources.save({ ...oneroster.EMPTY_SOURCE_MAP, offerings: { [NF.eng9]: "eng9-csv" } as never });
+    expect(await classroomCourseOf(district.stores, OfferingId.parse(NF.eng9))).toBeUndefined();
   });
 });

@@ -105,8 +105,8 @@ export const PersonaPicker = ({ info, district, done, onChoose, onSwitchDistrict
       </div>
       <Text variant="secondary">
         {`${info.name} ${info.introduction} `}
-        It runs entirely in your browser, so nothing you do is sent anywhere. Its AI tutors are simulated: on the live AI
-        district they run on real AI, with Hall Monitor screening every message. Choose who to be. You can switch at any
+        It runs entirely in your browser, so nothing you do is sent anywhere. Its AI tutors are simulated: scripted, with
+        no AI behind them. Student-facing AI stays off in the founding pilot. Choose who to be. You can switch at any
         time, and what one person does, the others see.
       </Text>
       {district.status === "booting" && (

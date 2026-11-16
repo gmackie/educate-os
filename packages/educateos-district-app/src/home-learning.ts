@@ -26,6 +26,8 @@ export interface HomeLearningOptions {
    * identity link. `invite-only`: no self sign-up; an administrator adds people.
    */
   signup: "open" | "approval" | "invite-only";
+  /** Days a practice session is kept after it started; the hourly job deletes older ones. Unset keeps them. */
+  retentionDays?: number;
 }
 
 /** The routes this module handles. */
@@ -37,12 +39,16 @@ export type HomeLearningRouteName =
   | "family.progress" | "family.session" | "family.correct"
   | "family.shelfAdd" | "family.shelfRemove"
   | "family.startChildSession" | "family.endChildSessions"
+  | "family.inviteAdult" | "family.revokeInvitation" | "family.acceptInvitation" | "family.removeAdult"
   | "learner.session" | "learner.home" | "learner.start" | "learner.save" | "learner.exit"
   | "admin.familySignups";
 
 /** What a home-learning handler needs from app.ts's request context. */
 export interface HomeLearningRequestContext {
   readonly subject: VerifiedPrincipal;
+  /** The request's origin, which an invitation link is built on. */
+  readonly origin: string;
+  readonly snapshot: DistrictDirectorySnapshot;
   readonly caller: Caller;
   identityLinks(): IdentityLinkAdminService;
   /** The browser's open child session, resolved once per request, or undefined. */
@@ -86,6 +92,9 @@ export function enforceChildSession(routeName: string, surface: string, child: C
   }
 }
 
+const nameOf = (ctx: HomeLearningRequestContext): string | undefined =>
+  ctx.snapshot.principals.find((p) => p.id === ctx.subject.principalId)?.displayName;
+
 const needsChild = (ctx: HomeLearningRequestContext): ChildSession => {
   if (ctx.childSession === undefined) throw new EducateOsError("forbidden", "Start practice from your family page first.");
   return ctx.childSession;
@@ -100,7 +109,17 @@ type HomeLearningHandlers<C> = { [N in HomeLearningRouteName]: Handler<C, N> };
 export function homeLearningHandlers<C extends HomeLearningRequestContext>(): HomeLearningHandlers<C> {
   return {
     "family.home": (ctx) => ctx.homeLearning().home(ctx.subject),
-    "family.create": (ctx, { body }) => ctx.homeLearning().createFamily(ctx.subject, body),
+    "family.create": (ctx, { body }) => ctx.homeLearning().createFamily(ctx.subject, body, nameOf(ctx)),
+    "family.inviteAdult": async (ctx) => {
+      const { token, id, expiresAt } = await ctx.homeLearning().inviteAdult(ctx.subject);
+      // The token rides in the fragment, so no server or proxy logs it.
+      const link = new URL("/family/join", ctx.origin);
+      link.hash = new URLSearchParams({ invitation: token }).toString();
+      return { id, expiresAt, link: link.toString() };
+    },
+    "family.revokeInvitation": (ctx, { params }) => ctx.homeLearning().revokeInvitation(ctx.subject, params.invitationId),
+    "family.acceptInvitation": (ctx, { body }) => ctx.homeLearning().acceptInvitation(ctx.subject, body.token, nameOf(ctx)),
+    "family.removeAdult": (ctx, { params }) => ctx.homeLearning().removeAdult(ctx.subject, params.principalId),
     "family.rename": (ctx, { body }) => ctx.homeLearning().renameFamily(ctx.subject, body.name),
     "family.changePin": (ctx, { body }) => ctx.homeLearning().changePin(ctx.subject, body.pin),
     "family.delete": async (ctx) => {

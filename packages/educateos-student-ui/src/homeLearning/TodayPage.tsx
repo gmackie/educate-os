@@ -88,7 +88,7 @@ const TodayList = () => {
   const [today, reload] = useQuery("family-today", (api) => api.call("family.today"));
   if (today.status === "loading") return <LoadingSkeleton label="Loading today's practice" />;
   if (today.status === "error") return <ErrorState error={today.error} title="We couldn't load today's practice" onRetry={reload} />;
-  if (today.data.length === 0) return <Empty title="No children yet" description="Add a child from Children and PIN." />;
+  if (today.data.length === 0) return <Empty title="No children yet" description="Add a child from Family settings." />;
   return (
     <div className="flex flex-col gap-4">
       {today.data.map((child) => <ChildToday key={child.learner.id} today={child} onChanged={reload} />)}

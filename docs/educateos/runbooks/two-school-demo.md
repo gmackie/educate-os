@@ -98,6 +98,12 @@ node scripts/demo/canvas-grade-return.ts run    --admin-cookie <admin> \
 node scripts/demo/canvas-grade-return.ts verify --admin-cookie <admin> --presenter ... --out /tmp/grade-return-verified.json
 ```
 
+Each "[educateos-approved]" column is left out of the Canvas course total (`omit_from_final_grade`).
+The work it grades is already a Canvas assignment of its own, so counting both would count it
+twice (SCHO-422). `run` marks any column that still counts, and `verify` reports one that a teacher
+has made count again, rather than changing it. All 19 columns were marked on 2026-11-15.
+Kofi's English 8 total now counts "Phones in the Classroom" once: 15/16, not 30/32.
+
 Canvas columns are looked up in the Canvas console (`ssh labnuc`, as for `canvas-actors.ts`), because
 the REST API does not list AGS line items by resource ID.
 
@@ -141,6 +147,57 @@ node scripts/demo/harbor-classroom-work.ts verify --out /tmp/harbor-work-verifie
 These are provider-side workflows by each actual synthetic account, through the same Classroom
 calls the Google connector makes. They are not a Workshop approval flow (see
 [Classroom verification](classroom-verification.md)).
+
+### Harbor teacher-approved grade return to Classroom (SCHO-428)
+
+A Harbor teacher's approved EducateOS grade goes to Google Classroom, just as Northfield's go to
+Canvas. Grades travel through the district's passback gate, which only the approving teacher can
+drive, into coursework the district's own Cloud project created. Classroom lets a project grade
+only its own coursework, and existing coursework is never touched.
+
+The district Worker publishes over its Classroom connection (`DISTRICT_CONFIG.classroom` and its
+key), acting as each course's owner with `classroom.coursework.students`. It has two
+administrator routes:
+
+- `POST /api/lti/classroom/grade-routes` with `{offeringId}` routes the offering's grades to the
+  Classroom course the roster imported it from. The course comes from the roster's source map
+  and is never supplied by the caller. An offering not imported from Classroom answers 404.
+- `POST /api/lti/classroom/columns` with `{offeringId, assignmentId, maxPoints}` finds or creates
+  the assignment's "[educateos-approved] <title>" coursework and binds it as the grade column. A
+  rerun creates nothing.
+
+The teacher then publishes with `POST /api/lti/passback`, naming the coursework ID as the
+`column`. The grade is set but not returned: in Classroom, returning work to the student stays
+the teacher's action.
+
+`scripts/demo/harbor-grade-return.ts` runs the whole flow, each step as its own person:
+
+1. Kwame assigns "Rocky Shore Field Notes" in Marine Science.
+2. Nia submits.
+3. Kwame approves 9/10.
+4. The administrator sets up the route and column.
+5. Kwame publishes; the administrator's attempt is refused.
+6. Nia turns in her Classroom copy of the work, as herself, because Classroom's API returns only
+   turned-in work (a return of untouched work answers `FAILED_PRECONDITION`). Kwame then returns
+   it in Classroom.
+7. Nia reads 9 from her own Classroom submission and from Harbor's panel.
+
+`verify` writes nothing.
+
+Verified live on 2026-11-15, after the change deployed to Harbor (0e44380):
+
+- "Rocky Shore Field Notes" was assigned by Kwame and submitted by Nia, and Kwame approved 9/10.
+- The administrator created "[educateos-approved] Rocky Shore Field Notes" in Marine Science's
+  Classroom course.
+- Kwame published the grade (`posted`), and the administrator's publish answered 403.
+- In Classroom, Nia's submission is `RETURNED` with 9. Harbor's From Google Classroom panel shows
+  her 9.
+- A rerun answered `already-posted` and created nothing, and `verify` reported 0 problems.
+
+```sh
+node scripts/demo/harbor-grade-return.ts run --admin-cookie <owner> --teacher-cookie <teacher@> \
+  --student-cookie <student@> --out /tmp/harbor-grade-return.json
+```
 
 ### Harbor's "From Google Classroom" panel
 
@@ -301,6 +358,29 @@ Check `/api/me` if a run was interrupted.
    the acceptance scripts do) and passes the sign-in link to the browser without printing it. The
    synthetic people have no passwords.
 
+### Northfield's families (guardians)
+
+A guardian sees each of their children's classes, but only what the teachers have shared with
+that child. They never see the child's own work or personal space. Verified 2026-11-15 (SCHO-426):
+
+1. **Rosa Delgado (`guardian-rosa@`)** goes straight to **Family**, which has a tab for each child.
+   - Lucía: Biology I · Period 2, graded so far 6 of 8 points. The class page shows the teacher's
+     announcement ("Lab day Tuesday: closed-toe shoes") and each activity's due date, with "No
+     feedback yet" until the teacher shares some.
+   - Mateo: Grade 1 Reading Foundations and Grade 1 Mathematics, 10 of 10 points in each.
+2. **Kwame Mensah (`guardian-kwame@`)** has the same view for Abena (grade 4) and Kofi (grade 8).
+3. **What a guardian cannot reach:**
+   - Another family's child (Rosa asking for Kofi, or Kwame for Mateo) answers 404, as if the
+     child did not exist.
+   - Teacher, student and administrator pages answer 403.
+
+| Request, as Rosa | Status |
+|---|---|
+| `/api/guardian/children` | 200: Lucía Delgado, Mateo Delgado |
+| `/api/guardian/children/prn_nf-student-lucia/offerings` | 200 |
+| `/api/guardian/children/prn_nf-student-kofi/offerings` | 404 |
+| `/api/teacher/offerings`, `/api/student/offerings`, `/api/admin/health` | 403 |
+
 ### The AI workspace (Workshop, `/ai` on either district)
 
 As Hannah at Northfield, open **AI workspace**. The home page greets her by name and offers a
@@ -314,6 +394,42 @@ teacher-approved Classroom grading flow (SCHO-402):
 
 To close the loop, show the same grades in Harbor, in Kwame's gradebook and in Nia's own class
 page.
+
+### The narrated video (SCHO-429)
+
+`scripts/demo/record-walkthrough.ts` records this walkthrough as one narrated MP4, with a chapter
+per scene. Each scene is a browser signed in as its own person, recorded while macOS `say` reads
+its narration, with the page's loading cut out. ffmpeg joins the scenes. Canvas is opened as Kofi
+with a single-use session token from the Canvas console.
+
+Before recording, put one Access cookie file per sign-in in a mode-700 folder, named as `SIGN_INS`
+in the script:
+
+- `hb-admin`, the owner's own sign-in;
+- `hb-teacher` and `hb-student`;
+- `nf-admin`, `nf-teacher-68`, `nf-student-68` and `nf-guardian-rosa`;
+- `canvas-access`, for canvas.mackie.house.
+
+Cookies are read into the browser only. The video is written outside the repository, and
+`--only <scene,…>` re-records some scenes.
+
+```sh
+node scripts/demo/record-walkthrough.ts --cookies <dir> --out ~/Movies/EducateOS-two-school-demo.mp4
+```
+
+The 2026-11-15 recording is 2 minutes with 9 scenes:
+
+1. Harbor's administrator.
+2. Kwame's gradebook, with Rocky Shore Field Notes at 9/10 in EducateOS and in Classroom.
+3. Nia's class.
+4. Northfield's administrator.
+5. Hannah's classes.
+6. Kofi's grades.
+7. Kofi's own Canvas grades, 15/16, counted once.
+8. Rosa's family view.
+9. The AI workspace.
+
+Each frame was checked against its narration. The video is not committed.
 
 ## Live evidence, 2026-11-15
 

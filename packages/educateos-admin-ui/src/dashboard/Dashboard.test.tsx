@@ -111,6 +111,11 @@ describe("the district export (SCHO-367)", () => {
       await user.click(within(card).getByRole("button", { name: "Export" }));
       await waitFor(() => expect(saved).toStrictEqual(["dst_nf-2026-11-13.zip"]));
       expect(download).toHaveBeenCalledWith("admin.exportDistrict");
+      expect(screen.getByTestId("announcer").textContent).toBe("The district export is downloading.");
+
+      // The announcement is about the dashboard: it does not follow the administrator to the next screen (SCHO-410).
+      await user.click(within(screen.getByRole("list", { name: "Admin" })).getByRole("link", { name: "Policies" }));
+      await waitFor(() => expect(screen.getByTestId("announcer").textContent).toBe(""));
     } finally {
       click.mockRestore();
     }

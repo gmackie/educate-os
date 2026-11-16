@@ -7,7 +7,7 @@ const PLACES = [
   { href: LIBRARY_PATH, label: "Library", current: (p: string) => p === LIBRARY_PATH },
   { href: PROGRESS_PATH, label: "Progress", current: (p: string) => p === PROGRESS_PATH || p.includes("/progress") || p.includes("/sessions/") },
   { href: SHELF_PATH, label: "Shelf", current: (p: string) => p === SHELF_PATH },
-  { href: HOME_SETTINGS_PATH, label: "Children and PIN", current: (p: string) => p === HOME_SETTINGS_PATH },
+  { href: HOME_SETTINGS_PATH, label: "Family settings", current: (p: string) => p === HOME_SETTINGS_PATH },
 ] as const;
 
 /** Home learning's own places, under the family view. */

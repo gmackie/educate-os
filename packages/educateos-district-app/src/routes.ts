@@ -27,6 +27,7 @@ import {
   QueueEntryId,
   PracticeSessionId,
   ShelfItemId,
+  AdultInvitationId,
   type Activity as HomeActivity,
   type FamilyExport,
   type FamilyView,
@@ -2043,6 +2044,25 @@ export const ROUTES = {
   "family.startChildSession": route({
     method: "POST", path: "/api/family/learners/:learnerId/child-session", surface: "family", cookie: "child-session",
     params: params({ learnerId: LearnerId }), body: NoBody, response: z.strictObject({ learnerId: LearnerId, displayName: z.string() }),
+  }),
+  /** Invites another grown-up: a single-use link, valid for a week, whose token is in its fragment. */
+  "family.inviteAdult": route({
+    method: "POST", path: "/api/family/adults/invitations", surface: "family", status: 201, body: NoBody,
+    response: z.strictObject({ id: z.string(), expiresAt: z.string(), link: z.url() }),
+  }),
+  "family.revokeInvitation": route({
+    method: "POST", path: "/api/family/adults/invitations/:invitationId/revoke", surface: "family",
+    params: params({ invitationId: AdultInvitationId }), body: NoBody, response: declared<FamilyView>(),
+  }),
+  /** Joins the family an invitation names, as a guardian with no family yet. */
+  "family.acceptInvitation": route({
+    method: "POST", path: "/api/family/join", surface: "family",
+    body: z.strictObject({ token: z.string().min(1).max(200) }), response: declared<FamilyView>(),
+  }),
+  /** Removes a grown-up from the family: oneself (leaving) or another. Never the last one. */
+  "family.removeAdult": route({
+    method: "POST", path: "/api/family/adults/:principalId/remove", surface: "family",
+    params: params({ principalId: PrincipalId }), body: NoBody, response: declared<HomeView>(),
   }),
   /** Ends every child session of the family, from a device that isn't in one (a forgotten or locked PIN). */
   "family.endChildSessions": route({ method: "POST", path: "/api/family/child-sessions/end", surface: "family", body: NoBody, response: z.strictObject({ ended: z.int() }) }),

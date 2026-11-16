@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 import {test} from "node:test";
+import {LISTENING_PATHS} from "./listening/core.mjs";
 import {INTAKE_PATHS} from "./intake/core.mjs";
 import {DYNAMIC_PATHS} from "../../packages/educateos-control-plane/src/app.ts";
 
@@ -22,7 +23,7 @@ test("the Worker and its Durable Object class keep the names their data lives un
 });
 
 test("the paths that reach the Worker first are the ones the control plane routes", () => {
-  assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS, ...INTAKE_PATHS]);
+  assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS, ...INTAKE_PATHS, ...LISTENING_PATHS]);
 });
 
 test("the guided install reads releases from educateos.io's release bucket and pins its release keys", async () => {
@@ -54,6 +55,7 @@ test("the isolated intake security and fake-Workers binding suites pass", async 
   execFileSync(process.execPath, ["--experimental-strip-types", "--test",
     fileURLToPath(new URL("intake/intake.test.mjs", import.meta.url)),
     fileURLToPath(new URL("intake/runtime.test.mjs", import.meta.url)),
+    fileURLToPath(new URL("listening/listening.test.mjs", import.meta.url)),
   ], {timeout: 60_000, stdio: "pipe"});
 });
 

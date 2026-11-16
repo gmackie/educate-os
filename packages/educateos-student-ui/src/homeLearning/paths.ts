@@ -9,6 +9,8 @@ export const LIBRARY_PATH = "/family/library";
 export const SHELF_PATH = "/family/shelf";
 /** Children, PIN, export and deletion. */
 export const HOME_SETTINGS_PATH = "/family/home-settings";
+/** Where another grown-up's invitation link opens. */
+export const JOIN_FAMILY_PATH = "/family/join";
 /** Progress, for whichever child comes first. */
 export const PROGRESS_PATH = "/family/progress";
 

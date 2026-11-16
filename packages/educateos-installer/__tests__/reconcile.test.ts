@@ -34,6 +34,41 @@ async function installOnce(fake: ReturnType<typeof accountFor>, release: Awaited
   });
 }
 
+const PORTAL_SCRIPT = "educateos-northfield-gatekeeper-mcp-portal";
+const portalConfig = (release: Awaited<ReturnType<typeof goldenRelease>>, inputs: Record<string, string>) =>
+  configFor(NORTHFIELD, release, { gatekeepers: ["gatekeeper-mcp-portal"], gatekeeperInputs: { "gatekeeper-mcp-portal": inputs } });
+const portalVar = (fake: ReturnType<typeof accountFor>, name: string) =>
+  (fake.worker(PORTAL_SCRIPT)!.bindings.find((b) => b.name === name) as { text?: string } | undefined)?.text;
+
+describe("MCP Server Portal inputs (SCHO-409)", () => {
+
+  it("installs the portal's URL, name and auth, and sets the token only when one is supplied", async () => {
+    const release = await goldenRelease();
+    const fake = accountFor(NORTHFIELD);
+    const oauth = await installOnce(fake, release, { config: portalConfig(release, { MCP_PORTAL_URL: "https://portal.northfield.example/mcp" }) });
+    expect(oauth.status).toBe("applied");
+    expect(oauth.plan!.steps.find((s) => s.key === "secret:gatekeeper-mcp-portal:MCP_PORTAL_TOKEN")).toMatchObject({ action: "noop" });
+    expect(portalVar(fake, "MCP_PORTAL_URL")).toBe("https://portal.northfield.example/mcp");
+    expect(portalVar(fake, "MCP_PORTAL_AUTH")).toBeUndefined();
+    expect(fake.worker(PORTAL_SCRIPT)!.secretNames).toEqual([]);
+
+    const token = await installOnce(fake, release, {
+      config: portalConfig(release, { MCP_PORTAL_URL: "https://portal.northfield.example/mcp", MCP_PORTAL_NAME: "Northfield tools", MCP_PORTAL_AUTH: "token" }),
+      secrets: staticSecretSource({ "gatekeeper-mcp-portal/MCP_PORTAL_TOKEN": "synthetic-portal-token" }),
+    });
+    expect(token.status).toBe("applied");
+    expect(portalVar(fake, "MCP_PORTAL_NAME")).toBe("Northfield tools");
+    expect(portalVar(fake, "MCP_PORTAL_AUTH")).toBe("token");
+    expect(fake.secretValue(PORTAL_SCRIPT, "MCP_PORTAL_TOKEN")).toBe("synthetic-portal-token");
+    expect(JSON.stringify(token)).not.toContain("synthetic-portal-token");
+
+    // Once set, the token stays: a later run without it neither asks for it nor removes it.
+    const later = await installOnce(fake, release, { config: portalConfig(release, { MCP_PORTAL_URL: "https://portal.northfield.example/mcp", MCP_PORTAL_AUTH: "token" }) });
+    expect(later.status).toBe("applied");
+    expect(fake.secretValue(PORTAL_SCRIPT, "MCP_PORTAL_TOKEN")).toBe("synthetic-portal-token");
+  });
+});
+
 describe("test-account deploy", () => {
   it("installs the pinned release, serves it on the district hostname and registers with the root", async () => {
     const release = await goldenRelease();

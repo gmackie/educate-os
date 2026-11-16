@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Banner, Button } from "@cloudflare/kumo";
 import { ArrowRightIcon, HandWavingIcon, LightbulbIcon, SpeakerHighIcon } from "@phosphor-icons/react";
+import { DistrictApiError } from "@educateos/api-client";
 import { scoreTry, triesAllowed, type Answer } from "@educateos/home-learning/scoring";
 import { useApi } from "../../api.tsx";
 import { ItemView } from "./ItemView.tsx";
@@ -41,6 +42,8 @@ export const ItemStep = ({ view, item, number, onNext }: { view: PracticeView; i
   const api = useApi();
   const [requestId] = useState(() => crypto.randomUUID());
   const [answers, setAnswers] = useState<Answer[]>([]);
+  // Counts retries only, so the answering part starts clean for a retry but keeps showing a finished answer.
+  const [retries, setRetries] = useState(0);
   const [hintUsed, setHintUsed] = useState(false);
   const [adultHelped, setAdultHelped] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | undefined>(undefined);
@@ -53,7 +56,8 @@ export const ItemStep = ({ view, item, number, onNext }: { view: PracticeView; i
     setSave("saving");
     api.call("learner.save", { params: { sessionId: view.sessionId }, body: { requestId, item: item.key, answers: all, hintUsed, adultHelped } }).then(
       () => setSave("saved"),
-      () => setSave("failed"),
+      // An answer this item already has (saved from another tab, or before a reload) is kept, so moving on is right.
+      (error: unknown) => setSave(error instanceof DistrictApiError && error.code === "conflict" ? "saved" : "failed"),
     );
   };
 
@@ -63,6 +67,7 @@ export const ItemStep = ({ view, item, number, onNext }: { view: PracticeView; i
     const { correct } = scoreTry(item, given);
     const next: Outcome = item.type === "read-aloud" ? "recorded" : correct ? "right" : all.length < triesAllowed(view.mode, item) ? "try-again" : "finished-wrong";
     setOutcome(next);
+    if (next === "try-again") setRetries((r) => r + 1);
     speak(MESSAGES[next](item));
     if (next !== "try-again") send(all);
   };
@@ -77,8 +82,8 @@ export const ItemStep = ({ view, item, number, onNext }: { view: PracticeView; i
         <Button variant="ghost" icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(item.prompt)}>Hear it again</Button>
       </div>
 
-      {/* Remounted for each try, so a second try starts clean. */}
-      <ItemView key={answers.length} item={item} disabled={finished} onAnswer={answer} />
+      {/* Remounted for a retry, so a second try starts clean. */}
+      <ItemView key={retries} item={item} disabled={finished} onAnswer={answer} />
 
       {!finished && item.type !== "read-aloud" ? (
         <div className="flex flex-wrap gap-3">

@@ -156,3 +156,35 @@ describe("child sessions", () => {
     expect((await d.call(rivers, "family.home", {}, child)).status).toBe(200);
   });
 });
+
+describe("more grown-ups and retention", () => {
+  it("invites a second adult by a link whose token is in its fragment, and lets them join once", async () => {
+    const d = await bootDistrict(WILLOWCREEK, { homeLearning: { signup: "open" } });
+    const { rivers, maya } = await riversWithChild(d);
+    const invited = await d.ok(rivers, "family.inviteAdult", { body: {} });
+    const link = new URL(invited.link);
+    expect(link.pathname).toBe("/family/join");
+    expect(link.search).toBe("");
+    const token = new URLSearchParams(link.hash.slice(1)).get("invitation")!;
+    const ortiz = d.tokenFor("prn_wc-parent-ortiz");
+    const joined = await d.ok(ortiz, "family.acceptInvitation", { body: { token } });
+    expect(joined.adults.map((a) => [a.displayName, a.you])).toEqual([["Jordan Rivers", false], ["Sam Ortiz", true]]);
+    expect((await d.ok(ortiz, "family.progress", { params: { learnerId: maya.id } })).learner.displayName).toBe("Maya");
+    expectError(await d.call(d.tokenFor(NAIR), "family.acceptInvitation", { body: { token } }), 404, "not-found");
+    await d.ok(rivers, "family.removeAdult", { params: { principalId: "prn_wc-parent-ortiz" }, body: {} });
+    expectError(await d.call(ortiz, "family.progress", { params: { learnerId: maya.id } }), 404, "not-found");
+  });
+
+  it("purges practice past the retention period only where it is set", async () => {
+    let at = Date.parse("2026-11-16T15:00:00.000Z");
+    const d = await bootDistrict(WILLOWCREEK, { homeLearning: { signup: "open", retentionDays: 730 }, now: () => new Date(at) });
+    const { rivers, maya } = await riversWithChild(d);
+    const child = cookieFrom((await d.call(rivers, "family.startChildSession", { params: { learnerId: maya.id } })).setCookie);
+    const home = (await d.call(rivers, "learner.home", {}, child)).body as { queue: { entryId: string }[] };
+    await d.call(rivers, "learner.start", { params: { entryId: home.queue[0]!.entryId } }, child);
+    expect(await d.app.homeLearning.purgeExpired()).toMatchObject({ ran: true, deleted: 0 });
+    at += 731 * 86_400_000;
+    expect(await d.app.homeLearning.purgeExpired()).toMatchObject({ ran: true, deleted: 1 });
+    expect(await (await bootDistrict(WILLOWCREEK, { homeLearning: { signup: "open" } })).app.homeLearning.purgeExpired()).toEqual({ ran: false });
+  });
+});

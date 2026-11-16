@@ -19,7 +19,7 @@ test('the founding pilot page and its leave-behinds are collected, the pilot kit
   assert.doesNotMatch(stamp(html, '/pilot/briefing/'), /dataflare.js/);
 });
 test('restricted pages never receive an analytics mount', () => {
-  for (const path of ['/demo/', '/app', '/interest/demo/', '/registry/abc', '/district/student', '/clever/launch']) {
+  for (const path of ['/have-your-say/', '/have-your-say/follow-up/', '/have-your-say/privacy/', '/demo/', '/app', '/interest/demo/', '/registry/abc', '/district/student', '/clever/launch']) {
     assert.doesNotMatch(stamp(html, path), /dataflare.js/);
     // Even copying the marketing bootstrap to one of these pages cannot load a remote SDK.
     runInNewContext(source, browser(path, () => {throw new Error('Unexpected remote SDK load');}));

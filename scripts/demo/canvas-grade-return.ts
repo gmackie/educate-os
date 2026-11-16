@@ -84,9 +84,16 @@ export function approvedGrades(gradebook: Gradebook): Map<string, ApprovedGrade[
   return byAssignment;
 }
 
+/**
+ * A course's AGS column for an EducateOS assignment. `omitted` says whether Canvas leaves it out of
+ * the course total, as it must: the work it grades is already a Canvas assignment of its own, and
+ * counting both would count it twice (SCHO-422).
+ */
+export interface CanvasColumn { lineItemId: number; canvasAssignmentId: number; omitted: boolean }
+
 /** The Canvas side: a course's AGS column for an EducateOS assignment, found by its resource ID. */
 export interface CanvasColumns {
-  find(courseId: number, assignmentId: string): Promise<{ lineItemId: number; canvasAssignmentId: number } | undefined>;
+  find(courseId: number, assignmentId: string): Promise<CanvasColumn | undefined>;
   /** Drops what `find` has read, after a column was created. */
   forget(): void;
 }
@@ -96,16 +103,17 @@ export interface CanvasColumns {
  * ID. Each console start takes seconds, so the account's EducateOS columns are read in one go.
  */
 export function consoleColumns(run: RailsRunner, accountId: number): CanvasColumns {
-  let columns: Promise<{ courseId: number; resourceId: string; lineItemId: number; canvasAssignmentId: number }[]> | undefined;
+  type Row = CanvasColumn & { courseId: number; resourceId: string };
+  let columns: Promise<Row[]> | undefined;
   return {
     async find(courseId, assignmentId) {
       if (!Number.isSafeInteger(accountId)) throw new Error("Refusing an unsafe column lookup");
       columns ??= Promise.resolve(run(`require "json"
 rows=Lti::LineItem.active.where("resource_id LIKE 'asg_%'").joins(:assignment).where(assignments:{context_type:"Course",context_id:Course.where(account_id:${accountId}).select(:id)}).order(:id).map{|li|
- {courseId:li.assignment.context_id,resourceId:li.resource_id,lineItemId:li.id,canvasAssignmentId:li.assignment_id}}
-puts "DATA="+JSON.generate(rows)`) as { courseId: number; resourceId: string; lineItemId: number; canvasAssignmentId: number }[]);
+ {courseId:li.assignment.context_id,resourceId:li.resource_id,lineItemId:li.id,canvasAssignmentId:li.assignment_id,omitted:!!li.assignment.omit_from_final_grade}}
+puts "DATA="+JSON.generate(rows)`) as Row[]);
       const found = (await columns).find((c) => c.courseId === courseId && c.resourceId === assignmentId);
-      return found === undefined ? undefined : { lineItemId: found.lineItemId, canvasAssignmentId: found.canvasAssignmentId };
+      return found === undefined ? undefined : { lineItemId: found.lineItemId, canvasAssignmentId: found.canvasAssignmentId, omitted: found.omitted };
     },
     forget() { columns = undefined; },
   };
@@ -125,7 +133,8 @@ export interface GradeReturnOptions {
   district: DistrictRequest;
   showcase: ShowcaseClient;
   subjectOf(cookie: string): Promise<string>;
-  canvas: Pick<CanvasClient, "list">;
+  /** The account administrator's Canvas API client. */
+  canvas: Pick<CanvasClient, "list" | "request">;
   canvasClient(token: string): Pick<CanvasClient, "request">;
   actors: CanvasActors;
   columns: CanvasColumns;
@@ -196,6 +205,12 @@ export async function canvasGradeReturn(o: GradeReturnOptions) {
           found = await o.columns.find(courseId, assignmentId);
         }
         if (found === undefined) { problems.push(`${offeringId}: no Canvas column for ${assignmentId}`); continue; }
+        if (!found.omitted) {
+          if (o.mode === "run") {
+            await o.canvas.request("PUT", `courses/${courseId}/assignments/${found.canvasAssignmentId}`, { assignment: { omit_from_final_grade: true } });
+            found = { ...found, omitted: true };
+          } else problems.push(`${offeringId}: the Canvas column for ${assignmentId} counts toward the course total`);
+        }
         const column = `${CANVAS}/api/lti/courses/${courseId}/line_items/${found.lineItemId}`;
         if (o.mode === "run") await o.district(o.adminCookie, "POST", "/api/lti/grade-columns", { offeringId, column, assignmentId });
 

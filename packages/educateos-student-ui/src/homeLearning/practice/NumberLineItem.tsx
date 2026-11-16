@@ -23,7 +23,7 @@ export const NumberLineItem = ({ item, disabled, onAnswer }: ItemProps<"place-on
   const jumps = path.length;
   return (
     <div className="flex flex-col gap-6">
-      <div className="overflow-x-auto pb-2">
+      <div className="overflow-x-auto px-1 pb-2">
         <ol aria-label={`Number line from 0 to ${item.max}`} className="flex min-w-max items-end gap-1 border-b-4 border-kumo-hairline pb-1">
           {marks.map((n) => {
             const here = at === n;

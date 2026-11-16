@@ -36,6 +36,7 @@ export const FamilySetup = ({ onCreated }: { onCreated: () => void }) => {
     <section aria-labelledby="family-setup" className="flex max-w-2xl flex-col gap-6">
       <PageHeading id="family-setup">Set up home learning</PageHeading>
       <Text>Short reading and number practice for children in kindergarten to second grade. You choose what to practice; your child practices; you see what they did.</Text>
+      <Text variant="secondary">Joining a family another grown-up already set up? Open the invitation link they sent you instead.</Text>
       <form className="flex flex-col gap-6" onSubmit={(event) => {
         event.preventDefault();
         if (ready) void submit();

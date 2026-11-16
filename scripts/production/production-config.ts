@@ -370,6 +370,12 @@ export interface DemoDistrictDeployment {
    * review; an administrator must still turn it on. Absent, analytics stays off.
    */
   productAnalytics?: string;
+  /**
+   * `DATA_JURISDICTION` (ADR-0015): pins the district's Durable Object to a Cloudflare jurisdiction.
+   * Set it only before the Worker's first request: the same name in a jurisdiction is another object,
+   * so pinning a district that already has data starts it empty.
+   */
+  dataJurisdiction?: "us";
 }
 
 /** A demo district's Worker name: its own, so its own Durable Object namespace. */
@@ -424,6 +430,7 @@ export function buildDemoDistrictConfigs({
       ...district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: district.courseLibraryTrust },
       ...district.showcase === undefined ? {} : { DEMO_SHOWCASE: district.showcase },
       ...district.productAnalytics === undefined ? {} : { PRODUCT_ANALYTICS: district.productAnalytics },
+      ...district.dataJurisdiction === undefined ? {} : { DATA_JURISDICTION: district.dataJurisdiction },
     };
     if (district.oneOrigin?.enabled) {
       // No router in front: the district answers /ai itself, so the Worker runs first for it.

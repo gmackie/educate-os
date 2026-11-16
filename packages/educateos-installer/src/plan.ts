@@ -234,6 +234,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         if (existing.includes(resource.secretName)) step("noop", "secret set (values are never read back)");
         else if (hasValue) step("create", "secret not set");
         else if (resource.generated) step("create", "secret not set; the installer generates it");
+        else if (resource.optional) step("noop", "optional secret not supplied; left unset");
         else step("needs-input", `supply ${resource.secretName} for ${resource.pkgName}`);
         break;
       }

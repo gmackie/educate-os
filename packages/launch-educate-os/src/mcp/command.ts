@@ -15,8 +15,9 @@
 //   "MCP Server Portal" (`gatekeeper-mcp-portal`, one deployment-configured portal).
 //
 // The launcher changes only the answers file, the same file `install` applies, and only fields the
-// product reads: `gatekeepers`, and `workshopPolicy.connectors` inside the district service's
-// `DISTRICT_CONFIG`. What lives in the Workshop (which connectors are offered, which servers are
+// product reads: `gatekeepers`, the portal's `gatekeeperInputs`, and `workshopPolicy.connectors`
+// inside the district service's `DISTRICT_CONFIG`. The portal's token is a secret, so it is never
+// written there: the apply reads it from the environment like every other secret. What lives in the Workshop (which connectors are offered, which servers are
 // connected) it can't read or write, so it names the page and the steps instead.
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -27,6 +28,7 @@ import type { CliIo } from "../cli.ts";
 import { launchCloudflare, TEST_CLOUDFLARE_RPC_ENV } from "../cloudflare.ts";
 import { Output } from "../output.ts";
 import { type Prompter, PromptCancelled, streamPrompter } from "../prompter.ts";
+import { secretEnvName } from "../run.ts";
 import { CLIENT_GUIDES, withUrl } from "./clients.ts";
 import { MCP_GATEKEEPERS, type McpFacts, mcpFacts, mcpResource } from "./facts.ts";
 import { endpointProblem, type EndpointProbe, probeAuthorizationServer, probeDistrictEndpoint, probeMcpServer } from "./probe.ts";
@@ -34,8 +36,13 @@ import { endpointProblem, type EndpointProbe, probeAuthorizationServer, probeDis
 declare const __LAUNCH_VERSION__: string | undefined;
 const VERSION = typeof __LAUNCH_VERSION__ === "string" ? __LAUNCH_VERSION__ : "0.0.0-source";
 
-/** The follow-up issue for what the installer can't configure yet (portal settings, the /mcp Access bypass). */
-export const INSTALLER_GAP_ISSUE = "SCHO-409";
+/** How the MCP Server Portal authenticates to its portal (`MCP_PORTAL_AUTH`). */
+export const PORTAL_AUTH_MODES = ["oauth", "token", "none"] as const;
+/** A portal auth mode. */
+export type PortalAuth = (typeof PORTAL_AUTH_MODES)[number];
+
+/** The environment variable the apply reads the portal's bearer token from. */
+export const PORTAL_TOKEN_ENV = secretEnvName("gatekeeper-mcp-portal", "MCP_PORTAL_TOKEN");
 
 export const MCP_USAGE = `launch-educate-os mcp: set up MCP for your EducateOS install
 
@@ -49,6 +56,10 @@ Usage:
   npx launch-educate-os mcp add       add an external MCP server to the AI Workshop: checks the
                                       server, installs the MCP Server connector and grants it in
                                       district policy (answers file), then the Workshop steps
+  npx launch-educate-os mcp add --connector portal
+                                      or set up the MCP Server Portal connector: one MCP portal
+                                      (such as a Cloudflare MCP server portal) for the whole
+                                      install, its URL, name and sign-in kept in the answers file
 
 Options:
   --config <file>       the answers file (default ./${ANSWERS_FILE})
@@ -56,6 +67,10 @@ Options:
   --client <id>         clients: one client only (${CLIENT_GUIDES.map((guide) => guide.id).join(", ")})
   --server-url <url>    add: the MCP server to check and add (otherwise asked on a terminal)
   --connector <kind>    add: "server" (default; any MCP server a person pastes) or "portal"
+  --portal-url <url>    add --connector portal: the portal's MCP endpoint (otherwise asked)
+  --portal-name <name>  add --connector portal: its display name (default "MCP Server Portal (<host>)")
+  --portal-auth <mode>  add --connector portal: ${PORTAL_AUTH_MODES.join(", ")} (default oauth). For token,
+                        set ${PORTAL_TOKEN_ENV} when you apply
   --yes                 add: save the changes without asking (needed without a terminal)
   --offline             no live checks: read the answers file only
   --json                one JSON event per line on stdout; human text goes to stderr
@@ -64,8 +79,8 @@ Options:
 Environment:
   ${DISTRICT_TOKEN_ENV}  optional for status: also checks the connectors' Workers in the account
 
-Nothing here changes Cloudflare. "add" changes only the answers file; apply it with
-npx launch-educate-os --config <file>.`;
+Nothing here changes Cloudflare. "add" changes only the answers file, which never holds a secret;
+apply it with npx launch-educate-os --config <file>.`;
 
 function parse(argv: string[]) {
   return parseArgs({
@@ -78,6 +93,9 @@ function parse(argv: string[]) {
       client: { type: "string" },
       "server-url": { type: "string" },
       connector: { type: "string" },
+      "portal-url": { type: "string" },
+      "portal-name": { type: "string" },
+      "portal-auth": { type: "string" },
       yes: { type: "boolean", short: "y" },
       offline: { type: "boolean" },
       json: { type: "boolean" },
@@ -142,6 +160,15 @@ export async function mcpMain(io: CliIo, argv: string[]): Promise<number> {
   }
   if (values.connector !== undefined && !["server", "portal"].includes(values.connector)) {
     io.stderr.write(`unknown --connector ${values.connector}: "server" or "portal"\n`);
+    return 2;
+  }
+  if (values["portal-auth"] !== undefined && !(PORTAL_AUTH_MODES as readonly string[]).includes(values["portal-auth"])) {
+    io.stderr.write(`unknown --portal-auth ${values["portal-auth"]}: one of ${PORTAL_AUTH_MODES.join(", ")}\n`);
+    return 2;
+  }
+  const portalFlag = ["portal-url", "portal-name", "portal-auth"].find((name) => values[name as keyof Values] !== undefined);
+  if (portalFlag !== undefined && values.connector !== "portal") {
+    io.stderr.write(`--${portalFlag} is for mcp add --connector portal\n`);
     return 2;
   }
   const out = new Output({ json: values.json === true, out: io.stdout, err: io.stderr });
@@ -229,7 +256,7 @@ function reportEndpointProbe(report: Report, facts: McpFacts, probe: EndpointPro
       return;
     case "access":
       report.check(label, configured ? "fail" : "info", configured
-        ? `Cloudflare Access answered the metadata request (${probe.status} to its sign-in). /mcp and /.well-known/oauth-protected-resource[/mcp] must be exempt from Access, since MCP clients bring their own tokens; the installer doesn't add that bypass yet (${INSTALLER_GAP_ISSUE})`
+        ? `Cloudflare Access answered the metadata request (${probe.status} to its sign-in). /mcp and /.well-known/oauth-protected-resource[/mcp] must be exempt from Access, since MCP clients bring their own tokens: applying the answers adds that bypass on a one-origin install whose DISTRICT_CONFIG has "mcp" (npx launch-educate-os --config <file>)`
         : "Cloudflare Access answers the path (the endpoint is off, so nothing is exempt from Access)");
       return;
     case "unexpected":
@@ -259,6 +286,18 @@ async function status(context: Context): Promise<number> {
   for (const [key, gatekeeper] of Object.entries(MCP_GATEKEEPERS) as [keyof typeof MCP_GATEKEEPERS, (typeof MCP_GATEKEEPERS)[keyof typeof MCP_GATEKEEPERS]][]) {
     report.check(key, facts.gatekeepers[key].inAnswers ? "ok" : "info", `${gatekeeper.name} (${gatekeeper.pkg}): ${facts.gatekeepers[key].inAnswers ? "installed by the answers" : "not in the answers' gatekeepers"}`);
   }
+  if (facts.gatekeepers.portal.inAnswers) {
+    const url = facts.portalInputs.MCP_PORTAL_URL;
+    const auth = facts.portalInputs.MCP_PORTAL_AUTH ?? "oauth";
+    report.check("portal", url ? "ok" : "fail", url
+      ? `portal ${url} (${facts.portalInputs.MCP_PORTAL_NAME ? `"${facts.portalInputs.MCP_PORTAL_NAME}", ` : ""}sign-in ${auth}) in the answers' gatekeeperInputs`
+      : "the answers install the portal connector without MCP_PORTAL_URL, which the apply refuses: npx launch-educate-os mcp add --connector portal sets it");
+    if (auth === "token") {
+      report.check("token", io.env[PORTAL_TOKEN_ENV] ? "ok" : "info", io.env[PORTAL_TOKEN_ENV]
+        ? `${PORTAL_TOKEN_ENV} is set: the next apply sets the portal's token`
+        : `sign-in is token: the apply sets the token from ${PORTAL_TOKEN_ENV}; without it, a token already on the Worker is kept`);
+    }
+  }
   const token = io.env[DISTRICT_TOKEN_ENV];
   if (token === undefined || token === "") {
     report.check("account", "info", `${DISTRICT_TOKEN_ENV} is not set: the account's Workers are not checked`);
@@ -276,7 +315,7 @@ async function status(context: Context): Promise<number> {
         const grants = district.connectorGrants[gatekeeper.vendorId]?.length ?? 0;
         report.check("policy", grants > 0 ? "ok" : "warn", grants > 0
           ? `district administrators may connect the ${gatekeeper.name} (workshopPolicy.connectors names "${gatekeeper.vendorId}")`
-          : `workshopPolicy.connectors has no grant for "${gatekeeper.vendorId}": connecting the ${gatekeeper.name} is refused${key === "server" ? " (npx launch-educate-os mcp add adds one)" : ""}`);
+          : `workshopPolicy.connectors has no grant for "${gatekeeper.vendorId}": connecting the ${gatekeeper.name} is refused (npx launch-educate-os mcp add${key === "portal" ? " --connector portal" : ""} adds one)`);
         if (district.teacherGrants[gatekeeper.vendorId]?.length) {
           report.check("policy", "warn", `workshopPolicy.teacherConnectors lists "${gatekeeper.vendorId}": teachers may connect MCP servers themselves, though teacherConnectors is meant for connectors confined to a teacher's own teaching`);
         }
@@ -310,10 +349,19 @@ async function reportAccount(report: Report, facts: McpFacts, token: string, io:
     report.check(key, "ok", `Worker ${scriptName} is installed${inAnswers ? "" : " (but not in the answers: the next apply keeps it only if you add it)"}`);
     if (key === "portal") {
       const settings = await cf.api.getWorkerSettings(accountId, scriptName).catch(() => undefined);
-      const portalUrl = settings?.bindings.find((binding) => binding.name === "MCP_PORTAL_URL")?.text;
+      const text = (name: string) => settings?.bindings.find((binding) => binding.name === name)?.text;
+      const portalUrl = text("MCP_PORTAL_URL");
       report.check("portal", portalUrl ? "ok" : "warn", portalUrl
         ? `portal ${portalUrl}`
-        : `MCP_PORTAL_URL is not set, so the Workshop hides the portal connector; the installer can't set it yet (${INSTALLER_GAP_ISSUE})`);
+        : "MCP_PORTAL_URL is not set on the Worker, so the Workshop hides the portal connector: set it with npx launch-educate-os mcp add --connector portal, then apply the answers");
+      if (portalUrl && text("MCP_PORTAL_AUTH")?.trim().toLowerCase() === "token") {
+        const secrets = await cf.api.listWorkerSecrets(accountId, scriptName).catch(() => undefined);
+        if (secrets !== undefined) {
+          report.check("token", secrets.includes("MCP_PORTAL_TOKEN") ? "ok" : "fail", secrets.includes("MCP_PORTAL_TOKEN")
+            ? "the portal's token is set (its value is never read back)"
+            : `sign-in is token, but the Worker has no MCP_PORTAL_TOKEN: set ${PORTAL_TOKEN_ENV} and apply the answers`);
+        }
+      }
     }
   }
 }
@@ -401,8 +449,7 @@ async function clients(context: Context): Promise<number> {
   out.line();
   out.line("Not yet proven live: no outside MCP client has connected to an EducateOS district. The endpoint");
   out.line("is tested end to end with the official MCP client against a simulated authorization server;");
-  out.line("the district's real one (Nathan) doesn't issue tokens for it yet (NATH-6), and the installer");
-  out.line(`doesn't exempt /mcp from Cloudflare Access yet (${INSTALLER_GAP_ISSUE}).`);
+  out.line("the district's real one (Nathan) doesn't issue tokens for it yet (NATH-6).");
   return report.failed === 0 ? 0 : 1;
 }
 
@@ -414,16 +461,30 @@ interface Change {
   apply(install: Record<string, unknown>): void;
 }
 
-/** The changes that install the MCP Server connector and grant it to district administrators. */
-export function serverConnectorChanges(facts: McpFacts): { changes: Change[]; notes: string[] } {
+/**
+ * The changes that install an MCP connector and grant it to district administrators: the MCP Server
+ * connector, or the MCP Server Portal with `portal`, its deploy inputs in `gatekeeperInputs`. Inputs
+ * the answers already hold and `portal` doesn't name are kept.
+ */
+export function connectorChanges(facts: McpFacts, key: keyof typeof MCP_GATEKEEPERS, portal?: Record<string, string>): { changes: Change[]; notes: string[] } {
   const changes: Change[] = [];
   const notes: string[] = [];
-  const { pkg, vendorId } = MCP_GATEKEEPERS.server;
-  if (!facts.gatekeepers.server.inAnswers) {
+  const { pkg, vendorId, name } = MCP_GATEKEEPERS[key];
+  if (!facts.gatekeepers[key].inAnswers) {
     changes.push({
-      description: `gatekeepers: add "${pkg}" (installs the MCP Server connector's Worker)`,
+      description: `gatekeepers: add "${pkg}" (installs the ${name} connector's Worker)`,
       apply: (install) => {
         install.gatekeepers = [...(Array.isArray(install.gatekeepers) ? install.gatekeepers : []), pkg];
+      },
+    });
+  }
+  for (const [input, value] of Object.entries(portal ?? {})) {
+    if (facts.portalInputs[input] === value) continue;
+    changes.push({
+      description: `gatekeeperInputs["${pkg}"].${input}: ${facts.portalInputs[input] === undefined ? "set" : `change from ${JSON.stringify(facts.portalInputs[input])}`} to ${JSON.stringify(value)}`,
+      apply: (install) => {
+        const all = (install.gatekeeperInputs ?? {}) as Record<string, Record<string, string>>;
+        install.gatekeeperInputs = { ...all, [pkg]: { ...all[pkg], [input]: value } };
       },
     });
   }
@@ -434,7 +495,7 @@ export function serverConnectorChanges(facts: McpFacts): { changes: Change[]; no
       notes.push("DISTRICT_CONFIG has no workshopPolicy, so the district refuses every Workshop capability, connecting MCP servers included. Write one deliberately (see packages/educateos-district-worker/README.md); the launcher won't invent it.");
     } else if (!district.connectorGrants[vendorId]?.length) {
       changes.push({
-        description: `DISTRICT_CONFIG.workshopPolicy.connectors: add {"vendorId": "${vendorId}", "access": "all"} (district administrators may connect MCP servers; teachers may not)`,
+        description: `DISTRICT_CONFIG.workshopPolicy.connectors: add {"vendorId": "${vendorId}", "access": "all"} (district administrators may connect the ${name}; teachers may not)`,
         apply: (install) => {
           const services = install.services as Record<string, { vars: Record<string, string> }>;
           const vars = services[district.pkg]!.vars;
@@ -493,18 +554,40 @@ async function checkServer(context: Context, report: Report, url: string): Promi
   }
 }
 
+/** Shows the changes and saves them when allowed: whether they were saved, or the exit code to stop with. */
+async function saveChanges(context: Context, answers: Answers, changes: Change[], none: string): Promise<{ saved: boolean } | { code: number }> {
+  const { values, out, prompter } = context;
+  if (changes.length === 0) {
+    out.line(`  None: ${none}`);
+    return { saved: false };
+  }
+  for (const change of changes) out.line(`  + ${change.description}`);
+  const go = values.yes === true || (prompter !== undefined && await prompter.confirm("Save these changes to the answers file?", true));
+  if (!go) {
+    for (const change of changes) out.event({ event: "mcp-change", change: change.description, saved: false });
+    if (prompter === undefined) {
+      out.line("Not saved: pass --yes to save without a terminal.");
+      return { code: 2 };
+    }
+    out.line("Not saved. Nothing was changed.");
+    return { code: 0 };
+  }
+  const install = structuredClone(answers.install);
+  for (const change of changes) change.apply(install);
+  await writeAnswers(context.answersPath, { ...answers, install });
+  for (const change of changes) out.event({ event: "mcp-change", change: change.description, saved: true });
+  out.line(`Saved. ${context.answersPath} still holds no secrets.`);
+  return { saved: true };
+}
+
+function applyStep(context: Context): string {
+  return `Apply the answers: npx launch-educate-os plan --config ${context.answersPath} to review, then npx launch-educate-os --config ${context.answersPath}. (Like upgrade, it installs the newest release; pass --release <id> to stay on yours.)`;
+}
+
 async function add(context: Context): Promise<number> {
+  if (context.values.connector === "portal") return await addPortal(context);
   const { values, out, prompter } = context;
   const report = new Report(out);
-  if (values.connector === "portal") {
-    out.line("The MCP Server Portal connector takes its portal from the Worker's settings (MCP_PORTAL_URL,");
-    out.line("MCP_PORTAL_NAME, MCP_PORTAL_AUTH, MCP_PORTAL_TOKEN), and the installer can't set them yet: the");
-    out.line(`connector declares no deploy inputs (${INSTALLER_GAP_ISSUE}). Installed without them, the Workshop`);
-    out.line("hides it. Until then, use the MCP Server connector (npx launch-educate-os mcp add), with each");
-    out.line("server's own sign-in. Nothing was changed.");
-    report.check("portal", "fail", `not configurable by the installer yet (${INSTALLER_GAP_ISSUE})`);
-    return 1;
-  }
   const answers = await loadAnswers(context, "mcp add");
   const facts = mcpFacts(answers);
 
@@ -519,36 +602,14 @@ async function add(context: Context): Promise<number> {
   else await checkServer(context, report, url);
 
   report.heading(`Changes to ${context.answersPath}`);
-  const { changes, notes } = serverConnectorChanges(facts);
+  const { changes, notes } = connectorChanges(facts, "server");
   for (const note of notes) report.check("policy", "warn", note);
-  let saved = false;
-  if (changes.length === 0) {
-    out.line("  None: the answers already install the MCP Server connector and grant it.");
-  } else {
-    for (const change of changes) out.line(`  + ${change.description}`);
-    const go = values.yes === true || (prompter !== undefined && await prompter.confirm("Save these changes to the answers file?", true));
-    if (!go) {
-      for (const change of changes) out.event({ event: "mcp-change", change: change.description, saved: false });
-      if (prompter === undefined) {
-        out.line("Not saved: pass --yes to save without a terminal.");
-        return 2;
-      }
-      out.line("Not saved. Nothing was changed.");
-      return 0;
-    }
-    const install = structuredClone(answers.install);
-    for (const change of changes) change.apply(install);
-    await writeAnswers(context.answersPath, { ...answers, install });
-    saved = true;
-    for (const change of changes) out.event({ event: "mcp-change", change: change.description, saved: true });
-    out.line(`Saved. ${context.answersPath} still holds no secrets.`);
-  }
+  const result = await saveChanges(context, answers, changes, "the answers already install the MCP Server connector and grant it.");
+  if ("code" in result) return result.code;
 
   report.heading("Next steps");
   const steps = [
-    ...(saved ? [
-      `Apply the answers: npx launch-educate-os plan --config ${context.answersPath} to review, then npx launch-educate-os --config ${context.answersPath}. (Like upgrade, it installs the newest release; pass --release <id> to stay on yours.)`,
-    ] : []),
+    ...(result.saved ? [applyStep(context)] : []),
     `In the Workshop, ${facts.workshopUrl}admin?tab=gatekeepers: check "MCP Server" is on. Connectors are on unless an administrator turned them off.`,
     `${facts.district ? "As a district administrator (district policy lets no one else connect it)" : "As anyone signed in to the Workshop (an install without the district LMS has no district policy)"}, open ${facts.workshopUrl}gatekeepers, choose MCP Server, Connect, and paste ${url ?? "the server's address"}. Sign in at the server if it asks.`,
     "Grant it to an agent or Gadget: choose All tools, or Choose tools to allow only the ones you tick.",
@@ -559,5 +620,80 @@ async function add(context: Context): Promise<number> {
   out.line();
   out.line("Not yet proven live: the MCP Server connector is unit-tested in Cloudflare OS, and no EducateOS");
   out.line("district has connected an outside MCP server through it yet.");
+  return report.failed === 0 ? 0 : 1;
+}
+
+/**
+ * `mcp add --connector portal`: the MCP Server Portal's URL, display name and sign-in into the
+ * answers' `gatekeeperInputs` (SCHO-409), the connector into `gatekeepers`, and its grant into
+ * district policy. The token, for `token` sign-in, is a secret the apply reads from the environment.
+ */
+async function addPortal(context: Context): Promise<number> {
+  const { io, values, out, prompter } = context;
+  const report = new Report(out);
+  const answers = await loadAnswers(context, "mcp add --connector portal");
+  const facts = mcpFacts(answers);
+  const current = facts.portalInputs;
+
+  report.heading("The portal");
+  let url = values["portal-url"];
+  if (url === undefined && prompter !== undefined) {
+    url = await prompter.text("MCP portal URL (its MCP endpoint, https://)", {
+      ...(current.MCP_PORTAL_URL ? { default: current.MCP_PORTAL_URL } : {}),
+      validate: (value) => endpointProblem(value),
+    });
+  }
+  url ??= current.MCP_PORTAL_URL;
+  if (url === undefined) throw new EducateOsError("validation-failed", "mcp add --connector portal needs the portal's URL: pass --portal-url <url>");
+  const problem = endpointProblem(url);
+  if (problem !== undefined) throw new EducateOsError("validation-failed", `${url}: ${problem}`);
+
+  let name = values["portal-name"];
+  if (name === undefined && prompter !== undefined && values["portal-url"] === undefined) {
+    name = await prompter.text(`Display name (blank: ${current.MCP_PORTAL_NAME ?? `MCP Server Portal (${new URL(url).host})`})`) || undefined;
+  }
+  let auth = values["portal-auth"] as PortalAuth | undefined;
+  if (auth === undefined && prompter !== undefined && values["portal-url"] === undefined) {
+    const was = (current.MCP_PORTAL_AUTH ?? "oauth") as PortalAuth;
+    auth = await prompter.select("How the connector signs in to the portal", [
+      { label: "oauth: each person signs in through the portal (a Cloudflare MCP server portal's Access sign-in)", value: "oauth" as const },
+      { label: "token: one bearer token for everyone, set as a secret when you apply", value: "token" as const },
+      { label: "none: the portal needs no credential", value: "none" as const },
+    ], Math.max(0, PORTAL_AUTH_MODES.indexOf(was)));
+  }
+  report.check("portal", "ok", `${url}: the Workshop connects to it from Cloudflare, so it must be reachable from the internet`);
+  report.check("checked", "info", "not contacted from here: a portal usually sits behind Cloudflare Access and answers only a signed-in person");
+
+  const inputs: Record<string, string> = { MCP_PORTAL_URL: url };
+  if (name !== undefined) inputs.MCP_PORTAL_NAME = name;
+  if (auth !== undefined) inputs.MCP_PORTAL_AUTH = auth;
+  const mode = auth ?? (current.MCP_PORTAL_AUTH as PortalAuth | undefined) ?? "oauth";
+  if (mode === "token") {
+    report.check("token", io.env[PORTAL_TOKEN_ENV] ? "ok" : "warn", io.env[PORTAL_TOKEN_ENV]
+      ? `${PORTAL_TOKEN_ENV} is set: keep it set when you apply, and the apply sets the token`
+      : `sign-in is token: set ${PORTAL_TOKEN_ENV} when you apply (the answers file never holds the token)`);
+  }
+
+  report.heading(`Changes to ${context.answersPath}`);
+  const { changes, notes } = connectorChanges(facts, "portal", inputs);
+  for (const note of notes) report.check("policy", "warn", note);
+  const result = await saveChanges(context, answers, changes, "the answers already install this portal and grant it.");
+  if ("code" in result) return result.code;
+
+  report.heading("Next steps");
+  const steps = [
+    ...(result.saved || mode === "token"
+      ? [`${mode === "token" ? `Set ${PORTAL_TOKEN_ENV} to the portal's token, then apply` : "Apply"} the answers: ${applyStep(context).slice("Apply the answers: ".length)}`]
+      : []),
+    `In the Workshop, ${facts.workshopUrl}admin?tab=gatekeepers: check "MCP Server Portal" is on. Connectors are on unless an administrator turned them off.`,
+    `${facts.district ? "As a district administrator (district policy lets no one else connect it)" : "As anyone signed in to the Workshop"}, open ${facts.workshopUrl}gatekeepers, choose ${name ?? current.MCP_PORTAL_NAME ?? "MCP Server Portal"}, and Connect${mode === "oauth" ? ", signing in at the portal" : ""}.`,
+    "Grant it to an agent or Gadget one upstream server at a time: the connector refuses a grant over the whole portal.",
+    "Approvals: tool annotations from behind a portal don't skip approval unless MCP_PORTAL_TRUST_ANNOTATIONS is \"true\" in the answers' gatekeeperInputs; set it only if you trust every server the portal proxies.",
+    "Check: npx launch-educate-os mcp status",
+  ];
+  steps.forEach((step, index) => out.line(`  ${index + 1}. ${step}`));
+  out.line();
+  out.line("Not yet proven live: the MCP Server Portal connector is unit-tested in Cloudflare OS, and no EducateOS");
+  out.line("district has connected a portal through it yet.");
   return report.failed === 0 ? 0 : 1;
 }
