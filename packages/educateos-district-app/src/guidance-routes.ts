@@ -17,9 +17,9 @@ import {
 import type { ResolvedPrincipal } from "@educateos/identity";
 import type { CatalogMirror } from "@educateos/catalog";
 import type { OfferingScope } from "@educateos/curriculum";
-import { nextGuardianGuidanceGrant, type PolicyDecider } from "@educateos/policy";
+import { guardianGuidanceRelationships, nextGuardianGuidanceGrant, type PolicyDecider } from "@educateos/policy";
 import {
-  computeCoverage, GUARDIAN_PROGRESS_LABEL, GUIDANCE_TRANSPARENCY, guidanceConflict, MAX_OPEN_SUGGESTIONS, PRACTICE_CATALOG,
+  computeCoverage, GUARDIAN_PROGRESS_LABEL, GUIDANCE_TRANSPARENCY, guidanceConflict, MAX_OPEN_SUGGESTIONS, MAX_RETAINED_OPEN_SUGGESTIONS, PRACTICE_CATALOG,
   SUGGESTION_VISIBLE_DAYS, SUGGESTION_WAIT_DAYS, suggestionExpired,
   type GuidanceAgenda, type GuidancePractice, type GuidancePriorityInput, type GuidancePreference, type GuidancePriority, type GuidanceRecord, type GuidanceSuggestion,
   type ResolvedStandard, type StudentInvitation,
@@ -108,6 +108,31 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
   /** A suggestion past its window, whatever its status. Expired records are kept, never shown. */
   const live = (s: GuidanceSuggestion) => !suggestionExpired(s, now());
 
+  // Standing. A suggestion is posted under a verified relationship and an administrator's grant. Those
+  // can end after it is queued (suspension, revocation, expiry, withdrawn consent, a removed grant), so a
+  // teacher approving it or a child seeing it re-reads them now, through the same relationship source the
+  // policy engine uses, rather than trusting what was true when it was posted. Without standing the record
+  // is kept, with its teacher decision and the student's choice, but it is neither actionable nor shown.
+  // A teacher's own invitation (practice, planner) is a different record with the teacher as origin and
+  // never depends on a guardian's standing.
+  const standingSource = guardianGuidanceRelationships(stores.guidance.guardianGrants, stores.guardianRelationships, stores.directory, now);
+  const standing = async (ctx: C, s: GuidanceSuggestion): Promise<boolean> => {
+    const relationship = await stores.guardianRelationships.get(s.relationshipId as never);
+    if (relationship === undefined || relationship.districtId !== ctx.principal.districtId || relationship.guardianPrincipalId !== s.guardianId
+      || relationship.studentPrincipalId !== s.studentId || !guardianRelationshipInForce(relationship, now())) return false;
+    const resource: ResourceRef = { kind: "learning-guidance", scope: ctx.offeringScope(s.offeringId), classification: "course", ownerPrincipalId: s.studentId };
+    if (!(await standingSource.relationships(s.guardianId, resource, "create")).some((fact) => fact.grantId === relationship.id)) return false;
+    const grant = await stores.guidance.guardianGrants.get(relationship.id);
+    if (grant === undefined) return false;
+    // Every grant change since it was posted must still name `suggest`; a revocation is not undone by a new grant.
+    const since = s.grantRevision !== undefined ? grant.history.slice(s.grantRevision) : grant.history.filter((e) => Date.parse(e.at) >= Date.parse(s.createdAt));
+    return since.every((event) => event.capabilities.includes("suggest"));
+  };
+  const withStanding = async (ctx: C, list: readonly GuidanceSuggestion[]) => {
+    const kept = await Promise.all(list.map(async (s) => await standing(ctx, s)));
+    return list.filter((_, i) => kept[i]);
+  };
+
   // Standards
 
   /** The standard against the district's approved releases now. `unmapped` and `not-approved` are explicit. */
@@ -135,10 +160,13 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
     const agenda = await agendaOf(offeringId);
     const { rows } = await coverageFor(ctx, offeringId);
     const people = new Set(roster(ctx, offeringId).map((s) => s.id));
+    // A waiting suggestion is listed only while its guardian still has standing; one the teacher already decided stays as history.
+    const listed = (await suggestionsOf(offeringId)).filter((s) => live(s) && people.has(s.studentId));
+    const waiting = new Set((await withStanding(ctx, listed.filter((s) => s.status === "awaiting-teacher"))).map((s) => s.id));
     return {
       agenda: { revision: agenda?.revision ?? 0, priorities: agenda?.priorities ?? [] },
       coverage: rows,
-      suggestions: (await suggestionsOf(offeringId)).filter((s) => live(s) && people.has(s.studentId)).toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)).map((s) => ({
+      suggestions: listed.filter((s) => s.status !== "awaiting-teacher" || waiting.has(s.id)).toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)).map((s) => ({
         id: s.id, revision: s.revision, studentId: s.studentId, studentName: nameOf(ctx, s.studentId), guardianName: s.guardianName, kind: s.kind, topic: s.topic,
         ...(s.note === undefined ? {} : { note: s.note }), status: s.status, createdAt: s.createdAt, expiresAt: s.expiresAt,
         ...(s.review === undefined ? {} : { review: s.review }),
@@ -174,7 +202,7 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
       });
     }
     if (preference?.guardianSuggestions !== "off") {
-      for (const s of (await suggestionsOf(offeringId)).filter((r) => r.studentId === me && r.status === "shared" && live(r))) {
+      for (const s of await withStanding(ctx, (await suggestionsOf(offeringId)).filter((r) => r.studentId === me && r.status === "shared" && live(r)))) {
         invitations.push({
           id: s.id, kind: "suggestion", isAssignment: false, required: false, type: "family-topic", origin: { kind: "guardian", name: s.guardianName },
           title: s.topic, ...(s.note === undefined ? {} : { detail: s.note }), decision: s.student?.decision ?? "pending", revision: s.revision, createdAt: s.createdAt,
@@ -415,7 +443,7 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
     "teacher.guidanceSuggestionReview": async (ctx, { params, body }) => {
       await teacherAccess(ctx, params.offeringId, true);
       const suggestion = (await suggestionsOf(params.offeringId)).find((s) => s.id === params.suggestionId);
-      if (suggestion === undefined || !activeStudent(ctx, params.offeringId, suggestion.studentId)) throw notFound();
+      if (suggestion === undefined || !activeStudent(ctx, params.offeringId, suggestion.studentId) || !await standing(ctx, suggestion)) throw notFound();
       if (suggestion.revision !== body.revision) throw guidanceConflict();
       if (suggestion.status !== "awaiting-teacher" || !live(suggestion)) throw new EducateOsError("conflict", "This suggestion has already been handled or has expired.");
       const decision = body.decision === "share" ? "shared" as const : "declined" as const;
@@ -454,7 +482,7 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
       const record = practice ?? suggestion;
       if (record === undefined) throw notFound();
       if (record.revision !== body.revision) throw guidanceConflict();
-      if (suggestion !== undefined && (suggestion.status !== "shared" || !live(suggestion))) throw notFound();
+      if (suggestion !== undefined && (suggestion.status !== "shared" || !live(suggestion) || !await standing(ctx, suggestion))) throw notFound();
       await save({ ...record, revision: record.revision + 1, student: { decision: body.decision, at: now().toISOString() } }, record.revision);
       return studentBody(ctx, params.offeringId);
     },
@@ -482,19 +510,22 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
       // A student who switched family suggestions off is not told to the family; the answer is the same as "not now".
       if ((await preferenceOf(params.studentId))?.guardianSuggestions === "off") throw new EducateOsError("conflict", "A suggestion can't be sent for this class right now.");
       const existing = (await suggestionsOf(params.offeringId)).filter((s) => s.guardianId === ctx.principal.principalId && s.studentId === params.studentId);
-      if (existing.filter((s) => live(s) && (s.status === "awaiting-teacher" || s.status === "shared")).length >= MAX_OPEN_SUGGESTIONS) {
+      // The cap counts what is actionable now. A suggestion withheld because its standing ended must not lock the
+      // family out after a new grant; the retained bound below keeps repeated revoke/re-grant from piling records up.
+      const open = existing.filter((s) => live(s) && (s.status === "awaiting-teacher" || s.status === "shared"));
+      if ((await withStanding(ctx, open)).length >= MAX_OPEN_SUGGESTIONS || open.length >= MAX_RETAINED_OPEN_SUGGESTIONS) {
         throw new EducateOsError("conflict", `You have ${MAX_OPEN_SUGGESTIONS} open suggestions for this class. Withdraw one first.`);
       }
-      const granted = [];
+      const granted: { id: string; revision: number }[] = [];
       for (const r of relationships) {
         const grant = await stores.guidance.guardianGrants.get(r.id);
-        if (grant?.enabled === true && grant.capabilities.includes("suggest")) granted.push(r.id);
+        if (grant?.enabled === true && grant.capabilities.includes("suggest")) granted.push({ id: r.id, revision: grant.revision });
       }
       const createdAt = now();
       await save({
         type: "suggestion", id: crypto.randomUUID(), scope: params.offeringId, revision: 1, offeringId: params.offeringId, studentId: student.id,
-        guardianId: ctx.principal.principalId, guardianName: nameOf(ctx, ctx.principal.principalId), relationshipId: granted[0] ?? relationships[0]!.id,
-        kind: body.kind, topic: body.topic, ...(body.note === undefined ? {} : { note: body.note }), status: "awaiting-teacher",
+        guardianId: ctx.principal.principalId, guardianName: nameOf(ctx, ctx.principal.principalId), relationshipId: granted[0]?.id ?? relationships[0]!.id,
+        ...(granted[0] === undefined ? {} : { grantRevision: granted[0].revision }), kind: body.kind, topic: body.topic, ...(body.note === undefined ? {} : { note: body.note }), status: "awaiting-teacher",
         createdAt: createdAt.toISOString(), expiresAt: new Date(createdAt.getTime() + SUGGESTION_WAIT_DAYS * DAY).toISOString(),
       }, 0);
       return guardianBody(ctx, params.studentId);

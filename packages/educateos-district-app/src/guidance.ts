@@ -74,6 +74,12 @@ const Response = z.strictObject({ decision: z.enum(["accepted", "declined"]), at
 export const GuidanceSuggestion = z.strictObject({
   type: z.literal("suggestion"), id: z.string().uuid(), scope: z.string(), revision: z.number().int().positive(),
   offeringId: OfferingId, studentId: PrincipalId, guardianId: PrincipalId, guardianName: z.string(), relationshipId: z.string(),
+  /**
+   * The revision of the administrator's grant this was posted under. A suggestion stays actionable only
+   * while that grant has never since dropped `suggest`: a later, new grant does not revive it. Absent on a
+   * record that predates this field, which then fails closed on any later change that dropped `suggest`.
+   */
+  grantRevision: z.number().int().positive().optional(),
   kind: z.enum(["curiosity", "hobby"]), topic: Plain(120), note: Plain(400).optional(),
   status: z.enum(["awaiting-teacher", "shared", "declined", "withdrawn"]),
   createdAt: z.iso.datetime(), expiresAt: z.iso.datetime(),
@@ -300,8 +306,15 @@ export function suggestionExpired(suggestion: Pick<GuidanceSuggestion, "expiresA
 export const SUGGESTION_WAIT_DAYS = 30;
 /** How long a shared suggestion stays visible to the student, in days from creation. */
 export const SUGGESTION_VISIBLE_DAYS = 90;
-/** The most open suggestions one guardian may have for one child in one class. */
+/** The most open suggestions one guardian may have, with current standing, for one child in one class. */
 export const MAX_OPEN_SUGGESTIONS = 3;
+/**
+ * The most unexpired open suggestions (waiting or shared) one guardian may have retained for one child in one
+ * class, counting those withheld because standing ended. Suggestions that lost standing do not block the
+ * family from posting again under a new grant, but revoking and re-granting cannot be used to pile up
+ * records: this bound holds until they are withdrawn or reach their own 30- or 90-day expiry.
+ */
+export const MAX_RETAINED_OPEN_SUGGESTIONS = MAX_OPEN_SUGGESTIONS * 3;
 
 // Views and route bodies
 
