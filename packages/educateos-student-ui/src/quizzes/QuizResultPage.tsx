@@ -1,10 +1,11 @@
-import { Breadcrumbs, Text } from "@cloudflare/kumo";
+import { Breadcrumbs } from "@cloudflare/kumo";
 import { useQuery } from "../api.tsx";
 import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { coursePath, quizPath } from "../router.tsx";
 import { useClassTitle } from "../useClassTitle.ts";
 import { AttemptResultView } from "./AttemptResultView.tsx";
+import { PageHeading } from "../PageHeading.tsx";
 
 /** One of the student's finished attempts at a quiz, as the quiz lets them see it. */
 export const QuizResultPage = ({ offeringId, quizId, attemptId }: { offeringId: string; quizId: string; attemptId: string }) => {
@@ -23,7 +24,7 @@ export const QuizResultPage = ({ offeringId, quizId, attemptId }: { offeringId: 
         <Breadcrumbs.Separator />
         <Breadcrumbs.Current>{`Attempt ${result.data.number}`}</Breadcrumbs.Current>
       </Breadcrumbs>
-      <Text variant="heading" size="lg" as="h1">{`${result.data.title}: attempt ${result.data.number}`}</Text>
+      <PageHeading>{`${result.data.title}: attempt ${result.data.number}`}</PageHeading>
       <AttemptResultView result={result.data} />
     </div>
   );

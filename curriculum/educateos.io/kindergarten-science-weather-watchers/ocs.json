@@ -1,0 +1,112 @@
+{
+  "gradeBand": "K",
+  "id": "educateos.io/kindergarten-science-weather-watchers",
+  "language": "en",
+  "modules": [],
+  "outline": [
+    {
+      "kind": "unit",
+      "unit": "look-up-weather"
+    },
+    {
+      "kind": "unit",
+      "unit": "dress-for-weather"
+    },
+    {
+      "kind": "unit",
+      "unit": "sun-and-shade"
+    },
+    {
+      "kind": "unit",
+      "unit": "wind-on-the-move"
+    },
+    {
+      "kind": "unit",
+      "unit": "rain-and-water"
+    },
+    {
+      "kind": "unit",
+      "unit": "four-seasons"
+    },
+    {
+      "kind": "unit",
+      "unit": "weather-safety"
+    }
+  ],
+  "overrides": [],
+  "specVersion": "1.1",
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.K.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.C.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.K.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "subject": "science",
+  "summary": "A semester of kindergarten science about weather: watching the sky every day, dressing for the weather, sun and shade, wind, rain and water, the four seasons, and staying safe in any weather. Seven units, each with a read-aloud overview for students, a teacher guide with a five-day plan, a lesson, assignments, an assessment with a rubric and an answer key. Built around the kindergarten weather and climate ideas in science; aligned to kindergarten Common Core speaking, writing and counting standards that students use to record and talk about the weather.",
+  "title": "Kindergarten Science: Weather Watchers",
+  "version": "1.0.0"
+}

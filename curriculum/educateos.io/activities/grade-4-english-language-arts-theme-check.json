@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "4",
+    "minWords": 100,
+    "minimumCitations": 1,
+    "overview": "Read a new story on your own. State its theme and explain how the main character changes.",
+    "prompt": "Read \"The Quiet Drummer.\" In your first sentence, state a theme of the story. Then explain how Noor changes from the beginning of the story to the end. Use at least two details from the story, and explain how each detail shows the theme.",
+    "resources": [
+      "quiet-drummer"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Theme Check: \"The Quiet Drummer\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-theme-check",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "On the first day of band, Noor picked the biggest drum in the room. If she played the loudest, she thought, everyone would finally notice her.\n\nShe did play the loudest. She played so loudly that the flutes could not hear themselves, and the trumpets lost their place. Mr. Castillo tapped his music stand. \"Noor,\" he said, \"the drum is not a race.\"\n\nNoor's cheeks burned. For the rest of the week she barely touched the drum at all. Her sticks hovered above it like birds that were afraid to land.\n\nOn Friday, the band fell apart in the middle of a march. The flutes rushed ahead and the trumpets dragged behind, and the song sounded like three songs at once. Mr. Castillo stopped them and turned to Noor. \"Can you give us the beat? Not loud. Just steady.\"\n\nNoor took a breath. Tap. Tap. Tap. Tap. She kept her eyes on Mr. Castillo and did not speed up or slow down. One by one, the other players found her beat and leaned on it, the way you lean on a railing on a dark staircase.\n\nWhen the march ended, nobody clapped for the drum. Nobody had to. Noor knew that every note in the room had been standing on her beat. She grinned and spun one stick in her fingers, quietly.",
+      "id": "quiet-drummer",
+      "title": "The Quiet Drummer"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States a theme, not a topic"
+      },
+      {
+        "id": "character",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Describes how the character changes"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Supports ideas with details from the text"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Theme and character"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

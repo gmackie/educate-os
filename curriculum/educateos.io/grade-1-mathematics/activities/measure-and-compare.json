@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b1f7e54b133f8d6b85d62089713b875f09c12e10eca3c270b062d4f2fe9237e4",
+      "id": "educateos.io/grade-1-mathematics-measure-and-compare",
+      "version": "1.0.0"
+    }
+  },
+  "id": "measure-and-compare",
+  "role": "assignment",
+  "title": "Measure and Compare"
+}

@@ -24,7 +24,9 @@ HTTP routes.
   change to the Workshop's approval queue (`delivery: "await-decision"`), and no action kind is
   auto-approvable. Only a person's approval in the Workshop reaches `applyAction`. That forwards
   the decision to the district as the account principal's own decision on the `http` channel. No
-  tool or agent channel can approve anything. For an official grade the policy still requires a
+  tool or agent channel can approve anything. The person reviews the record, version and digest
+  the district pinned the change to (SCHO-175), and the approval sends that digest back, so the
+  district runs only the change the person reviewed. For an official grade the policy still requires a
   teacher of the offering (`grade.official.teacher-direct`). A co-teacher's approval therefore
   fails, and the change keeps waiting in EducateOS for the teacher. Rejecting a change in the
   Workshop declines it in the district with a reason.

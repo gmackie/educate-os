@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:15ce0dd69c9f91794276c58839e67be14c42a4e83f2143a927186ee32039f505",
+      "id": "educateos.io/grade-4-english-language-arts-theme-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "theme-check",
+  "role": "assessment",
+  "title": "Theme Check: \"The Quiet Drummer\""
+}

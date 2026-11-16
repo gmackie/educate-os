@@ -1,8 +1,8 @@
 // The district LTI stores over `DurableObjectRecordTable`, in workerd, against real Durable Object
 // SQLite storage (SCHO-60): a login state is taken once however many requests race for it, a
 // passback version is claimed once, deep-linked activity links never overwrite one another, the
-// tool's signing keys and their rotation are kept (SCHO-177), and everything survives a restart of
-// the object.
+// tool's signing keys and their rotation are kept (SCHO-177), as are the LTI Platform's, apart from
+// the tool's (SCHO-179), and everything survives a restart of the object.
 
 import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -66,6 +66,21 @@ describe("district LTI stores in a Durable Object", () => {
     expect(rotation.retiredKids).toEqual([first]);
     await evictDurableObject(district);
     expect(await district.toolKeyIds()).toEqual([rotation.signingKid, first]);
+  });
+
+  it("keeps the platform's signing keys apart from the tool's, and their rotations, across restarts", async () => {
+    const district = fresh();
+    const [tool] = await district.toolKeyIds();
+    const racing = await Promise.all(Array.from({ length: 10 }, () => district.platformKeyIds()));
+    expect(new Set(racing.map(([kid]) => kid)).size).toBe(1);
+    const [platform] = racing[0]!;
+    expect(platform).not.toBe(tool);
+
+    const rotation = await district.rotatePlatformKeys();
+    expect(rotation.retiredKids).toEqual([platform]);
+    await evictDurableObject(district);
+    expect(await district.platformKeyIds()).toEqual([rotation.signingKid, platform]);
+    expect(await district.toolKeyIds()).toEqual([tool]);
   });
 
   it("refuses to read a tampered row", async () => {

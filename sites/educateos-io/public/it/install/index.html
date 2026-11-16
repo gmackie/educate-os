@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install EducateOS · For district IT · EducateOS</title>
+<meta name="description" content="How a district IT team installs EducateOS in its own Cloudflare account: prerequisites, the API token, decisions, the steps with how long each took in recorded runs, verification, uninstall and the guided option.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">For district IT · Install</div>
+      <h1 class="rise" style="--d:1">Install EducateOS in your district's Cloudflare account.</h1>
+      <p class="lede rise" style="--d:2">One command, run by your administrator, under a token you create and then delete. This page lists what you need first, the decisions to make, each step and how long it took in our recorded runs, how to check the result and how to remove it.</p>
+      <div class="rise" style="--d:3;display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20guided%20install" data-glass-event="contact_requested" data-glass-prop-location="it_install_guided">Install it with us</a><a class="btn" href="/it/">Back to the IT packet</a><a class="btn" href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/runbooks/district-install.md">Runbook on GitHub</a></div>
+    </div>
+  </section>
+
+  <section class="tight">
+    <div class="wrap">
+      <div class="note-box" style="margin-top:0"><b>Where the evidence stands.</b> The installer has completed full installs into Cloudflare accounts the project owner runs (2026-10-26 and 2026-11-04). No district has run it yet, and there has not yet been a timed install into a clean, empty account. The times on this page say which run they come from. Steps that depend on you, such as moving a domain or adding your identity provider, are estimates.</div>
+    </div>
+  </section>
+
+  <section class="band tight" id="prerequisites">
+    <div class="wrap">
+      <div class="eyebrow">Before you start</div>
+      <h2>What you need</h2>
+      <p class="lede">The installer checks every item it can before it changes anything, and tells you what to fix.</p>
+      <div class="table-scroll">
+      <table class="spec">
+        <thead><tr><th>Item</th><th>Why</th><th>Lead time</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js 22.12 or later</td><td>The installer runs with <code>npx</code> on your administrator's machine.</td><td>Minutes</td></tr>
+          <tr><td>A Cloudflare account the district owns<small>with a payment method</small></td><td>Everything EducateOS runs lives in this account and is billed to it by Cloudflare.</td><td>Minutes</td></tr>
+          <tr><td>Workers Paid<small>from $5 a month</small></td><td>EducateOS uses Durable Objects, Cron Triggers and the Worker Loader binding. Confirm Worker Loader is available on the account; the API can't check it.</td><td>Minutes</td></tr>
+          <tr><td>R2 enabled</td><td>Storage for files. Light use stays in Cloudflare's free tier. Without it, Cloudflare answers error 10042 and no token permission helps.</td><td>Minutes</td></tr>
+          <tr><td>A domain on Cloudflare<small>an active zone in the account</small></td><td>EducateOS is served at <code>educateos.&lt;your-domain&gt;</code> by default, with a certificate Cloudflare issues.</td><td>Minutes to a day</td></tr>
+          <tr><td>Cloudflare Zero Trust with your identity provider</td><td>Everyone signs in through Cloudflare Access with the SAML or OIDC provider you already use. One-time email codes alone aren't enough.</td><td>Depends on your IdP</td></tr>
+          <tr><td>Zero Trust seats</td><td>Zero Trust Free admits 50 users, and every student and teacher who signs in takes a seat. Needed before the pilot opens, not for the install.</td><td>Before go-live</td></tr>
+          <tr><td>A short-lived API token</td><td>The 13 permissions below, scoped to the one account and zone.</td><td>5 minutes</td></tr>
+          <tr><td>AI Gateway<small>optional</small></td><td>Usage and cost logs for AI calls. The installer creates it if you say yes; its core features are free.</td><td>None</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="token">
+    <div class="wrap">
+      <div class="eyebrow">The API token</div>
+      <h2>Thirteen permissions, one account, one zone.</h2>
+      <p class="lede">The installer prints a link to Cloudflare's token editor with these already filled in. Give the token a short expiry and delete it when the install finishes. EducateOS keeps running without it.</p>
+      <div class="table-scroll">
+      <table class="spec">
+        <thead><tr><th>Permission</th><th>What it's for</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td>Account Settings: Read</td><td>Confirm the account.</td><td>Account</td></tr>
+          <tr><td>Billing: Read</td><td>Confirm Workers Paid. Required: without it the plan check is refused and the install stops.</td><td>Account</td></tr>
+          <tr><td>Workers Scripts: Edit</td><td>Deploy and update the Workers, their secrets and schedules, and roll back.</td><td>Account</td></tr>
+          <tr><td>Workers KV Storage: Edit · Workers R2 Storage: Edit · D1: Edit</td><td>Create the storage EducateOS uses and apply database migrations.</td><td>Account</td></tr>
+          <tr><td>Access: Apps and Policies: Edit</td><td>Put Cloudflare Access in front of your hostname.</td><td>Account</td></tr>
+          <tr><td>Access: Organizations, Identity Providers, and Groups: Read</td><td>Find your Zero Trust team and check that your identity provider is there.</td><td>Account</td></tr>
+          <tr><td>AI Gateway: Edit</td><td>Create the optional AI Gateway.</td><td>Account</td></tr>
+          <tr><td>Zone: Read · DNS: Edit</td><td>Find your domain and check the hostname is free.</td><td>Zone</td></tr>
+          <tr><td>Workers Routes: Edit · SSL and Certificates: Edit</td><td>Attach the hostname to EducateOS with its certificate.</td><td>Zone</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="muted" style="margin-top:14px;font-size:.9rem">Every API call and how far each has been verified: the <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/installer-permissions.md">permission record</a>.</p>
+    </div>
+  </section>
+
+  <section class="band tight" id="decisions">
+    <div class="wrap">
+      <div class="eyebrow">Decisions</div>
+      <h2>Four choices to make first</h2>
+      <div class="grid2">
+        <div class="card feat">
+          <h3>Your own domain</h3>
+          <p>EducateOS is served on a hostname in a domain your district holds, such as <code>educateos.northfield.k12.example</code>. An <code>&lt;name&gt;.educateos.io</code> address for an install in your own account has been proven by hand on a second account, but isn't in the installer yet. You can add one later.</p>
+          <span class="status dev">educateos.io address: In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Who signs in, and how</h3>
+          <p>The email domains and individual addresses that may sign in, and the identity provider they use: Google Workspace, Microsoft Entra ID, Clever or any SAML or OIDC provider Cloudflare Access supports. Add it to Zero Trust before the install.</p>
+        </div>
+        <div class="card feat">
+          <h3>Administrators</h3>
+          <p>One to twenty email addresses. They are stored only in your account.</p>
+        </div>
+        <div class="card feat">
+          <h3>AI Workshop first, LMS after</h3>
+          <p>With the district LMS, your hostname serves the LMS at <code>/</code> and the AI Workshop at <code>/ai</code>. The LMS configuration names administrators by their sign-in identity, so install the Workshop first, sign in once, then run the installer again to add the LMS. Adding the LMS through the installer hasn't been verified yet.</p>
+          <span class="status dev">LMS through the installer: In development</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="steps">
+    <div class="wrap">
+      <div class="eyebrow">Steps</div>
+      <h2>Under an hour, once the prerequisites are in place.</h2>
+      <p class="lede">The installer's own time is under a minute. Most of the hour is reading the plan and checking the result. Moving a domain to Cloudflare or setting up your identity provider, if they aren't done yet, set the real schedule.</p>
+      <div class="table-scroll">
+      <table class="spec">
+        <thead><tr><th>Step</th><th>What happens</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr><td>1. Check<small><code>npx launch-educate-os doctor</code></small></td><td>Checks Node, downloads the newest release and verifies its signature against keys built into the installer, and checks the token can see the account. About 14 seconds of tool time (second account, 2026-11-13).</td><td>2 min</td></tr>
+          <tr><td>2. Plan<small><code>npx launch-educate-os plan</code></small></td><td>Asks its questions, checks the account (plan, R2, DNS, Zero Trust, permissions) and lists every resource it would create and what Cloudflare bills for. Changes nothing. About 11 seconds to the account check (2026-11-13). The 2026-11-04 plan listed 13 resources: 5 Workers, 3 KV namespaces, an R2 bucket, an Access application and policy, a custom domain and an AI Gateway.</td><td>10 min</td></tr>
+          <tr><td>3. Fix<small>if the check blocks</small></td><td>Each blocking item says what to do. Run the plan again; it reuses your answers.</td><td>0 to a day</td></tr>
+          <tr><td>4. Install<small><code>npx launch-educate-os</code></small></td><td>Shows the plan again, asks you to confirm, then creates everything with live progress. About 35 seconds of tool time for 13 resources and 171 file uploads (owner account, 2026-10-26). A run that stops partway continues from where it stopped when you run the command again.</td><td>5 min</td></tr>
+          <tr><td>5. Verify</td><td>Run the plan once more: it should show nothing to change. Open your hostname in a private window: you should be sent to your district sign-in, then EducateOS. Someone outside the admitted domains should be refused.</td><td>10 min</td></tr>
+          <tr><td>6. Connect<small><code>npx launch-educate-os connect</code></small></td><td>The installer offers it at the end: your LMS and your roster, one at a time, each ending with a live check. <a href="#connect">See below.</a> Not yet timed against a real LMS.</td><td>15 to 30 min each</td></tr>
+          <tr><td>7. Delete the token</td><td>In Cloudflare, My Profile, API Tokens. Make a new short-lived one for each upgrade.</td><td>1 min</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="cmd" style="margin-top:24px"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os plan</code></div>
+      <p class="muted" style="margin-top:12px;font-size:.9rem">Your answers, never the token, are saved to <code>educateos-install.json</code>. Keep it: <code>npx launch-educate-os upgrade</code> and <code>rollback</code> reuse it, and <code>--config educateos-install.json --yes --json</code> runs the same install from CI. The <a href="https://www.npmjs.com/package/launch-educate-os">package README</a> lists every command and option.</p>
+    </div>
+  </section>
+
+  <section class="band tight" id="connect">
+    <div class="wrap">
+      <div class="eyebrow">After install</div>
+      <h2>Connect your LMS and roster.</h2>
+      <p class="lede">The installer ends by asking <b>Connect your LMS and roster now?</b> You can also run it any time from the same folder. For each system it says what it gives the district and what you need first, shows the exact steps and values for the other system, stores what the district reads in your own account, and ends with a live check and the next steps for teachers.</p>
+      <div class="cmd" style="margin-top:8px"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os connect</code></div>
+      <div class="table-scroll" style="margin-top:20px" tabindex="0" role="region" aria-label="LMS and roster connect commands">
+      <table class="spec">
+        <thead><tr><th>Choose</th><th>What you need</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>Canvas or Moodle<small>LTI 1.3</small></td><td>The LMS administrator, and a district administrator's sign-in token (<code>cloudflared access token</code>)</td><td>Creates a one-time registration link to paste into the LMS, then approves the registration for a first course. Checks the tool's keys are published and the registration is approved.</td></tr>
+          <tr><td>Clever</td><td>Your Clever district ID and district-app token</td><td>Reads Clever with the token, then stores it as a secret on your district's Worker. You then choose Clever as the roster in the admin console.</td></tr>
+          <tr><td>Google Classroom</td><td>A Workspace super administrator, a Cloud project and a service account key</td><td>Prints the domain-wide delegation scopes, checks the delegation with a Classroom read, stores the key and applies the Classroom settings.</td></tr>
+          <tr><td>OneRoster CSV<small>from your SIS or ClassLink</small></td><td>A OneRoster 1.2 CSV export</td><td>Shows the district's preview of every change, then applies it if you agree.</td></tr>
+          <tr><td>Schoology, ClassLink sync</td><td></td><td>Not available yet, and the menu says so. Use a OneRoster CSV export from ClassLink.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="muted" style="margin-top:12px;font-size:.9rem">Then <code>npx launch-educate-os status</code> shows the district, sign-in, the LTI tool and each integration as working, not set up, or failing with the fix. <span class="status unit" data-status="launcher.connect">Harness-tested</span> These flows are tested against simulated LMSs, providers and districts; none has run against a real one through the installer yet. The Canvas and Moodle registrations themselves passed live runs by hand on 2026-10-26.</p>
+    </div>
+  </section>
+
+  <section class="tight" id="uninstall">
+    <div class="wrap">
+      <div class="eyebrow">Upgrade, roll back, uninstall</div>
+      <h2>You can leave the way you came in.</h2>
+      <ul class="checks">
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><code>upgrade</code> installs the newest signed release. The installer refuses an older release than the one you run unless you ask for a rollback.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><code>rollback</code> returns every Worker to the previous release, and first lists what it can't undo, such as database migrations already applied.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>To uninstall, run <code>npx launch-educate-os uninstall</code> (in the installer's next release): it shows exactly what it would delete, only what the installer made for your install, and deletes it once you type your install's ID. It never empties a storage bucket that still holds files; you do that first. This deletes the district's data too, so export first. Tested against a simulated Cloudflare account, not yet run on a live one.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band tight" id="guided">
+    <div class="wrap">
+      <div class="eyebrow">Guided install</div>
+      <h2>We can do it with you.</h2>
+      <div class="grid2">
+        <div class="card feat">
+          <h3>On a call, for founding pilot districts</h3>
+          <p>We run the same command with your IT team, in your account, under a token you create. It never leaves your machine. We agree on success criteria up front and use synthetic or staff-only data until a data processing agreement is signed.</p>
+          <a class="btn primary" style="margin-top:14px" href="mailto:hello@educateos.io?subject=EducateOS%20guided%20install" data-glass-event="contact_requested" data-glass-prop-location="it_install_call">Email hello@educateos.io</a>
+        </div>
+        <div class="card feat">
+          <h3>In the browser, on educateos.io</h3>
+          <p>The guided install at <a href="/app/install">educateos.io/app/install</a> runs the same installer from educateos.io. You paste a scoped token once; it is used for that run only and never stored. It currently installs at an educateos.io address, which works only in accounts that hold educateos.io, so a district installing in its own account should use the command line for now.</p>
+          <span class="status dev">Own-account browser install: In development</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="troubleshooting">
+    <div class="wrap">
+      <div class="eyebrow">Troubleshooting</div>
+      <h2>What the installer may stop on</h2>
+      <div class="table-scroll">
+      <table class="spec">
+        <thead><tr><th>Message</th><th>What to do</th><th>Code</th></tr></thead>
+        <tbody>
+          <tr><td>The account is not on Workers Paid</td><td>Subscribe in Workers &amp; Pages, Plans. If it is subscribed, check the token has Billing: Read.</td><td><code>plan.workers-paid-required</code></td></tr>
+          <tr><td>R2 is not enabled<small>Cloudflare error 10042</small></td><td>Enable R2 in the dashboard. It needs a payment method on the account.</td><td><code>product.r2-not-enabled</code></td></tr>
+          <tr><td>Zero Trust has no district identity provider</td><td>Add your SAML or OIDC provider under Zero Trust, Settings, Authentication.</td><td><code>access.idp-missing</code></td></tr>
+          <tr><td>The domain isn't an active zone, or the hostname has DNS records</td><td>Add the domain and delegate its nameservers, or choose another subdomain.</td><td><code>dns.*</code></td></tr>
+          <tr><td>A permission is missing<small>HTTP 401 or 403, code 10000</small></td><td>The message names the operation. Add the permission from the table above.</td><td><code>permission.missing</code></td></tr>
+          <tr><td>The token is rejected<small>code 6003</small></td><td>The token is invalid or expired. Make a new one.</td><td><code>credential.rejected</code></td></tr>
+          <tr><td>"No response" though the sites open in a browser</td><td>Seen on networks where IPv6 is advertised but doesn't work. Set <code>NODE_OPTIONS=--network-family-autoselection-attempt-timeout=1000</code> or use another network.</td><td>network</td></tr>
+          <tr><td>The run stopped partway</td><td>Fix the cause and run the same command again. It reads what's already in the account and continues.</td><td>any</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note-box"><b>Questions before you start?</b> Tell us your identity provider, your rostering source and your LMS, and we'll tell you honestly how ready EducateOS is for them. <a href="mailto:hello@educateos.io?subject=EducateOS%20install%20question">hello@educateos.io</a></div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->
+</body>
+</html>

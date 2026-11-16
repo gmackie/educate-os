@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:fa234862360951d33f8b7cb59bd2cce5c395514e7851ce7927100a396d82ea2e",
+    "id": "educateos.io/mathematics-7",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:023ffc28a491247f94b52db84bd9b0c8f4738058d353d75f69e85b54e06a7af9",
+      "id": "educateos.io/grade-4-english-language-arts-my-narrative",
+      "version": "1.0.0"
+    }
+  },
+  "id": "my-narrative",
+  "role": "assessment",
+  "title": "Write Your Own Story: A Found Object"
+}

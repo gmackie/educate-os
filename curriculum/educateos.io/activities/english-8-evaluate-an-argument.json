@@ -1,0 +1,161 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Read a letter to the editor and judge whether its reasons and evidence really support its claim.",
+    "passage": "To the Editor: Ban Homework Now\n\nHomework is a waste of time, and our school board should ban it completely, starting next month.\n\nLast night I spent two hours on a worksheet about the water cycle, which I already understood. My cousin in another state never gets homework, and she is one of the smartest people I know. That proves homework does not make you smarter.\n\nAlso, everyone hates homework. I asked five friends at lunch and all five agreed with me.\n\nSome teachers say homework helps students practice. But teachers also gave us a pizza party for finishing the reading challenge, and nobody complains about pizza parties. Practice can happen in class.\n\nFinally, families are busy. My family eats dinner at seven, and by the time I finish my homework it is time for bed. Students need time to rest, play outside and be with their families.\n\nIf the board cares about students, it will vote to ban homework at the next meeting.\n\nSigned, an eighth grader who would rather be reading for fun",
+    "questions": [
+      {
+        "prompt": "State the writer's claim in one sentence."
+      },
+      {
+        "prompt": "The writer says his cousin never gets homework and is very smart. Does this prove homework does not make you smarter? Explain the problem with this reasoning."
+      },
+      {
+        "prompt": "The writer asked five friends at lunch. Is this sufficient evidence that \"everyone hates homework\"? Explain."
+      },
+      {
+        "prompt": "Find one piece of evidence in the letter that is irrelevant to the claim. Explain why it does not support the argument."
+      },
+      {
+        "prompt": "Which of the writer's reasons is the strongest? Explain why it is stronger than the others."
+      },
+      {
+        "prompt": "Write a paragraph that states a counterclaim to the letter fairly, then rebuts it with a reason and relevant evidence of your own."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Evaluate an Argument"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-evaluate-an-argument",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies the claim"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Judges the reasoning"
+      },
+      {
+        "id": "relevance",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies irrelevant and insufficient evidence"
+      },
+      {
+        "id": "response",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Writes a counterclaim and rebuttal"
+      }
+    ],
+    "title": "Evaluating an argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

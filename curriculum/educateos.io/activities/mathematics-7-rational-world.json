@@ -1,0 +1,107 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Estimate, then solve multistep problems with fractions, decimals and negative numbers.",
+    "problems": [
+      {
+        "prompt": "A hiker starts at 1,250 meters above sea level, walks down 380 meters, then climbs 215 meters. What is her final elevation?"
+      },
+      {
+        "prompt": "A bank account has $42.50. The owner pays for two items costing $18.75 and $30.40. What is the new balance? What does the sign of your answer mean?"
+      },
+      {
+        "prompt": "A recipe needs 2 3/4 cups of flour. Mateo wants to make 1 1/2 batches. How much flour does he need?"
+      },
+      {
+        "prompt": "Over five days, the low temperatures were -3°C, 2°C, -5°C, -1°C and 4°C. Find the mean low temperature."
+      },
+      {
+        "prompt": "A carpenter cuts a board 9 1/2 feet long into pieces 3/4 foot long. Estimate first. How many full pieces can she cut, and how much board is left?"
+      },
+      {
+        "prompt": "A worker earns $18 per hour and gets a 10% raise. After the raise, she works 25 hours. How much does she earn? Check that your answer is reasonable."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Rational Numbers in the Real World"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.NS.A.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-rational-world",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct solutions"
+      },
+      {
+        "id": "reasonableness",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Estimates and checks"
+      }
+    ],
+    "title": "Rational numbers in context"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

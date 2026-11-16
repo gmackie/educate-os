@@ -1,0 +1,164 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 2,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 350,
+    "minimumCitations": 2,
+    "overview": "Read a short fact sheet and write a complete argument in one class period.",
+    "prompt": "Lakeview High School is deciding whether students must lock their phones away for the whole school day. Read the fact sheet, then write an argument that takes a clear position on the proposal (you may support it, oppose it, or propose a precise alternative). Use at least two facts or quotations from the fact sheet, explain how each supports your claim, address the strongest counterclaim, and end with a conclusion that follows from your argument. You have one class period.",
+    "resources": [
+      "phones-fact-sheet"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "On-Demand Argument: Phones in Class"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.B",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.E",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.10",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-phones-on-demand",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. An illustrative fact sheet; the school and its numbers are invented for teaching.",
+      "body": "The proposal\nLakeview High School is considering a rule that students lock their phones in a pouch from the first bell to the last bell. Students would keep the phones; they just could not open the pouches until dismissal.\n\nFacts the committee collected\n- In a one-week count, Lakeview teachers recorded an average of 11 phone-related interruptions per class period.\n- 64 percent of Lakeview students surveyed said they check their phones during class \"often\" or \"very often.\"\n- 58 percent of parents surveyed said they want to be able to reach their children during the school day, most often to change pickup plans.\n- Several schools that adopted pouch rules reported fewer interruptions and fewer conflicts that started online during the day. Researchers caution that those schools changed other things at the same time.\n- The pouches would cost about $25 per student, or roughly $30,000 for the school.\n\nVoices from the hearing\nA teacher: \"I spend the first five minutes of every class getting students to put their phones away. That is five minutes I never get back.\"\nA parent: \"When there was a lockdown drill last year, the first thing I wanted was to hear my son's voice.\"\nA student: \"Some of us use our phones for translation and for our planners. Treat us like people who can learn to manage them.\"\nA counselor: \"The lunchroom is quieter now. I am not sure it is happier.\"",
+      "id": "phones-fact-sheet",
+      "title": "Fact Sheet: Phones in the Classroom"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Takes a clear, specific position on the proposal.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Precise claim"
+      },
+      {
+        "description": "Uses at least two facts or quotations from the fact sheet and explains them.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence and reasoning"
+      },
+      {
+        "description": "States and answers the strongest opposing argument fairly.",
+        "id": "counterclaim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Counterclaims"
+      },
+      {
+        "description": "Moves logically from claim to conclusion; the conclusion follows from the argument.",
+        "id": "conclusion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Organization and conclusion"
+      }
+    ],
+    "title": "On-demand argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

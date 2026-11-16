@@ -1,10 +1,11 @@
 import { createHash, generateKeyPairSync, type KeyObject } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
 import { defineConfig } from "vitest/config";
 import deployed from "./cloudflare.config.ts";
-import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
+import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEMO_OPERATOR_TOKEN, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, RECOVERY_TOKEN, TEST_CONFIG } from "./__tests__/fixtures.ts";
 
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
@@ -18,6 +19,8 @@ const platform = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const PLATFORM_KID = "test-platform-key";
 // The key the district signs Hall Monitor service tokens with (SCHO-305), for this run only.
 const hallMonitorKey = generateKeyPairSync("ed25519");
+// The synthetic authorization server's access-token key (SCHO-174), for this run only.
+const mcpIssuerKey = generateKeyPairSync("ec", { namedCurve: "P-256" });
 // The release key marketplace publisher credentials are signed with (SCHO-209), for this run only:
 // the district pins its public half in MARKETPLACE_TRUST, and the tests sign with its private half.
 const marketplaceKey = generateKeyPairSync("ed25519");
@@ -29,6 +32,13 @@ const MARKETPLACE_TRUST = JSON.stringify({
   root: { threshold: 1, keys: [pinned(generateKeyPairSync("ed25519").publicKey)] },
   keySetVersion: 0,
   keys: [pinned(marketplaceKey.publicKey)],
+});
+
+// The course library's publisher pin (SCHO-331): the committed educateos.io key, so the tests import
+// the committed reference course bundle exactly as a deployed district would.
+const COURSE_LIBRARY_TRUST = JSON.stringify({
+  localDomains: [],
+  publishers: [JSON.parse(readFileSync(new URL("../../curriculum/educateos.io/publisher.json", import.meta.url), "utf8"))],
 });
 
 /**
@@ -51,6 +61,8 @@ export default defineConfig({
           TEST_ACCESS_PRIVATE_JWK: JSON.stringify({ ...privateKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
           TEST_ACCESS_PUBLIC_JWK: JSON.stringify({ ...publicKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
           LTI_TOOL_ORIGIN: LTI_TOOL_ORIGIN,
+          // The LTI Platform (SCHO-179) is on here; every production configuration leaves it off.
+          LTI_PLATFORM: "on",
           // Device sign-in (SCHO-261): a test-only key; production sets none until the cutover.
           DEVICE_TOKEN_SECRET: DEVICE_TOKEN_SECRET,
           // The ops analytics proxy (SCHO-263): test-only values; the test object answers Cloudflare's API.
@@ -63,13 +75,27 @@ export default defineConfig({
           HALL_MONITOR_ISSUER: "educateos",
           TEST_PLATFORM_PRIVATE_JWK: JSON.stringify({ ...platform.privateKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256" }),
           TEST_PLATFORM_PUBLIC_JWK: JSON.stringify({ ...platform.publicKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256", use: "sig" }),
+          // The organization MCP endpoint (SCHO-174): the test object trusts the public half.
+          TEST_MCP_ISSUER_PRIVATE_JWK: JSON.stringify({ ...mcpIssuerKey.privateKey.export({ format: "jwk" }), kid: "test-mcp-key", alg: "ES256" }),
+          TEST_MCP_ISSUER_PUBLIC_JWK: JSON.stringify({ ...mcpIssuerKey.publicKey.export({ format: "jwk" }), kid: "test-mcp-key", alg: "ES256" }),
           // Marketplace installs (SCHO-209).
           MARKETPLACE_TRUST,
+          // Course library imports (SCHO-331).
+          COURSE_LIBRARY_TRUST,
+          // The demo showcase (SCHO-326), which TEST_CONFIG.demo names too.
+          DEMO_SHOWCASE: "northfield",
+          // The demo operator's seed routes (SCHO-326): a test-only token.
+          DEMO_OPERATOR_TOKEN,
+          // Point-in-time recovery (SCHO-373): a test-only token; a district sets one only during a recovery.
+          RECOVERY_TOKEN,
           TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),
         },
         durableObjects: {
           // The Worker reaches the district through ctx.exports; the tests restart it through this binding.
           DISTRICT: { className: "DistrictObject", useSQLite: true },
+          // Riverbend as its demo Worker runs it, with and without the operator token (SCHO-326).
+          RIVERBEND: { className: "RiverbendDistrictObject", useSQLite: true },
+          RIVERBEND_WITHOUT_TOKEN: { className: "RiverbendWithoutTokenDistrictObject", useSQLite: true },
         },
         serviceBindings: {
           WORKSHOP_POLICY: { name: kCurrentWorker, entrypoint: "DistrictWorkshopCapabilityPolicy" },

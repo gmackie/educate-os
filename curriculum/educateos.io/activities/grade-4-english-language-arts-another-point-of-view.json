@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "4",
+    "minWords": 150,
+    "minimumCitations": 0,
+    "overview": "Retell a scene from \"The Clocktower Key\" as Mr. Okafor would tell it.",
+    "prompt": "Choose one scene from \"The Clocktower Key\": the day Ivy shows Mr. Okafor the key in Chapter 1, or the day she comes back in Chapter 3. Retell the scene in first person as Mr. Okafor, using I and me. Keep the events the same, but show what he thinks and feels that Ivy could not know. Include dialogue from the story and at least two of his thoughts.",
+    "resources": [
+      "clocktower-ch1",
+      "clocktower-ch2",
+      "clocktower-ch3"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "The Same Scene, Another Point of View"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-another-point-of-view",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The clock in the middle of Millbrook said 3:15. It said 3:15 when we drove into town, and it said 3:15 the next morning, and the next. \"It hasn't moved in twenty years,\" the woman at the bakery told Mom. \"Nobody remembers how to fix it.\"\n\nI didn't care about the clock. I cared that I had left my best friend, my old school and my whole life three hundred miles away. Our new house was tall and creaky, with a tower room at the top that smelled like dust and pencil shavings.\n\nOn our third day, I was exploring the tower room when one of the floorboards wobbled. I pried it up. Underneath was a small wooden box, and inside the box, wrapped in a soft cloth, was a heavy brass key as long as my hand. Its handle was shaped like a little clock face, with the hands pointing to three and fifteen.\n\nI ran next door to ask our neighbor if he knew anything about it. Mr. Okafor was sweeping his porch. He was tall and thin and had a gray beard and a frown that looked permanent.\n\n\"I found this in our house,\" I said, holding up the key.\n\nHe stopped sweeping. For a second something flickered across his face, like a light switching on and then off. \"Put that back where you found it,\" he said. Then he went inside and shut the door.\n\nI stood on his steps holding the key. That was the moment I decided I was going to find out what it opened.",
+      "id": "clocktower-ch1",
+      "title": "The Clocktower Key, Chapter 1: Stopped at 3:15"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Sam lived across the street. He had a skateboard, a library card he actually used, and an opinion about everything. When I showed him the key, he said, \"That is definitely a clock key. We need the library.\"\n\nThe town librarian pulled out a thick album of old newspaper photos. On one yellowed page was a picture of a woman in overalls standing on a ladder beside the town clock. CLOCKMAKER KEEPS MILLBROOK ON TIME, the headline said. Her name was Mrs. Bell. Beside her, holding a toolbox, was a skinny teenage boy with a big grin.\n\n\"Mrs. Bell lived in the tall house on Maple Street,\" the librarian said. \"The one with the tower.\"\n\n\"That's my house,\" I whispered.\n\nSam leaned closer to the photo. \"Ivy. Look at the boy.\" The grin was different, but the eyes were the same. It was Mr. Okafor.\n\nThe librarian nodded. \"He was her helper for years. When she passed away, the clock stopped a few weeks later. People asked him to fix it, but he never would. Some folks say he didn't know how. I always thought it just made him too sad.\"\n\nWalking home, I held the key so tightly it left a print in my palm. Mr. Okafor hadn't been angry with me, I realized. He had been hurting.",
+      "id": "clocktower-ch2",
+      "title": "The Clocktower Key, Chapter 2: The Clockmaker's House"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "This time I didn't just hold up the key. I knocked, and when Mr. Okafor opened the door, I said, \"I know about Mrs. Bell. I think she hid this key so someone would find it. I think she wanted the clock to keep going.\"\n\nHe was quiet for a long time. Then he sat down on his porch step, and so did I. \"She used to say a clock is a promise,\" he said. \"A promise that tomorrow is coming. When she died, I didn't want tomorrow to come. So I let it stop.\"\n\n\"Could you show me how it works?\" I asked. \"I don't know anybody here yet. I could use a promise.\"\n\nHe looked at me for a long moment. Then, for the first time, I saw the grin from the newspaper photo.\n\nIt took us two Saturdays. Sam came too and handed us tools. Mr. Okafor showed me how to oil the gears and how the key wound the big spring that made everything move. On the second Saturday, I turned the key in the clock face. It was stiff, then smooth. Something deep inside clicked.\n\nThe minute hand shivered and moved. 3:16. Down in the square, people stopped and pointed. Somebody cheered. Mr. Okafor wiped his eyes and pretended it was dust.\n\nNow I wind the clock every Sunday with Mr. Okafor. Millbrook is still not my old town. But the clock is moving, and so am I.",
+      "id": "clocktower-ch3",
+      "title": "The Clocktower Key, Chapter 3: Three-Sixteen"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "point-of-view",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Tells the scene from Mr. Okafor's point of view"
+      },
+      {
+        "id": "story",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Stays true to the events of the story"
+      },
+      {
+        "id": "description",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses dialogue, thoughts and feelings"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Point of view narrative"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

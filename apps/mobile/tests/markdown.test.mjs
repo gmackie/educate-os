@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBlocks, parseSpans, plainText } from '../src/markdown.ts';
+import { MIN_TABLE_COLUMN, parseBlocks, parseSpans, plainText, tableLayout } from '../src/markdown.ts';
 
 test('blocks: headings, paragraphs joined across lines, and lists of each kind', () => {
   assert.deepEqual(parseBlocks('## Build it\n\nA strong\nargument.\n\n- one\n- two\n1. first\n2) second'), [
@@ -13,13 +13,42 @@ test('blocks: headings, paragraphs joined across lines, and lists of each kind',
 });
 
 test('spans: bold, italic, code and link text; HTML stays text', () => {
-  assert.deepEqual(parseSpans('a **claim**, *why*, `x` and [notes](https://evil.test)'), [
+  assert.deepEqual(parseSpans('a **claim**, *why*, `x` and [notes](https://notes.example/a)'), [
     { text: 'a ' }, { text: 'claim', bold: true }, { text: ', ' }, { text: 'why', italic: true }, { text: ', ' },
-    { text: 'x', code: true }, { text: ' and ' }, { text: 'notes' },
+    { text: 'x', code: true }, { text: ' and ' }, { text: 'notes', href: 'https://notes.example/a' },
   ]);
   assert.deepEqual(parseSpans('<b>hi</b>'), [{ text: '<b>hi</b>' }]);
 });
 
+test('links are tappable only for plain https addresses', () => {
+  for (const address of ['javascript:alert`1`', 'data:text/html,x', 'http://plain.example', 'https://u:p@x.example', 'educateos://class/1', '']) {
+    assert.deepEqual(parseSpans('[go](' + address + ')'), [{ text: 'go' }], address);
+  }
+});
+
+test('simple pipe tables become tables; ragged rows are padded and extra cells dropped', () => {
+  assert.deepEqual(parseBlocks('Before\n| Word | Sound |\n|---|:--:|\n| cat | /k/ |\n| dog |\n| a | b | c |\nAfter'), [
+    { kind: 'paragraph', text: 'Before' },
+    { kind: 'table', header: ['Word', 'Sound'], rows: [['cat', '/k/'], ['dog', ''], ['a', 'b']] },
+    { kind: 'paragraph', text: 'After' },
+  ]);
+  // A row without a divider line is an ordinary paragraph.
+  assert.deepEqual(parseBlocks('| not | a table |'), [{ kind: 'paragraph', text: '| not | a table |' }]);
+  assert.equal(plainText('| A | B |\n|-|-|\n| 1 | 2 |'), 'A, B. 1, 2');
+});
+
 test('plainText flattens Markdown for previews', () => {
   assert.equal(plainText('Take a side and give **one** reason.\n\n- a\n- b'), 'Take a side and give one reason. a, b');
+});
+
+test('tables: columns share the width they have, and scroll only below the narrowest column', () => {
+  // A 3-column table in a phone card (~318 points) fits without scrolling.
+  assert.deepEqual(tableLayout(318, 3), { column: 105, scrolls: false });
+  assert.deepEqual(tableLayout(402, 2), { column: 200, scrolls: false });
+  // Too many columns for the screen: each keeps the minimum and the table scrolls sideways.
+  assert.deepEqual(tableLayout(318, 5), { column: MIN_TABLE_COLUMN, scrolls: true });
+  assert.equal(MIN_TABLE_COLUMN, 96);
+  // Not measured yet, or no columns: never a zero or negative width.
+  assert.deepEqual(tableLayout(0, 3), { column: MIN_TABLE_COLUMN, scrolls: true });
+  assert.equal(tableLayout(500, 0).column, 498);
 });

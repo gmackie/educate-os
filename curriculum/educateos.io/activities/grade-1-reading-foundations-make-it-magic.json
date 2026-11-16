@@ -1,0 +1,112 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Add Magic E to make a new word, then write it.",
+    "passage": "Add an e to the end of each word. Read the new word. Write it down.",
+    "questions": [
+      {
+        "prompt": "Add e to can. Write the new word."
+      },
+      {
+        "prompt": "Add e to rid. Write the new word."
+      },
+      {
+        "prompt": "Add e to rob. Write the new word."
+      },
+      {
+        "prompt": "Add e to tub. Write the new word."
+      },
+      {
+        "prompt": "Add e to mad. Write the new word."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Make It Magic"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-make-it-magic",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "adds-e",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I added the e"
+      },
+      {
+        "id": "reads-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read the new word"
+      },
+      {
+        "id": "writes-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I wrote the new word"
+      }
+    ],
+    "title": "Make it magic"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

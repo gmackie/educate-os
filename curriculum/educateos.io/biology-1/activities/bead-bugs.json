@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:57336a81c84d0b5d1f75c6276849c3af6c9fa698dc5154f1485de62c6d0ecf24",
+      "id": "educateos.io/biology-1-bead-bugs",
+      "version": "1.0.0"
+    }
+  },
+  "id": "bead-bugs",
+  "role": "lesson",
+  "title": "Bead Bugs: A Selection Simulation"
+}

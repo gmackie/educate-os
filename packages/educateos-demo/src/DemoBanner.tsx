@@ -1,8 +1,13 @@
 import { useSyncExternalStore } from "react";
-import { Badge, Button, Popover, Text } from "@cloudflare/kumo";
-import { ArrowCounterClockwiseIcon, CheckCircleIcon, CircleIcon, ListChecksIcon, MapTrifoldIcon, UserSwitchIcon } from "@phosphor-icons/react";
+import { Badge, Button, LinkButton, Popover, Text } from "@cloudflare/kumo";
+import { ArrowCounterClockwiseIcon, ArrowUpRightIcon, CheckCircleIcon, CircleIcon, ListChecksIcon, MapTrifoldIcon, UserSwitchIcon } from "@phosphor-icons/react";
 import type { DistrictInfo, Persona } from "./districts/index.ts";
-import { JOURNEYS } from "./journeys.ts";
+import { journeyOf } from "./journeys.ts";
+
+/** The demo's home, which visitors who came straight to the demo can find their way to. */
+export const SITE_HOME = "https://educateos.io/";
+/** Where a visitor tells us they are interested. */
+export const SITE_INTEREST = "https://educateos.io/interest/";
 import { CLEVER_TOUR_STEPS, type CleverTourStore } from "./tour/cleverTour.ts";
 
 interface DemoBannerProps {
@@ -19,18 +24,20 @@ interface DemoBannerProps {
 
 /**
  * The banner on every screen: what this is, who you are, and the way out of it. On a phone it
- * scrolls away with the page and its buttons show only their icons, so the app keeps the screen;
- * the apps' own headers name who is signed in. A district's notice, such as Cedar Valley's that its
- * Clever is simulated, stays in it on every screen and every size.
+ * scrolls away with the page, keeps to one short line and its buttons show only their icons, so the
+ * app keeps the screen; the apps' own headers name who is signed in. A district's notice, such as
+ * Cedar Valley's that its Clever is simulated, stays in it on every screen and every size.
  */
 export const DemoBanner = ({ info, persona, done, onSwitchPersona, onReset, tour }: DemoBannerProps) => (
   <header
     aria-label="Demo"
-    className="z-40 flex items-center gap-x-4 gap-y-2 border-b border-kumo-line bg-kumo-elevated px-4 py-2 sm:sticky sm:top-0 sm:flex-wrap"
+    className="z-40 flex items-center gap-x-4 gap-y-2 border-b border-kumo-line bg-kumo-elevated px-4 py-1 sm:sticky sm:top-0 sm:flex-wrap sm:py-2"
   >
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
       <Badge variant="primary">Demo</Badge>
-      <Text size="sm">Fictional district · everything stays in your browser · AI is off</Text>
+      {/* A phone gets the short form, on one line beside the buttons. */}
+      <span className="sm:hidden"><Text size="xs">Fictional · in your browser · AI simulated</Text></span>
+      <span className="max-sm:hidden"><Text size="sm">Fictional district · everything stays in your browser · AI tutors are simulated</Text></span>
       <span className="max-sm:hidden">
         <Text size="sm" variant="secondary">{info.name}</Text>
       </span>
@@ -56,12 +63,20 @@ export const DemoBanner = ({ info, persona, done, onSwitchPersona, onReset, tour
       <Button size="sm" variant="ghost" icon={<ArrowCounterClockwiseIcon aria-hidden />} onClick={onReset}>
         <span className="max-sm:sr-only">Reset demo</span>
       </Button>
+      {persona === undefined && (
+        <>
+          <LinkButton size="sm" variant="secondary" href={SITE_INTEREST}>Share your interest</LinkButton>
+          <LinkButton size="sm" variant="ghost" href={SITE_HOME} icon={<ArrowUpRightIcon aria-hidden />} aria-label="Back to educateos.io">
+            <span className="max-sm:hidden">educateos.io</span>
+          </LinkButton>
+        </>
+      )}
     </div>
   </header>
 );
 
 const JourneyChecklist = ({ persona, done }: { persona: Persona; done: ReadonlySet<string> }) => {
-  const steps = JOURNEYS[persona.id];
+  const steps = journeyOf(persona);
   const finished = steps.filter((step) => done.has(step.id)).length;
   return (
     <Popover>

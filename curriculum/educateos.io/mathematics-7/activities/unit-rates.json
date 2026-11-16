@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:cc42f7020e398273f5946245d0af07f5991be6cbc4d43ea0af5574fd9e9c6faa",
+      "id": "educateos.io/mathematics-7-unit-rates",
+      "version": "1.0.0"
+    }
+  },
+  "id": "unit-rates",
+  "role": "assignment",
+  "title": "Unit Rates and the Constant of Proportionality"
+}

@@ -11,10 +11,14 @@ import chatDeclared from "../src/chat-types.d.ts?raw";
 import chatShipped from "../src/chat-types.txt?raw";
 import classroomDeclared from "../src/classroom-types.d.ts?raw";
 import classroomShipped from "../src/classroom-types.txt?raw";
+import commentDeclared from "../src/comment-types.d.ts?raw";
+import commentShipped from "../src/comment-types.txt?raw";
 import docsReadDeclared from "../src/docs-read-types.d.ts?raw";
 import docsReadShipped from "../src/docs-read-types.txt?raw";
 import docsDeclared from "../src/docs-types.d.ts?raw";
 import docsShipped from "../src/docs-types.txt?raw";
+import driveReadDeclared from "../src/drive-read-types.d.ts?raw";
+import driveReadShipped from "../src/drive-read-types.txt?raw";
 import driveDeclared from "../src/drive-types.d.ts?raw";
 import driveShipped from "../src/drive-types.txt?raw";
 import sheetsReadDeclared from "../src/sheets-read-types.d.ts?raw";
@@ -43,9 +47,11 @@ describe("agent-facing TypeScript type modules", () => {
     ["slides-types", slidesShipped, slidesDeclared],
     ["calendar-types", calendarShipped, calendarDeclared],
     ["bigquery-types", bigqueryShipped, bigqueryDeclared],
+    ["drive-read-types", driveReadShipped, driveReadDeclared],
     ["drive-types", driveShipped, driveDeclared],
     ["chat-types", chatShipped, chatDeclared],
     ["classroom-types", classroomShipped, classroomDeclared],
+    ["comment-types", commentShipped, commentDeclared],
   ])("keeps %s.txt identical to its .d.ts", (name, shipped, declared) => {
     expect(shipped, `${name}.txt drifted from ${name}.d.ts; restore the .txt symlink to the .d.ts`)
       .toBe(declared);
@@ -53,8 +59,8 @@ describe("agent-facing TypeScript type modules", () => {
 
   it.each([
     "types", "docs-read-types", "docs-types", "sheets-read-types", "sheets-types",
-    "slides-read-types", "slides-types", "calendar-types", "bigquery-types", "drive-types",
-    "chat-types", "classroom-types",
+    "slides-read-types", "slides-types", "calendar-types", "bigquery-types", "drive-read-types",
+    "drive-types", "chat-types", "comment-types", "classroom-types",
   ])("ships %s.txt as a symlink to its authoritative declaration", name => {
     expect(readlinkSync(new URL(`../src/${name}.txt`, import.meta.url))).toBe(`${name}.d.ts`);
   });

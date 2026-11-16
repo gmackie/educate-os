@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b4ccd807d1ad2ff4e907778cedad64f80983af1c61ed5900d5c12c8dc9189cec",
+      "id": "educateos.io/grade-4-english-language-arts-kite-theme",
+      "version": "1.0.0"
+    }
+  },
+  "id": "kite-theme",
+  "role": "assignment",
+  "title": "The Theme of \"The Kite That Would Not Fly\""
+}

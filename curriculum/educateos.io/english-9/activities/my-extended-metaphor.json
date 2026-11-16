@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e0607fb780497155e281cee10aa7d6d5e6c953e6dd1ce26d236af3873a8fd8d6",
+      "id": "educateos.io/english-9-my-extended-metaphor",
+      "version": "1.0.0"
+    }
+  },
+  "id": "my-extended-metaphor",
+  "role": "assignment",
+  "title": "My Extended Metaphor"
+}

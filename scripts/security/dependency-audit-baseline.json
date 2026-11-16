@@ -1,0 +1,4 @@
+{
+  "$comment": "Accepted high and critical advisories in production dependencies. See docs/educateos/security/dependency-scanning.md before adding an entry; every entry needs a reason and an issue or expiry, and is reviewed in the pull request that adds it.",
+  "advisories": []
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d5d0b12d88313db9144ebcf743c637b599385939bfe8830e3b65350d9f69520c",
+      "id": "educateos.io/united-states-history-a-movement-of-many",
+      "version": "1.0.0"
+    }
+  },
+  "id": "a-movement-of-many",
+  "role": "assignment",
+  "title": "A Movement of Many"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:76f032ac41ee170e01017008fa24c52e22c420a5ae34552e86542d0c0c5aa474",
+      "id": "educateos.io/english-8-reading-a-memoir",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reading-a-memoir",
+  "role": "assessment",
+  "title": "Reading a Memoir: \"The Radio on the Windowsill\""
+}

@@ -140,7 +140,9 @@ describe("direct User DO authority operations", () => {
         const account = {
           ensureResources: vi.fn(), reconnect: vi.fn(), getGatekeeperClassFor: vi.fn(),
         };
-        const get = vi.spyOn(storage.connectedAccounts, "get").mockReturnValue({ vendorId: "mcp", account });
+        const get = vi.spyOn(storage.connectedAccounts, "get").mockReturnValue({
+          vendorId: "mcp", account, description: { grantedResourceUrlPatterns: ["mcp://granted"] },
+        });
         try {
           await expect(user.ensureAccountResources(7, ["mcp://private"]))
             .rejects.toThrow("Students require");
@@ -160,6 +162,8 @@ describe("direct User DO authority operations", () => {
           "gatekeeper.connect", "gatekeeper.connect", "resource.acquire",
         ]);
         expect(calls[3]).toMatchObject({ sourceBlueprintId: "blueprint-private" });
+        // A reconnect asks for exactly the account's granted resource types (SCHO-393).
+        expect(calls[10]).toMatchObject({ action: "gatekeeper.connect", accountId: 7, resourceUrlPatterns: ["mcp://granted"] });
         expect(calls.every(call => call.userId === "principal-student")).toBe(true);
         expect(JSON.stringify(calls)).not.toContain("private-token");
         expect(JSON.stringify(calls)).not.toContain('"role"');

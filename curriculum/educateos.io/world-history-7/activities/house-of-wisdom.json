@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e70b586828701acb62834b1dc4a7fe16fbeb7b1043b7f6d22b9486f240e29087",
+      "id": "educateos.io/world-history-7-house-of-wisdom",
+      "version": "1.0.0"
+    }
+  },
+  "id": "house-of-wisdom",
+  "role": "assignment",
+  "title": "The House of Wisdom"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:297c0ce81720ef2bf71fe0a377dc931456d8390f71b1f3dcc3d5ba828349c8fc",
+      "id": "educateos.io/world-history-7-ideas-that-traveled-on",
+      "version": "1.0.0"
+    }
+  },
+  "id": "ideas-that-traveled-on",
+  "role": "assignment",
+  "title": "Ideas That Traveled On"
+}

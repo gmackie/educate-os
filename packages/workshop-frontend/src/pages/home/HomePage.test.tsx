@@ -79,6 +79,7 @@ describe('school AI home', () => {
     expect(starters.querySelectorAll('button')).toHaveLength(4)
     expect(starters.textContent).toContain(starter)
     expect(container.textContent).not.toContain('direct report')
+    expect(container.querySelector('#teacher-onboarding-heading') !== null).toBe(role === 'teacher')
     expect(state.api.newWorkspace).not.toHaveBeenCalled()
   })
 

@@ -107,4 +107,19 @@ describe('OnboardingWizard built-in tools', () => {
     expect(addToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Couldn't turn on Web Search.", variant: 'warning' }))
   })
+
+  it("says nothing of a tool the school's policy keeps from the user", async () => {
+    const api = fakeApi()
+    api.provisionAmbientAccount.mockImplementation(async () => {
+      throw new Error('Workshop policy denied gatekeeper.connect: District policy does not permit this capability.')
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await openConnectionsStep()
+    await api.discovery.resolve(tools)
+    await click(/^Next$/)
+    await click(/Let.s build/)
+
+    expect(api.completeOnboarding).toHaveBeenCalledOnce()
+    expect(addToast).not.toHaveBeenCalled()
+  })
 })

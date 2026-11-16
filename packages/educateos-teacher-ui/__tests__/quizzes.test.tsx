@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DistrictApiError, type DistrictApiClient, type RouteName } from "@educateos/api-client";
 import { fakeDistrict, IDS } from "./fakeDistrict.ts";
 import { onScreen, renderApp, settle } from "./render.tsx";
+import { chooseOption } from "./chooseOption.ts";
 
 const AT = "2026-10-21T15:00:00.000Z";
 const QUIZ = "qz_poetry";
@@ -37,6 +38,12 @@ function withQuizzes() {
     status: "submitted", submittedAt: AT, submissionId: "sub_1", itemScores: scores,
   };
   const releases: Body[] = [];
+  const accommodations: Body[] = [];
+  const accommodationsView = () => ({
+    canManage: true,
+    accommodations,
+    names: accommodations.map((a) => ({ principalId: a.studentId, displayName: a.studentId === IDS.amara ? "Amara Okafor" : "A student" })),
+  });
   const graded = () => scores.every((s) => s.points !== null);
   const total = () => scores.reduce((sum, s) => sum + (s.points ?? 0), 0);
   const handlers: Partial<Record<RouteName, (input: Input) => unknown>> = {
@@ -82,6 +89,7 @@ function withQuizzes() {
           attempts: [{ id: ATTEMPT, number: 1, status: "submitted", submittedAt: AT, points: graded() ? total() : null, maxPoints: 7 }],
           ...(graded() ? { gradedAttemptId: ATTEMPT, score: { points: total(), maxPoints: 7 } } : {}),
           needsGrading: !graded(),
+          ...(accommodations.some((a) => a.studentId === IDS.amara) ? { extendedTime: accommodations.find((a) => a.studentId === IDS.amara)!.extendedTime } : {}),
           ...(released === undefined ? {} : { released: { points: released.points, maxPoints: 7, outcome: "official", at: last!.at, current: released.points === total() } }),
         }],
         items: [
@@ -94,6 +102,13 @@ function withQuizzes() {
       };
     },
     "teacher.quizAttempt": () => ({ quiz: quizzes[0], attempt, studentName: "Amara Okafor" }),
+    "teacher.quizAccommodations": () => accommodationsView(),
+    "teacher.setQuizAccommodation": ({ params, body }) => {
+      const index = accommodations.findIndex((a) => a.studentId === body!.studentId);
+      if (index >= 0) accommodations.splice(index, 1);
+      if (body!.extendedTime !== null) accommodations.push({ quizId: params!.quizId, studentId: body!.studentId, extendedTime: body!.extendedTime, setBy: IDS.teacher, setAt: AT });
+      return accommodationsView();
+    },
     "teacher.gradeQuizItem": ({ params, body }) => {
       Object.assign(scores.find((s) => s.itemId === params!.itemId)!, { points: body!.points, source: "teacher", ...(body!.comment === undefined ? {} : { comment: body!.comment }) });
       return { quiz: quizzes[0], attempt, studentName: "Amara Okafor" };
@@ -117,7 +132,7 @@ function withQuizzes() {
   };
   /** Makes a quiz route fail from now on. */
   const fail = (name: RouteName, failure: { status: number; body: ConstructorParameters<typeof DistrictApiError>[1] }) => void failures.set(name, failure);
-  return { ...base, client, quizzes, scores, fail };
+  return { ...base, client, quizzes, scores, accommodations, fail };
 }
 
 const list = `#/classes/${IDS.offering}/quizzes`;
@@ -216,6 +231,35 @@ describe("class quizzes", () => {
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Students' results" })).getByText("Released")).toBeTruthy());
     expect(district.callsTo("teacher.releaseQuizScores")).toHaveLength(1);
     expect(screen.getByRole("status", { name: "" }).textContent).toContain("1 score released as official grades.");
+  });
+
+  it("gives a student extended time, shows it in the results, and takes it away (SCHO-383)", async () => {
+    const district = withQuizzes();
+    district.quizzes[0]!.settings = { ...SETTINGS, timeLimitMinutes: 30 };
+    const user = await renderApp(district.client, `${list}/${QUIZ}`);
+    await onScreen("Poetry terms · English 9 · Period 3");
+    const section = await screen.findByRole("region", { name: "Extended time" });
+    expect(await within(section).findByText("No student has extended time on this quiz.")).toBeTruthy();
+    const form = within(section).getByRole("form", { name: "Give extended time" });
+    expect((within(form).getByRole("button", { name: "Give extended time" }) as HTMLButtonElement).disabled).toBe(true);
+    await chooseOption(user, "Student", "Amara Okafor", form);
+    await chooseOption(user, "Time", "2× time (60 minutes)", form);
+    await user.click(within(form).getByRole("button", { name: "Give extended time" }));
+    await waitFor(() => expect(district.callsTo("teacher.setQuizAccommodation")).toHaveLength(1));
+    expect(district.callsTo("teacher.setQuizAccommodation")[0]!.input).toMatchObject({ params: { quizId: QUIZ }, body: { studentId: IDS.amara, extendedTime: 2 } });
+    const holders = await within(section).findByRole("list", { name: "Students with extended time" });
+    expect(holders.textContent).toContain("Amara Okafor: 2× time (60 minutes)");
+
+    await user.click(screen.getByRole("link", { name: "Results and grading" }));
+    await onScreen("Results: Poetry terms · English 9 · Period 3");
+    expect(within(screen.getByRole("table", { name: "Students' results" })).getByText("Extended time: 2× time (60 minutes)")).toBeTruthy();
+
+    await user.click(screen.getByRole("link", { name: "Edit quiz" }));
+    await onScreen("Poetry terms · English 9 · Period 3");
+    await user.click(await screen.findByRole("button", { name: "Remove Amara Okafor's extended time" }));
+    await waitFor(() => expect(district.callsTo("teacher.setQuizAccommodation")).toHaveLength(2));
+    expect(district.callsTo("teacher.setQuizAccommodation")[1]!.input.body).toStrictEqual({ studentId: IDS.amara, extendedTime: null });
+    expect(await screen.findByText("No student has extended time on this quiz.")).toBeTruthy();
   });
 
   it("shows a refused release beside the button", async () => {

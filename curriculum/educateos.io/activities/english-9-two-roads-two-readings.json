@@ -1,0 +1,171 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "9-12",
+    "minWords": 450,
+    "minimumCitations": 1,
+    "overview": "Decide what \"The Road Not Taken\" is really saying, and defend your reading with close analysis of the poem's words and structure.",
+    "prompt": "\"The Road Not Taken\" is often read as a poem that celebrates choosing the unusual path (Reading 1). Others read it as a poem about how people invent the meaning of their choices after the fact (Reading 2). Which reading does the poem better support? Write a literary analysis that states your interpretation, analyzes at least three specific words or lines (including at least one from the final stanza), and explains how the poem's structure, especially the shift into the future tense, shapes its meaning. Address the strongest evidence for the other reading.",
+    "resources": [
+      "the-road-not-taken",
+      "poetry-toolkit"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Two Roads, Two Readings"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.9.A",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-two-roads-two-readings",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Robert Frost, \"The Road Not Taken,\" from Mountain Interval (1916). Public domain.",
+      "body": "Two roads diverged in a yellow wood,\nAnd sorry I could not travel both\nAnd be one traveler, long I stood\nAnd looked down one as far as I could\nTo where it bent in the undergrowth;\n\nThen took the other, as just as fair,\nAnd having perhaps the better claim,\nBecause it was grassy and wanted wear;\nThough as for that the passing there\nHad worn them really about the same,\n\nAnd both that morning equally lay\nIn leaves no step had trodden black.\nOh, I kept the first for another day!\nYet knowing how way leads on to way,\nI doubted if I should ever come back.\n\nI shall be telling this with a sigh\nSomewhere ages and ages hence:\nTwo roads diverged in a wood, and I -\nI took the one less traveled by,\nAnd that has made all the difference.",
+      "id": "the-road-not-taken",
+      "title": "The Road Not Taken"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Poems say a great deal in a small space. These tools help you see how.\n\nFigurative language\n- Metaphor: speaks of one thing as if it were another. \"Hope is the thing with feathers.\"\n- Extended metaphor: a metaphor carried through several lines or a whole poem.\n- Simile: a comparison using like or as.\n- Personification: gives human qualities to something not human. \"Nature's first green\" belongs to \"Her.\"\n- Paradox: a statement that seems to contradict itself but holds a truth. \"Nature's first green is gold.\"\n- Allusion: a reference to a well-known story, person or text. \"So Eden sank to grief.\"\n\nSound and structure\n- Rhyme scheme: the pattern of end rhymes, labeled with letters (aabb, abaab).\n- Couplet: two lines that rhyme and belong together.\n- Stanza: a group of lines, like a paragraph in prose.\n- Meter: the pattern of stressed and unstressed syllables.\n- Enjambment: a sentence that runs past the end of a line. End-stopped lines pause at the line's end.\n- Tone: the speaker's attitude. Tone can shift within a poem; look for words like \"but,\" \"yet\" and \"then.\"\n- Speaker: the voice in the poem. The speaker is not automatically the poet.\n\nConnotation\nA word's denotation is its dictionary meaning. Its connotation is the feeling it carries. \"Subsides\" and \"sinks\" both mean \"goes down,\" but \"sank\" carries a heavier sense of loss.\n\nReading a poem in four passes\n1. Read it aloud for sound.\n2. Read it for what literally happens.\n3. Mark the figurative language and the shifts.\n4. Ask: what does the poem suggest about life, and how do its choices make me feel that?",
+      "id": "poetry-toolkit",
+      "title": "A Poetry Toolkit"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a clear, defensible reading of the whole poem.",
+        "id": "interpretation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Interpretation"
+      },
+      {
+        "description": "Analyzes at least three specific words or lines and their effect.",
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis of language"
+      },
+      {
+        "description": "Explains how the final stanza's shift in time and tone shapes meaning.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis of structure"
+      },
+      {
+        "description": "Quotes accurately and answers the strongest evidence for the other reading.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence and alternatives"
+      }
+    ],
+    "title": "Poetry analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

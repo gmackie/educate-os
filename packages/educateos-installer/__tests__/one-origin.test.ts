@@ -4,12 +4,14 @@
 import { describe, expect, it } from "vitest";
 import {
   ACCESS_BYPASS_PATHS,
+  ACCESS_MCP_BYPASS_PATHS,
   ACCESS_PAIRING_BROWSER_PATHS,
   compileDesiredState,
   type DesiredAccessApplication,
   type DesiredAccessPolicy,
   type DesiredWorker,
   type DesiredWorkerSecret,
+  districtMcpEnabled,
   dryRunDrift,
   install,
   rollback,
@@ -22,6 +24,7 @@ import {
   mutations,
   NORTHFIELD,
   replaceModule,
+  ROOT_TRUST,
   SECRETS,
   type TestRelease,
   tokenFor,
@@ -101,6 +104,21 @@ describe("one-origin desired state", () => {
     expect(order.indexOf(`worker:${DISTRICT}`)).toBeLessThan(order.indexOf("worker:router"));
   });
 
+  it("serves the district's own UIs from the district, running it first only on its own routes", async () => {
+    const release = await goldenRelease();
+    const ui = release.manifest.workers[DISTRICT]!.assetsConfig!;
+    expect(compile(release).worker(DISTRICT).assets).toEqual({
+      manifest: ui.variants.spa!.manifest,
+      config: { not_found_handling: "single-page-application", run_worker_first: ui.run_worker_first },
+    });
+    expect(ui.run_worker_first).toEqual(["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"]);
+    // A release from before the district carried its UIs installs it without assets, as before.
+    const old = await deriveRelease(release, "r000002-noui", (manifest) => {
+      delete manifest.workers[DISTRICT]!.assetsConfig;
+    });
+    expect(compile(old).worker(DISTRICT).assets).toBeUndefined();
+  });
+
   it("gives the district the one application's issuer and audience, its school manifest and a generated device key", async () => {
     const release = await goldenRelease();
     const { worker, secret, desired } = compile(release);
@@ -163,6 +181,71 @@ describe("one-origin desired state", () => {
     // The bypass is in place before either hostname serves.
     expect(order.indexOf("access:application:bypass")).toBeLessThan(order.indexOf("domain:public"));
     expect(order.indexOf("access:application:bypass")).toBeLessThan(order.indexOf("domain:managed"));
+  });
+
+  it("exempts the MCP endpoint and its metadata from Access only when DISTRICT_CONFIG has mcp", async () => {
+    const release = await goldenRelease();
+    const mcpVars = { DISTRICT_CONFIG: JSON.stringify({ synthetic: true, mcp: { origin: `https://${HOST}`, issuer: "https://id.northfield.example" } }) };
+    const withMcp = (vars: Record<string, string>, overrides: ConfigOverrides = {}) =>
+      compile(release, { services: { [DISTRICT]: { enabled: true, vars } }, ...overrides }).app("access:application:bypass")!;
+    const hosts = [HOST, "northfield.educateos.io"];
+
+    const on = withMcp(mcpVars, { managedHostname: { slug: "northfield" } });
+    expect(on.destinations.toSorted()).toEqual(hosts.flatMap((host) => [
+      ...ACCESS_BYPASS_PATHS, "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+    ].map((path) => host + path)).toSorted());
+    expect(ACCESS_MCP_BYPASS_PATHS).toHaveLength(3);
+    // The main application doesn't list them, so nothing more specific puts them back behind Access.
+    expect(compile(release, { services: { [DISTRICT]: { enabled: true, vars: mcpVars } } }).app("access:application")!.destinations
+      .some((d) => d.includes("/mcp") || d.includes("oauth-protected-resource"))).toBe(false);
+
+    // Without mcp (absent, null, or a config that isn't JSON) the bypass is exactly as before.
+    for (const config of [DISTRICT_VARS.DISTRICT_CONFIG, JSON.stringify({ mcp: null }), "not json", JSON.stringify({ mcp: [] })]) {
+      expect(withMcp({ DISTRICT_CONFIG: config }).destinations.toSorted(), config)
+        .toEqual(ACCESS_BYPASS_PATHS.map((path) => HOST + path).toSorted());
+    }
+    expect(districtMcpEnabled(undefined)).toBe(false);
+  });
+
+  it("adds the MCP bypass to an installed district when DISTRICT_CONFIG gains mcp, and removes it when it loses it", async () => {
+    const release = await goldenRelease();
+    const { fake, options, run } = setup();
+    const mcpOn = { services: { [DISTRICT]: { enabled: true, vars: { DISTRICT_CONFIG: JSON.stringify({ synthetic: true, mcp: { origin: `https://${HOST}` } }) } } } };
+    const mcpPaths = ACCESS_MCP_BYPASS_PATHS.map((path) => HOST + path);
+    const bypass = () => fake.accessApplication("educateos-northfield-bypass")!.destinations;
+
+    expect((await run(release)).status).toBe("applied");
+    expect(bypass().filter((d) => mcpPaths.includes(d))).toEqual([]);
+
+    const drift = await dryRunDrift(options(release, mcpOn), release.sha256);
+    expect(drift.changes).toEqual(expect.arrayContaining([expect.objectContaining({ resource: "access:application:bypass", action: "update" })]));
+    expect((await run(release, mcpOn)).status).toBe("applied");
+    expect(bypass()).toEqual(expect.arrayContaining(mcpPaths));
+    expect(bypass()).toHaveLength(ACCESS_BYPASS_PATHS.length + ACCESS_MCP_BYPASS_PATHS.length);
+    // The main application is unchanged, so its audience is too.
+    expect(fake.accessApplication("educateos-northfield")!.destinations.some((d) => d.includes("/mcp"))).toBe(false);
+
+    expect((await run(release)).status).toBe("applied");
+    expect(bypass().filter((d) => mcpPaths.includes(d))).toEqual([]);
+  });
+
+  it("admits listed people beside or instead of whole domains, and refuses a policy admitting nobody", async () => {
+    const release = await goldenRelease();
+    const people = ["owner@example.com", "teacher@agents.example"];
+    const { policy } = compile(release, { access: { teamName: "northfield", allowedEmails: people } });
+    expect(policy("access:policy")?.spec).toEqual({
+      name: "educateos-northfield-members", decision: "allow", include: people.map((email) => ({ email: { email } })),
+    });
+    const both = compile(release, { access: { teamName: "northfield", allowedEmailDomains: ["northfield.example"], allowedEmails: [people[0]] } });
+    expect(both.policy("access:policy")?.spec.include).toEqual([{ email_domain: { domain: "northfield.example" } }, { email: { email: people[0] } }]);
+    expect(() => compile(release, { access: { teamName: "northfield" } })).toThrow();
+  });
+
+  it("gives the district the marketplace release keys it verifies listings against, only when configured", async () => {
+    const release = await goldenRelease();
+    expect(binding(compile(release).worker(DISTRICT), "MARKETPLACE_TRUST")).toBeUndefined();
+    const { worker } = compile(release, { marketplaceTrust: ROOT_TRUST });
+    expect(jsonVar(worker(DISTRICT), "MARKETPLACE_TRUST")).toEqual(JSON.parse(JSON.stringify(ROOT_TRUST)));
   });
 
   it("turns AI off: the router serves the not-enabled page linking to the demo, and the manifest says so", async () => {
@@ -228,6 +311,16 @@ describe("one-origin install", () => {
     // The district accepts exactly the one application's audience.
     expect(binding(district, "CF_ACCESS_AUD")).toMatchObject({ text: fake.accessApplication("educateos-northfield")!.aud });
     expect(binding(district, "LTI_TOOL_ORIGIN")).toMatchObject({ text: `https://${HOST}` });
+    // Its pages: the student app at the root (and as the single-page fallback), the admin console
+    // and Teacher Studio under their prefixes, and its own routes left to the Worker (SCHO-318).
+    expect(district.assetPaths).toEqual(["/admin/index.html", "/index.html", "/teach/index.html"]);
+    expect(fake.assetFor(SCRIPTS.district, "/")).toBe("/index.html");
+    expect(fake.assetFor(SCRIPTS.district, "/classes/7")).toBe("/index.html");
+    expect(fake.assetFor(SCRIPTS.district, "/admin/")).toBe("/admin/index.html");
+    expect(fake.assetFor(SCRIPTS.district, "/teach/")).toBe("/teach/index.html");
+    for (const path of ["/api/me", "/healthz", "/lti/launch", "/.well-known/educateos.json", "/connect-phone"]) {
+      expect(fake.assetFor(SCRIPTS.district, path), path).toBeUndefined();
+    }
     expect(fake.accessApplication("educateos-northfield-bypass")?.destinations).toContain(`${HOST}/api/m/*`);
     // No plan or report carries the generated value.
     expect(JSON.stringify(report)).not.toContain(key);

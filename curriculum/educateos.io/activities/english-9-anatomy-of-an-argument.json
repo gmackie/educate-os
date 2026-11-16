@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Take apart two opinion pieces on the same question: should high school start later? Find each claim, weigh the evidence, and name the moves each writer makes.",
+    "problems": [
+      {
+        "prompt": "State the central claim of each opinion piece in one precise sentence. Where in each piece is the claim stated most directly?"
+      },
+      {
+        "prompt": "List two pieces of evidence the author of \"Let Teenagers Sleep\" uses. For each, say whether it is relevant to the claim and whether you think it is sufficient. Explain."
+      },
+      {
+        "prompt": "List two pieces of evidence or reasons the author of \"A Later Bell Is Not a Free Lunch\" uses. For each, explain how it supports the claim."
+      },
+      {
+        "prompt": "Each author addresses the other side. Quote the sentence where each writer concedes a point, then explain how the writer answers it."
+      },
+      {
+        "prompt": "Find one example of rhetoric in either piece: a word choice, image, repetition or appeal meant to move the reader. Quote it and explain what it is meant to make the reader feel or believe."
+      },
+      {
+        "prompt": "Which piece makes the stronger argument? Judge by the quality of the evidence and reasoning, not by which side you agree with. Name one claim in that piece you would want to check before trusting it."
+      }
+    ],
+    "resources": [
+      "later-bell-for",
+      "later-bell-against"
+    ],
+    "showWork": false,
+    "subject": "english-language-arts",
+    "template": "problem-set",
+    "title": "Anatomy of an Argument"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-anatomy-of-an-argument",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Every weekday at 6:10 a.m., thousands of teenagers in our county are already awake, and most of them would rather not be. That is not laziness. It is biology.\n\nDuring adolescence, the body releases the sleep hormone melatonin later in the evening than it does in childhood or adulthood. A typical fifteen-year-old does not feel sleepy until around 11 p.m., no matter how early the lights go out. If the first bell rings at 7:25, as ours does, a student who needs to catch a 6:40 bus cannot get the eight to ten hours of sleep that pediatricians recommend for teenagers.\n\nThe cost of that missing sleep shows up in places we all care about. Sleep researchers have linked short sleep in teenagers to lower grades, more car crashes among new drivers, and higher rates of anxiety and depression. When a group of districts in another state moved their start times later, attendance in first period rose and the number of students who reported falling asleep in class dropped. Students did not simply stay up later; on average they slept more.\n\nCritics say a later start would cost money and squeeze after-school sports and jobs. Those concerns are real, and they deserve real answers. Bus schedules can be redesigned, as other districts have done, by swapping elementary and high school routes. Practices can start thirty minutes later. These are scheduling problems, and scheduling problems can be solved. A generation of exhausted teenagers is a harder problem to fix.\n\nThe school board should vote this spring to move the high school start time to 8:30 a.m. starting next fall. We ask our students to give their best effort. We should give them a schedule that lets them.",
+      "id": "later-bell-for",
+      "title": "Let Teenagers Sleep: Start High School at 8:30"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "No one disputes that teenagers are tired. The question in front of the school board is not whether sleep matters. It is whether moving the high school start time to 8:30 a.m. is the best way to get students more of it, and whether the price is worth paying.\n\nStart with the buses. Our district runs one fleet in three waves: high school first, middle school second, elementary last. Pushing the high school later means either buying more buses and hiring more drivers, at a cost the district estimates at well over a million dollars a year, or sending our youngest children to their stops before sunrise. Neither choice is free, and the second simply moves the problem onto seven-year-olds.\n\nThen consider the end of the day. A later start means a later dismissal. Athletes would miss more final-period classes to travel to away games. Students who work afternoon jobs, many of them helping their families pay rent, would lose hours and pay. Students who care for younger siblings would arrive home after the little ones do.\n\nFinally, the research is less settled than supporters suggest. Some studies find that students sleep more after a schedule change; others find that much of the gain fades as students adjust their bedtimes. Phones and late-night screens, not the bell, may be the bigger thief of sleep.\n\nThere are cheaper and fairer steps the district could take first: a later start one day a week, a sleep-health unit in every ninth-grade health class, and a study hall in place of first period for students who want it. Let us try those before we rebuild every family's day around a single bell.",
+      "id": "later-bell-against",
+      "title": "A Later Bell Is Not a Free Lunch"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States each author's central claim precisely and locates it in the text.",
+        "id": "claims",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies claims"
+      },
+      {
+        "description": "Judges whether evidence is relevant and sufficient, with reasons.",
+        "id": "evaluation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evaluates evidence"
+      },
+      {
+        "description": "Quotes a rhetorical choice and explains its intended effect.",
+        "id": "rhetoric",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes rhetoric"
+      }
+    ],
+    "title": "Argument analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

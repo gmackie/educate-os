@@ -30,13 +30,18 @@ import type { DeviceId, DeviceRegistration, DeviceRevocation, DeviceTokens, Dist
 import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/identity";
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
-import { startDistrict, type District } from "./district.ts";
+import { MCP_PATHS, startDistrict, type District } from "./district.ts";
 import { discussionHallMonitor } from "./hall-monitor.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
-import { LTI_API_PREFIX } from "./lti.ts";
+import { LTI_API_PREFIX, type DistrictLti } from "./lti.ts";
 import { readSchoolManifestSettings } from "./school-manifest.ts";
+import { DEMO_API_PREFIX, type ShowcaseEvent } from "./showcase.ts";
+import { DEMO_OPERATOR_PREFIX, type DemoOperatorEvent } from "./demo-operator.ts";
+import { RECOVERY_PREFIX, serveRecovery, type RecoveryEvent, type RecoveryStorage } from "./recovery.ts";
+import { accessAudiences, accessRequestVerifier } from "./access.ts";
+import { configuredDistrictId } from "./district.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -54,9 +59,29 @@ interface DistrictLogFields {
   failed?: number;
   alreadyDone?: number;
   revisionId?: string;
+  /** A district export's record counts and size (SCHO-364): never its contents. */
+  counts?: Record<string, number>;
+  bytes?: number;
+  /** A student archive's item and withheld counts (SCHO-371). */
+  items?: number;
+  withheld?: number;
+  /** Which panel a Classroom grade read was for (SCHO-403). */
+  surface?: "student" | "teacher";
 }
 
+// The demo showcase's routes (SCHO-326): who did what, by counts and IDs.
+const showcaseLogger = createLogger<Omit<ShowcaseEvent, "event" | "error">>({ component: "educateos.district.showcase" });
+
+// The demo operator's seed routes (SCHO-326): outcomes by counts and IDs, never the token.
+const operatorLogger = createLogger<Omit<DemoOperatorEvent, "event" | "error">>({ component: "educateos.district.demo-operator" });
+
 const logger = createLogger<DistrictLogFields>({ component: "educateos.district" });
+
+// Point-in-time recovery (SCHO-373): which bookmark, who asked; never the token.
+const recoveryLogger = createLogger<Omit<RecoveryEvent, "event" | "error"> & { districtId: string }>({ component: "educateos.district.recovery" });
+
+/** How long the object waits after answering a restore before it restarts, so the answer reaches the operator. */
+const RESTORE_RESTART_DELAY_MS = 250;
 
 /** One district's state and application. */
 export class DistrictObject extends DurableObject<Cloudflare.Env> {
@@ -67,6 +92,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * certs; the tests override it with a local key set.
    */
   protected accessKeys(): JWTVerifyGetKey | undefined {
+    return undefined;
+  }
+
+  /**
+   * The keys MCP access tokens are verified with (SCHO-174). Undefined uses the configured issuer's
+   * JWKS URL; the tests override it with a synthetic issuer's key set.
+   */
+  protected mcpIssuerKeys(): JWTVerifyGetKey | undefined {
     return undefined;
   }
 
@@ -129,9 +162,59 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return release ?? (typeof tag === "string" && tag !== "" ? tag : undefined);
   }
 
+  /**
+   * The storage point-in-time recovery reads bookmarks from and restores (SCHO-373). Local workerd
+   * hands out bookmarks but keeps no history, so it refuses a restore; the tests replace it.
+   */
+  protected recoveryStorage(): RecoveryStorage {
+    return this.ctx.storage;
+  }
+
+  /** Restarts the object so a scheduled restore takes effect (SCHO-373). The tests record it instead. */
+  protected restartForRestore(): void {
+    setTimeout(() => {
+      try {
+        this.ctx.abort("restoring the district to a point-in-time bookmark");
+      } catch {
+        // abort() resets the object and may throw in the calling context; the reset is what counts.
+      }
+    }, RESTORE_RESTART_DELAY_MS);
+  }
+
+  /** Serves the recovery routes, before and without the district application, which may not start. */
+  #serveRecovery(request: Request): Promise<Response> {
+    const config = readDistrictWorkerConfig(this.env.DISTRICT_CONFIG);
+    const districtId = configuredDistrictId(this.env.DISTRICT_CONFIG);
+    const keys = this.accessKeys();
+    const log = recoveryLogger.with({ districtId });
+    return serveRecovery(request, {
+      districtId,
+      token: this.env.RECOVERY_TOKEN,
+      verifyAccess: (incoming) => accessRequestVerifier({
+        issuer: this.env.CF_ACCESS_ISS ?? "",
+        audiences: accessAudiences(this.env.CF_ACCESS_AUD),
+        ...(keys === undefined ? {} : { keys }),
+        ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
+      })(incoming),
+      storage: this.recoveryStorage(),
+      restart: () => this.restartForRestore(),
+      onEvent: ({ event, error, ...fields }) => {
+        if (event === "district.recovery.failed") log.error("a point-in-time recovery request failed", { event, error, ...fields });
+        else if (event === "district.recovery.refused") log.warn("a point-in-time recovery request was refused", { event, ...fields });
+        else if (event === "district.recovery.restore") log.warn("the district is restoring to a point-in-time bookmark", { event, ...fields });
+        else log.info("a point-in-time bookmark was read", { event, ...fields });
+      },
+    });
+  }
+
   /** The running application, for subclasses that drive it directly (the tests). */
   protected async districtApp(): Promise<DistrictApp> {
     return (await this.#boot()).app;
+  }
+
+  /** The district's LTI Tool and Platform, if it runs one, for subclasses that drive it directly (the tests). */
+  protected async districtLti(): Promise<DistrictLti | undefined> {
+    return (await this.#boot()).lti;
   }
 
   /**
@@ -139,8 +222,27 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * the LTI Tool's `/lti/` routes (SCHO-177), which are 404 when the deployment runs no LTI Tool.
    */
   override async fetch(request: Request): Promise<Response> {
-    const { app, lti } = await this.#boot();
+    // Point-in-time recovery (SCHO-373) runs before the application starts, so a district that no
+    // longer starts can still be restored. 404 unless the Worker has a RECOVERY_TOKEN.
+    if (new URL(request.url).pathname.startsWith(RECOVERY_PREFIX)) return this.#serveRecovery(request);
+    const { app, lti, mcp, showcase, demoOperator } = await this.#boot();
     const { pathname } = new URL(request.url);
+    // The demo operator's seed routes (SCHO-326): their own bearer token, no Access sign-in; 404
+    // unless the district is a demo one with a DEMO_OPERATOR_TOKEN.
+    if (pathname.startsWith(DEMO_OPERATOR_PREFIX)) {
+      if (demoOperator !== undefined) return demoOperator.serve(request);
+      await request.body?.cancel();
+      return Response.json({ code: "not-found", message: "No such route." }, { status: 404 });
+    }
+    // The demo showcase (SCHO-326): 404 on every district that is not a demo one.
+    if (pathname.startsWith(DEMO_API_PREFIX)) {
+      if (showcase !== undefined) return showcase.serve(request);
+      await request.body?.cancel();
+      return Response.json({ code: "not-found", message: "This district has no showcase." }, { status: 404 });
+    }
+    if (MCP_PATHS.includes(pathname)) {
+      return mcp === undefined ? new Response(null, { status: 404 }) : mcp.fetch(request);
+    }
     if (pathname.startsWith(LTI_API_PREFIX) || pathname.startsWith("/lti/")) {
       if (lti === undefined) return Response.json({ code: "not-found", message: "This district runs no LTI Tool." }, { status: 404 });
       if (pathname.startsWith(LTI_API_PREFIX)) return lti.serveAdmin(request);
@@ -162,6 +264,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** What the district says now about an admitted call's principal, for the AI call guard. */
   async admittedSubject(request: AdmittedSubjectRequest): Promise<GuardSubject | null> {
     return (await this.#boot()).app.guardDirectory.admittedSubject(request);
+  }
+
+  /** The district's name as its directory now has it (SCHO-344), for the public school manifest. */
+  async districtName(): Promise<string> {
+    return (await (await this.#boot()).app.guardDirectory.ledgerDirectory()).district.name;
   }
 
   /** The profile-free directory the AI call guard's ledger resolves funding against. */
@@ -199,9 +306,9 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).tools.callTool(subject, name, args);
   }
 
-  /** Approves a queued change as `approver`'s own decision. */
-  async approveChange(approver: VerifiedPrincipal, approvalId: string): Promise<ToolDecisionOutcome> {
-    return (await this.#boot()).tools.approveChange(approver, approvalId);
+  /** Approves a queued change as `approver`'s own decision, only as reviewed when given its `digest`. */
+  async approveChange(approver: VerifiedPrincipal, approvalId: string, options?: { digest?: string }): Promise<ToolDecisionOutcome> {
+    return (await this.#boot()).tools.approveChange(approver, approvalId, options);
   }
 
   /** Declines a queued change as `decider`'s own decision. */
@@ -271,7 +378,30 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     try {
       log.info("a scheduled district job ran", { event: "district.cron.notifications", ...await app.communication.runNotificationJob() });
     } finally {
-      await this.#runRosterSync(app);
+      try {
+        await this.#runRosterSync(app);
+      } finally {
+        await this.#runHomeLearningPurge(app);
+      }
+    }
+  }
+
+  /** The hourly home-learning retention purge (ADR-0016): logged, never thrown. Counts only. */
+  async #runHomeLearningPurge(app: DistrictApp): Promise<void> {
+    const log = logger.with({ districtId: app.districtId });
+    try {
+      const outcome = await app.homeLearning.purgeExpired();
+      if (outcome.ran) {
+        log.info("a scheduled district job ran", {
+          event: "district.cron.home-learning.purge",
+          deleted: outcome.practiceSessions?.deleted ?? 0,
+          auditEvents: outcome.auditEvents,
+          childSessions: outcome.childSessions,
+          invitations: outcome.invitations,
+        });
+      }
+    } catch (error) {
+      log.error("the home-learning purge failed", { event: "district.cron.home-learning.purge.failed", error });
     }
   }
 
@@ -311,6 +441,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
 
   async #start(): Promise<District> {
     const keys = this.accessKeys();
+    const mcpKeys = this.mcpIssuerKeys();
     const sendEmail = this.sendEmail();
     const district = await startDistrict(
       this.ctx.storage,
@@ -319,6 +450,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         accessIssuer: this.env.CF_ACCESS_ISS,
         accessAudiences: this.env.CF_ACCESS_AUD,
         ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
+        ltiPlatform: this.env.LTI_PLATFORM,
         cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
         classroomServiceAccountKey: this.env.GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY,
         deviceTokenSecret: this.env.DEVICE_TOKEN_SECRET,
@@ -330,6 +462,13 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         releaseVersion: this.#releaseVersion(),
         // Marketplace (SCHO-209)
         marketplaceTrust: this.env.MARKETPLACE_TRUST,
+        // Course library (SCHO-331)
+        courseLibraryTrust: this.env.COURSE_LIBRARY_TRUST,
+        // Demo showcase (SCHO-326)
+        demoShowcase: this.env.DEMO_SHOWCASE,
+        demoOperatorToken: this.env.DEMO_OPERATOR_TOKEN,
+        // Product analytics (SCHO-350)
+        productAnalytics: this.env.PRODUCT_ANALYTICS,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
@@ -341,8 +480,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
           event: "config.revision.unreadable",
           revisionId,
         }),
+        // SCHO-364: an administrator exported the district; counts and size only.
+        onDistrictExported: ({ counts, bytes }) => logger.info("a district administrator exported the district", { event: "district.export", counts, bytes }),
+        // SCHO-371: a student took their archive; counts and size only, never who or what.
+        onStudentArchiveExported: ({ items, withheld, bytes }) => logger.info("a student exported their archive", { event: "student.archive.export", items, withheld, bytes }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
+        // From Google Classroom (SCHO-403): Google's error codes only, never a body or token.
+        onClassroomGradesUnavailable: ({ surface, error }) => logger.warn("a Classroom grade read was unavailable", { event: "district.classroom-grades.unavailable", surface, error }),
         discussionHallMonitor: (screening) => discussionHallMonitor({
           ...(this.env.HALL_MONITOR === undefined ? {} : { binding: { fetch: (request: Request) => this.hallMonitorFetch(request) } }),
           url: this.env.HALL_MONITOR_URL,
@@ -352,7 +497,17 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
           fetch: (input, init) => this.hallMonitorFetch(input, init),
         }, screening),
         analyticsFetch: (request) => this.analyticsFetch(request),
+        onShowcaseEvent: ({ event, error, ...fields }) => {
+          if (event === "demo.showcase.failed") showcaseLogger.error("a showcase request failed", { event, error, ...fields });
+          else showcaseLogger.info("a showcase request ran", { event, ...fields });
+        },
+        onDemoOperatorEvent: ({ event, error, ...fields }) => {
+          if (event === "demo.operator.failed") operatorLogger.error("a demo operator request failed", { event, error, ...fields });
+          else if (event === "demo.operator.refused") operatorLogger.warn("a demo operator request was refused", { event, ...fields });
+          else operatorLogger.info("a demo operator request ran", { event, ...fields });
+        },
         ...(keys === undefined ? {} : { accessKeys: keys }),
+        ...(mcpKeys === undefined ? {} : { mcpKeys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },
     );

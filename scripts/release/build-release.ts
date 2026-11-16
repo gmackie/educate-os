@@ -6,7 +6,8 @@ import { releaseProfile } from "./frontend-profile.ts";
 // would upload it (dry-run + outdir, with the repo's pinned wrangler), plus the workshop-frontend
 // asset builds (Access mode, at the root and under /ai), plus each release component
 // (manifest-lib's RELEASE_COMPONENTS: the OSS admin) bundled from its config template with its own
-// SPA build, plus the release manifest that describes it all.
+// SPA build, plus the district Worker's student, admin and teacher UIs as its own assets (SCHO-318),
+// plus the release manifest that describes it all.
 //
 // Output layout (mirrored to R2 by upload-release.ts):
 //   <out>/manifest.json                    the release manifest (upload LAST — its presence
@@ -48,9 +49,10 @@ import {
   SIGNED_MANIFEST_FILE, signReleaseManifest, type ReleaseSigningOptions,
 } from "./release-signing.ts";
 import {
-  releaseAssetVariants, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
-  readReleaseComponents, type DeployablePackage, type WorkerBuild,
+  DISTRICT_UI_DIR, releaseAssetVariants, generateManifest, readD1Migrations, readDeployInputs,
+  readReleasePackages, type DeployablePackage, type WorkerBuild,
 } from "./manifest-lib.ts";
+import { assembleDistrictUi, DISTRICT_UIS } from "../production/assemble-district-ui.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PACKAGES_DIR = join(ROOT, "packages");
@@ -269,7 +271,7 @@ async function buildFrontend(signal: AbortSignal, buildEnv: NodeJS.ProcessEnv): 
 // so custom build commands (capnweb-validate) resolve their bins, and into a directory of its own,
 // which is what makes these safe to overlap. A release component is bundled from its config
 // template, after its own SPA is built (wrangler needs the assets directory to exist), and returns
-// that SPA's assets beside its modules.
+// that SPA's assets beside its modules. So is the district Worker, with its UIs (buildDistrictUi).
 async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: AbortSignal) {
   const outDir = join(bundleDir, pkg.name);
   let ownAssets: CollectedAssets | undefined;
@@ -277,10 +279,27 @@ async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: A
     await run(`${pkg.name} (assets)`, "pnpm",
         ["exec", "vp", "run", "-F", pkg.component.assetsBuildFilter, "build"], { env: vpRunEnv(), signal });
     ownAssets = collectAssets(join(pkg.dir, pkg.config.assets?.directory ?? "dist"));
+  } else if (pkg.districtUi) {
+    ownAssets = await buildDistrictUi(pkg, signal);
   }
   await run(pkg.name, "pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", outDir,
     ...(pkg.component ? ["-c", pkg.component.configFile] : [])], { cwd: pkg.dir, signal });
   return { ...collectModules(outDir), ownAssets };
+}
+
+// The district Worker's UIs as its ForgeGraph deployments build them (the production runbook's build
+// command): the student app in Access mode at `/`, the admin and teacher apps under their prefixes,
+// laid out by assemble-district-ui.ts, which refuses a build made for the wrong prefix. One after
+// another, since they share workspace dependencies. Each app's package name is its package.json's.
+async function buildDistrictUi(pkg: DeployablePackage, signal: AbortSignal): Promise<CollectedAssets> {
+  for (const { pkg: ui, base } of DISTRICT_UIS) {
+    const filter = (JSON.parse(readFileSync(join(PACKAGES_DIR, ui, "package.json"), "utf8")) as { name: string }).name;
+    const env = { ...vpRunEnv(), ...(base === "/" ? { VITE_CF_ACCESS_MODE: "true" } : { EDUCATEOS_UI_BASE: base }) };
+    await run(`${pkg.name} (${ui})`, "pnpm", ["exec", "vp", "run", "-F", filter, "build"], { env, signal });
+  }
+  const outDir = join(pkg.dir, DISTRICT_UI_DIR);
+  assembleDistrictUi(PACKAGES_DIR, outDir);
+  return collectAssets(outDir);
 }
 
 // Runs the frontend build and every worker bundle, and owns the scratch directory they bundle into
@@ -359,8 +378,9 @@ async function buildAll(packages: DeployablePackage[], concurrency: number, buil
     const frontend = failFast(buildFrontend(controller.signal, buildEnv));
     const [bundlesResult, frontendResult] = await Promise.allSettled([
       mapConcurrent(packages, concurrency, async (pkg) => {
-        // A release component serves its own assets, which its bundle builds first.
-        if (pkg.config.assets && !pkg.component) await frontend;
+        // A release component and the district Worker serve their own assets, which their bundles
+        // build first.
+        if (pkg.config.assets && !pkg.component && !pkg.districtUi) await frontend;
         return failFast(bundleWorker(pkg, bundleDir, controller.signal));
       }, controller.signal),
       frontend,
@@ -406,8 +426,7 @@ async function main() {
   mkdirSync(join(args.out, "modules"), { recursive: true });
   mkdirSync(join(args.out, "assets"), { recursive: true });
 
-  const packages = [...readDeployablePackages(PACKAGES_DIR), ...readReleaseComponents(PACKAGES_DIR)]
-      .toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const packages = readReleasePackages(PACKAGES_DIR);
 
   // 1. Every bundle, overlapping.
   const { bundles, assets } = await buildAll(packages, args.concurrency, profile.env);

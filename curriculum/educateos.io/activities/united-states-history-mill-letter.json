@@ -1,0 +1,169 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "What does this letter reveal about the costs and opportunities of early industrial work for young women? Support your claim with at least two quotations.",
+    "contextualizationQuestions": [
+      "What economic changes drew young women from farms to mills in the 1840s?",
+      "What other sources would help confirm or challenge her account?"
+    ],
+    "due": {
+      "days": 8,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 2,
+    "overview": "Analyze a letter from a Lowell mill worker as a historian would.",
+    "resources": [
+      "mill-letter"
+    ],
+    "sources": [
+      "mill-letter"
+    ],
+    "sourcingQuestions": [
+      "Who wrote the letter, to whom, and when?",
+      "What might the writer want her family to believe, and why?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "A Mill Worker Writes Home"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.11.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-mill-letter",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS: a composite letter drawing on the experiences Lowell mill workers described in their letters and in the Lowell Offering. Not a historical document; read it as a model source.",
+      "body": "Lowell, May the 4th, 1845\n\nDear Sister,\n\nI take up my pen on the Sabbath, the only day the mill is still. You asked in your last whether I mean to come home for haying. I cannot say yet. I am now in the weaving room and tend three looms, and the overseer says that if I keep my cloth clean I may have a fourth by summer, which would raise my pay.\n\nI will not pretend it is easy. The bell rules us from before light until after dark. It wakes us at half past four, calls us to the mill, sends us to breakfast and back again, and does not let us go until seven in the evening. The noise of the looms is such that we talk with our hands, and the air is so full of lint that I cough at night. Two girls in our boardinghouse went home this spring with their health broken.\n\nBut I have money of my own for the first time. After my board is paid I put by near two dollars a week. I have sent three dollars in this letter toward Father's note at the bank, and I have bought a bonnet and a book of poems besides. There is a lecture hall, a library, and an improvement circle where the girls read their own compositions aloud. Mrs. Abbott, who keeps our house, is strict, and we must be in by ten and go to meeting on Sunday, but she is fair.\n\nSome of the girls are getting up a petition to the legislature for a ten-hour day. Several have signed. I have not signed yet, for some say the agents will put the names of those who sign on a list. Do not tell Mother I wrote of it.\n\nKiss the little ones for me. I shall write again when I have news of the fourth loom.\n\nYour affectionate sister,\nHannah",
+      "id": "mill-letter",
+      "title": "A Mill Worker Writes Home (Lowell, Massachusetts, 1845)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

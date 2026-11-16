@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:87854c77c63f5e2be45ee1503648b36e862602c27afaf0d4379f8842b13886b3",
+      "id": "educateos.io/grade-5-science-systems-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "systems-check",
+  "role": "assessment",
+  "title": "Earth's Systems Check: When the Mountain Woke Up"
+}

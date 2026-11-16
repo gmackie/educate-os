@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ce86468d8fea0302b02a2333ada498c73e805e30beac338ffac1be9c0731fced",
+      "id": "educateos.io/grade-5-science-pond-food-web",
+      "version": "1.0.0"
+    }
+  },
+  "id": "pond-food-web",
+  "role": "assignment",
+  "title": "Draw a Pond Food Web"
+}

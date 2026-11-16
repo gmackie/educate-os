@@ -33,7 +33,7 @@ export type ToolApprovalState = z.infer<typeof ToolApprovalState>;
 export const OPEN_APPROVAL_STATES: ReadonlySet<ToolApprovalState> = new Set<ToolApprovalState>(["pending", "claimed"]);
 
 /** The channels a queued call can have arrived through: only tool channels queue calls. */
-export const QueuedToolChannel = z.enum(["mcp-tool", "agent"]) satisfies z.ZodType<ToolChannel>;
+export const QueuedToolChannel = z.enum(["mcp-tool", "agent", "lti-service"]) satisfies z.ZodType<ToolChannel>;
 
 /** What a decline records about why. Shown to the requester, so it must not carry other people's data. */
 export const DeclineReason = z.string().trim().min(1).max(500);

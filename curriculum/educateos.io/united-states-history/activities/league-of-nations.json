@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:561403469d054b701e8153db8b6dea86a7e6035d2967c321893024a805ed2e94",
+      "id": "educateos.io/united-states-history-league-of-nations",
+      "version": "1.0.0"
+    }
+  },
+  "id": "league-of-nations",
+  "role": "assignment",
+  "title": "Should America Have Joined the League?"
+}

@@ -8,22 +8,43 @@ import type { DemoGradebooks } from "../grades/types.ts";
 /** The districts a visitor can open, as `?district=` names them. */
 export type DistrictKey = "northfield" | "cedarvalley";
 
-/** The four people a visitor can be. */
-export type PersonaId = "student" | "teacher" | "guardian" | "admin";
+/** Which of a district's people a visitor is being, unique within the district, such as "k2-student". */
+export type PersonaId = string;
+
+/** What kind of person someone is, which picks the app they use. */
+export type PersonaKind = "student" | "teacher" | "guardian" | "admin";
+
+/** A grade band, as the showcase and the tutors name them. */
+export type GradeBand = "K-2" | "3-5" | "6-8" | "9-12";
 
 /** Someone a visitor can be, and what they will see. */
 export interface Persona {
   id: PersonaId;
+  kind: PersonaKind;
   /** Their name in the district. */
   name: string;
   /** What they are, such as "Grade 9 student". */
   role: string;
   /** One line on what they can do here. */
   description: string;
+  /** What to look at as them, such as "the story read aloud, the drawing pad and the microphone". */
+  lookFor?: string;
+  /** The picker section they are listed in, by its key in the district's `sections`. */
+  section?: string;
+  /** A student's grade band, which picks the tutor they meet. */
+  band?: GradeBand;
   /** Their IdP subject, which is what the demo signs them in as. */
   subject: string;
   /** Whether they reach the district only through its roster sync, so they are unknown until it runs. */
   rostered?: true;
+}
+
+/** A group of personas on the picker, such as a grade band's. */
+export interface PersonaSection {
+  key: string;
+  title: string;
+  /** What the group shows, in one line. */
+  description: string;
 }
 
 /** Sees each request a client sends and the district's answer. */

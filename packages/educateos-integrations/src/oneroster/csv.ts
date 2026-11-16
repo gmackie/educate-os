@@ -12,6 +12,8 @@ export interface CsvRecord {
 
 /** Why a CSV document could not be read. Parsing stops at the first such error. */
 export interface CsvSyntaxError {
+  /** Distinguishes invalid syntax from a configured size limit. */
+  reason: "syntax" | "too-many-rows" | "too-many-columns";
   /** The row the error is in, numbered as {@link CsvRecord.row}. */
   row: number;
   /** The line the error is on. */
@@ -35,7 +37,13 @@ export type CsvParseResult =
  * errors. Reading stops once `maxRows` records follow the header, so an oversized file costs no
  * more than the cap.
  */
-export function parseCsv(text: string, options: { maxRows: number }): CsvParseResult {
+export function parseCsv(text: string, options: {
+  maxRows: number;
+  /** Optional width cap for consumers that preview arbitrary teaching sources. */
+  maxColumns?: number;
+  /** Charges each input character to the caller's work budget. May stop parsing by throwing. */
+  spend?: (units: number) => void;
+}): CsvParseResult {
   const records: CsvRecord[] = [];
   let fields: string[] = [];
   let field = "";
@@ -48,16 +56,16 @@ export function parseCsv(text: string, options: { maxRows: number }): CsvParseRe
   let recordLine = 1;
   let quoteLine = 1;
 
-  const fail = (message: string, at = line): CsvParseResult => ({
+  const fail = (message: string, at = line, reason: CsvSyntaxError["reason"] = "syntax"): CsvParseResult => ({
     ok: false,
-    error: { row: records.length + 1, line: at, message },
+    error: { reason, row: records.length + 1, line: at, message },
   });
 
   const endRecord = (): CsvParseResult | undefined => {
     if (started) {
       fields.push(field);
       if (records.length > options.maxRows) {
-        return fail(`has more than ${options.maxRows} data rows`, recordLine);
+        return fail(`has more than ${options.maxRows} data rows`, recordLine, "too-many-rows");
       }
       records.push({ row: records.length + 1, line: recordLine, fields });
     }
@@ -70,10 +78,12 @@ export function parseCsv(text: string, options: { maxRows: number }): CsvParseRe
 
   let i = text.charCodeAt(0) === 0xfeff ? 1 : 0;
   for (; i < text.length; i++) {
+    options.spend?.(1);
     const c = text[i];
     if (quoted) {
       if (c === '"') {
         if (text[i + 1] === '"') {
+          options.spend?.(1);
           field += '"';
           i++;
         } else {
@@ -88,6 +98,9 @@ export function parseCsv(text: string, options: { maxRows: number }): CsvParseRe
     }
 
     if (c === ",") {
+      if (fields.length + 1 >= (options.maxColumns ?? Infinity)) {
+        return fail(`has more than ${options.maxColumns} columns`, recordLine, "too-many-columns");
+      }
       fields.push(field);
       field = "";
       started = true;
@@ -95,6 +108,7 @@ export function parseCsv(text: string, options: { maxRows: number }): CsvParseRe
     } else if (c === "\r" || c === "\n") {
       if (c === "\r") {
         if (text[i + 1] !== "\n") return fail("has a carriage return that is not followed by a line feed");
+        options.spend?.(1);
         i++;
       }
       const failure = endRecord();

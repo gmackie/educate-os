@@ -61,9 +61,10 @@ MET for these reasons:
 - **Capabilities are not enforced.** Configuration `modules` and `rollout` reach only plan and
   apply. Disabling a capability for some classes predicts its impact and records a revision, but no
   decision reads it (SCHO-120).
-- **Two lifecycle steps are missing.** Principals have a `graduated` status that holds no roles,
-  but no district app route moves a principal to it yet (SCHO-145). An export offer at term end
-  needs the export route (SCHO-90).
+- **A lifecycle step is missing.** Principals have a `graduated` status that holds no roles,
+  but no district app route moves a principal to it yet (SCHO-145). A student takes their own
+  archive at term end through `student.exportArchive` (SCHO-371), but must do so while they can
+  still sign in: there is no administrator route that exports for a student who has left.
 - **The district app does not serve its school tools to the gatekeeper yet.** `gatekeeper-educateos`
   (SCHO-57) exposes school tools to Workshop agents, and the gate drives its session over the
   district app's engine through the in-process district service. A district Worker that exposes the
@@ -79,7 +80,9 @@ then equal. The rehearsal also found what a durable backup must add. The Content
 items and the catalog mirror's revisioned states cannot be written back through their interfaces,
 and the CI run store cannot be listed. The rehearsal re-approves the catalog seeds and omits the
 other two. A real D1 and R2 restore waits on the durable stores (SCHO-108), which have to close
-that gap.
+that gap. The deployed district keeps every store in one SQLite Durable Object instead, which is
+restored with Cloudflare's point-in-time recovery; see [the backup and restore runbook](runbooks/backup-and-restore.md)
+(SCHO-373).
 
 ### Load
 
@@ -119,11 +122,11 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Stale course AI budget, underfunded student or retry duplication | New inference denied or billed idempotently | G1 | test: a closed term's course budget and an exhausted student cap deny new inference, and a retried request is billed once (direct) | `security-matrix.test.ts` | **MET** |  |
 | AI grader suggests a score, teacher has not reviewed | Cannot write consequential official grade by default | G1 | test: evaluator suggestions stay suggestions, a co-teacher's grade waits for the teacher, and the student sees no grade until one is official<br>test: a grade written on an agent's behalf is held for teacher approval (direct)<br>todo: an AI feedback run's suggested score cannot become official over the API (SCHO-107) | `security-matrix.test.ts` | **NOT MET** | SCHO-107 |
 | Source content deleted/updated | Immutable prior approved revision remains or unavailability is clearly reported | G1 | test: after its source changes or disappears, the approved release and the activity built on it are unchanged, and a failed re-import says the source is unavailable | `security-matrix.test.ts` | **MET** |  |
-| Semester end / graduation | Classroom integration grants revoked; eligible work retained or export offered per retention policy | G1 | test: closing a term revokes class grants and course AI funding, and keeps the students' work readable and keepable<br>test: a graduating student's grants end while their eligible work is kept (direct)<br>todo: the student is offered an export of eligible work (SCHO-90) | `security-matrix.test.ts` | **NOT MET** | SCHO-90 |
+| Semester end / graduation | Classroom integration grants revoked; eligible work retained or export offered per retention policy | G1 | test: closing a term revokes class grants and course AI funding, and keeps the students' work readable and keepable<br>test: a graduating student's grants end while their eligible work is kept (direct)<br>test: once the term closes, the student takes their eligible work, the closed class's included, in their own archive over the API, each item on an audited decision | `security-matrix.test.ts` | **MET** |  |
 | Root `educateos.io` unavailable | Existing district login, work, grading and local budgets continue | G2 | test: with the root unreachable, the entitlement cache holds and sign-in, work, grading and AI budgets continue (direct) | `security-matrix.test.ts` | **MET** |  |
 | Installer OAuth revoked | No new root deployment action; district app and data remain under owner control | G2 | test: a revoked installer credential halts the upgrade with no further change to the account, and the district app keeps serving its data (direct) | `security-matrix.test.ts` | **MET** |  |
 | Public registry catalog compromised | Untrusted/unapproved signatures are rejected; pinned district data unaffected | G3 | test: a release signed by an unpinned key and a tampered framework release are rejected, and the district's pinned release and approved catalog are unchanged (direct) | `security-matrix.test.ts` | **MET** |  |
-| Import from another district | Credentials, private peer content and restricted teacher notes not imported | G4 | test: a student's archive from the district app's own records carries no peer work, teacher-only material or credentials (direct)<br>todo: a transfer between the two district apps imports only the authorized work (SCHO-90) | `security-matrix.test.ts` | **NOT MET** | SCHO-90 |
+| Import from another district | Credentials, private peer content and restricted teacher notes not imported | G4 | test: a student's archive from the district app's own records carries no peer work, teacher-only material or credentials<br>todo: a transfer between the two district apps imports only the authorized work (SCHO-90) | `security-matrix.test.ts` | **NOT MET** | SCHO-90 |
 | Accessibility audit | Keyboard/screen reader critical pathways complete and usable | G1 | todo: an audit of the student, teacher and admin critical paths passes (SCHO-22, SCHO-23, SCHO-24) | `accessibility.test.ts` | **NOT MET** | SCHO-22, SCHO-23, SCHO-24 |
 
 ### Roadmap §3.4
@@ -167,7 +170,6 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Root `educateos.io` unavailable | with the root unreachable, the entitlement cache holds and sign-in, work, grading and AI budgets continue | The root and the district's entitlement cache are fleet components with no district route; they are driven directly while the district works over HTTP. |
 | Installer OAuth revoked | a revoked installer credential halts the upgrade with no further change to the account, and the district app keeps serving its data | The installer acts on the district's Cloudflare account, not through the district app, so it runs against the fake account directly. |
 | Public registry catalog compromised | a release signed by an unpinned key and a tampered framework release are rejected, and the district's pinned release and approved catalog are unchanged | Release offers and catalog installs have no district route yet (SCHO-107 adds the catalog routes), so the release manager and the app's catalog mirror are called directly. |
-| Import from another district | a student's archive from the district app's own records carries no peer work, teacher-only material or credentials | The district app has no export route, so the P01 exporter is built over the app's stores and engine. |
 | One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model | a Thin CC web link becomes an approved release of the same resource descriptor | The district app has no cartridge import route, so the importer is driven directly against the app's Content Studio storage; review and approval are over HTTP. |
 | One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model | a native Blueprint becomes an approved release of the same resource descriptor | The district app has no Blueprint import route, so the release is submitted directly to the app's Content Studio storage; review and approval are over HTTP. |
 | Artificial root outage does not interrupt existing district student/teacher activity | while every root call fails, students save and submit and teachers review and grade, and the entitlement leaves the classroom unaffected | The root client and entitlement cache are fleet components with no district route; they are driven directly. |
@@ -178,7 +180,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Gate | Criteria | MET | NOT MET |
 | --- | --- | --- | --- |
 | G0 | 2 | 2 | 0 |
-| G1 | 21 | 12 | 9 |
+| G1 | 21 | 13 | 8 |
 | G2 | 3 | 3 | 0 |
 | G3 | 3 | 2 | 1 |
 | G4 | 2 | 1 | 1 |

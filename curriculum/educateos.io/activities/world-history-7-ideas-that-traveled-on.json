@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 12,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 180,
+    "minimumCitations": 1,
+    "overview": "Trace one idea that passed through the Islamic world and explain how it changed and what it changed.",
+    "prompt": "Choose one: Hindu-Arabic numerals and zero, algebra, paper-making, or Ibn Sina's Canon of Medicine. Explain where the idea came from, how it reached or developed in the Islamic world, how it traveled on to other places, and one effect it had. Say whether the idea was mostly preserved (continuity), mostly new (change), or both.",
+    "resources": [
+      "house-of-wisdom"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Ideas That Traveled On"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.2.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.2.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-ideas-that-traveled-on",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "By 800 CE, Baghdad was one of the largest cities in the world. Ships and caravans brought goods from China, India, Africa and Europe. Paper-making, learned from Chinese craftspeople, spread to Baghdad by the late 700s, and paper soon replaced more expensive papyrus and parchment for books and records.\n\nThe Abbasid caliphs, especially Harun al-Rashid and his son al-Ma'mun (who ruled from 813 to 833), paid scholars to collect and translate books from Greek, Persian, Syriac and Sanskrit into Arabic. Works on medicine, astronomy, mathematics and philosophy were copied and studied. Scholars of many faiths took part. A royal library known as the House of Wisdom was at the center of some of this work. Historians still debate how large and organized it was, but they agree that Baghdad became a great center of translation and new learning.\n\nScholars did more than translate. The mathematician Muhammad ibn Musa al-Khwarizmi worked in Baghdad in the early 800s. His book on solving equations gave us the word algebra (from the Arabic al-jabr), and his name gave us the word algorithm. He also helped spread the Hindu numerals, including zero, that we now call Hindu-Arabic numerals. Later, the physician Ibn Sina (died 1037) wrote The Canon of Medicine, which was used in European universities for centuries.\n\nBaghdad's power did not last forever. In 1258, Mongol armies captured and destroyed much of the city. But the knowledge preserved and created there had already spread to Cairo, Cordoba, and, through translations into Latin, to Europe.",
+      "id": "house-of-wisdom",
+      "title": "Baghdad and the House of Wisdom"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "idea",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Names an idea and where it came from"
+      },
+      {
+        "id": "path",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Traces how it traveled"
+      },
+      {
+        "id": "effects",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains its effects"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear organization and transitions"
+      }
+    ],
+    "title": "Explanatory writing"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

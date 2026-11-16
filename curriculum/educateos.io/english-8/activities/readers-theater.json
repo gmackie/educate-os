@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e5d00fe5030f0da2a73c86677dc249e02e0ea06068279ad95a52892629d0c024",
+      "id": "educateos.io/english-8-readers-theater",
+      "version": "1.0.0"
+    }
+  },
+  "id": "readers-theater",
+  "role": "assignment",
+  "title": "Readers' Theater: \"The Volcano\""
+}

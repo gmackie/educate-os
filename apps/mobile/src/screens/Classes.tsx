@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Megaphone, Users } from 'lucide-react-native';
+import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Megaphone, MessageSquareText, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Assignment, ClassItem, Detail, Gradebook, GuardianChild, Principal } from '../types';
 import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
-import { CourseSections, loadStudentExtras } from './Course';
+import { CourseSections, handInDetail, loadStudentExtras } from './Course';
+import { handInStatus, sharedComment } from '../activity.ts';
 import { GradebookView, TeacherClassHub } from './Teaching';
 import { Markdown } from '../ui/Markdown';
 import { usePalette } from '../ui/theme-context';
@@ -55,7 +56,10 @@ export function StudentClass({ client, offeringId, navigate }: {
       client.studentGradeSummary(offeringId).catch(() => null),
       loadStudentExtras(client, offeringId),
     ]);
-    return { course: courses.find((c) => c.offering.id === offeringId), activities, grades, extras };
+    // Each activity's hand-in, as the web's class page shows it; one failing hides only its own.
+    const handIns = new Map(await Promise.all(activities.map(async ({ assignment }) => [assignment.id,
+      await client.studentSubmissions(assignment.id).then((list) => handInStatus(list, assignment.attemptsAllowed), () => null)] as const)));
+    return { course: courses.find((c) => c.offering.id === offeringId), activities, grades, extras, handIns };
   });
   useReloadOnFocus(reload);
   return <Page refresh={reload}>
@@ -74,14 +78,15 @@ export function StudentClass({ client, offeringId, navigate }: {
           <Text style={{ fontSize: 12, color: palette.muted }}>Official grade</Text>
         </Card>
       </View>
-      <CourseSections offeringId={offeringId} extras={data.extras} activities={data.activities} navigate={navigate}/>
+      <CourseSections offeringId={offeringId} extras={data.extras} activities={data.activities} handIns={data.handIns} navigate={navigate}/>
       <Section title="Assignments">
         {data.activities.length === 0 ? <Placeholder title="No assignments" message="Your teacher hasn't published any activities yet."/> :
           <Card>{data.activities.map(({ assignment }) => {
             const cell = data.grades?.row?.cells?.find((c) => c.assignmentId === assignment.id);
             return <Item key={assignment.id} title={assignment.title}
-            detail={'Due ' + dateLabel(assignment.dueAt, true)}
-            trailing={cell?.score ? <Chip label={cell.score.points + '/' + cell.score.maxPoints} tone={cell.dropped ? 'neutral' : 'green'}/> : undefined}
+            detail={handInDetail(assignment, data.handIns.get(assignment.id))}
+            trailing={cell?.score ? <Chip label={cell.score.points + '/' + cell.score.maxPoints} tone={cell.dropped ? 'neutral' : 'green'}/>
+              : data.handIns.get(assignment.id)?.handedIn ? <Chip label="Handed in" tone="green"/> : undefined}
             leading={<ClipboardList size={20} color={palette.primary}/>}
             onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>;
           })}</Card>}
@@ -159,13 +164,21 @@ export function FamilyClass({ client, studentId, offeringId }: {
       <Title subtitle={data.offering.sectionName}>{data.course.title}</Title>
       <Section title="Assignments and official grades">
         {data.assignments.length === 0 ? <Placeholder title="No published work" message="Your child's assignments will appear here."/> :
-          <Card>{data.assignments.map(({ assignment, grades }) => {
+          <Card>{data.assignments.map(({ assignment, grades, feedback }) => {
             const grade = grades.at(-1);
-            return <Item key={assignment.id} title={assignment.title}
-              detail={'Due ' + dateLabel(assignment.dueAt)}
-              leading={<FileText size={20} color={palette.primary}/>}
-              trailing={<Chip label={grade ? grade.score.points + '/' + grade.score.maxPoints : 'Not graded'}
-                tone={grade ? 'green' : 'neutral'}/>}/>;
+            const comment = sharedComment(feedback);
+            return <View key={assignment.id}>
+              <Item title={assignment.title}
+                detail={'Due ' + dateLabel(assignment.dueAt)}
+                leading={<FileText size={20} color={palette.primary}/>}
+                trailing={<Chip label={grade ? grade.score.points + '/' + grade.score.maxPoints : comment ? 'Feedback shared' : 'Not graded'}
+                  tone={grade || comment ? 'green' : 'neutral'}/>}/>
+              {comment && <View accessible accessibilityLabel={'Teacher feedback: ' + comment}
+                style={{ flexDirection: 'row', gap: 8, marginLeft: 44, marginBottom: 12, padding: 12, borderRadius: 12, backgroundColor: palette.primarySoft }}>
+                <MessageSquareText size={16} color={palette.primary}/>
+                <Text style={{ color: palette.ink, flex: 1, lineHeight: 20 }}>{comment}</Text>
+              </View>}
+            </View>;
           })}</Card>}
       </Section>
       {data.announcements && data.announcements.length > 0 && <Section title="Announcements">

@@ -24,6 +24,7 @@ export const GOOGLE_SCOPES = {
   rostersReadonly: `${SCOPE_PREFIX}classroom.rosters.readonly`,
   profileEmails: `${SCOPE_PREFIX}classroom.profile.emails`,
   courseworkStudents: `${SCOPE_PREFIX}classroom.coursework.students`,
+  courseworkStudentsReadonly: `${SCOPE_PREFIX}classroom.coursework.students.readonly`,
 } as const;
 
 /** What a roster sync reads with: courses, rosters, and members' Workspace emails. Read-only. */
@@ -44,6 +45,20 @@ export const CLASSROOM_ROSTER_SCOPES_READ_WRITE: readonly string[] = [
   GOOGLE_SCOPES.rosters,
   GOOGLE_SCOPES.profileEmails,
 ];
+
+/**
+ * What reading Classroom grades for the read-only "From Google Classroom" panel needs (SCHO-403):
+ * the roster reads (the course owner is looked up through its teachers) plus reading coursework
+ * and students' submissions. Nothing it asks for can change Classroom.
+ */
+export const CLASSROOM_GRADE_READ_SCOPES: readonly string[] = [...CLASSROOM_ROSTER_SCOPES, GOOGLE_SCOPES.courseworkStudentsReadonly];
+
+/**
+ * {@link CLASSROOM_GRADE_READ_SCOPES} for a domain that delegated the read-write scopes (as the demo
+ * tenant's did), since a broader delegated scope does not cover its `.readonly` form. The calls are
+ * the same reads.
+ */
+export const CLASSROOM_GRADE_READ_SCOPES_READ_WRITE: readonly string[] = [...CLASSROOM_ROSTER_SCOPES_READ_WRITE, GOOGLE_SCOPES.courseworkStudents];
 
 /** What grade sync adds: creating coursework and grading its submissions. */
 export const CLASSROOM_GRADE_SCOPES: readonly string[] = [...CLASSROOM_ROSTER_SCOPES, GOOGLE_SCOPES.courseworkStudents];

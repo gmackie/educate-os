@@ -66,21 +66,47 @@ export const CoursePage = z.strictObject({
 /** A page. */
 export type CoursePage = z.infer<typeof CoursePage>;
 
-/** One placement in a module: a page, an activity installed in the offering, or an external link. */
+/** What a teacher-only note is for: context for teaching the module, such as a teacher guide, or an answer key. */
+export const TeacherNotePurpose = z.enum(["context", "answer-key"]);
+/** A teacher-only note's purpose. */
+export type TeacherNotePurpose = z.infer<typeof TeacherNotePurpose>;
+
+/**
+ * One placement in a module: a page, an activity installed in the offering, an external link, or
+ * a teacher-only note (SCHO-331), a page only the class's staff ever see, whether or not the module
+ * is published, such as an installed course's teacher guide or answer key.
+ */
 export const ModuleItem = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("page"), id: ModuleItemId, pageId: CoursePageId }),
   z.strictObject({ kind: z.literal("activity"), id: ModuleItemId, activityId: ActivityId }),
   z.strictObject({ kind: z.literal("link"), id: ModuleItemId, title: ContentTitle, url: ModuleLinkUrl }),
+  z.strictObject({ kind: z.literal("teacher-note"), id: ModuleItemId, pageId: CoursePageId, purpose: TeacherNotePurpose }),
 ]);
 /** A module item. */
 export type ModuleItem = z.infer<typeof ModuleItem>;
 
-/** Where a module came from, when it was not authored in EducateOS. */
-export const ModuleSource = z.strictObject({
-  kind: z.literal("cartridge"),
-  fileName: z.string().min(1).max(255),
-  packageDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
-});
+const Sha256 = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+
+/**
+ * Where a module came from, when it was not authored in EducateOS: a Common Cartridge, or a unit of
+ * an OCS course installed from the district's course library (SCHO-331).
+ */
+export const ModuleSource = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("cartridge"),
+    fileName: z.string().min(1).max(255),
+    packageDigest: Sha256,
+  }),
+  z.strictObject({
+    kind: z.literal("course"),
+    /** The OCS course package, such as `educateos.io/grade-1-reading-foundations`. */
+    packageId: z.string().min(1).max(200),
+    version: z.string().min(1).max(50),
+    packageDigest: Sha256,
+    /** The unit's place in the composed course. */
+    unitKey: z.string().min(1).max(500),
+  }),
+]);
 /** A module source. */
 export type ModuleSource = z.infer<typeof ModuleSource>;
 
@@ -107,7 +133,10 @@ export const CourseOutline = z.strictObject({
 /** A course outline. */
 export type CourseOutline = z.infer<typeof CourseOutline>;
 
-/** What one reader may see of an outline: staff see drafts; students only published modules and their pages. */
+/**
+ * What one reader may see of an outline: staff see drafts and teacher-only notes; students only
+ * published modules and their pages, never a teacher-only note.
+ */
 export interface CourseOutlineView {
   view: "teacher" | "student";
   outline: CourseOutline;
@@ -227,16 +256,17 @@ export class CourseContentService {
     const outline = await this.#load(scope.offeringId);
     if (await this.#allowed(subject, "read", scope, "teacher-only")) return { view: "teacher", outline };
     if (!(await this.#allowed(subject, "read", scope, "course"))) throw NOT_FOUND();
-    const modules = outline.modules.filter((module) => module.published);
+    // A teacher-only note never reaches a student: its item is dropped, and so its page.
+    const modules = outline.modules.filter((module) => module.published).map((module) => ({ ...module, items: module.items.filter((item) => item.kind !== "teacher-note") }));
     const pageIds = new Set(modules.flatMap((module) => module.items.flatMap((item) => (item.kind === "page" ? [item.pageId] : []))));
     const { updated: _, ...rest } = outline;
     return { view: "student", outline: { ...rest, modules, pages: outline.pages.filter((page) => pageIds.has(page.id)) } };
   }
 
-  /** Adds an unpublished module at the end. */
-  async createModule(subject: VerifiedPrincipal, offeringId: unknown, input: unknown): Promise<CourseModule> {
+  /** Adds an unpublished module at the end. `source` records where it came from, such as an installed course's unit. */
+  async createModule(subject: VerifiedPrincipal, offeringId: unknown, input: unknown, source?: ModuleSource): Promise<CourseModule> {
     const { title } = parseInput(z.strictObject({ title: ContentTitle }), input);
-    const module: CourseModule = { id: newId("cmod"), title, published: false, items: [] };
+    const module: CourseModule = { id: newId("cmod"), title, published: false, items: [], ...(source === undefined ? {} : { source: parseInput(ModuleSource, source) }) };
     await this.#change(subject, offeringId, "create", (outline) => ({ ...outline, modules: [...outline.modules, module] }));
     return module;
   }
@@ -257,7 +287,7 @@ export class CourseContentService {
   async deleteModule(subject: VerifiedPrincipal, offeringId: unknown, moduleId: unknown): Promise<void> {
     await this.#change(subject, offeringId, "delete", (outline) => {
       const module = this.#module(outline, moduleId);
-      const pages = new Set(module.items.flatMap((item) => (item.kind === "page" ? [item.pageId] : [])));
+      const pages = new Set(module.items.flatMap((item) => (item.kind === "page" || item.kind === "teacher-note" ? [item.pageId] : [])));
       return { ...outline, modules: outline.modules.filter((m) => m.id !== module.id), pages: outline.pages.filter((p) => !pages.has(p.id)) };
     });
   }
@@ -273,6 +303,21 @@ export class CourseContentService {
     const { title, body } = parseInput(NewPage, input);
     const page: CoursePage = { id: newId("cpg"), title, body };
     const item: ModuleItem = { kind: "page", id: newId("cit"), pageId: page.id };
+    await this.#change(subject, offeringId, "update", (outline) => {
+      const module = this.#module(outline, moduleId);
+      return { ...outline, modules: this.#replace(outline, { ...module, items: [...module.items, item] }), pages: [...outline.pages, page] };
+    });
+    return { page, item };
+  }
+
+  /**
+   * Adds a teacher-only note at the end of a module (SCHO-331): a page the class's staff see and
+   * students never do, even once the module is published, such as a teacher guide or an answer key.
+   */
+  async addTeacherNote(subject: VerifiedPrincipal, offeringId: unknown, moduleId: unknown, input: unknown): Promise<{ page: CoursePage; item: ModuleItem }> {
+    const { title, body, purpose } = parseInput(NewPage.extend({ purpose: TeacherNotePurpose }), input);
+    const page: CoursePage = { id: newId("cpg"), title, body };
+    const item: ModuleItem = { kind: "teacher-note", id: newId("cit"), pageId: page.id, purpose };
     await this.#change(subject, offeringId, "update", (outline) => {
       const module = this.#module(outline, moduleId);
       return { ...outline, modules: this.#replace(outline, { ...module, items: [...module.items, item] }), pages: [...outline.pages, page] };
@@ -316,7 +361,7 @@ export class CourseContentService {
     return item;
   }
 
-  /** Removes an item from a module; a page it placed is removed with it. */
+  /** Removes an item from a module; a page (or teacher-only note) it placed is removed with it. */
   async removeItem(subject: VerifiedPrincipal, offeringId: unknown, moduleId: unknown, itemId: unknown): Promise<void> {
     await this.#change(subject, offeringId, "update", (outline) => {
       const module = this.#module(outline, moduleId);
@@ -325,7 +370,7 @@ export class CourseContentService {
       return {
         ...outline,
         modules: this.#replace(outline, { ...module, items: module.items.filter((i) => i.id !== item.id) }),
-        pages: item.kind === "page" ? outline.pages.filter((p) => p.id !== item.pageId) : outline.pages,
+        pages: item.kind === "page" || item.kind === "teacher-note" ? outline.pages.filter((p) => p.id !== item.pageId) : outline.pages,
       };
     });
   }

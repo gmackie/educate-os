@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 12,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 500,
+    "minimumCitations": 2,
+    "overview": "Weigh the evidence and write an argument about how much the return of wolves changed the Yellowstone ecosystem.",
+    "prompt": "Many books and videos say that bringing wolves back to Yellowstone National Park set off a trophic cascade that restored its streams and forests. How strong is the evidence for that claim? Write an argument that takes a precise, qualified position. Support it with at least two pieces of evidence from the reading, explain your reasoning about cause and effect, and fairly present at least one alternative explanation. Explain what kind of further evidence would strengthen or weaken your claim.",
+    "resources": [
+      "yellowstone-reading"
+    ],
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Wolves, Elk and Willows"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-wolves-elk-willows",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "By the 1920s, government hunters had killed the last gray wolf packs in Yellowstone National Park. For the next seventy years the park's largest predator was gone. Elk, the wolves' main prey, became very numerous on the park's northern range, especially in winter, when they gather in the valleys. They browsed heavily on young willow and aspen trees along the streams, and few young trees grew tall.\n\nIn 1995 and 1996, biologists released 31 gray wolves captured in Canada into the park. The wolves thrived. Over the following years, the number of elk on the northern range fell sharply, from close to 20,000 in the early 1990s to between about 4,000 and 8,000 during the 2010s.\n\nThe cascade idea. A trophic cascade is a chain of effects that runs down a food web from the top: predators reduce their prey, and the prey's food recovers. Some ecologists reported that after the wolves returned, willows and aspen began to grow taller in places along the streams. They proposed two causes: fewer elk overall, and elk changing their behavior, avoiding places where wolves could easily ambush them. Taller willows could then shade streams, feed beavers and give songbirds places to nest. This version of the story became famous.\n\nThe complications. Other ecologists point out that wolves were not the only change. Elk were also hunted by people when they left the park in winter. Grizzly bears and cougars, which also eat elk calves, became more common. Several years of drought and hard winters hit the elk at the same time. Some field studies found that elk did not avoid risky places as much as the behavior idea predicted. And willow recovery has been uneven: in many places, willows have stayed short. One reason may be that beavers, whose dams once raised the water table along the streams, disappeared from much of the northern range during the years without wolves. Without beaver dams, the streams cut deeper channels, and willow roots can no longer reach the water they need, however few elk there are.\n\nWhy it is hard to know. Ecologists cannot run a controlled experiment on a whole national park. There is only one Yellowstone, and many things changed at once. Most ecologists agree that wolves have had real effects on the ecosystem. They disagree about how large those effects are compared with everything else.",
+      "id": "yellowstone-reading",
+      "title": "Wolves, Elk and Willows"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise position on how strongly the evidence supports the cascade, qualified where the evidence is mixed.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Qualified claim"
+      },
+      {
+        "description": "Uses at least two accurate, relevant pieces of evidence from the reading.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim and why correlation alone does not prove cause.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Cause and effect reasoning"
+      },
+      {
+        "description": "Presents an alternative explanation fairly and evaluates it against the evidence.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Alternative explanations"
+      }
+    ],
+    "title": "Scientific argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

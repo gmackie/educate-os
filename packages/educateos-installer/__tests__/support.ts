@@ -101,6 +101,11 @@ export async function goldenRelease(): Promise<TestRelease> {
     artifacts.addAsset(entry.hash, bytesOf(join(TESTDATA, "fixture-assets", "educateos-admin", path)));
   }
   for (const file of filesUnder(ADMIN_MIGRATIONS)) await artifacts.addBlob(bytesOf(file));
+  // The district Worker's UIs (SCHO-318), a fixture for each.
+  const district = parsed.workers["educateos-district-worker"]!;
+  for (const [path, entry] of Object.entries(district.assetsConfig!.variants.spa!.manifest)) {
+    artifacts.addAsset(entry.hash, bytesOf(join(TESTDATA, "fixture-assets", "educateos-district-worker", path)));
+  }
   return await signedRelease(bytes, parsed.releaseId, "0.1.0", artifacts);
 }
 

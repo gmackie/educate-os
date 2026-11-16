@@ -1,0 +1,49 @@
+{
+  "id": "equations",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u2-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "balance-and-undo"
+    },
+    {
+      "kind": "activity",
+      "ref": "two-step"
+    },
+    {
+      "kind": "activity",
+      "ref": "equivalent-expressions"
+    },
+    {
+      "kind": "activity",
+      "ref": "equations-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Rewrite expressions in equivalent forms, and write and solve two-step equations and inequalities that model real situations.",
+  "title": "Unit 3: Equations"
+}

@@ -1,6 +1,6 @@
 # Installer permissions and blocking Cloudflare requirements
 
-- Status: Draft. The district-run token with exactly the API token permissions below completed a full install into a live account on 2026-10-26 (SCHO-206, docs/educateos/control-plane.md); the OAuth column and the per-permission minimum are still unverified. The 2026-10-31 sandbox run (SCHO-66, [below](#sandbox-run-2026-10-31-scho-66)) settled the Workers, zone and Access rows and three API assumptions; KV, R2, D1, Billing and AI Gateway wait on a token that holds them.
+- Status: Draft. The district-run token with exactly the API token permissions below completed a full install into a live account on 2026-10-26 (SCHO-206, docs/educateos/control-plane.md); the OAuth column and the per-permission minimum are still unverified. The 2026-10-31 sandbox run (SCHO-66, [below](#sandbox-run-2026-10-31-scho-66)) settled the Workers, zone and Access rows and three API assumptions; the 2026-11-02 run ([below](#sandbox-run-2026-11-02-scho-66)) settled Billing, KV, D1 and AI Gateway and found that D1 refuses `params` on a multi-statement request.
 - Issue: SCHO-29 (roadmap R02)
 - Code: `packages/educateos-installer`
 
@@ -19,6 +19,10 @@ not as facts.
 
 Both modes run the same reconciler. Its state is what it observes in the account, with no local
 state file, so either mode can pick up where the other stopped.
+
+`npx launch-educate-os` ([launch-installer.md](launch-installer.md)) is the district-run mode as one
+command: it links to Cloudflare's token editor prefilled with exactly the permissions below
+(`INSTALL_TOKEN_PERMISSIONS`, now in `@educateos/installer`, shared with the guided install).
 
 District-run mode needs nothing from `educateos.io`: the district builds or downloads a release,
 verifies it offline against the keys it pins ([release-signing.md](release-signing.md)), and
@@ -39,7 +43,7 @@ guess.
 | Installer operation | Endpoint (`/client/v4`) | API token permission | OAuth scope | Scope evidence |
 | --- | --- | --- | --- | --- |
 | `getAccount` | `GET /accounts/{id}` | Account Settings: Read | `account:read` | wrangler-requested |
-| `listSubscriptions` (plan check) | `GET /accounts/{id}/subscriptions` | Billing: Read (needed: a token without it gets HTTP 403, code 10000, 2026-10-31) | `account:read` | unverified (may need a billing scope) |
+| `listSubscriptions` (plan check) | `GET /accounts/{id}/subscriptions` | Billing: Read (verified 2026-11-02, SCHO-66; without it HTTP 403, code 10000) | `account:read` | unverified (may need a billing scope) |
 | `findZone` | `GET /zones?name=` | Zone: Read (verified 2026-10-31, SCHO-66) | `zone:read` | wrangler-requested |
 | `listDnsRecords` | `GET /zones/{zone}/dns_records` | DNS: Read (verified 2026-10-31, SCHO-66, with DNS: Edit) | `zone:read` | unverified (may need a DNS scope) |
 | `listWorkerScripts`, `getWorkerSettings`, `uploadWorkerScript` | `/accounts/{id}/workers/scripts[/{name}[/settings]]` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
@@ -47,20 +51,39 @@ guess.
 | `createAssetsUploadSession`, `uploadAssets` | `.../assets-upload-session`, `/workers/assets/upload` (session JWT) | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `deleteWorkerSecret` (adopting a Worker deployed outside the installer, SCHO-243) | `DELETE /accounts/{id}/workers/scripts/{name}/secrets/{secret}` | Workers Scripts: Edit (**unverified**: never yet called against a live account) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
-| `getWorkerSchedules`, `putWorkerSchedules` (Cron Triggers, SCHO-148) | `GET`/`PUT /accounts/{id}/workers/scripts/{name}/schedules` | Workers Scripts: Edit (**unverified**: never yet called against a live account) | `workers_scripts:write` | wrangler-requested (Wrangler sets crons with it) |
+| `getWorkerSchedules`, `putWorkerSchedules` (Cron Triggers, SCHO-148) | `GET`/`PUT /accounts/{id}/workers/scripts/{name}/schedules` | Workers Scripts: Edit (`GET` verified 2026-11-02 on the owner account, SCHO-243's prairie plan; `PUT` refused with HTTP 403, code 10063, on the sandbox account, which has no Workers Paid plan) | `workers_scripts:write` | wrangler-requested (Wrangler sets crons with it) |
 | `listWorkerVersions`, `deployWorkerVersion` (rollback) | `.../versions`, `.../deployments` | Workers Scripts: Edit (`listWorkerVersions` verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerDomains`, `attachWorkerDomain` | `/accounts/{id}/workers/domains` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66) | `workers_routes:write` | wrangler-requested |
 | `detachWorkerDomain` (releasing a managed hostname) | `DELETE /accounts/{id}/workers/domains/{domain}` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66; it answers HTTP 200 with an empty body) | `workers_routes:write` | unverified |
 | `getFallbackOrigin`, `setFallbackOrigin`, `findCustomHostname`, `createCustomHostname`, `deleteCustomHostname` (the managed hostname, cross-account) | `/zones/{zone}/custom_hostnames[/fallback_origin]` | SSL and Certificates: Edit | `ssl_certs:write` | wrangler-requested |
 | `listWorkerRoutes`, `createWorkerRoute`, `deleteWorkerRoute` (the managed hostname, cross-account) | `/zones/{zone}/workers/routes` | Workers Routes: Edit | `workers_routes:write` | wrangler-requested |
 | `createDnsRecord` (the managed hostname's originless fallback origin, `educateos-origin.<zone>`, only on a zone with no fallback origin) | `POST /zones/{zone}/dns_records` | DNS: Edit | none known: Wrangler requests no DNS write scope, so an OAuth install on such a zone fails here until one is verified | unverified |
-| `listKvNamespaces`, `createKvNamespace` | `/accounts/{id}/storage/kv/namespaces` | Workers KV Storage: Edit (needed: a token without it gets HTTP 401, code 10000, 2026-10-31) | `workers_kv:write` | wrangler-requested |
-| `listR2Buckets`, `createR2Bucket` | `/accounts/{id}/r2/buckets` | Workers R2 Storage: Edit (needed: a token without it gets HTTP 403, code 10000, 2026-10-31) | `workers:write` | unverified (R2 coverage inferred) |
-| `listD1Databases`, `createD1Database`, `queryD1` | `/accounts/{id}/d1/database[/{uuid}/query]` | D1: Edit (needed: a token without it gets HTTP 401, code 10000, 2026-10-31) | `d1:write` | wrangler-requested |
+| `listKvNamespaces`, `createKvNamespace` | `/accounts/{id}/storage/kv/namespaces` | Workers KV Storage: Edit (verified 2026-11-02, SCHO-66: list, create and delete; without it HTTP 401, code 10000) | `workers_kv:write` | wrangler-requested |
+| `listR2Buckets`, `createR2Bucket` | `/accounts/{id}/r2/buckets` | Workers R2 Storage: Edit (verified 2026-11-02 on the owner account; without it HTTP 403, code 10000; on an account without R2 enabled, HTTP 403, code 10042, whatever the token) | `workers:write` | unverified (R2 coverage inferred) |
+| `listD1Databases`, `createD1Database`, `queryD1` | `/accounts/{id}/d1/database[/{uuid}/query]` | D1: Edit (verified 2026-11-02, SCHO-66: create, query and delete; without it HTTP 401, code 10000) | `d1:write` | wrangler-requested |
 | `getAccessOrganization`, `listAccessIdentityProviders` | `/accounts/{id}/access/organizations`, `.../identity_providers` | Access: Organizations, Identity Providers, and Groups: Read (calls verified 2026-10-31, SCHO-66; the token's exact Access groups could not be read back) | `access:write` | unverified |
 | Access policies and applications | `/accounts/{id}/access/policies`, `/accounts/{id}/access/apps` | Access: Apps and Policies: Edit (verified 2026-10-31, SCHO-66: list, create and delete) | `access:write` | unverified |
-| `listAiGateways`, `createAiGateway` (optional) | `/accounts/{id}/ai-gateway/gateways` | AI Gateway: Edit (needed: a token without it gets HTTP 403, code 10000, 2026-10-31) | `ai:write` | unverified |
+| `listAiGateways`, `createAiGateway` (optional) | `/accounts/{id}/ai-gateway/gateways` | AI Gateway: Edit (verified 2026-11-02, SCHO-66: list, create and delete; without it HTTP 403, code 10000) | `ai:write` | unverified |
+| `deleteKvNamespace` (uninstall, SCHO-368) | `DELETE /accounts/{id}/storage/kv/namespaces/{ns}` | Workers KV Storage: Edit (the SCHO-66 probe's cleanup deleted one, 2026-11-02; not yet through this call) | `workers_kv:write` | wrangler-requested |
+| `deleteR2Bucket` (uninstall) | `DELETE /accounts/{id}/r2/buckets/{name}`, with `cf-r2-jurisdiction` for a pinned bucket | Workers R2 Storage: Edit (**unverified**: R2 is not enabled on the sandbox account; a non-empty bucket is assumed refused with HTTP 409, code 10008) | `workers:write` | unverified |
+| `deleteD1Database` (uninstall) | `DELETE /accounts/{id}/d1/database/{uuid}` | D1: Edit (the SCHO-66 probe's cleanup deleted one, 2026-11-02; not yet through this call) | `d1:write` | wrangler-requested |
+| `deleteAccessApplication`, `deleteAccessPolicy` (uninstall) | `DELETE /accounts/{id}/access/apps/{app}`, `.../access/policies/{policy}` | Access: Apps and Policies: Edit (the SCHO-66 probe's cleanup deleted both, 2026-10-31; not yet through these calls) | `access:write` | unverified |
+| `deleteAiGateway` (uninstall) | `DELETE /accounts/{id}/ai-gateway/gateways/{id}` | AI Gateway: Edit (the SCHO-66 probe's cleanup deleted one, 2026-11-02; not yet through this call) | `ai:write` | unverified |
 | (refresh tokens) | `https://dash.cloudflare.com/oauth2/token` | n/a | `offline_access` | wrangler-requested |
+
+**Uninstall needs no permission beyond the install token's** (SCHO-368,
+[runbooks/district-offboarding.md](runbooks/district-offboarding.md) step 5). Besides the five
+deletes above, it uses `deleteWorkerScript` (never `force`), `detachWorkerDomain`,
+`deleteCustomHostname` and `deleteWorkerRoute`, which installs already call. It reads the same lists
+as planning, plus each prefixed Worker's settings (for its instance marker) and the backend's secret
+names (to say whether it registered). It never reads or deletes an R2 object, KV value or D1 row, so
+it cannot empty a bucket: the operator does. None of the uninstall's calls has run against a live
+account yet (SCHO-378); the fake models them, and the not-found and not-empty codes are assumed.
+
+A pinned install (`dataJurisdiction: "us"`, [ADR-0015](adr/0015-us-data-jurisdiction.md)) calls the
+same endpoints: KV and D1 creates carry `jurisdiction` in their body, and R2 calls carry the
+`cf-r2-jurisdiction: us` header. Cloudflare documents no extra permission for them; not yet verified
+live.
 
 The OSS admin (`admin.enabled`, SCHO-263) needs no permission beyond these: its Worker, secret and
 custom domain use the Workers Scripts rows, its database and migrations the D1 row, and its two
@@ -252,16 +275,31 @@ Settled:
   a credential failure. A missing permission gets code 10000 with HTTP 401 (KV, D1) or 403
   (Billing, R2, AI Gateway).
 
+## Sandbox run, 2026-11-02 (SCHO-66)
+
+Run `d0da8dd1` (apply) of `scripts/verify-account.ts` on the same account (gmacko, zone
+`hbtply.com`), after Billing: Read, Workers KV Storage: Edit, Workers R2 Storage: Edit, D1: Edit and
+AI Gateway: Edit were added to the same token. Every probe resource was deleted; no leftovers.
+
+- **Billing, KV, D1 and AI Gateway**: every listed call succeeded. The account's only rate plan is
+  `ssl_for_saas_basic`: it has no Workers Paid plan.
+- **R2 not enabled**: list and create both answer HTTP 403 with code 10042 even with Workers R2
+  Storage: Edit, as the installer assumes (`R2_NOT_ENABLED_CODE`).
+- **D1 refuses `params` on a multi-statement `/query` request.** A multi-statement request without
+  `params` runs as one batch: a failing statement rolls the others back and leaves no table. The
+  installer used to send a migration and its ledger row as one request with `params`, which would
+  have failed every D1 migration on a live account; it now inlines the ledger's ID and digest,
+  which the manifest schema limits to characters that need no quoting.
+- **Cron Triggers**: `PUT .../schedules` was refused with HTTP 403, code 10063, on this account,
+  which has no Workers Paid plan. On the owner account (Workers Paid) the installer token read a
+  district Worker's schedules back during SCHO-243's prairie plan.
+
 ## Not yet verified, to check in the G2 sandbox
 
-These need a token that also holds Billing: Read, Workers KV Storage: Edit, Workers R2 Storage:
-Edit, D1: Edit and AI Gateway: Edit (account scope); the 2026-10-31 token did not.
+The sandbox token holds every account permission above since 2026-11-02. What is left needs an
+account on Workers Paid, or the public OAuth client:
 
 - Every OAuth scope, and every API token permission not marked verified above.
-- Whether a multi-statement D1 `/query` request carrying `params` runs as one batch. The installer
-  depends on this to apply a migration and its ledger row together. The 2026-10-21 probe, with a
-  Wrangler OAuth token, saw it rejected (SCHO-163). Re-probe with a D1 token before changing the
-  ledger.
-- R2's not-enabled code 10042, and the qualifying Workers Paid rate plan IDs.
-- The schedules endpoint ([Cron Triggers](#cron-triggers)): read, replace, that an upload keeps
-  the schedules, and its error code for a bad expression.
+- The qualifying Workers Paid rate plan IDs: the sandbox account has none to observe.
+- The schedules endpoint ([Cron Triggers](#cron-triggers)) on a Workers Paid account: replace, that
+  an upload keeps the schedules, and its error code for a bad expression. Reading them is verified.

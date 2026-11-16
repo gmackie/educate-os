@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:02a77cac2b03a85a6132a5e8a5b55eee6f6eb2c6762da4c345a062ef6a8bd98e",
+      "id": "educateos.io/english-9-the-friars-warning",
+      "version": "1.0.0"
+    }
+  },
+  "id": "the-friars-warning",
+  "role": "assessment",
+  "title": "Passage Analysis: The Friar's Warning"
+}

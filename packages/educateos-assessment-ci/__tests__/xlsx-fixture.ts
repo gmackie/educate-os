@@ -1,5 +1,5 @@
 // Builds small XLSX workbooks for tests: a ZIP of the parts a workbook needs, stored or deflated.
-import { crc32 } from "@educateos/cartridge";
+import { crc32 } from "@educateos/cartridge/zip";
 
 const encoder = new TextEncoder();
 
@@ -10,8 +10,8 @@ export interface ZipEntry {
   deflate?: boolean;
 }
 
-async function deflateRaw(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+async function deflateRaw(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+  const stream = new Blob([bytes.slice()]).stream().pipeThrough(new CompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -74,13 +74,13 @@ const MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const RELS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 /** A workbook whose sheets hold the given `<sheetData>` XML, with an optional shared string table. */
-export async function workbook(sheets: { name: string; rows: string }[], sharedStrings?: string[], options: { deflate?: boolean } = {}): Promise<Uint8Array> {
+export async function workbook(sheets: { name: string; rows: string; state?: "hidden" | "veryHidden" }[], sharedStrings?: string[], options: { deflate?: boolean } = {}): Promise<Uint8Array> {
   const escape = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
   const entries: ZipEntry[] = [
     { path: "[Content_Types].xml", data: `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>` },
     {
       path: "xl/workbook.xml",
-      data: `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="${MAIN}" xmlns:r="${RELS}"><sheets>${sheets.map((s, i) => `<sheet name="${s.name}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`,
+      data: `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="${MAIN}" xmlns:r="${RELS}"><sheets>${sheets.map((s, i) => `<sheet name="${escape(s.name).replaceAll('"', "&quot;")}" ${s.state ? `state="${s.state}"` : ""} sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`,
     },
     {
       path: "xl/_rels/workbook.xml.rels",

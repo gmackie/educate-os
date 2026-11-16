@@ -11,8 +11,9 @@
 //                                    index.html as the fallback
 //   LEGACY_WORKSHOP_PATHS            the Workshop backend, for one release, so older Workshop builds and
 //                                    phones keep working
-//   everything else                  the district Worker: `/`, `/api/*`, `/lti/*`, `/.well-known/*`
-//                                    and the district's UI assets
+//   everything else                  the district Worker: `/`, `/api/*`, `/lti/*`, `/.well-known/*`,
+//                                    `/mcp` (SCHO-174, when the district turns it on) and the
+//                                    district's UI assets
 //
 // A district with no Workshop (`AI_ENABLED` = "false", or no WORKSHOP_BACKEND bound) answers `/ai`
 // with a small "AI isn't enabled at your school" page, and the legacy Workshop paths go to the
@@ -36,7 +37,7 @@ export const AI_BACKEND_PREFIXES: readonly string[] = [AI_PREFIX + "/api", AI_PR
  * The Workshop backend's HTTP endpoints at the root, from packages/workshop-backend/src/server.ts,
  * answered for one release after the move to `/ai` (exact paths). On a collision the district wins,
  * so none of these may name a district route; today none does (the district owns
- * `/api/{student,teacher,admin,guardian,me,calendar,onboarding,lti,m,pair,ops}`).
+ * `/api/{student,teacher,admin,guardian,me,calendar,onboarding,lti,m,pair,ops,recovery}`).
  */
 export const LEGACY_WORKSHOP_EXACT_PATHS: readonly string[] = [
   "/api", // the Cap'n Web RPC (WebSocket or HTTP batch)

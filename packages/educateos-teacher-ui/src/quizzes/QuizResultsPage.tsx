@@ -10,7 +10,7 @@ import { routeHref } from "../route.ts";
 import { Loading } from "../Loading.tsx";
 import type { QuizResults, ReleaseOutcome, TeachingOffering } from "../types.ts";
 import { AttemptGrader } from "./AttemptGrader.tsx";
-import { formatPoints } from "./quizText.ts";
+import { extendedTimeLabel, formatPoints } from "./quizText.ts";
 import { formatDateTime } from "../dates.ts";
 
 type Row = QuizResults["students"][number];
@@ -115,7 +115,8 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
           {data.students.length === 0
             ? <Empty icon={<ChartBar size={32} aria-hidden />} title="No attempts yet" description="Results appear here once students start the quiz." />
             : (
-              <LayerCard className="overflow-x-auto p-0">
+              // Focusable, so a keyboard can scroll it sideways on a phone (WCAG 2.1.1).
+              <LayerCard role="group" aria-label="Students' results" tabIndex={0} className="overflow-x-auto p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-brand">
                 <Table>
                   <caption className="sr-only">Students' results</caption>
                   <Table.Header>
@@ -130,7 +131,14 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
                       const name = names.get(row.studentId) ?? "A student";
                       return (
                         <Table.Row key={row.studentId}>
-                          <Table.Cell>{name}</Table.Cell>
+                          <Table.Cell>
+                            <span className="flex flex-col gap-1">
+                              <span>{name}</span>
+                              {row.extendedTime !== undefined && (
+                                <Text variant="secondary" size="sm" as="span">{`Extended time: ${extendedTimeLabel(row.extendedTime, data.quiz.settings.timeLimitMinutes)}`}</Text>
+                              )}
+                            </span>
+                          </Table.Cell>
                           <Table.Cell>
                             <ul className="flex flex-col gap-1">
                               {row.attempts.map((a) => (
@@ -159,7 +167,7 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
           {grading !== undefined && <AttemptGrader key={grading} offeringId={offeringId} attemptId={grading} onGraded={results.reload} />}
           <section aria-labelledby="item-analysis" className="flex flex-col gap-2">
             <h2 id="item-analysis"><Text variant="heading" as="span">How each question went</Text></h2>
-            <LayerCard className="overflow-x-auto p-0">
+            <LayerCard role="group" aria-labelledby="item-analysis" tabIndex={0} className="overflow-x-auto p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kumo-brand">
               <Table>
                 <caption className="sr-only">Item analysis</caption>
                 <Table.Header>

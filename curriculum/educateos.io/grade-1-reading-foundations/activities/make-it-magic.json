@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:9efd61f2d3c61c4d9d921aa5becbc68b69787c77680e423374feb21202321efe",
+      "id": "educateos.io/grade-1-reading-foundations-make-it-magic",
+      "version": "1.0.0"
+    }
+  },
+  "id": "make-it-magic",
+  "role": "assignment",
+  "title": "Make It Magic"
+}

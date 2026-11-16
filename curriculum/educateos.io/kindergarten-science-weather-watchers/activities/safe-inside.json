@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e4ae4eadc4f9c27b6c64a135f9ec6b0cadd258c867420563e664d69dbb73dfa3",
+      "id": "educateos.io/kindergarten-science-weather-watchers-safe-inside",
+      "version": "1.0.0"
+    }
+  },
+  "id": "safe-inside",
+  "role": "assignment",
+  "title": "Safe Inside"
+}

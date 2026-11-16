@@ -24,8 +24,8 @@ section { padding: 88px 0; }
 .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: .75rem; font-weight: 500; background: var(--color-kumo-fill); color: var(--text-color-kumo-default); white-space: nowrap; }
 .badge.blue { background: var(--color-kumo-badge-blue); color: #fff; }
 .badge.green { background: var(--color-kumo-success-tint); color: var(--text-color-kumo-success); }
-.badge.orange { background: color-mix(in oklch, var(--eo-orange) 16%, transparent); color: light-dark(#b45309, #fdba74); }
-.badge.purple { background: color-mix(in oklch, var(--color-kumo-badge-purple) 18%, transparent); color: var(--color-kumo-badge-purple); }
+.badge.orange { background: color-mix(in oklch, var(--eo-orange) 16%, transparent); color: light-dark(#9a3412, #fdba74); }
+.badge.purple { background: color-mix(in oklch, var(--color-kumo-badge-purple) 18%, transparent); color: light-dark(#7e22ce, #d8b4fe); }
 .badge.warn { background: var(--color-kumo-warning-tint); color: light-dark(#92400e, #fcd34d); }
 .card { background: var(--color-kumo-base); border: 1px solid var(--color-kumo-line); border-radius: var(--eo-radius); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--color-kumo-success); }
@@ -39,7 +39,11 @@ nav.links { display: flex; gap: 22px; margin-left: 12px; white-space: nowrap; }
 nav.links a { color: var(--text-color-kumo-subtle); font-size: .93rem; }
 nav.links a:hover { color: var(--text-color-kumo-strong); }
 header.nav .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-@media (max-width: 1200px) { nav.links { display: none; } }
+/* The header's logo, seven links and three controls need about 1180px, more than the page's
+   1120px column, so the header gets a wider row and shows the links only where they fit (SCHO-389). */
+header.nav .wrap { max-width: calc(var(--eo-max) + 160px); }
+.logo { flex: none; }
+@media (max-width: 1279px) { nav.links { display: none; } }
 @media (max-width: 860px) { .hide-sm { display: none; } }
 
 /* Hero */
@@ -195,6 +199,9 @@ details.menu .sheet { position: absolute; right: 0; top: 48px; width: min(260px,
 details.menu .sheet a { padding: 10px 12px; border-radius: 8px; color: var(--text-color-kumo-default); }
 details.menu .sheet a:hover, details.menu .sheet a[aria-current="page"] { background: var(--color-kumo-tint); color: var(--text-color-kumo-link); }
 @media (max-width: 420px) { header.nav .wrap { gap: 12px; } header.nav .right .btn.primary { padding: 0 12px; } }
+/* Below 400px the mark stands alone, so the header fits 320px without scrolling sideways (WCAG 1.4.10).
+   The link keeps its accessible name, "EducateOS home". */
+@media (max-width: 399px) { .logo .wordmark { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; } }
 
 footer .foot-grid { display: grid; grid-template-columns: 1.3fr repeat(4, 1fr); gap: 24px; margin-bottom: 20px; }
 footer .foot-grid h4 { margin: 0 0 8px; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-strong); }
@@ -309,7 +316,7 @@ section.tight { padding: 56px 0; }
 .doc h2 { font-size: 1.35rem; margin-top: 40px; }
 .doc h3 { margin-top: 22px; }
 .doc p, .doc li { color: var(--text-color-kumo-default); }
-.doc ul { padding-left: 20px; display: grid; gap: 6px; }
+.doc ul, .doc ol { padding-left: 20px; display: grid; gap: 6px; }
 .doc .updated { font-size: .88rem; color: var(--text-color-kumo-subtle); }
 
 /* ---- Landing page links into the sub-pages ---- */
@@ -363,12 +370,14 @@ a.card.feat:hover { border-color: color-mix(in oklch, var(--color-kumo-brand) 45
 .gcard .uses { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--color-kumo-hairline); display: grid; gap: 6px; }
 .gcard .uses div { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--text-color-kumo-default); }
 .gcard .uses small { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-subtle); }
-.status.byo { background: color-mix(in oklch, var(--color-kumo-badge-purple) 16%, transparent); color: var(--color-kumo-badge-purple); }
+.status.byo { background: color-mix(in oklch, var(--color-kumo-badge-purple) 16%, transparent); color: light-dark(#7e22ce, #d8b4fe); }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
 
 pre.code { margin: 0; padding: 14px 16px; border-radius: 10px; background: var(--color-kumo-recessed); border: 1px solid var(--color-kumo-hairline); overflow-x: auto; font: .8rem/1.55 var(--font-mono); color: var(--text-color-kumo-default); }
 pre.code .c { color: var(--text-color-kumo-subtle); }
 pre.code .k { color: var(--text-color-kumo-brand); }
+/* A code sample inside a picture (role=img) can't take focus, so it wraps rather than scrolling. */
+.window[role=img] pre.code { white-space: pre-wrap; overflow-wrap: anywhere; }
 .doclinks { display: grid; gap: 8px; margin-top: 16px; }
 .doclinks a { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-strong); font-size: .92rem; }
 .doclinks a code { font-family: var(--font-mono); font-size: .75rem; color: var(--text-color-kumo-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -377,3 +386,125 @@ pre.code .k { color: var(--text-color-kumo-brand); }
 .quote small { display: block; margin-top: 10px; font-size: .8rem; color: var(--text-color-kumo-subtle); }
 .doclinks { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 560px) { .doclinks a { flex-wrap: wrap; } .doclinks a code { white-space: normal; overflow-wrap: anywhere; } }
+
+/* ---- SCHO-333: the course catalog (/courses/, generated by catalog.mjs) ---- */
+.course-card h3 a { color: var(--text-color-kumo-strong); }
+.course-card h3 a:hover { color: var(--text-color-kumo-link); }
+.course-facts, .bundle-facts { margin: 0; display: grid; gap: 6px; }
+.course-facts { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--color-kumo-hairline); }
+.course-facts div, .bundle-facts div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 8px; font-size: .84rem; }
+.course-facts dt, .bundle-facts dt { color: var(--text-color-kumo-subtle); }
+.course-facts dd, .bundle-facts dd { margin: 0; color: var(--text-color-kumo-default); min-width: 0; }
+.bundle-facts { margin-top: 16px; }
+.bundle-facts code { font-family: var(--font-mono); font-size: .76rem; overflow-wrap: anywhere; }
+.facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .facts.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .facts.four { grid-template-columns: minmax(0, 1fr); } .course-facts div, .bundle-facts div { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+.units { display: grid; gap: 16px; margin-top: 28px; }
+.card.unit { padding: 22px; min-width: 0; }
+.unit h3 { font-size: 1.2rem; margin-top: 4px; }
+.unit h4 { margin: 18px 0 8px; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-subtle); }
+.unit .overview { margin-top: 14px; font-size: .95rem; }
+.unit .overview small { margin: 0 0 6px; }
+.activities { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.activities li { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.activities .badge { justify-content: center; }
+@media (max-width: 520px) { .activities li { grid-template-columns: minmax(0, 1fr); gap: 4px; } .activities .badge { justify-self: start; } }
+.unit .small, .catalog-note.small { font-size: .84rem; }
+.standards { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: .86rem; }
+.teacher-only { margin: 14px 0 0; }
+.install-steps { padding-left: 20px; margin: 18px 0 0; display: grid; gap: 12px; }
+.catalog .split.top { align-items: start; }
+.catalog .copy p { margin: 12px 0 0; }
+.catalog section > .wrap > h2 + p.muted { margin-top: 12px; }
+#download .small { font-size: .84rem; }
+#download .btn { white-space: normal; text-align: center; }
+
+/* ---- Real screenshots of the demo and the live district (SCHO-340) ---- */
+/* Screenshots are light-mode captures; they sit on a white frame in both themes so they read as screens. */
+.screen { display: block; width: 100%; height: auto; background: #fff; }
+.window > .screen { border-top: 0; }
+.shot { margin: 0; min-width: 0; }
+.shot figcaption, .shot-cap { margin-top: 10px; font-size: .8rem; color: var(--text-color-kumo-subtle); }
+.shot figcaption b { color: var(--text-color-kumo-strong); font-weight: 600; }
+.frame { border-radius: 12px; border: 1px solid var(--color-kumo-line); overflow: hidden; background: #fff; box-shadow: 0 18px 44px -26px rgba(15, 23, 42, .45); }
+.hero-shot { position: relative; margin-top: 48px; }
+.hero-shot .window { margin-right: 150px; }
+.hero-shot .phone { position: absolute; right: 0; bottom: -28px; width: 230px; }
+.phone { border-radius: 30px; border: 7px solid #0f172a; overflow: hidden; background: #fff; box-shadow: 0 24px 60px -24px rgba(15, 23, 42, .55); }
+.phone .screen { aspect-ratio: auto; }
+@media (max-width: 760px) {
+  .hero-shot .window { margin-right: 0; }
+  .hero-shot .phone { position: relative; right: auto; bottom: auto; width: min(64%, 240px); margin: -60px 12px 0 auto; }
+}
+.shot-grid { display: grid; gap: 18px; margin-top: 32px; }
+.shot-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.shot-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.shot-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1040px) { .shot-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .shot-grid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .shot-grid.four, .shot-grid.three, .shot-grid.two { grid-template-columns: minmax(0, 1fr); } }
+.band-card { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.band-card .crop { aspect-ratio: 3 / 2; overflow: hidden; background: #fff; border-bottom: 1px solid var(--color-kumo-hairline); }
+.band-card .crop img { width: 100%; height: 100%; object-fit: cover; object-position: top left; display: block; }
+.band-card .crop.center img { object-position: top center; }
+.band-card .crop.lower img { object-position: center 78%; }
+.shot-grid.three .band-card .crop { aspect-ratio: 16 / 10; }
+.band-card .body { padding: 16px 18px 18px; display: grid; gap: 6px; }
+.band-card .body p { margin: 0; font-size: .9rem; color: var(--text-color-kumo-subtle); }
+.band-card .grade { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-color-kumo-brand); }
+.tutor-card .crop { aspect-ratio: 860 / 804; }
+.pill-note { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: .76rem; font-weight: 500; background: var(--color-kumo-warning-tint); color: light-dark(#92400e, #fcd34d); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 28px; }
+.split .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stats .card { padding: 16px 18px; }
+.stats b { display: block; font-size: 1.9rem; line-height: 1.1; font-weight: 650; color: var(--text-color-kumo-strong); letter-spacing: -0.02em; }
+.stats span { font-size: .85rem; color: var(--text-color-kumo-subtle); }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.int-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+.int-strip a, .int-strip div { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--eo-radius); border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-default); min-width: 0; }
+.int-strip b { color: var(--text-color-kumo-strong); }
+.int-strip small { color: var(--text-color-kumo-subtle); font-size: .82rem; }
+.int-strip .status { align-self: flex-start; white-space: normal; }
+@media (max-width: 860px) { .int-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .int-strip { grid-template-columns: minmax(0, 1fr); } }
+/* The installer command. Flip data-installer-published on .install to "true" once `npm view launch-educate-os` finds it. */
+.install { display: grid; gap: 14px; }
+.install[data-installer-published="false"] .when-published, .install[data-installer-published="true"] .when-unpublished { display: none; }
+.cmd { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; border-radius: 10px; background: var(--color-kumo-recessed); border: 1px solid var(--color-kumo-line); font-family: var(--font-mono); font-size: .95rem; color: var(--text-color-kumo-strong); min-width: 0; }
+.cmd code { overflow-wrap: anywhere; }
+.cmd .prompt { color: var(--text-color-kumo-subtle); user-select: none; }
+.tour-section + .tour-section { border-top: 1px solid var(--color-kumo-hairline); }
+.tour-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.shot > .phone { max-width: 270px; margin: 0 auto; }
+.shot-grid.three > .shot:has(> .phone) figcaption { text-align: center; }
+
+/* The accessibility conformance report, /it/accessibility/ (SCHO-361). */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.status.unsupported { background: var(--color-kumo-danger-tint); color: light-dark(#b91c1c, #fca5a5); }
+.status.na { background: transparent; border-color: var(--color-kumo-line); color: var(--text-color-kumo-default); }
+.spec.acr td:first-child { width: 28%; }
+.spec.acr td:nth-child(2) { width: 1%; white-space: nowrap; }
+.spec.acr td:last-child, .spec.info td:last-child { width: auto; white-space: normal; }
+.spec.acr th, .spec.info th { color: var(--text-color-kumo-default); }
+.spec.acr a, .spec.info a { text-decoration: underline; }
+.spec.info th { width: 24%; font-size: .85rem; vertical-align: top; }
+.spec .lvl { display: block; color: var(--text-color-kumo-default); font-weight: 400; font-size: .8rem; }
+.terms { list-style: none; padding: 0; display: grid; gap: 10px; }
+.terms li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+
+/* ---- Contrast (SCHO-389): axe's WCAG 2.1 AA rules, light and dark ---- */
+/* Kumo 2.14's light subtle text (#737373) is 4.46:1 on the canvas and 4.27:1 on recessed surfaces, and
+   its light brand text is Cloudflare orange, 2.5:1 on white. One step darker each clears 4.5:1 on every
+   surface the site uses. Dark mode keeps Kumo's values, which already pass. */
+:root:not([data-mode=dark]) { --text-color-kumo-subtle: #6b6b6b; --text-color-kumo-brand: #c2410c; }
+/* A link inside running text is underlined, so colour isn't the only thing that tells it apart (1.4.1). */
+main :is(p, li, td, dd, figcaption, .note-box, .eyebrow) a:not(.btn) { text-decoration: underline; text-underline-offset: .15em; }
+
+/* ---- Reflow at 320px (SCHO-389, WCAG 1.4.10): long labels and identifiers wrap instead of
+   pushing the page sideways ---- */
+@media (max-width: 480px) {
+  main .btn { white-space: normal; height: auto; min-height: 40px; padding-block: 8px; text-align: center; }
+  main .status { white-space: normal; }
+  main code { overflow-wrap: anywhere; }
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b5bfcdb19b9c381a269604fc68411b40d24d7aaf0a960728a45f8a6f34ba80de",
+      "id": "educateos.io/grade-1-mathematics-story-problems",
+      "version": "1.0.0"
+    }
+  },
+  "id": "story-problems",
+  "role": "assignment",
+  "title": "Apple Orchard Story Problems"
+}

@@ -1,0 +1,49 @@
+{
+  "id": "researching-and-reporting",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "taking-notes"
+    },
+    {
+      "kind": "activity",
+      "ref": "otter-notes"
+    },
+    {
+      "kind": "activity",
+      "ref": "otter-report"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Take notes in your own words from two sources, sort them into categories, and write an informative report with headings and sources.",
+  "title": "Researching and Reporting"
+}

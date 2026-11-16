@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to a story about bundling straws. Find the tens and ones.",
+    "passage": "Sam has a big pile of straws. Counting them one by one takes a long time! So Sam puts 10 straws together with a rubber band. That is one bundle of ten. Sam makes 2 bundles. There are 5 straws left over. Sam has 2 tens and 5 ones. That is 25 straws.",
+    "questions": [
+      {
+        "prompt": "How many straws are in one bundle?"
+      },
+      {
+        "prompt": "How many bundles of ten did Sam make?"
+      },
+      {
+        "prompt": "How many straws were left over?"
+      },
+      {
+        "prompt": "How many straws does Sam have in all?"
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Why is it faster to count by tens? Tell a partner."
+      }
+    ],
+    "sentenceFrames": [
+      "One bundle has ___ straws.",
+      "___ tens and ___ ones is ___."
+    ],
+    "subject": "mathematics",
+    "template": "read-and-respond",
+    "title": "Sam's Straws"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.B.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-sams-straws",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

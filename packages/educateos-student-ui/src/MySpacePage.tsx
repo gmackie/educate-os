@@ -11,6 +11,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { ArtifactView, CourseWorkspaceView } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
 import { ArtifactViewer } from "./viewers/ArtifactViewer.tsx";
+import { PageHeading } from "./PageHeading.tsx";
 
 const NOTE_DRAFT = "my-space/new-note";
 
@@ -179,9 +180,7 @@ export const MySpacePage = () => {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-1">
-        <Text variant="heading" size="lg" as="h1">
-          My space
-        </Text>
+        <PageHeading>My space</PageHeading>
         <PrivacyNote scope="personal" />
       </div>
 

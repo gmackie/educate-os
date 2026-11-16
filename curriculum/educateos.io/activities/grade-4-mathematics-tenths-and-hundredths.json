@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Use hundred grids and money to connect tenths, hundredths and decimals.",
+    "problems": [
+      {
+        "prompt": "On a hundred grid, shade 3 full columns of 10 squares. What fraction of the grid is shaded in tenths? In hundredths?"
+      },
+      {
+        "prompt": "Fill in the blank: 7/10 = ?/100."
+      },
+      {
+        "prompt": "Add: 4/10 + 25/100. Change the tenths to hundredths first."
+      },
+      {
+        "prompt": "Write 65/100 as a decimal."
+      },
+      {
+        "prompt": "Write 0.8 as a fraction with a denominator of 10 and as a fraction with a denominator of 100."
+      },
+      {
+        "prompt": "A dime is 1/10 of a dollar and a penny is 1/100 of a dollar. Write 3 dimes and 4 pennies as a fraction of a dollar and as a decimal."
+      },
+      {
+        "prompt": "Write two and seven hundredths as a decimal."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Tenths and Hundredths"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-tenths-and-hundredths",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

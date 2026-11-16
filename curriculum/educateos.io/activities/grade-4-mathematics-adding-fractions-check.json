@@ -1,0 +1,167 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Show what you know about adding, subtracting and multiplying fractions.",
+    "problems": [
+      {
+        "prompt": "Add: 3/10 + 4/10."
+      },
+      {
+        "prompt": "Subtract: 7/12 − 5/12."
+      },
+      {
+        "prompt": "Write 6/8 as a sum of three fractions with a denominator of 8."
+      },
+      {
+        "prompt": "Ana painted 2/6 of a fence on Saturday and 3/6 of it on Sunday. How much of the fence has she painted? How much is left to paint?"
+      },
+      {
+        "prompt": "Add: 2 3/8 + 1 6/8. Write your answer as a mixed number."
+      },
+      {
+        "prompt": "Subtract: 4 1/5 − 1 3/5."
+      },
+      {
+        "prompt": "Find 6 × 1/4. Write the answer as a fraction and as a mixed number."
+      },
+      {
+        "prompt": "A recipe uses 3/4 cup of flour for each batch. How much flour is needed for 3 batches?"
+      },
+      {
+        "prompt": "Rory wrote 1/5 + 2/5 = 3/10. Explain Rory's mistake and give the correct answer."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Adding and Subtracting Fractions Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-adding-fractions-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "precision",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels units and uses symbols correctly"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Adding and subtracting fractions"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

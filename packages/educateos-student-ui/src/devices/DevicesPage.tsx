@@ -11,6 +11,7 @@ import { ErrorState } from "../ErrorState.tsx";
 import { formatDateTime } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { CONNECT_PHONE_PATH } from "./paths.ts";
+import { PageHeading } from "../PageHeading.tsx";
 
 const PLATFORM_LABELS: Record<DeviceView["platform"], string> = { ios: "iPhone or iPad", android: "Android", web: "Web", other: "Other" };
 
@@ -62,7 +63,7 @@ export const DevicesPage = () => {
 
   const heading = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Text variant="heading" size="lg" as="h1">Your devices</Text>
+      <PageHeading>Your devices</PageHeading>
       <LinkButton href={CONNECT_PHONE_PATH} variant="primary" icon={<DeviceMobileIcon aria-hidden />}>Connect a phone</LinkButton>
     </div>
   );

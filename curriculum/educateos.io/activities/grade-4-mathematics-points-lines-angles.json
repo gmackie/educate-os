@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Draw and name the parts of geometry, and connect angles to turns in a circle.",
+    "problems": [
+      {
+        "prompt": "Draw and label a point, a line segment, a line and a ray. How is a ray different from a line?"
+      },
+      {
+        "prompt": "Draw a right angle, an acute angle and an obtuse angle. Label each one."
+      },
+      {
+        "prompt": "Draw a pair of parallel lines and a pair of perpendicular lines. Explain the difference."
+      },
+      {
+        "prompt": "An angle that turns through 1/360 of a circle measures 1 degree. How many degrees is an angle that turns through 1/4 of a circle?"
+      },
+      {
+        "prompt": "How many degrees is an angle that turns through 1/2 of a circle?"
+      },
+      {
+        "prompt": "The minute hand of a clock turns from the 12 to the 3. What kind of angle does it turn through, and how many degrees is it?"
+      },
+      {
+        "prompt": "Find something in the classroom that has a right angle and something that has parallel lines. Describe each."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Points, Lines, Rays and Angles"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.G.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.C.5",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-points-lines-angles",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

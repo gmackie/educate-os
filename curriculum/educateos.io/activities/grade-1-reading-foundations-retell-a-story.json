@@ -1,0 +1,118 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to The Lost Mitten. Tell what happened in order.",
+    "passage": "Ana lost her red mitten in the snow. First, she looked under the slide. It was not there. Next, she looked by the big tree. It was not there. Last, her dog Rocky came running with the red mitten in his mouth! Ana hugged Rocky. Good dog!",
+    "questions": [
+      {
+        "prompt": "What did Ana lose?"
+      },
+      {
+        "prompt": "Where did Ana look first and next?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw what happened last."
+      },
+      {
+        "prompt": "Why did Ana hug Rocky?"
+      }
+    ],
+    "sentenceFrames": [
+      "Ana lost ___.",
+      "First, ___. Next, ___.",
+      "Ana hugged Rocky because ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Retell a Story"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-retell-a-story",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "order",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told it in order"
+      },
+      {
+        "id": "details",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told important parts"
+      },
+      {
+        "id": "characters",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I named who was in the story"
+      }
+    ],
+    "title": "Retell a story"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

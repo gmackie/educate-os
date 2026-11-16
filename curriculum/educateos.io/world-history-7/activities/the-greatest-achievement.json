@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a90d419ecbd28186d1129dbe51c80ebe4e03aaa8b23bcdc4119e5f34449e546b",
+      "id": "educateos.io/world-history-7-the-greatest-achievement",
+      "version": "1.0.0"
+    }
+  },
+  "id": "the-greatest-achievement",
+  "role": "assessment",
+  "title": "The Greatest Achievement"
+}

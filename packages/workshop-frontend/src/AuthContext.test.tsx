@@ -15,6 +15,7 @@ const user: AiChatAuthorInfo = { type: 'user', id: 'tester@example.com', name: '
 const apiWithWhoami = (whoami: () => Promise<AiChatAuthorInfo>) => ({
   whoami,
   amIAdmin: async () => false,
+  getPreferredModel: async () => null,
 }) as RpcStub<AuthenticatedApi>
 
 const CurrentUserProbe = () => {
@@ -70,6 +71,21 @@ describe('AuthProvider', () => {
     await act(async () => vi.advanceTimersByTimeAsync(250))
     expect(container.textContent).toBe(user.id)
     expect(whoami).toHaveBeenCalledTimes(2)
+    act(() => root.unmount())
+  })
+
+  it("offers the user's saved preferred model to pickers", async () => {
+    const api = { ...apiWithWhoami(async () => user), getPreferredModel: async () => 'opus' } as RpcStub<AuthenticatedApi>
+    const PreferredModelProbe = () => <span>{useAuthenticatedApi().preferredModel ?? 'none'}</span>
+    const container = document.createElement('div')
+    const root = createRoot(container)
+
+    await act(async () => root.render(
+      <AuthProvider authenticatedApi={api} onLogout={() => {}}>
+        <PreferredModelProbe />
+      </AuthProvider>
+    ))
+    expect(container.textContent).toBe('opus')
     act(() => root.unmount())
   })
 })

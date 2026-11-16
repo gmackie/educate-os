@@ -24,6 +24,9 @@ afterAll(() => {
   else testGlobal.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment
 })
 
+const auth = vi.hoisted(() => ({ preferredModel: null as string | null }))
+vi.mock('../../AuthContext', () => ({ useOptionalAuthenticatedApi: () => auth }))
+
 vi.mock('@cloudflare/kumo', async () => {
   const { createContext, useContext } = await import('react')
 
@@ -180,6 +183,7 @@ let root: Root
 beforeEach(() => {
   vi.resetAllMocks()
   localStorage.clear()
+  auth.preferredModel = null
   listModels.mockResolvedValue([OPUS, SONNET])
   getBlueprint.mockImplementation(async id => BLUEPRINTS.find(blueprint => blueprint.id === id) ?? null)
   container = document.createElement('div')
@@ -315,6 +319,17 @@ describe('UpdateFromBlueprintDialog', () => {
     expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: 'opus' })
     // Like the composer's selector, the pick carries over to the next chat.
     expect(localStorage.getItem('lastSelectedModel')).toBe('opus')
+  })
+
+  it("starts the reviewer on the user's preferred model when this browser has saved no pick", async () => {
+    auth.preferredModel = 'sonnet'
+    applyBlueprint.mockResolvedValue({ outcome: 'proposed', chatId: 7 })
+
+    await open(TRIP_UPSTREAM)
+    expect(reviewerSelect().value).toBe('sonnet')
+    await click('Update')
+
+    expect(applyBlueprint).toHaveBeenCalledExactlyOnceWith('trip', { modelId: 'sonnet' })
   })
 
   it('reviews with no agent when the user picks none', async () => {

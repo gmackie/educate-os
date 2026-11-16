@@ -1,0 +1,157 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Which design let the least ice melt? Use your numbers to compare it with the unprotected ice cube. Then name one change that would improve your design, explain why it should help, and say what you would keep the same when you test it again.",
+    "dataColumns": [
+      {
+        "name": "Design"
+      },
+      {
+        "name": "Ice mass at start",
+        "unit": "g"
+      },
+      {
+        "name": "Ice mass after 60 minutes",
+        "unit": "g"
+      },
+      {
+        "name": "Ice melted",
+        "unit": "g"
+      }
+    ],
+    "due": {
+      "days": 8,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "methodPrompt": "Criteria: your ice keeper must hold one ice cube and let it be taken out to weigh. Constraints: use only materials from the class bin, fit inside a paper cup, and build in one class period. Describe and sketch your design and explain why you chose each material. How will you test it fairly against an unprotected ice cube? What will you keep the same?",
+    "overview": "Design, build and test a container that keeps an ice cube from melting, then improve it.",
+    "question": "Which of our designs keeps an ice cube from melting the longest, and how can we improve it?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Keep It Cold: Design an Ice Keeper"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-ice-keeper",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "criteria",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Design meets the criteria and constraints"
+      },
+      {
+        "id": "test",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Fair test"
+      },
+      {
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Data recorded with units"
+      },
+      {
+        "id": "improvement",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Improvement based on data"
+      }
+    ],
+    "title": "Design and test"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

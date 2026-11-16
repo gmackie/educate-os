@@ -1,0 +1,163 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 42,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "8",
+    "minWords": 300,
+    "minimumCitations": 2,
+    "overview": "Compare a city report and a resident's letter about the same project, and explain where and why they disagree.",
+    "prompt": "Read \"Opening the Creek\" and \"A Creek for Whom?\" Write an explanatory essay that identifies two places where the texts disagree, on a matter of fact or of interpretation. For each, quote both sources, explain the disagreement, and suggest why the two writers see it differently (think about what each one measured, and who each one counted). End by explaining what a reader should know before deciding whether the project succeeded.",
+    "resources": [
+      "creek-report",
+      "creek-letter"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Where the Sources Disagree"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-where-the-sources-disagree",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Opening the Creek: What Happened When Millbrook Uncovered Its Buried Stream\n\nThis article was written for EducateOS. Millbrook is an invented city, and its figures are invented, though they are modeled on projects real cities have carried out.\n\nFor eighty years, Fenner Creek ran through a concrete pipe under downtown Millbrook. City engineers buried it in the 1940s to make room for a parking lot and to stop it from flooding. In 2019, the city tore up the parking lot and brought the creek back into the open air, a process engineers call daylighting.\n\nThe project cost $14 million and took three years. The city now has a 600-meter strip of creek with walking paths, native plants and stone banks. According to the city's five-year report, the open creek has made downtown flooding less frequent, not more. A pipe can carry only so much water before it backs up into the streets; an open creek with planted banks spreads out and soaks into the ground. The report counts four street floods downtown in the five years after daylighting, compared with eleven in the five years before.\n\nThe creek also cooled the neighborhood. On summer afternoons, the report says, air temperatures along the creek walk measured about 2 degrees Celsius lower than on nearby streets of asphalt. Biologists have counted three species of fish in the creek that had not been seen in the pipe.\n\nBusinesses noticed too. Of the 31 shops facing the creek, 24 reported more customers in a survey two years after it opened. Rents along the creek rose by about 18 percent.\n\nSupporters say Millbrook shows that a city can repair a decision made generations ago. \"We used to hide our water,\" said one city planner. \"Now it is the center of town.\"",
+      "id": "creek-report",
+      "title": "Opening the Creek: What Happened When Millbrook Uncovered Its Buried Stream"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "A Creek for Whom? A Resident Responds\n\nThis letter was written for EducateOS. It responds to the invented Millbrook report in this unit, and its figures are invented too.\n\nThe city's report on Fenner Creek tells a happy story, and some of it is true. The creek walk is beautiful, and I am glad the flooding is better. But the report leaves out the people who used to live and work there.\n\nBefore the project, the blocks near the parking lot had some of the cheapest apartments downtown. Since the creek opened, rents there have climbed by close to 30 percent, not the 18 percent the report gives for shops. The report measures rents for stores; it does not measure rents for homes. At least two of my neighbors moved out of the city because they could no longer afford to stay.\n\nThe report also says 24 of 31 shops gained customers. It does not say that four of the original shops closed during the three years of construction, when the street was torn up and customers could not reach them. Those shops were not part of the survey, because they were no longer there.\n\nI am not against the creek. I am against counting only the people who were still around to be counted. Before Millbrook's next project, the city should study who lives in a neighborhood and plan to help them stay.",
+      "id": "creek-letter",
+      "title": "A Creek for Whom? A Resident Responds"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "disagreements",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies disagreements"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Quotes both sources"
+      },
+      {
+        "id": "explanation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains why they differ"
+      },
+      {
+        "id": "style",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Formal style and organization"
+      }
+    ],
+    "title": "Comparing sources"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

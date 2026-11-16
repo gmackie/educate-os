@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:bf99fe53e4b6c5ad1f57e1cfd8d36a58a4d8a617fbc303eb9989b9cf751832a4",
+      "id": "educateos.io/grade-4-mathematics-measuring-angles",
+      "version": "1.0.0"
+    }
+  },
+  "id": "measuring-angles",
+  "role": "assignment",
+  "title": "Measuring and Adding Angles"
+}

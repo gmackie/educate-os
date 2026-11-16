@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3de517beeb7c62b5e8ac5bc5017f3b3540377af209a53b371b55423c4f4e36b5",
+      "id": "educateos.io/grade-1-reading-foundations-retell-a-story",
+      "version": "1.0.0"
+    }
+  },
+  "id": "retell-a-story",
+  "role": "assessment",
+  "title": "Retell a Story"
+}

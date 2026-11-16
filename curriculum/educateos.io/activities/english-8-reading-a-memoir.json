@@ -1,0 +1,132 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 35,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Read a memoir excerpt on your own and analyze how the writer develops a point of view.",
+    "passage": "The Radio on the Windowsill (memoir excerpt)\n\nMy mother's kitchen radio only got two stations, and one of them was mostly static. She kept it on the windowsill above the sink, where the antenna could lean against the glass, and she played it every evening while she cooked.\n\nWhen I was little I thought the radio was hers the way her reading glasses were hers. It wasn't until I was twelve that I understood it was the only thing she had brought with her when she moved here from the other side of the world, and that the station with all the static sometimes, late at night, picked up a broadcast in her first language.\n\nI remember the night I found her standing at the sink in the dark, not washing anything, just listening. The voices came and went through the crackle like swimmers coming up for air. She didn't turn around. I didn't turn on the light.\n\nI used to be embarrassed by that radio. When friends came over, I turned it off. I wanted our kitchen to sound like every other kitchen on our street. Now, in my own apartment, I have a radio on my windowsill too. It gets a hundred stations. Some nights I turn it to static anyway, and I listen for the swimmers.",
+    "questions": [
+      {
+        "prompt": "What did the writer believe about the radio as a young child, and what did the writer learn at twelve?"
+      },
+      {
+        "prompt": "Explain the simile \"like swimmers coming up for air.\" What does it suggest about the voices on the radio?"
+      },
+      {
+        "prompt": "Why did the writer not turn on the light? What does this choice show?"
+      },
+      {
+        "prompt": "How has the writer's feeling about the radio changed from childhood to adulthood? Cite two details."
+      },
+      {
+        "prompt": "What is the writer's purpose in this memoir? Explain how the last sentence helps achieve it."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Reading a Memoir: \"The Radio on the Windowsill\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-reading-a-memoir",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "point-of-view",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains point of view and purpose"
+      },
+      {
+        "id": "language",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes figurative language"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Cites strong evidence"
+      }
+    ],
+    "title": "Memoir reading"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

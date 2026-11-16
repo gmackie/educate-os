@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 140,
+    "minimumCitations": 1,
+    "overview": "Read about medieval society and explain what different groups owed one another.",
+    "prompt": "Read \"Lords, Vassals and the Manor.\" Choose two of these: a king, a noble vassal, a serf, a parish priest, a guild member. For each, explain in your own words what that person owed others and what they received in return. Use the words vassal, fief, manor or serf correctly at least twice, and include at least one detail from the reading.",
+    "resources": [
+      "lords-vassals-manor"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Lords, Vassals and the Manor"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.6.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-lords-vassals-and-the-manor",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Western Roman Empire broke apart in the 400s CE. For centuries afterward, Western Europe had no single strong government. Kingdoms rose and fell. In the year 800, the pope crowned Charlemagne, king of the Franks, as emperor, but his empire was divided among his grandsons within a few decades. Raids by Vikings and others made safety the most important need.\n\nOut of this disorder came a system historians often call feudalism. (The word was invented much later, and historians debate how well one label fits a system that differed from place to place.) A king granted land, called a fief, to powerful nobles. In return, a noble became the king's vassal: he swore loyalty and promised to provide knights in war. Great nobles, in turn, granted land to lesser lords and knights who became their vassals.\n\nMost people were not lords or knights. They were peasants who lived and worked on a manor, a lord's estate with its village, fields, mill, church and manor house. Many peasants were serfs: they could not leave the manor without the lord's permission, and they owed the lord labor on his fields, a share of their crops, and fees for using his mill. In return, the lord was supposed to protect them and settle their disputes in his court.\n\nThe Catholic Church was the one institution found everywhere in Western Europe. Parish priests baptized, married and buried people; peasants gave a tenth of their produce, the tithe, to the Church. In monasteries, monks and nuns prayed, ran farms, cared for travelers and the sick, and copied books by hand.\n\nAfter about 1000, Europe changed. New tools such as the heavy plow and better horse collars helped farmers grow more food. Trade revived, towns grew, and townspeople formed guilds of merchants and craftspeople that set prices, trained apprentices and ran town affairs.",
+      "id": "lords-vassals-manor",
+      "title": "Lords, Vassals and the Manor"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

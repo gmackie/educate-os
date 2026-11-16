@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to a story. Tell who is in it, where it happens, and what happens.",
+    "passage": "Pip the puppy ran into the yard. It was raining. Pip saw a big puddle. Splash! Pip jumped in. Mud flew everywhere. Mom laughed and gave Pip a warm bath.",
+    "questions": [
+      {
+        "prompt": "Who is the story about?"
+      },
+      {
+        "prompt": "Where does the story happen?"
+      },
+      {
+        "prompt": "What did Pip do when Pip saw the puddle?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw Pip in the bath."
+      }
+    ],
+    "sentenceFrames": [
+      "The story is about ___.",
+      "It happens in ___.",
+      "Pip ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Who, Where, What Happened"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-who-where-what",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

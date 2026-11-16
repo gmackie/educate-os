@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a short text about the seasons. Tell what it is mostly about and one detail.",
+    "passage": "A year has four seasons. In fall, the air gets cooler and many leaves change color and fall down. In winter, it is cold. In some places, it snows. In spring, it gets warmer and rain helps flowers grow. In summer, the days are long and hot. Then fall comes again!",
+    "questions": [
+      {
+        "prompt": "What is this text mostly about?"
+      },
+      {
+        "prompt": "What happens to many leaves in fall?"
+      },
+      {
+        "prompt": "What is the weather like in winter?"
+      },
+      {
+        "prompt": "What helps flowers grow in spring?"
+      },
+      {
+        "prompt": "What season comes after summer?"
+      }
+    ],
+    "sentenceFrames": [
+      "This is mostly about ___.",
+      "In ___, it is ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "The Four Seasons"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-the-four-seasons",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

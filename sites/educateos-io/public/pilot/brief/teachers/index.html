@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brief for teachers · EducateOS</title>
+<meta name="description" content="A one-page brief on the EducateOS founding pilot for teachers: what you get, what it asks of you, the honest status of each part, and how your students' data is protected.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+  // Print in light mode whatever the reader's theme, so the PDF has dark text on white.
+  addEventListener("beforeprint", () => { document.documentElement.dataset.mode = "light"; });
+  addEventListener("afterprint", () => { document.documentElement.dataset.mode = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; });
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/brief.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+<main id="main" class="brief">
+  <!-- One-page leave-behind (SCHO-405). Statuses follow docs/educateos/maturity.md. The PDF beside
+       this page is printed from it by node sites/educateos-io/build.mjs --pdf. -->
+  <section class="tight">
+    <div class="wrap sheet">
+      <div class="brief-top">
+        <div>
+          <span class="print-logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>EducateOS</span>
+          <div class="eyebrow">Founding pilot brief · For champion teachers</div>
+        </div>
+        <div class="meta">November 2026<br>educateos.io/pilot · hello@educateos.io</div>
+      </div>
+
+      <h1>AI that helps you plan and build, with you as the final say.</h1>
+      <p class="lede">EducateOS is an open-source learning platform with AI built in, run by your district in its own account. In the founding pilot a few champion teachers in one school use it in their own planning for about ten weeks, and tell us honestly what works.</p>
+
+      <div class="cols">
+        <div class="box">
+          <h2>The problem it solves for you</h2>
+          <ul>
+            <li>Building practice sets, quizzes and differentiated versions of a lesson takes hours you don't have.</li>
+            <li>General AI chat tools don't know your course, and you can't tell where what you paste ends up.</li>
+            <li>You want help with the busywork without anything reaching students before you check it.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h2>What EducateOS is</h2>
+          <p>Teacher Studio for modules, assignments, six types of quiz question and a weighted gradebook, with 12 open courses you can start from. Beside it, an AI workspace: an agent for your course that reads only the resources you give it, and small sandboxed classroom apps ("gadgets") such as flashcards, a simulation or a lab plotter, built by asking. Emails, documents and grades an agent prepares wait for your approval.</p>
+        </div>
+        <div class="box">
+          <h2>What the pilot asks of you</h2>
+          <ul>
+            <li>About an hour of training in week 1, in the demo district.</li>
+            <li>Using it in your own planning each week, on problems you choose.</li>
+            <li>A 20-minute check-in each week, and two short surveys.</li>
+            <li>Keeping to the data rule: no student names, work or grades in it until the district signs a DPA.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h2>What you get</h2>
+          <ul>
+            <li>Free access during the pilot. You pay nothing, and neither does your school budget.</li>
+            <li>A printable quickstart, staff AI guidance and student AI posters for your room.</li>
+            <li>Help within one business day, and someone who fixes or tracks every issue you raise.</li>
+            <li>A direct say in what gets built next, and a seat on the educator advisory council if you want one.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="evidence-title">Where it stands, labeled honestly</h2>
+      <div class="table-scroll">
+      <table class="evidence">
+        <thead><tr><th>What</th><th>Evidence today</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Teacher Studio: modules, quizzes, gradebook</td><td>Runs on the demo districts. Try it as a demo teacher at educateos.io/demo.</td><td><span class="status dev">In development</span></td></tr>
+          <tr><td>Course agents and gadgets</td><td>Part of Cloudflare OS today: each agent and gadget starts with access to nothing.</td><td><span class="status avail">Available in Cloudflare OS</span></td></tr>
+          <tr><td>Approvals for every write</td><td>Emails, events and documents an agent prepares wait in your queue.</td><td><span class="status avail">Available in Cloudflare OS</span></td></tr>
+          <tr><td>Teacher-approved grades only</td><td>A grade becomes official only when you approve it.</td><td><span class="status dev">In development</span></td></tr>
+          <tr><td>Google Classroom</td><td>Coursework and a teacher-approved grade ran live on one course.</td><td><span class="status unit" data-status="summary.google-classroom">Unit-tested</span></td></tr>
+          <tr><td>Canvas and Moodle (LTI 1.3)</td><td>Passed live runs against current Canvas and Moodle 4.5. No certification is claimed.</td><td><span class="status supported" data-status="summary.lti">Supported</span></td></tr>
+          <tr><td>AI tutors for students</td><td>Synthetic students only. Student-facing AI stays off in the pilot.</td><td><span class="status validating">Pilot preview</span></td></tr>
+          <tr><td>AI-drafted feedback on student work</td><td>Not built yet.</td><td><span class="status planned">Planned</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="cols">
+        <div class="box">
+          <h2>Cost</h2>
+          <p>Nothing for you or your school budget. The software is free and open source, and the district pays its own small hosting bill to Cloudflare. The district sets a cap on AI usage; when a budget runs out, the assistant stops and your work carries on without it.</p>
+        </div>
+        <div class="box">
+          <h2>Who holds student data</h2>
+          <p>EducateOS runs in your district's own Cloudflare account, and the company that develops it does not receive student records. During the pilot you use your own staff account and your own teaching materials only: no student names, work or grades until the district signs a data processing agreement. If something an agent produces looks wrong or unsafe, you report it and the district can stop access at once. No compliance or certification claim is made.</p>
+        </div>
+      </div>
+
+      <div class="next">
+        <p><b class="strong">Next step.</b> Interested? Tell your principal, or email <a href="mailto:hello@educateos.io?subject=Teaching%20with%20EducateOS">hello@educateos.io</a> with what you teach and where. Try Teacher Studio now at <a href="/demo/">educateos.io/demo</a>, no sign-up needed. Full terms at <a href="/pilot/">educateos.io/pilot</a>.</p>
+      </div>
+
+      <p class="fine">Statuses from the project's maturity record, November 2026. Available in Cloudflare OS: part of the open-source Cloudflare OS today. Pilot preview: runs with synthetic students only. In development: built and tested, not yet run for a district. Unit-tested: tested against fakes of the vendor's service. Supported: passed live runs against the real service, not a certification. Planned: no working code or evidence yet. This brief is not a contract. EducateOS is developed by Gmacko Ventures LLC on the open-source Cloudflare OS and is not affiliated with or endorsed by Cloudflare, Inc.</p>
+
+      <div class="actions screen-only">
+        <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20founding%20pilot" data-glass-event="contact_requested" data-glass-prop-location="brief_teachers">Email hello@educateos.io</a>
+        <a class="btn" href="/pilot/brief/teachers/educateos-brief-teachers.pdf">Download the PDF</a>
+        <a class="btn" href="/pilot/">The founding pilot</a>
+      </div>
+      <p class="others screen-only">Briefs for each audience: <a href="/pilot/brief/superintendents/">superintendents and boards</a> · <a href="/pilot/brief/principals/">principals</a> · <a href="/pilot/brief/teachers/">teachers</a> · <a href="/pilot/brief/it/">district IT</a></p>
+    </div>
+  </section>
+</main>
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->
+</body>
+</html>

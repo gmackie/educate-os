@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:fbfbd77d6d605131583b8a9a3e827044a6ddcea0c618e9cc76e185ed9711836d",
+      "id": "educateos.io/grade-4-english-language-arts-otter-report",
+      "version": "1.0.0"
+    }
+  },
+  "id": "otter-report",
+  "role": "assessment",
+  "title": "Report: All About Sea Otters"
+}

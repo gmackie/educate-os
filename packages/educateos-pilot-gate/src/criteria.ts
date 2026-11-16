@@ -266,7 +266,7 @@ export const CRITERIA: readonly Criterion[] = z.array(Criterion).parse([
         name: "a graduating student's grants end while their eligible work is kept",
         direct: "The district app has no lifecycle route yet, so the administrator's graduation runs through the domain service the route will call (transitionPrincipal), over the district app's own stores and policy engine; the student's class work is then checked over HTTP.",
       },
-      { id: "export-offered", status: "todo", name: "the student is offered an export of eligible work", blockedBy: ["SCHO-90"], reason: "The district app has no export route, and the exporter is not wired to submissions and feedback." },
+      { id: "export-offered", status: "test", name: "once the term closes, the student takes their eligible work, the closed class's included, in their own archive over the API, each item on an audited decision" },
     ],
   },
   {
@@ -325,13 +325,8 @@ export const CRITERIA: readonly Criterion[] = z.array(Criterion).parse([
     expected: "Credentials, private peer content and restricted teacher notes not imported",
     file: "security-matrix.test.ts",
     checks: [
-      {
-        id: "export-side",
-        status: "test",
-        name: "a student's archive from the district app's own records carries no peer work, teacher-only material or credentials",
-        direct: "The district app has no export route, so the P01 exporter is built over the app's stores and engine.",
-      },
-      { id: "transfer", status: "todo", name: "a transfer between the two district apps imports only the authorized work", blockedBy: ["SCHO-90"], reason: "Neither district app has export or transfer routes, and the exporter is not wired to submissions and feedback." },
+      { id: "export-side", status: "test", name: "a student's archive from the district app's own records carries no peer work, teacher-only material or credentials" },
+      { id: "transfer", status: "todo", name: "a transfer between the two district apps imports only the authorized work", blockedBy: ["SCHO-90"], reason: "The district app serves a student's archive (SCHO-371), but neither district app has a transfer or import route." },
     ],
   },
   {

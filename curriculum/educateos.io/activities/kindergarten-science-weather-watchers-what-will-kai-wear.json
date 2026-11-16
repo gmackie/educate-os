@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a story about Kai. Tell what Kai wears in different weather.",
+    "passage": "Kai looks out the window. Snow is falling! Kai puts on a warm coat, a hat and mittens. The next day, the sun is hot. Kai puts on shorts and a sun hat. Kai brings a bottle of water. Clothes help us stay warm, dry or cool.",
+    "questions": [
+      {
+        "prompt": "What did Kai wear in the snow?"
+      },
+      {
+        "prompt": "What did Kai wear when the sun was hot?"
+      },
+      {
+        "prompt": "Why did Kai bring water on the hot day?"
+      },
+      {
+        "prompt": "How do mittens help on a snowy day?"
+      }
+    ],
+    "sentenceFrames": [
+      "Kai wore ___.",
+      "Mittens keep our ___ warm."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "What Will Kai Wear?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-what-will-kai-wear",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

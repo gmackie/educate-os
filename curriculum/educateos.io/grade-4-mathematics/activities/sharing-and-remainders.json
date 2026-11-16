@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c225cd9a0b74860cba033ba5a043b6c80244c62faeefd1a311c7b7a7780c51e4",
+      "id": "educateos.io/grade-4-mathematics-sharing-and-remainders",
+      "version": "1.0.0"
+    }
+  },
+  "id": "sharing-and-remainders",
+  "role": "assignment",
+  "title": "Sharing and Remainders"
+}

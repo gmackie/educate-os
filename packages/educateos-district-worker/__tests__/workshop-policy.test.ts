@@ -46,6 +46,30 @@ describe("district policy over direct Worker RPC", () => {
     ]) expect(await outcome({ ...request, userId: admin })).toBe("deny");
   });
 
+  it("lets a teacher connect and use only the granted teacher-confined connector types (SCHO-393)", async () => {
+    const classroomCourse = "https://classroom.googleapis.com/courses/:courseId";
+    const connect = { action: "gatekeeper.connect", vendorId: "google", resourceUrlPatterns: [classroomCourse] } as const;
+    const acquire = { action: "resource.acquire", vendorId: "google", accountId: 3, resource: "https://classroom.googleapis.com/courses/896140534378" } as const;
+    expect(await outcome({ ...connect, userId: teacher })).toBe("allow");
+    expect(await outcome({ ...connect, userId: teacher, accountId: 3 })).toBe("allow");
+    expect(await outcome({ ...acquire, userId: teacher })).toBe("allow");
+    expect(await outcome({ ...acquire, userId: teacher, resource: classroomCourse })).toBe("allow");
+    for (const request of [
+      { ...connect, resourceUrlPatterns: [classroomCourse, "https://drive.google.com/drive/my-drive"] },
+      { ...connect, resourceUrlPatterns: undefined }, { ...connect, resourceUrlPatterns: [] },
+      { ...connect, resourceUrlPatterns: undefined, accountId: 3 },
+      { ...connect, vendorId: "clever" }, { ...connect, vendorId: "educateos" },
+      { ...acquire, resource: "https://drive.google.com/drive/folders/abc" },
+      { ...acquire, resource: "https://classroom.googleapis.com/student-courses/896140534378" },
+      { ...acquire, resource: "https://evil.example/courses/1" }, { ...acquire, vendorId: "clever" },
+    ]) expect(await outcome({ ...request, userId: teacher })).toBe("deny");
+    // Neither a student nor a school administrator who teaches nothing holds the grant.
+    for (const userId of [student, "principal:prn_nf-principal-high"]) {
+      expect(await outcome({ ...connect, userId })).toBe("deny");
+      expect(await outcome({ ...acquire, userId })).toBe("deny");
+    }
+  });
+
   it.each(["prn_nf-district-admin", "email:admin@example.com", "principal:missing", "principal:principal:prn_nf-district-admin", "principal:prn_rb-district-admin"])("denies unverified or unknown user %s", async (userId) => {
     expect(await outcome({ ...personal, userId })).toBe("deny");
   });

@@ -1,0 +1,122 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Name shapes, build shapes and split shapes into equal shares. Show how you know.",
+    "problems": [
+      {
+        "prompt": "How many sides and how many corners does a rectangle have?"
+      },
+      {
+        "prompt": "A shape has 3 straight sides and 3 corners. It is green and very big. What shape is it?"
+      },
+      {
+        "prompt": "Draw two shapes you can put together to make a rectangle."
+      },
+      {
+        "prompt": "Draw a square. Split it into halves."
+      },
+      {
+        "prompt": "Draw a circle. Split it into fourths. Color one fourth."
+      },
+      {
+        "prompt": "Which share is bigger: one half or one fourth of the same circle? Tell why."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Shapes and Shares Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-shapes-and-shares-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "attributes",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can name a shape by its sides and corners"
+      },
+      {
+        "id": "compose",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can put shapes together"
+      },
+      {
+        "id": "shares",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can split shapes into halves and fourths"
+      }
+    ],
+    "title": "Shapes and shares"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

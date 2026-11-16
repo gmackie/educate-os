@@ -13,7 +13,7 @@
 moved the instance to one origin: the router serves `https://northfield.educateos.io`, with the
 LMS at `/` (the district Worker, through the router's `DISTRICT` binding) and the Workshop at `/ai`
 (its RPC at `/ai/api`, its frontend built with `VITE_WORKSHOP_BASE_PATH=/ai/`). One Access
-application ("SchoolOS (demo district)", the backend's `CF_ACCESS_AUD`) covers the host, and
+application ("EducateOS Northfield", renamed from "SchoolOS (demo district)" on 2026-11-06; the backend's `CF_ACCESS_AUD`) covers the host, and
 "EducateOS Northfield (bypass)" covers the paths that check their own credential. The router also
 holds `schoolos.gmac.io` and `district.schoolos.gmac.io` and answers there only with `/healthz`
 and redirects (`LEGACY_HOSTS`: 301 for GET and HEAD, 308 otherwise). Workshop sign-in resolves the
@@ -57,7 +57,8 @@ var is not set. It signs its service tokens as `iss=educateos`, `aud=hall-monito
 public half of the signing key (`kid` `schoolos-1`, minted before the EducateOS rename). The guard config names Hall Monitor's built-in
 profiles at revision `builtin-1`: `educator`, `student-9-12`, and `student-6-8` for both the 6-8 and
 K-5 audience classes (Hall Monitor has no younger profile and moderates younger bands under the
-stricter 6-8 one). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOUNT_ID`,
+stricter 6-8 one). `student-k5` is still its own guard profile, with scaffolded answers and the K-2
+or 3-5 grade band sent with each check (SCHO-325; see the guard's README, "The K-5 profile"). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOUNT_ID`,
 `AI_GATEWAY_ID`, `AI_GATEWAY_LOGS_TOKEN`) is left unset, so settlements are estimated, and the nightly
 reconciliation only records snapshots.
 
@@ -107,6 +108,91 @@ models use the shared Cloudflare price book.
 For the staged move from this operator-only guard to the district directory, see
 [Workshop guard linking](workshop-guard-linking.md). District sign-in and guard admission are
 separate setup steps; linking grants no educator role.
+
+## AI tutors by grade band (SCHO-325)
+
+The release bundles four tutor blueprints, one per grade band: `educateos.tutor-k2` (Reading Buddy),
+`educateos.tutor-3-5` (Homework Helper), `educateos.tutor-6-8` (Study Coach) and
+`educateos.tutor-9-12` (Research & Essay Coach). Each one's `LLM` binding declares its band, and
+the guard screens a tutor's calls at the younger of that band and the user's own (see the guard's
+README, "Declared grade bands"). They suggest Workers AI models the guard config prices:
+`@cf/zai-org/glm-5.3-flash` for K-2 and 3-5, `@cf/zai-org/glm-5.2` for 6-8 and 9-12.
+
+The code ships with the release. The steps below are live changes, and none of them has been run.
+Do them through Forge, in this order, and record the deployment ID, commit and results on SCHO-325.
+
+1. **Prerequisites.** The showcase district (SCHO-322) is deployed with one synthetic student in a
+   course of each band (K-2, 3-5, 6-8, 9-12) and a synthetic teacher, and its students can sign in
+   (test identities, one-time PIN). The backend, guard and district Worker run a release with this
+   change. The backend installs the bundled blueprints on its first `/api` request after the deploy.
+2. **Link Workshop users to principals.** A user who signed in after `PRINCIPAL_RESOLVER` was bound
+   is `principal:<id>` and needs no link. For every email-keyed user, starting with the operator's
+   and the teachers' accounts, a district administrator confirms a link and reads it back
+   (see [Workshop guard linking](workshop-guard-linking.md)):
+
+   ```sh
+   DISTRICT=https://<district host>   # district.schoolos.gmac.io, or the showcase district's
+   T=$(cloudflared access token --app "$DISTRICT")
+   curl -sS -X POST "$DISTRICT/api/admin/workshop-user-links" \
+     -H "cf-access-token: $T" -H 'content-type: application/json' \
+     -d '{"workshopUser": "<Workshop user ID>", "principalId": "prn_<student or teacher>"}'
+   curl -sS -H "cf-access-token: $T" "$DISTRICT/api/admin/workshop-user-links"
+   ```
+
+   Link one synthetic student per band the same way if they are email-keyed. A `409` means the
+   account or principal is already linked: read it back rather than retrying.
+3. **Put the guard in district mode with all four student profiles.** Prepare `AI_GUARD_CONFIG`
+   from the example config, changed as follows, and keep it out of the repository:
+   - `contextSource: "district"`, and `districtId` the showcase district's ID (not the example's
+     `dst_gmacko-demo`, whose ledger stays where it is). Drop `directory` and `principals`: the guard
+     reads the district through its `EDUCATEOS_DISTRICT` binding.
+   - `fundingPools` scoped to that district: a personal pool (and course pools, if the courses
+     should pay) whose `allowedModels` include both GLM models, and the safety pool for
+     `hall-monitor-evaluate`. `modelCatalog` and `modelRates` as in the example, which price both.
+   - `profiles` exactly as in the example: `student-k5` (Hall Monitor `student-6-8@builtin-1`,
+     scaffolded), `student-6-8` (`student-6-8@builtin-1`, scaffolded), `student-9-12`
+     (`student-9-12@builtin-1`, contextual), each moderating input, requiring output screening and
+     failing closed, and `educator`. The config is refused otherwise, and every call is denied.
+
+   Minify it and check it is under 5 KB (`wc -c`). Keep the current secret's value to roll back.
+   To stay under the limit, list a contract price book's four prices once under `priceBooks`
+   (`{"<priceBookId>": {"inputUsdNanoPerMTok": …, "outputUsdNanoPerMTok": …,
+   "cacheReadUsdNanoPerMTok": …, "cacheWriteUsdNanoPerMTok": …}}`). A model rate can then give its
+   `priceBookId` with no prices of its own (SCHO-401). Every visible Workers AI model the Workshop
+   offers must be enabled in `modelCatalog`, allowed by a pool other than the safety pool, and
+   priced; otherwise that model is refused ("The AI assistant isn't available for this request").
+   The guard logs `ai_guard.config.unfunded_offered_models`, naming any it would refuse. Check the
+   guard's logs for it after each change.
+   Set it with `forge secret set AI_GUARD_CONFIG --stage production --stdin` for app
+   `educateos-ai-guard` and redeploy the guard through Forge. Do not switch before step 2's links
+   read back, or the operator's own assistant goes off. An invalid config denies every call and
+   logs `AI_GUARD_CONFIG is invalid at: <field paths>`; check the guard's logs for it after the first
+   call.
+4. **Let students create the tutors.** The district refuses a personal workspace made from a
+   blueprint its Workshop policy does not list, so add `educateos.tutor-k2`,
+   `educateos.tutor-3-5`, `educateos.tutor-6-8` and `educateos.tutor-9-12` to
+   `DISTRICT_CONFIG.workshopPolicy.personalBlueprints` (see the
+   [district Workshop capability policy](../security/district-workshop-capability-policy.md)), set
+   the secret through Forge for app `educateos-district` and redeploy the district Worker. Until
+   then, "Create Gadget" on a tutor's page says "Workshop policy denied workspace.create". Done on
+   Northfield on 2026-11-04 (deployment `417d4027`).
+5. **Enable the tutors.** In the Workshop's admin panel, make sure both GLM models are enabled in
+   the gateway's models, and that the four tutors are listed among the output formats (an admin can
+   take any of them out). A student creates their band's tutor from
+   the Workshop's `/blueprint/<blueprintId>` page (or the formats menu), choosing the
+   suggested model; a teacher can share the same link. The binding's band is set then, from the
+   blueprint, and cannot be changed by the gadget.
+6. **Verify, per band.** Signed in as each synthetic student, open their tutor and send a benign
+   message: it answers. In Hall Monitor's evaluation records for the call (input and output), the
+   policy profile and grade band are the student's band's. Then check that a 6-8 student using the
+   9-12 tutor is screened at 6-8, that a teacher using the K-2 tutor is screened at K-2 under
+   `student-6-8`, that a message holding a phone number gets the tutor's privacy reply with no model
+   call or evaluation, and that an unlinked user is refused (`unknown_principal`).
+
+To roll back, set the previous `AI_GUARD_CONFIG` (static, operator only) and redeploy the guard; the
+guard then admits only the operator, whose tutors are screened at their declared bands, and refuses
+everyone else. An admin can also take the
+tutors out of the formats menu; gadgets already made from them keep working.
 
 ## Principal identity cutover (SCHO-259)
 
@@ -207,6 +293,47 @@ instance is a small cold bring-up: the new Worker must be serving before the bac
 deploy with a binding to it. See [The Google connector](#the-google-connector) for how that went for
 `gatekeeper-google`, and [The EducateOS connector](#the-educateos-connector) for `gatekeeper-educateos`.
 
+### Build nodes
+
+A target's node is where ForgeGraph builds it and runs `wrangler deploy`, not where the Worker
+serves; moving it changes nothing a browser sees. A node runs one deploy at a time, so the 18
+targets are split by how often they deploy (SCHO-316):
+
+- **hetzner-master:** `gatekeeper-context`, `gatekeeper-scheduler`, `gatekeeper-websearch` (app
+  `educate-os`, in `.forgegraph.yaml`), `gatekeeper-google`, `educateos-riverbend-district`,
+  `educateos-harbor-district`, `educateos-cedarvalley-district`, `educateos-site` and
+  `educateos-demo-fakes`.
+- **hetzner-fg:** `router`, `workshop-backend`, `schoolos-district-worker`,
+  `educateos-prairie-district`, `educateos-lakeshore-district`, `schoolos-ai-guard`,
+  `gatekeeper-educateos`, `educateos-admin` and `gatekeeper-clever`.
+
+Both need `node`, `npx` and `pnpm` on the agent's `PATH`; the agent runs the repository's pinned pnpm
+through `npx`. Change `educate-os`'s placement in `.forgegraph.yaml` and apply it with `forge apply`.
+Change a separate app's with `FG_APP=<app> forge target update <target> --node <node id>`.
+
+### Unchanged Workers skip the push deploy
+
+Every target of the separate apps (the district Workers, the demo districts, the connectors, the AI
+call guard, admin, the demo fakes and the site) sets `watchPathsFile: deploy/watch-paths.json`
+(SCHO-316, ForgeGraph FORGE-289). ForgeGraph reads that file at the commit it is deploying, and
+skips the push deploy of a target when nothing it lists changed since the commit the target is
+serving. Any doubt deploys: no serving deployment, a list it cannot read, or a target config or
+stage secret changed after the serving deployment. The app `educate-os` sets no list. Kanbanger
+closes an issue only on a fresh healthy receipt from each of its targets, so those deploy on every
+push.
+
+`pnpm production:watch-paths` regenerates the file, and `pnpm production:check` (in `pnpm lint`)
+fails when it is stale. Each list is the Worker's whole workspace closure: package.json
+dependencies of any kind, relative imports between packages, the packages its `buildCommand`
+builds, the `scripts/` files a build can load, and the lockfile and root configs. A new separate
+app's target goes in `WATCHED_TARGETS` in `scripts/production/watch-paths.ts`, then its config gets
+`watchPathsFile`.
+
+A skipped Worker keeps serving its last deploy, which is identical to what this commit would
+build. To redeploy one anyway, run `forge deploy create production --target <name>` for its app;
+manual deploys are never skipped. `forge secret set` on a stage already makes the next push
+redeploy its targets.
+
 ### Bindings the account must support
 
 The backend declares `LOADER` (Worker Loader, the gadget sandbox) and `BROWSER` (Browser Rendering,
@@ -289,7 +416,16 @@ district Workers at their own `<slug>.educateos.io`; see [the demo districts run
   of the zero subject, minified:
   `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `educateos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
-  secret. The seed is read only on the object's first start.
+  secret. The seed is read only on the object's first start. To rename the district afterwards, a district
+  administrator uses "District name" on the admin console's Dashboard (`admin.renameDistrict`,
+  SCHO-344); changing the secret's name does nothing.
+- **The K-12 showcase (SCHO-326).** The co-op is Northfield's demo district, so it can seed the
+  showcase. The generated `wrangler.production.jsonc` sets `DEMO_SHOWCASE` to `northfield`
+  (`district.showcase` in `scripts/production/schoolos-gmac-io.ts`). The deployed `DISTRICT_CONFIG`
+  must also carry `"demo": {"showcase": "northfield"}`, as the example does. `demo` is read on every
+  start, so adding it to the deployed secret and redeploying is enough. Until both are set,
+  `/api/demo/*` is 404. The procedure is in
+  [demo-districts.md](demo-districts.md#the-k-12-showcase-scho-326).
 - **Bound by the connector and the guard.** `gatekeeper-educateos` binds `DistrictSchoolTools`
   (SCHO-218). The AI call guard binds `DistrictGuardDirectory` as its `EDUCATEOS_DISTRICT`
   (SCHO-283), and reads it once `AI_GUARD_CONFIG` says `contextSource: "district"` (with the
@@ -340,7 +476,7 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   everything else works. Turning them on also needs an Access bypass for
   `/gatekeeper/google/pubsub` (see the package README).
 - **ForgeGraph.** App `educateos-google`, stage `production`, one `cloudflare-workers` target
-  `gatekeeper-google` on hetzner-fg: `workerName` `gatekeeper-google`, `appDir`
+  `gatekeeper-google` on hetzner-master: `workerName` `gatekeeper-google`, `appDir`
   `packages/gatekeeper-google`, `configPath` `packages/gatekeeper-google/wrangler.production.jsonc`,
   the `buildCommand` and `deployCommand` in the table above, `syncSecrets: true`, and
   `healthCheckUrl` `https://schoolos.gmac.io/healthz`.

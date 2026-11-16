@@ -3,7 +3,7 @@
 // the calling Worker records each decision through the object's RPC stub.
 
 import { DurableObject } from "cloudflare:workers";
-import type { PolicyAuditEvent } from "../../src/index.ts";
+import type { PolicyAuditEvent, PolicyAuditPage, PolicyAuditQuery } from "../../src/index.ts";
 import { DurableObjectPolicyAuditSink, type StoredPolicyAuditEvent } from "../../src/durable-object-audit-sink.ts";
 
 /** One district's append-only policy audit trail. */
@@ -23,6 +23,16 @@ export class TestAuditTrail extends DurableObject {
   /** A page of the trail. */
   async read(afterSeq: number, limit: number): Promise<StoredPolicyAuditEvent[]> {
     return this.#sink.read({ afterSeq, limit });
+  }
+
+  /** The newest decisions a query finds (SCHO-376). */
+  async search(query: PolicyAuditQuery): Promise<PolicyAuditPage> {
+    return this.#sink.search(query);
+  }
+
+  /** Deletes decisions about a family's records made before `before`. */
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    return this.#sink.deleteFamilyDecisionsBefore(before);
   }
 
   /** One invocation's decisions. */

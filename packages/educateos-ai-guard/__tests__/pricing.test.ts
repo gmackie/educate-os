@@ -147,6 +147,19 @@ describe("settlement pricing", () => {
     const halfPriced = { ...TEST_CONFIG.modelRates[0], cacheWriteUsdNanoPerMTok: undefined };
     expect(GuardConfig.safeParse({ ...TEST_CONFIG, modelRates: [halfPriced] }).success).toBe(false);
   });
+
+  it("prices rates that name a configured price book from it, once, and keeps a rate's own prices (SCHO-401)", () => {
+    const prices = { inputUsdNanoPerMTok: "1000000000", outputUsdNanoPerMTok: "4000000000", cacheReadUsdNanoPerMTok: "200000000", cacheWriteUsdNanoPerMTok: "1000000000" };
+    const own = { provider: "cloudflare", modelId: "@cf/own/priced", priceBookId: "contract-1", ...prices, inputUsdNanoPerMTok: "7", reserveInputTokens: 10, defaultMaxOutputTokens: 10 };
+    const byBook = { provider: "cloudflare", modelId: "@cf/zai-org/glm-5.3", priceBookId: "contract-1", reserveInputTokens: 10, defaultMaxOutputTokens: 10 };
+    const config = GuardConfig.parse({ ...TEST_CONFIG, priceBooks: { "contract-1": prices }, modelRates: [...TEST_CONFIG.modelRates, own, byBook] });
+    expect(config.modelRates.find((r) => r.modelId === byBook.modelId)).toMatchObject({ priceBookId: "contract-1", ...prices });
+    expect(config.modelRates.find((r) => r.modelId === own.modelId)).toMatchObject({ inputUsdNanoPerMTok: "7" });
+    expect(readGuardConfig(JSON.stringify({ ...TEST_CONFIG, priceBooks: { "contract-1": prices }, modelRates: [...TEST_CONFIG.modelRates, byBook] })).modelRates.at(-1)).toMatchObject(prices);
+    // A rate naming a book that is not configured is half-priced, and refused; so is a malformed book.
+    expect(GuardConfig.safeParse({ ...TEST_CONFIG, modelRates: [...TEST_CONFIG.modelRates, byBook] }).success).toBe(false);
+    expect(GuardConfig.safeParse({ ...TEST_CONFIG, priceBooks: { "contract-1": { ...prices, cacheReadUsdNanoPerMTok: undefined } }, modelRates: [...TEST_CONFIG.modelRates, byBook] }).success).toBe(false);
+  });
 });
 
 async function sampleCall(): Promise<AiCallDescriptor> {

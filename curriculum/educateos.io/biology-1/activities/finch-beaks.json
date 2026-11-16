@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5baa09fbae5a5370c3b344954073b09740c2c0b1ce22ae146afe7d3a503187e4",
+      "id": "educateos.io/biology-1-finch-beaks",
+      "version": "1.0.0"
+    }
+  },
+  "id": "finch-beaks",
+  "role": "assignment",
+  "title": "Finch Beaks After the Drought"
+}

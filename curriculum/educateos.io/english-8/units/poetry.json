@@ -1,0 +1,53 @@
+{
+  "id": "poetry",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "reading-a-poem-closely"
+    },
+    {
+      "kind": "activity",
+      "ref": "two-poems-two-shapes"
+    },
+    {
+      "kind": "activity",
+      "ref": "my-extended-metaphor"
+    },
+    {
+      "kind": "activity",
+      "ref": "poetry-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.8.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read poems closely for figurative language, word choice and tone, compare how two poems' forms shape their meaning, and write a poem built on an extended metaphor.",
+  "title": "Poetry: Image, Sound and Form"
+}

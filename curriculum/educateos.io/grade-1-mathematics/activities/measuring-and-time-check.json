@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d9e52082b2fc8048cd63386bc266f9300c68d2d5ef76b57bffc0e11bd2f3b0a7",
+      "id": "educateos.io/grade-1-mathematics-measuring-and-time-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "measuring-and-time-check",
+  "role": "assessment",
+  "title": "Measuring and Time Check"
+}

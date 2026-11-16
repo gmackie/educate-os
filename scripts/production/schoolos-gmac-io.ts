@@ -8,6 +8,7 @@
 // delivered by ForgeGraph and never written down here; see
 // docs/educateos/runbooks/production-instance.md.
 
+import { DEMO_PRODUCT_ANALYTICS, EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
 import type { ProductionInstance } from "./production-config.ts";
 
 /** The schoolos.gmac.io instance. */
@@ -45,6 +46,8 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
       CF_AI_GATEWAY: "default",
       CF_AI_GATEWAY_ACCOUNT_ID: "c07a7e704db1808e1fff91bed2b1cd49",
       CF_AI_GATEWAY_PROVIDERS: "cloudflare",
+      // Titles on a model the AI call guard prices: it refuses any model without a rate (SCHO-325).
+      CF_AI_GATEWAY_QUICK_MODEL: "@cf/zai-org/glm-5.3-flash",
     },
     "gatekeeper-websearch": {
       CF_AI_GATEWAY: "default",
@@ -72,6 +75,14 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     // Its managed default hostname (SCHO-207). The educateos.io zone is in this account, so it is a
     // plain custom domain; both district Access applications list it as a second destination.
     aliases: ["northfield.educateos.io"],
+    // Northfield's demo district, so it may seed the K-12 showcase (SCHO-326) once its
+    // DISTRICT_CONFIG.demo names it too (docs/educateos/runbooks/demo-districts.md).
+    showcase: "northfield",
+    // Its course library imports the educateos.io reference courses (SCHO-331).
+    courseLibraryTrust: EDUCATEOS_COURSE_LIBRARY_TRUST,
+    // Northfield is a demo district too, and the one with the AI workspace, so its pages (LMS and
+    // /ai) may count visits like the others once an administrator turns it on (SCHO-350). It starts off.
+    productAnalytics: DEMO_PRODUCT_ANALYTICS,
   },
   // One origin per district (ADR-0014, SCHO-259), on since the cutover
   // (docs/educateos/runbooks/one-origin-cutover.md): the router serves northfield.educateos.io,

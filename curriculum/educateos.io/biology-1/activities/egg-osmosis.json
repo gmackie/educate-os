@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:158a33f31260b3393d3bec2cb2c92210e85332549d2002a8193d699453768654",
+      "id": "educateos.io/biology-1-egg-osmosis",
+      "version": "1.0.0"
+    }
+  },
+  "id": "egg-osmosis",
+  "role": "assignment",
+  "title": "The Naked Egg: Osmosis Lab"
+}

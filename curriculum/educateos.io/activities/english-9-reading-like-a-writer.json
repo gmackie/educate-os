@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Study the moves in a model personal essay, \"The Interpreter,\" so you can use them in your own.",
+    "problems": [
+      {
+        "prompt": "How does the essay begin? Explain what the first paragraph tells you about the narrator, the situation and a problem, and why it starts with a scene instead of a summary."
+      },
+      {
+        "prompt": "Find three telling details in the essay. For each, explain what it shows without the writer having to say it directly."
+      },
+      {
+        "prompt": "Compare the paragraph that covers \"the next five years\" with the scene in the lawyer's office. How does the writer use pacing to show which moment matters most?"
+      },
+      {
+        "prompt": "What is the narrator's threshold? Quote the sentence where the narrator's understanding changes, and describe the narrator before and after it."
+      },
+      {
+        "prompt": "Reread the father's words in the parking lot. Why do you think the writer used dialogue here instead of explaining what the father felt?"
+      },
+      {
+        "prompt": "How does the ending echo the beginning? What has changed, and what is the effect of ending this way?"
+      }
+    ],
+    "resources": [
+      "the-interpreter",
+      "narrative-craft-notes"
+    ],
+    "showWork": false,
+    "subject": "english-language-arts",
+    "template": "problem-set",
+    "title": "Reading Like a Writer"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-reading-like-a-writer",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. An original model personal essay; the writer is a fictional ninth grader.",
+      "body": "The first time I translated for my father, I was nine years old and standing on a milk crate so I could see over the counter at the bank.\n\n\"He wants to know why the check is on hold,\" I told the woman behind the glass. She had a name tag that said TERESA and a pen on a chain. She explained something about seven business days. I turned to my father and said, in Spanish, \"Seven days.\" I did not say \"business days,\" because I did not know what made a day a business day, and I did not want him to know that I did not know.\n\nThat was how it went for the next five years. I translated at the doctor's office, where I learned the words for cholesterol and fasting. I translated at the landlord's office, where I learned the word \"lease\" and the much worse word \"eviction,\" although we were never evicted. I translated at my own parent-teacher conferences, which is a strange job, because you are both the subject of the meeting and the only person in the room who understands all of it. Once, a teacher said I was \"a little chatty in class,\" and I told my father she said I was \"very social.\" He looked proud. I felt like a thief.\n\nI was good at it. I was fast, I was polite, and I had learned the most important skill an interpreter can have, which is to keep your face still while you decide what to leave out. I left out the woman at the pharmacy who sighed when she heard my father's accent. I left out the man at the car dealership who talked only to me, even though my father was the one buying the car. I told myself I was protecting him. Some of that was true.\n\nThe day it changed was a Tuesday in eighth grade. My father had a meeting with a lawyer about an accident at his job; a ladder had slipped and he had hurt his shoulder. I had a math test that afternoon, and I was annoyed about missing it. In the lawyer's office, I translated the way I always did: quickly, smoothly, leaving out the hard parts.\n\nThen the lawyer asked my father a question about his pain, and my father answered in Spanish with a sentence I had never heard him say. He said that some nights the pain kept him awake, and that he lay there thinking about how he would feed us if he could not climb a ladder again.\n\nI opened my mouth to translate it, and nothing came out.\n\nThe lawyer waited. My father waited. I looked at my father's hands, which were folded on the table, and I saw that one of them was shaking a little, and I understood something I should have understood years earlier. I had been editing my father. Every time I left out the sighs and the rude men, I had also been leaving out him: his worry, his anger, his dignity. I had made his life sound smaller and smoother than it was, because that was easier for me.\n\n\"He said,\" I began, and then I translated every word. It took a long time. My voice shook. The lawyer wrote it all down.\n\nAfterward, in the parking lot, my father put his good hand on my shoulder. \"You were slow today,\" he said in Spanish. Then, after a moment: \"Good.\"\n\nI still translate for my family. I am fourteen now, and my father's English is better than it was, but there are still forms and phone calls and offices where the words come too fast. What has changed is the job. I used to think an interpreter's job was to make a conversation go smoothly. Now I think it is to make sure the person you are speaking for is actually heard, even when that is not smooth at all.\n\nI still do not know exactly what makes a day a business day. But I know what it means to carry someone's words without dropping any.",
+      "id": "the-interpreter",
+      "title": "The Interpreter"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "A personal essay is a true story told by the person who lived it, shaped so that a reader understands what it meant. These techniques help.\n\nStart inside a moment. Begin with a specific scene, not a summary of your life. \"I was nine and standing on a milk crate\" pulls a reader in faster than \"I have always helped my family.\"\n\nShow, then reflect. Let the reader see and hear the scene first: actions, dialogue, sensory details. Then step back and reflect on what it meant. The best essays move between the two.\n\nSlow down the important moment. Pacing is a choice. Spend one sentence on five years and five paragraphs on five minutes, if those five minutes are the threshold.\n\nUse telling details. One precise detail (a name tag, a pen on a chain, a shaking hand) does more than a paragraph of adjectives.\n\nLet dialogue do work. Use dialogue sparingly, for lines that reveal character or turn the story. Punctuate it correctly and start a new paragraph for each new speaker.\n\nFind the turn. Most personal essays have a moment where the writer's understanding changes. In Unit 2 we called it a threshold.\n\nEnd with reflection, not a moral. Avoid \"and that taught me to always...\" Instead, show where the experience has left you and how you see things differently today. Often the ending echoes the beginning, changed.\n\nRevise in passes. Read once for structure (does every scene build toward the turn?), once for detail (where can I be more specific?), and once aloud for sound and correctness.",
+      "id": "narrative-craft-notes",
+      "title": "Narrative Craft Notes"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Names the narrative techniques the writer uses, with accurate examples.",
+        "id": "technique",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies techniques"
+      },
+      {
+        "description": "Explains how each technique shapes the reader's understanding.",
+        "id": "effect",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains effects"
+      },
+      {
+        "description": "Traces how the essay builds to its turn and how the ending reflects on it.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Structure and turn"
+      }
+    ],
+    "title": "Reading as a writer"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.1"
+}

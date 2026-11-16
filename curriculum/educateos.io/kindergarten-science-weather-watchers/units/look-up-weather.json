@@ -1,0 +1,65 @@
+{
+  "id": "look-up-weather",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "sky-detectives"
+    },
+    {
+      "kind": "activity",
+      "ref": "weather-chart"
+    },
+    {
+      "kind": "activity",
+      "ref": "weather-week"
+    },
+    {
+      "kind": "activity",
+      "ref": "weather-words-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.K.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Look at the sky every day, name the weather with weather words, and count the days on a class weather chart.",
+  "title": "Look Up! What Is the Weather?"
+}

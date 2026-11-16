@@ -26,6 +26,7 @@ import {
   SidebarWorkspacesLists,
 } from './SidebarWorkspaces'
 import SidebarUtilityStrip from './SidebarUtilityStrip'
+import { UnreadSummary } from '../../features/notifications/UnreadSummary'
 import { inNativeApp, returnToInstalls } from '../../features/native-app/nativeApp'
 import { useDistrictSidebar } from '../../features/district-frame/districtFrame'
 
@@ -189,6 +190,7 @@ export default function Sidebar({
               icon={<Compass size={18} weight="regular" />}
               collapsed={collapsed}
             />
+            <UnreadSummary collapsed={collapsed} />
           </nav>
 
           {/* Workspace tools: search. Pinned so it's always reachable. */}

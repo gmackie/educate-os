@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:fe170a0cd860f03f5815bfa52c821ba3847e7d565f37b6f619538996a4703eed",
+      "id": "educateos.io/english-9-one-scene-slowed-down",
+      "version": "1.0.1"
+    }
+  },
+  "id": "one-scene-slowed-down",
+  "role": "assignment",
+  "title": "One Scene, Slowed Down"
+}

@@ -1,0 +1,94 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Solve each problem. Draw or write to show how you know.",
+    "problems": [
+      {
+        "prompt": "Ana has 9 stickers. She gets 4 more. How many stickers does she have now?"
+      },
+      {
+        "prompt": "There are 15 ducks in a pond. 6 swim away. How many ducks are still in the pond?"
+      },
+      {
+        "prompt": "Leo has 7 blue blocks and 5 red blocks. How many blocks does he have in all?"
+      },
+      {
+        "prompt": "Count on to solve 10 + 4."
+      },
+      {
+        "prompt": "Count back to solve 18 - 3."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Adding and Taking Away Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-adding-and-taking-away-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "solve",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can solve story problems"
+      },
+      {
+        "id": "show",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can show how I know with a drawing or number sentence"
+      }
+    ],
+    "title": "Adding and taking away"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

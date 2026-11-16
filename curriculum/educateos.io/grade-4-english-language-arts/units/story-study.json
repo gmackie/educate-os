@@ -1,0 +1,65 @@
+{
+  "id": "story-study",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u6-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "chapter-one"
+    },
+    {
+      "kind": "activity",
+      "ref": "character-change"
+    },
+    {
+      "kind": "activity",
+      "ref": "another-point-of-view"
+    },
+    {
+      "kind": "activity",
+      "ref": "my-narrative"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read a three-chapter story closely for character, setting and point of view, then write narratives of your own.",
+  "title": "Story Study: Characters and Narratives"
+}

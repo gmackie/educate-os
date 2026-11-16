@@ -7,7 +7,7 @@ import { AiPrincipal, AiWorkspaceContext } from "@educateos/ai-governance";
 import { RIVERBEND } from "@educateos/fixtures";
 import { guardDirectoryOver, type GuardSubject } from "@educateos/district-app/guard-directory";
 import { DEFAULT_GUARD_MESSAGES, GuardConfig, readGuardConfig } from "../src/config.ts";
-import { configuredGuardDirectory, DistrictGuardContextResolver, type GuardDirectoryPort } from "../src/context.ts";
+import { audienceOf, configuredGuardDirectory, DistrictGuardContextResolver, gadgetGradeBand, STUDENT_GRADE_BANDS, studentProfileKey, type GuardDirectoryPort, type StudentGradeBand } from "../src/context.ts";
 import { AiCallGuardService } from "../src/guard.ts";
 import { ConfiguredGovernanceSource } from "../src/ledger-object.ts";
 import { hallMonitorClient } from "../src/hall-monitor.ts";
@@ -231,5 +231,102 @@ describe("the guard over the district's records", () => {
       expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "deny", reason: "context_unavailable", message: DEFAULT_GUARD_MESSAGES.aiUnavailable });
       expect(await ledger.request(descriptor.callId)).toBeNull();
     }
+  });
+});
+
+describe("gadgetGradeBand (SCHO-325)", () => {
+  const OWN_BANDS = [...STUDENT_GRADE_BANDS, undefined] as const;
+  const DECLARATIONS = [...STUDENT_GRADE_BANDS, undefined, "adult", "educator", "k-2", "9-12 ", "", "K-12"] as const;
+  const rank = (band: string | undefined) => (band === undefined ? 0 : STUDENT_GRADE_BANDS.indexOf(band as StudentGradeBand));
+
+  it("is K-2 for a gadget that declares no student band, whoever owns it", () => {
+    for (const declared of [undefined, "adult", "educator", "k-2", "9-12 ", "", "K-12"]) {
+      expect(gadgetGradeBand(declared, { audience: "educator" })).toBe("K-2");
+      for (const gradeBand of OWN_BANDS) expect(gadgetGradeBand(declared, { audience: "student", ...(gradeBand ? { gradeBand } : {}) })).toBe("K-2");
+    }
+  });
+
+  it("is the younger of the declared band and a student's own: a declaration never loosens a student's screening", () => {
+    for (const declared of DECLARATIONS) {
+      for (const gradeBand of OWN_BANDS) {
+        const band = gadgetGradeBand(declared, { audience: "student", ...(gradeBand ? { gradeBand } : {}) });
+        // Never older than the student's own band, or than what the gadget declares.
+        expect(rank(band)).toBeLessThanOrEqual(rank(gradeBand));
+        expect(rank(band)).toBeLessThanOrEqual(STUDENT_GRADE_BANDS.includes(declared as StudentGradeBand) ? rank(declared) : 0);
+      }
+    }
+    expect(gadgetGradeBand("9-12", { audience: "student", gradeBand: "6-8" })).toBe("6-8");
+    expect(gadgetGradeBand("K-2", { audience: "student", gradeBand: "9-12" })).toBe("K-2");
+    expect(gadgetGradeBand("6-8", { audience: "student", gradeBand: "9-12" })).toBe("6-8");
+    // A student placed in no band is the youngest.
+    expect(gadgetGradeBand("9-12", { audience: "student" })).toBe("K-2");
+    // A band Hall Monitor knows but no student is in counts as none.
+    expect(gadgetGradeBand("9-12", { audience: "student", gradeBand: "adult" })).toBe("K-2");
+  });
+
+  it("is the declared band for staff, who are never screened as educators through a gadget", () => {
+    for (const band of STUDENT_GRADE_BANDS) expect(gadgetGradeBand(band, { audience: "educator" })).toBe(band);
+  });
+
+  it("maps each band to the profile audienceOf gives a student of that band", () => {
+    for (const band of STUDENT_GRADE_BANDS) {
+      const subject: GuardSubject = { principal: AMARA, kind: "student", roles: [], workspace: { kind: "personal" }, gradeBands: [band] };
+      expect(studentProfileKey(band)).toBe(audienceOf(subject).key);
+    }
+  });
+});
+
+describe("a gadget's calls over the district's records (SCHO-325)", () => {
+  const gadget = (user: string, audience?: string, overrides: Partial<AiCallDescriptor> = {}) =>
+    call(user, { initiator: { type: "gadget", id: user }, callSite: "gadget.llm", ...(audience === undefined ? {} : { audience }), ...overrides });
+  const screened = (evaluated: EvaluationRequest[]) => evaluated.map((request) => [request.evaluationKind, request.policy.profileId, request.context.audience, request.context.gradeBand]);
+
+  it("screens a student's gadget at the younger of its declared band and the student's, input and output", async () => {
+    const { guard, evaluated } = guardOver(configuredGuardDirectory(config));
+    // Amara is in 9-12. A 6-8 tutor is screened at 6-8; a 9-12 one at 9-12; an undeclared one at K-2.
+    for (const [audience, profileId, band] of [["6-8", "k12-middle", "6-8"], ["9-12", "k12-high", "9-12"], [undefined, "k12-elementary", "K-2"], ["K-2", "k12-elementary", "K-2"]] as const) {
+      evaluated.length = 0;
+      const descriptor = gadget(USERS.student, audience, { gadgetId: AMARA_BIO_GADGET });
+      expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "proceed", screenOutput: true });
+      expect(await guard.screenModelOutput(descriptor.callId, { parts: [{ type: "text", text: "Try the first step." }], initiator: descriptor.initiator, ...(audience === undefined ? {} : { audience }) })).toEqual({ action: "release" });
+      expect(screened(evaluated)).toEqual([["interaction.input", profileId, "student", band], ["interaction.output", profileId, "student", band]]);
+    }
+  });
+
+  it("never screens a younger student's gadget at an older declared band", async () => {
+    const { guard, evaluated } = guardOver(configuredGuardDirectory(config));
+    // Felix is in 6-8: a 9-12 declaration is screened at 6-8.
+    const descriptor = gadget(USERS.middleSchooler, "9-12");
+    expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "proceed", screenOutput: true });
+    expect(screened(evaluated)).toEqual([["interaction.input", "k12-middle", "student", "6-8"]]);
+  });
+
+  it("screens a teacher's gadget as a student's, at its declared band, failing closed", async () => {
+    const { guard, evaluated } = guardOver(configuredGuardDirectory(config));
+    const descriptor = gadget(USERS.teacher, "9-12");
+    expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "proceed", screenOutput: true });
+    expect(screened(evaluated)).toEqual([["interaction.input", "k12-high", "student", "9-12"]]);
+    // A declaration that names no student band never makes a teacher's gadget an educator's.
+    for (const audience of ["adult", "educator"]) {
+      evaluated.length = 0;
+      expect(await guard.beforeModelCall(gadget(USERS.teacher, audience))).toEqual({ action: "proceed", screenOutput: true });
+      expect(screened(evaluated)).toEqual([["interaction.input", "k12-elementary", "student", "K-2"]]);
+    }
+  });
+
+  it("screens output at K-2 when the Workshop does not name the call's audience again", async () => {
+    const { guard, evaluated } = guardOver(configuredGuardDirectory(config));
+    const descriptor = gadget(USERS.student, "9-12", { gadgetId: AMARA_BIO_GADGET });
+    await guard.beforeModelCall(descriptor);
+    evaluated.length = 0;
+    expect(await guard.screenModelOutput(descriptor.callId, { parts: [{ type: "text", text: "A reply" }], initiator: descriptor.initiator })).toEqual({ action: "release" });
+    expect(screened(evaluated)).toEqual([["interaction.output", "k12-elementary", "student", "K-2"]]);
+  });
+
+  it("ignores a declared audience on a call that is not a gadget's", async () => {
+    const { guard, evaluated } = guardOver(configuredGuardDirectory(config));
+    expect(await guard.beforeModelCall(call(USERS.middleSchooler, { audience: "K-2" }))).toEqual({ action: "proceed", screenOutput: true });
+    expect(await guard.beforeModelCall(call(USERS.teacher, { audience: "K-2" }))).toEqual({ action: "proceed" });
+    expect(screened(evaluated)).toEqual([["interaction.input", "k12-middle", "student", "6-8"], ["interaction.input", "educator", "educator", undefined]]);
   });
 });

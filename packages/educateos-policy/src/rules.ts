@@ -141,6 +141,8 @@ export const COURSE_RESOURCE_KINDS = [
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
+/** The term states an LTI tool's writes are taken in: not a completed term. */
+const LTI_TOOL_WRITE_TERMS = ["planned", "active", "grading"] as const satisfies TermState[];
 const ADMINS = ["district-admin", "school-admin"] as const satisfies z.infer<typeof SchoolRole>[];
 /** The kinds an appeal grant may name: one student's submitted work and the feedback on it. */
 export const APPEAL_RESOURCE_KINDS = ["submission", "artifact", "feedback"] as const satisfies ResourceKind[];
@@ -188,6 +190,12 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   teacher imports and approves for the classes they teach; a curriculum admin works at any scope
  *   their grant covers, reviews items a teacher may not approve alone, and alone widens rights
  *   (SCHO-87, from C03's local rules).
+ * - **Third-party LTI tools** (SCHO-179) act only on the `lti-service` channel, as themselves,
+ *   never as the person who deployed them. Each grant needs an active deployment to the offering
+ *   that allows the service the call needs: a tool lists the offering's enrollments (NRPS); manages
+ *   its gradebook columns (AGS line items) and reads their approved results; and sends scores,
+ *   which only ever wait for a teacher's approval (AGS scores). Writes stop when the term is
+ *   completed. Nothing else in the table reaches that channel.
  * - **Guardians** read, and only read, their child's offerings, course assignments, released
  *   feedback, official grades and announcements, through a confirmed guardian relationship that is
  *   in force (ADR-0012). Their two rules come first, so no other rule (a district-wide reference
@@ -217,9 +225,35 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   key. An attempt is a `course` record its student owns: they start, save and submit it while
  *   enrolled, and read it even after a drop; the offering's staff read and grade every attempt.
  *   Administrators do not read attempts (student work), and guardians are not given quizzes: a
- *   released score reaches them as the official grade they already read.
+ *   released score reaches them as the official grade they already read. A student's extended
+ *   time on a quiz (SCHO-383) is a `restricted` record at the quiz: its staff and district
+ *   administrators read and set it as people over http; the quiz service shows a student only
+ *   their own time.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
+  // Home learning (ADR-0016). A family's adults are guardians in the directory, but their authority
+  // over the family's own record comes from membership of that family, never from a school
+  // relationship; these kinds hold no school record, so the guardian catch-all below still keeps
+  // every school rule from reaching them.
+  {
+    id: "family.adult.create",
+    description: "A guardian starts a family for home learning. The home-learning service allows one family per adult.",
+    when: { principalKinds: ["guardian"], kinds: ["family"], classifications: ["personal-private"], actions: ["create"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "family.adult.manage",
+    description: "An adult of a family reads and changes that family's record, its children's profiles and their home practice, and exports or deletes them; each decision is audited with the family.",
+    when: {
+      principalKinds: ["guardian"],
+      kinds: ["family", "home-practice"],
+      classifications: ["personal-private"],
+      relationships: ["family-adult"],
+      actions: [...READS, "create", "update", "delete", "submit", "export"],
+    },
+    effect: { effect: "allow" },
+  },
+
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
   // read-only; the catch-all below keeps every other rule in the table from reaching them.
   {
@@ -239,6 +273,87 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "guard.guardian.child-records-only",
     description: "A guardian may do nothing else: no writes, no personal spaces or conversations, no submissions, no other children, no tools or directory.",
     when: { principalKinds: ["guardian"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
+
+  // Third-party LTI tools (SCHO-179). A tool is never a person: on the `lti-service` channel its
+  // subject is the tool itself, and its only authority is an active deployment to the offering
+  // that allows the service the resource needs. The guard keeps every other rule off the channel.
+  {
+    id: "lti.tool.roster",
+    description: "A registered LTI tool lists an offering's enrollments (NRPS) through an active deployment to that offering that allows the roster service; each read is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["enrollment"],
+      classifications: ["course"],
+      relationships: ["lti-deployment"],
+      actions: ["list"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.line-items",
+    description: "A registered LTI tool lists and reads an offering's gradebook columns (AGS line items) through an active deployment to that offering that allows the line items service; each read is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["gradebook"],
+      ownership: ["unowned"],
+      classifications: ["teacher-only"],
+      relationships: ["lti-deployment"],
+      actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.line-items.write",
+    description: "A registered LTI tool adds, changes and removes an offering's gradebook columns (AGS line items) through an active deployment to that offering that allows the line items service, while the term is not completed; each call is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["gradebook"],
+      ownership: ["unowned"],
+      classifications: ["teacher-only"],
+      relationships: ["lti-deployment"],
+      termStates: [...LTI_TOOL_WRITE_TERMS],
+      actions: ["create", "update", "delete"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.results",
+    description: "A registered LTI tool lists a line item's official results (AGS results, approved scores only) through an active deployment to that offering that allows the line items service; each read is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["official-grade"],
+      ownership: ["unowned"],
+      classifications: ["course"],
+      relationships: ["lti-deployment"],
+      actions: ["list"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.score",
+    description: "A registered LTI tool's score for a learner, through an active deployment to the offering that allows the scores service, waits for a teacher's approval while the term is not completed; it never becomes official by itself.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["official-grade"],
+      ownership: ["others"],
+      classifications: ["course"],
+      relationships: ["lti-deployment"],
+      termStates: [...LTI_TOOL_WRITE_TERMS],
+      actions: ["grade"],
+    },
+    effect: { effect: "require-approval", reason: "requires-teacher-review" },
+  },
+  {
+    id: "guard.lti-service.tool-rules-only",
+    description: "A call on the LTI service channel may do only what the LTI tool rules above allow.",
+    when: { channels: ["lti-service"] },
     effect: { effect: "deny", reason: "no-matching-grant" },
   },
 
@@ -521,6 +636,34 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
   },
 
   // Administration.
+  // What an IT reviewer reads (SCHO-376): the decision trail, as the safety decision log and the
+  // admin audit log, and how the district signs people in. A district administrator, as a person
+  // over http, and nobody else: each allow is followed by a refusal for everyone it did not match,
+  // so the broader administrator rules below never reach these.
+  {
+    id: "admin.district.audit-log",
+    description: "A district admin, as a person rather than an agent, searches the district's content-free decision trail: the safety decision log and the admin audit log (SCHO-376).",
+    when: { kinds: ["audit-event"], roles: ["district-admin"], classifications: ["restricted"], actions: ["list"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.district.audit-log.others",
+    description: "Nobody else searches the district's decision trail: not a school admin, not an agent, not another district.",
+    when: { kinds: ["audit-event"], classifications: ["restricted"], actions: ["list"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
+  {
+    id: "admin.district.sign-in",
+    description: "A district admin, as a person rather than an agent, reads how the district signs people in: its sign-in provider, trusted issuers and how many people each one signs in. Never a secret (SCHO-376).",
+    when: { kinds: ["district"], roles: ["district-admin"], classifications: ["restricted"], actions: ["read"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.district.sign-in.others",
+    description: "Nobody else reads the district's sign-in settings: not a school admin, not an agent, not another district.",
+    when: { kinds: ["district"], classifications: ["restricted"], actions: ["read"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
   {
     id: "admin.district.directory",
     description: "A district admin manages the district's schools, terms, catalog courses, offerings and enrollments, and moves principals between lifecycle statuses.",
@@ -535,6 +678,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "admin.district.administrators",
     description: "A district admin makes staff district administrators and takes administration away (SCHO-212). The directory refuses removing the last administrator or oneself.",
     when: { kinds: ["principal"], roles: ["district-admin"], actions: ["assign"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.district.export",
+    description: "A district admin, as a person rather than an agent, exports the district's records and its students' course work and submissions in one archive, to keep them or leave EducateOS with them (SCHO-364). Personal workspaces stay their owners' and are not in it.",
+    when: { kinds: ["district"], roles: ["district-admin"], classifications: ["restricted"], actions: ["export"], channels: ["http"] },
     effect: { effect: "allow" },
   },
   {
@@ -629,6 +778,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "curriculum.marketplace.install",
     description: "A district admin or district curriculum admin lists the curriculum packs the district installed from the marketplace and, as a person rather than an agent, installs one.",
     when: { kinds: ["marketplace-pack"], roles: ["district-admin", "curriculum-admin"], classifications: ["district-internal"], actions: [...READS, "create"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "curriculum.course-library.import",
+    description: "A district admin or district curriculum admin lists the courses in the district's course library and, as a person rather than an agent, imports a signed course bundle into it.",
+    when: { kinds: ["course-package"], roles: ["district-admin", "curriculum-admin"], classifications: ["district-internal"], actions: [...READS, "create"], channels: ["http"] },
     effect: { effect: "allow" },
   },
   {
@@ -854,6 +1009,19 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "quiz.instructor.grade-attempts",
     description: "Course staff grade students' attempts in their offering: essay answers, and any item they rescore.",
     when: { kinds: ["quiz-attempt"], ownership: ["others"], roles: [...INSTRUCTORS], classifications: ["course"], actions: ["review"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.accommodations.manage",
+    description: "Course staff and district administrators, as people over http, read and set students' extended time on the offering's quizzes (IEP and Section 504 accommodations). It is restricted: school administrators, guardians and students are never shown anyone's.",
+    when: {
+      kinds: ["quiz"],
+      ownership: ["unowned"],
+      roles: [...INSTRUCTORS, "district-admin"],
+      classifications: ["restricted"],
+      channels: ["http"],
+      actions: [...READS, "update"],
+    },
     effect: { effect: "allow" },
   },
   {

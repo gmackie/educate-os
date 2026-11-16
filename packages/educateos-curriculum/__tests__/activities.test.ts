@@ -266,6 +266,8 @@ describe("authorization", () => {
 
     expect((await service.getActivity(AMARA, installation.id)).view).toBe("student");
     expect((await service.getActivity(RIVERA, installation.id)).view).toBe("teacher");
+    // Both readers see each resource named by its release's title (SCHO-328).
+    expect((await service.getActivity(AMARA, installation.id)).resources).toStrictEqual([{ ...model, title: "Persuasive Writing Models" }]);
     // Chidi is not in English 9; Dmitri's English 9 enrollment is inactive.
     await rejectsWith(service.getActivity(CHIDI, installation.id), "not-found");
     await rejectsWith(service.getActivity(DMITRI, installation.id), "not-found");

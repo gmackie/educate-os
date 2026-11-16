@@ -13,10 +13,14 @@ import { useRouterState } from '@tanstack/react-router'
 import {
   SCHOOL_MANIFEST_PATH,
   loadSchoolManifest,
+  currentBrowser,
   navigationFor,
+  sameOriginProductAnalyticsSource,
   shellRoleOf,
+  startProductAnalytics,
   useBrandAccent,
   type NavGroup,
+  type ProductAnalyticsSource,
   type SchoolManifest,
   type SchoolManifestState,
   type ShellLocation,
@@ -50,11 +54,14 @@ type ManifestLoader = () => Promise<Exclude<SchoolManifestState, { status: 'load
 /**
  * Decides, once as the app starts, whether this page is framed. On a district origin it reads the
  * manifest, and the frame stays `pending` until that answers (or MANIFEST_TIMEOUT_MS passes, which
- * leaves it off).
+ * leaves it off). A framed page is a district page, so it also starts the district's product
+ * analytics (SCHO-350), which stays off unless the district turned it on; an unframed Workshop
+ * never asks.
  */
 export function startDistrictFrame(
   base: string = WORKSHOP_BASE,
   load: ManifestLoader = () => loadSchoolManifest(SCHOOL_MANIFEST_PATH),
+  analytics: ProductAnalyticsSource = sameOriginProductAnalyticsSource(),
 ): void {
   if (!isDistrictOrigin(base)) {
     setFrameState(OFF)
@@ -65,9 +72,14 @@ export function startDistrictFrame(
   const timeout = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), MANIFEST_TIMEOUT_MS) })
   void Promise.race([load(), timeout]).then((state) => {
     clearTimeout(timer)
-    setFrameState(state?.status === 'ready' && state.manifest.features.ai
-      ? { status: 'framed', manifest: state.manifest }
-      : OFF)
+    const framed = state?.status === 'ready' && state.manifest.features.ai
+    setFrameState(framed ? { status: 'framed', manifest: state.manifest } : OFF)
+    if (framed) {
+      void Promise.all([analytics.config(), analytics.role()]).then(
+        ([config, role]) => { startProductAnalytics(config, role, 'ai', currentBrowser()) },
+        () => undefined,
+      )
+    }
   }, () => {
     clearTimeout(timer)
     setFrameState(OFF)

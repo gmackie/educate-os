@@ -1,0 +1,53 @@
+{
+  "id": "drama",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u6-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "reading-a-script"
+    },
+    {
+      "kind": "activity",
+      "ref": "readers-theater"
+    },
+    {
+      "kind": "activity",
+      "ref": "dramatic-irony"
+    },
+    {
+      "kind": "activity",
+      "ref": "drama-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.8.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read and perform short scenes, analyze how dialogue and incidents propel the action, and explain how dramatic irony creates suspense and humor.",
+  "title": "Drama: Dialogue and Point of View"
+}

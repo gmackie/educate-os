@@ -4,9 +4,11 @@
 //   /healthz       the site's health check (ForgeGraph's healthCheckUrl): the store answers
 //   /app, /app/*   the operator console, behind Cloudflare Access, on educateos.io only. With
 //                  ADMIN_URL set, a 302 to the hosted admin (SCHO-263), except the guided install
+//                  and deregistration (SCHO-368)
 //   /registry/*    the opt-in instance registry's heartbeats: signed by installations, no sign-in
 //   /clever/launch Clever portal launches, sent on to the registered district (SCHO-249), no sign-in
 //   /stripe/webhook Stripe's webhook deliveries for billing (SCHO-208): signed by Stripe, no sign-in
+//   /releases/*    the signed releases, read-only, for installers outside educateos.io (SCHO-341)
 //
 // Anything else that reaches the Worker is handed back to the assets binding, whose 404 page the
 // static site already defines.
@@ -18,20 +20,24 @@ import { BILLING_PATHS, type BillingApi, type BillingReply, type CardSetupOutcom
 import { CLEVER_LAUNCH_PATH, cleverLaunch, type CleverAppCredentials } from "./clever-launch.ts";
 import { ECHOED_FIELDS, GuidedInstallForm, runGuidedInstall, type GuidedInstallDeps, type ReleaseBucket } from "./guided-install.ts";
 import {
-  BILLING_PAGE_HEADERS, billingPage, dashboardPage, installPage, installProgressEvent, installProgressHead, installProgressTail, messagePage, PAGE_HEADERS, type SiteShell,
+  BILLING_PAGE_HEADERS, billingPage, dashboardPage, deregisterPage, installPage, installProgressEvent, installProgressHead, installProgressTail, messagePage, PAGE_HEADERS, type SiteShell,
 } from "./pages.ts";
 import { probeInstallation, type ProbeResult } from "./probe.ts";
-import type { DashboardEntry, RegistryMessage, RegistryReply } from "./registry.ts";
+import { RELEASE_FILES_PREFIX, type ReleaseFileBucket, serveReleaseFile } from "./release-files.ts";
+import type { DashboardEntry, Deregistration, RegistryMessage, RegistryReply } from "./registry.ts";
 import type { Installation, Operator, Reservation } from "./store.ts";
 
 /** The paths the Worker handles before the assets binding, as `run_worker_first` lists them. */
-export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH, BILLING_PATHS.webhook] as const;
+export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH, BILLING_PATHS.webhook, `${RELEASE_FILES_PREFIX}*`] as const;
 
 /** The largest Stripe webhook delivery accepted. Stripe's events are a few kilobytes. */
 export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
 
+/** The console page where an operator deregisters one of their installations (SCHO-368). */
+export const DEREGISTER_PATH = "/app/deregister";
+
 /** The console's form posts. Each must come from the console itself. */
-const FORM_POSTS = new Set<string>(["/app/install", BILLING_PATHS.subscribe, BILLING_PATHS.card, BILLING_PATHS.pay, BILLING_PATHS.portal, BILLING_PATHS.cancel]);
+const FORM_POSTS = new Set<string>(["/app/install", DEREGISTER_PATH, BILLING_PATHS.subscribe, BILLING_PATHS.card, BILLING_PATHS.pay, BILLING_PATHS.portal, BILLING_PATHS.cancel]);
 
 /** The largest registry message accepted. A heartbeat is a few kilobytes. */
 export const MAX_REGISTRY_BODY_BYTES = 64 * 1024;
@@ -74,6 +80,7 @@ export interface ControlPlaneApi extends BillingApi {
   endInstall(operatorSubject: string, slug: string, release: boolean): Promise<void> | void;
   receiveRegistryMessage(kind: RegistryMessage, input: unknown): Promise<RegistryReply>;
   cleverLaunchHostname(cleverDistrictId: string): Promise<string | undefined>;
+  deregisterInstallation(operator: Operator, instanceId: string): Promise<RegistryReply>;
   ping(): Promise<true> | true;
 }
 
@@ -101,6 +108,8 @@ export interface ControlPlaneDeps {
   cleverLaunchUnaffiliated?: string;
   /** The guided install's release source and pinned trust. Without them, installing is unavailable. */
   releases?: { bucket: ReleaseBucket; trust: unknown };
+  /** The release bucket, served read-only under `/releases/`. Without it, every release file is a 404. */
+  releaseFiles?: ReleaseFileBucket;
   /** Keeps a streamed install running if the browser goes away mid-run. */
   waitUntil?: (promise: Promise<unknown>) => void;
   /** The Cloudflare API the guided install drives. Defaults to api.cloudflare.com. */
@@ -115,9 +124,10 @@ export interface ControlPlaneDeps {
 /**
  * The console paths that stay on educateos.io when the console moves to the admin: the guided
  * install, which runs inside this Worker with its release bucket and the Durable Object's slug
- * reservations, and is linked to from the admin's Workspaces page.
+ * reservations, and is linked to from the admin's Workspaces page; and deregistration, which
+ * writes the same object's registry and reservations.
  */
-export const STAYS_ON_CONSOLE: readonly string[] = ["/app/install"];
+export const STAYS_ON_CONSOLE: readonly string[] = ["/app/install", DEREGISTER_PATH];
 
 function respond(body: string, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(body, { status, headers: { ...PAGE_HEADERS, ...headers } });
@@ -169,6 +179,8 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
 
   if (pathname === BILLING_PATHS.webhook) return receiveStripeWebhook(request, deps);
 
+  if (pathname.startsWith(RELEASE_FILES_PREFIX)) return serveReleaseFile(request, deps.releaseFiles);
+
   if (pathname.startsWith("/registry/")) {
     try {
       return await receiveRegistryMessage(request, pathname, deps);
@@ -208,6 +220,7 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
   const store = deps.store();
   const operator = await store.signIn(identity);
   if (posting && pathname === "/app/install") return startInstall(request, operator, deps);
+  if (pathname === DEREGISTER_PATH) return deregister(request, posting, operator, deps);
   if (posting || pathname === BILLING_PATHS.page || pathname === BILLING_PATHS.ret) return billing(request, url, operator, deps);
   switch (pathname) {
     case "/app/install":
@@ -389,6 +402,30 @@ async function receiveRegistryMessage(request: Request, pathname: string, deps: 
   }
   const reply = await deps.store().receiveRegistryMessage(kind, input);
   return reply.ok ? json(reply.body) : json({ error: reply.code, message: reply.message }, REGISTRY_STATUS[reply.code]);
+}
+
+// Deregistration (SCHO-368): the page lists the operator's installations, each with a form that
+// must be confirmed by typing its instance ID. It removes educateos.io's records only; the
+// installation's resources are in the operator's own Cloudflare account and are untouched.
+async function deregister(request: Request, posting: boolean, operator: Operator, deps: ControlPlaneDeps): Promise<Response> {
+  const store = deps.store();
+  if (!posting) return respond(deregisterPage(deps.shell, operator, await store.installations(operator.subject)));
+  const form = await request.formData();
+  const instanceId = String(form.get("instanceId") ?? "");
+  if (instanceId === "" || String(form.get("confirm") ?? "").trim() !== instanceId) {
+    return respond(deregisterPage(deps.shell, operator, await store.installations(operator.subject),
+      { instanceId, error: `Type the instance ID, ${instanceId}, to confirm. Nothing was changed.` }), 400);
+  }
+  const reply = await store.deregisterInstallation(operator, instanceId);
+  if (!reply.ok) {
+    return respond(messagePage(deps.shell, "Not deregistered", "You have no installation with that instance ID. Nothing was changed."), REGISTRY_STATUS[reply.code]);
+  }
+  const done = reply.body as Deregistration;
+  return respond(messagePage(deps.shell, "Deregistered",
+    `educateos.io no longer lists ${done.instanceId}${done.registered ? ", its registry record is deleted" : ""}` +
+    `${done.cleverDistrictId ? ", and Clever portal launches from its district no longer reach it" : ""}. ` +
+    `${done.slug} is free for another install. Its Cloudflare resources are untouched: remove them with npx launch-educate-os uninstall. ` +
+    `If ${done.hostname} was published in educateos.io's DNS, email Gmacko Ventures to release it.`));
 }
 
 // Runs the guided install from a form post and streams its progress as the page itself, so the

@@ -1,0 +1,7 @@
+{
+  "body": "Geometry is everywhere: in a window frame, a pizza slice and the letters on this page.\n\nThe parts:\n- A point is an exact location.\n- A line segment has two endpoints. A ray has one endpoint and goes on forever in one direction. A line goes on forever in both directions.\n- An angle is made by two rays that share an endpoint.\n\nAngles are measured in degrees. A full turn is 360 degrees, and a quarter turn, a right angle, is 90 degrees. An acute angle is less than 90 degrees, and an obtuse angle is between 90 and 180 degrees.\n\nParallel lines never meet. Perpendicular lines meet at a right angle.\n\nIn this unit we use a protractor, sort shapes by their sides and angles, and fold shapes to find lines of symmetry.",
+  "id": "u6-overview",
+  "purpose": "context",
+  "title": "The Geometry Around Us",
+  "visibility": "students"
+}

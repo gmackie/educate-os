@@ -1,0 +1,181 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 450,
+    "minimumCitations": 2,
+    "overview": "Write a timed historical argument about the most important turning point of the civil rights movement, using the unit's sources.",
+    "prompt": "What was the most important turning point in the struggle for civil rights between 1948 and 1965? Define what makes an event a turning point, defend your choice against at least one other candidate, and support your argument with at least two of the unit's sources and specific historical evidence.",
+    "resources": [
+      "separate-but-equal",
+      "brown-v-board",
+      "civil-rights-act-title-ii",
+      "johnson-voting-rights-address"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "The Movement's Turning Point"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-civil-rights-turning-point",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Constitution of the United States, Amendment XIV, Section 1 (ratified 1868); Plessy v. Ferguson, 163 U.S. 537 (1896), Justice John Marshall Harlan dissenting; Harry S. Truman, Executive Order 9981, July 26, 1948. Public domain (U.S. government work). Background written for EducateOS.",
+      "body": "The Fourteenth Amendment (1868), Section 1, closing clause:\n\"... nor shall any State deprive any person of life, liberty, or property, without due process of law; nor deny to any person within its jurisdiction the equal protection of the laws.\"\n\nBackground: In 1892 Homer Plessy, a man of mixed race, was arrested for sitting in a railroad car Louisiana law reserved for white passengers. His arrest was planned by a New Orleans civil rights committee to test the law. In Plessy v. Ferguson (1896) the Supreme Court ruled, seven to one, that state laws requiring \"separate but equal\" facilities did not violate the Fourteenth Amendment. Southern states went on to segregate schools, transportation, hospitals, parks and nearly every other public place, and the facilities for Black Americans were almost never equal.\n\nJustice John Marshall Harlan, the lone dissenter in Plessy:\n\"Our Constitution is color-blind, and neither knows nor tolerates classes among citizens.\"\n\nExecutive Order 9981 (1948), issued by President Harry S. Truman after the Second World War, in which about a million Black Americans served in segregated units:\n\"It is hereby declared to be the policy of the President that there shall be equality of treatment and opportunity for all persons in the armed services without regard to race, color, religion or national origin.\"",
+      "id": "separate-but-equal",
+      "title": "The Constitution and \"Separate but Equal,\" 1868-1948"
+    },
+    {
+      "attribution": "Brown v. Board of Education of Topeka, 347 U.S. 483 (1954), opinion of the Court by Chief Justice Earl Warren, May 17, 1954. Public domain (U.S. government work).",
+      "body": "On segregating Black children in public schools: \"To separate them from others of similar age and qualifications solely because of their race generates a feeling of inferiority as to their status in the community that may affect their hearts and minds in a way unlikely ever to be undone.\"\n\n\"We conclude that in the field of public education the doctrine of 'separate but equal' has no place. Separate educational facilities are inherently unequal.\"\n\nAbout the case: NAACP lawyers led by Thurgood Marshall argued Brown and four related cases on behalf of Black families in Kansas, South Carolina, Virginia, Delaware and the District of Columbia. The decision was unanimous. A second ruling in 1955 ordered desegregation \"with all deliberate speed,\" and many Southern officials responded with years of resistance.",
+      "id": "brown-v-board",
+      "title": "Brown v. Board of Education of Topeka (1954), Chief Justice Warren for the Court, excerpts"
+    },
+    {
+      "attribution": "Civil Rights Act of 1964, Public Law 88-352, Title II, Section 201(a), signed July 2, 1964. Public domain (U.S. government work).",
+      "body": "\"All persons shall be entitled to the full and equal enjoyment of the goods, services, facilities, privileges, advantages, and accommodations of any place of public accommodation, as defined in this section, without discrimination or segregation on the ground of race, color, religion, or national origin.\"\n\nAbout the source: Places of public accommodation included hotels, restaurants, theaters and gas stations. Other parts of the act barred discrimination in employment on the basis of race, color, religion, sex or national origin, and allowed the federal government to cut off funds to segregated programs. The act passed after the sit-in movement of 1960, the Freedom Rides of 1961, the Birmingham campaign and the March on Washington of 1963, and a Senate filibuster of more than fifty days.",
+      "id": "civil-rights-act-title-ii",
+      "title": "Civil Rights Act of 1964, Title II, Section 201(a)"
+    },
+    {
+      "attribution": "Lyndon B. Johnson, address to a joint session of Congress, March 15, 1965. Public domain (U.S. government work).",
+      "body": "\"At times history and fate meet at a single time in a single place to shape a turning point in man's unending search for freedom. So it was at Lexington and Concord. So it was a century ago at Appomattox. So it was last week in Selma, Alabama.\"\n\n\"There is no Negro problem. There is no Southern problem. There is no Northern problem. There is only an American problem.\"\n\n\"And we shall overcome.\"\n\nContext: On March 7, 1965, state troopers and a sheriff's posse attacked peaceful voting rights marchers on the Edmund Pettus Bridge in Selma, Alabama; television carried the pictures nationwide. Johnson spoke eight days later. \"We shall overcome\" was the anthem of the civil rights movement. Congress passed the Voting Rights Act in August 1965. The Fifteenth Amendment (1870) already said that the right to vote \"shall not be denied or abridged by the United States or by any State on account of race, color, or previous condition of servitude,\" but Southern states had used poll taxes, literacy tests and violence to keep most Black citizens from voting.",
+      "id": "johnson-voting-rights-address",
+      "title": "Lyndon B. Johnson, Special Message to Congress: The American Promise (1965), excerpts"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise, defensible thesis that takes a position on the question and sets up a line of reasoning.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim"
+      },
+      {
+        "description": "Supports the claim with specific, accurate and sufficient evidence, cited from the sources where required.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim using causation, comparison, or change and continuity.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical reasoning"
+      },
+      {
+        "description": "Addresses a counterclaim or competing interpretation fairly and explains why the claim still holds.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs alternatives"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

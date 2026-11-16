@@ -1,0 +1,94 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 16,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 200,
+    "minimumCitations": 0,
+    "overview": "Explain how the Silk Roads spread ideas as well as goods.",
+    "prompt": "Explain how the Silk Roads spread ideas, beliefs or technologies, not just goods. Use two specific examples and explain the effect of each.",
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Ideas on the Move"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.2.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-silk-roads",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "examples",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Specific examples"
+      },
+      {
+        "id": "effects",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains effects"
+      }
+    ],
+    "title": "Explanatory writing"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

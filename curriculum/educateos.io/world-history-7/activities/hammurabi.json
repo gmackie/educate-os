@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:930e358472bebea5ba70e5f68617122868cc59b46f9a011d7cb84fe3cc20f0d5",
+      "id": "educateos.io/world-history-7-hammurabi",
+      "version": "1.0.0"
+    }
+  },
+  "id": "hammurabi",
+  "role": "assignment",
+  "title": "What Do Hammurabi's Laws Tell Us?"
+}

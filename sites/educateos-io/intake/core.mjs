@@ -26,7 +26,8 @@ export async function hmac(secret, value) {
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']);
   return [...new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(value)))].map(b => b.toString(16).padStart(2, '0')).join('');
 }
-async function authorized(request, secret) {
+/** Check a scoped bearer credential without exposing it. */
+export async function authorized(request, secret) {
   if (typeof secret !== 'string' || secret.length < 32) return false;
   const supplied = request.headers.get('authorization') ?? '';
   if (supplied.length > 300) return false;
@@ -44,7 +45,8 @@ export function configured(env) {
     ['INTEREST_HMAC_SECRET', 'INTEREST_EXPORT_TOKEN', 'INTEREST_PRIVACY_TOKEN'].every(k => typeof env[k] === 'string' && env[k].length >= 32) &&
     new Set([env.INTEREST_HMAC_SECRET, env.INTEREST_EXPORT_TOKEN, env.INTEREST_PRIVACY_TOKEN]).size === 3 && !!env.INTEREST;
 }
-async function boundedJson(request) {
+/** Read a JSON object with an 8 KiB streaming limit. */
+export async function boundedJson(request) {
   if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(request.headers.get('content-type') ?? '')) throw new Error('invalid');
   if (Number(request.headers.get('content-length')) > 8192) throw new Error('invalid');
   const reader = request.body?.getReader();
@@ -76,7 +78,8 @@ function text(value, max, optional = false) {
   if ((!optional && !clean) || clean.length > max || /[<>\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(clean) || /(?:[a-z][a-z0-9+.-]*:\/\/|www\.|\b(?:[\w-]+\.)+(?:[a-z]{2,63})\b)/i.test(clean)) throw new Error('invalid');
   return clean;
 }
-function email(value) {
+/** Validate and normalize a bounded email address. */
+export function email(value) {
   if (typeof value !== 'string' || value.length > 254 || !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/.test(value)) throw new Error('invalid');
   return value.toLowerCase();
 }
@@ -107,7 +110,7 @@ export function validate(input) {
   };
 }
 /** Verify the fixed Siteverify endpoint, timestamp, exact hostname and action; fail closed. */
-export async function verifyTurnstile(env, token, ip, now, send = fetch) {
+export async function verifyTurnstile(env, token, ip, now, send = fetch, action = 'interest') {
   try {
     const response = await send('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
@@ -116,7 +119,7 @@ export async function verifyTurnstile(env, token, ip, now, send = fetch) {
     if (!response.ok) return false;
     const result = await response.json();
     const age = now - Date.parse(result.challenge_ts);
-    return result.success === true && result.hostname === 'educateos.io' && result.action === 'interest' && age >= -30000 && age <= 300000;
+    return result.success === true && result.hostname === 'educateos.io' && result.action === action && age >= -30000 && age <= 300000;
   } catch { return false; }
 }
 /** Returns null for routes owned by the existing site/control plane. */

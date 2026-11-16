@@ -1,0 +1,112 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 26,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "8",
+    "minWords": 150,
+    "minimumCitations": 0,
+    "overview": "Write one real moment in slow motion, then step back and reflect on it.",
+    "prompt": "Choose one real moment from your life that lasted less than a minute. First, write a snapshot: tell the moment in slow motion, using at least three senses and one line of dialogue. Then write a thoughtshot: a short paragraph in which you, today, look back and explain what you were thinking or feeling, and what you understand about it now.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Snapshot and Thoughtshot"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-snapshot-and-thoughtshot",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "detail",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sensory detail and pacing"
+      },
+      {
+        "id": "dialogue",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Dialogue"
+      },
+      {
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reflection"
+      }
+    ],
+    "title": "Snapshot and thoughtshot"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

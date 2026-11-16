@@ -248,6 +248,12 @@ describe('without DISTRICT bound (today\'s instances)', () => {
 });
 
 describe('districtOriginTarget', () => {
+  it('sends the organization MCP endpoint and its metadata to the district (SCHO-174)', () => {
+    for (const path of ['/mcp', '/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp']) {
+      for (const aiEnabled of [true, false]) expect(districtOriginTarget(path, aiEnabled), path).toBe('district');
+    }
+  });
+
   it('never claims a district API family for the Workshop', () => {
     const district = ['student', 'teacher', 'admin', 'guardian', 'me', 'calendar', 'onboarding', 'lti', 'm', 'pair', 'ops'];
     for (const family of district) {

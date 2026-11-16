@@ -1,14 +1,9 @@
 import { classifyRpcError, logRpcFailure, rpcFailureDescription } from "../../rpcErrors";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { LayerCard, useKumoToastManager } from "@cloudflare/kumo";
-import { Sparkle } from "@phosphor-icons/react";
+import { useKumoToastManager } from "@cloudflare/kumo";
+import { HomeLanding } from "./HomeLanding";
 import { ChatComposer } from "../../features/chat/composer/ChatComposer";
-import MeshBackground from "./MeshBackground";
-import HomeTaskSuggestions from "./HomeTaskSuggestions";
-import { SchoolHomeIntro } from "./SchoolHomeIntro";
-import { SchoolTaskSuggestions } from "./SchoolTaskSuggestions";
-import { UpdateAvailableNotice } from "../../features/deployment-updates/UpdateAvailableNotice";
 import { useAuthenticatedApi } from "../../AuthContext";
 import { useDistrictSidebar } from "../../features/district-frame/districtFrame";
 import { RpcStub } from "capnweb";
@@ -26,25 +21,32 @@ import {
 } from "../../modelSelection";
 import { useDocumentTitle } from "../../useDocumentTitle";
 import { composerDraftStorageKey } from "../../features/chat/composer/draft/composerDraft";
+import { TeacherOnboarding } from "../../features/teacher-onboarding/TeacherOnboarding";
+import { TeacherMaterialReview } from "../../features/teacher-onboarding/TeacherMaterialReview";
 import { SchoolContextChip } from "../../features/school-context/SchoolContextChip";
 import { useSchoolContextLink } from "../../features/school-context/schoolContext";
 import { schoolContextPreamble } from "@gadgets/workshop-shared/school-context";
 
-export const HomePage = ({ prompt }: { prompt?: string }) => {
+export const HomePage = ({ prompt, teacherOnboarding = false }: { prompt?: string; teacherOnboarding?: boolean }) => {
   const district = useDistrictSidebar();
-  useDocumentTitle(district ? "AI workspace" : "Home");
+  useDocumentTitle(teacherOnboarding ? "Bring your classroom" : district ? "AI workspace" : "Home");
 
-  const { authenticatedApi, currentUser } = useAuthenticatedApi();
+  const { authenticatedApi, currentUser, preferredModel } = useAuthenticatedApi();
   const navigate = useNavigate();
   const toasts = useKumoToastManager();
 
   const [models, setModels] = useState<AiChatAuthorInfo[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  // Wrapped, so that a pick of "No agent" (null) is told from no pick at all.
+  const [pickedModel, setPickedModel] = useState<{ modelId: string | null } | null>(null);
+  const selectedModel = pickedModel ? pickedModel.modelId : getStoredSelectedModel(models, preferredModel);
   // Bumped each time a task suggestion is picked; the composer re-seeds its text off the nonce.
   const [seed, setSeed] = useState<{ text: string; nonce: number } | null>(null);
+  const draftStorageKey = currentUser
+    ? composerDraftStorageKey(currentUser.id, teacherOnboarding ? "teacher-onboarding" : "home")
+    : undefined;
   // "Ask AI about this" (SCHO-260): a context the district confirmed, attached to the new chat.
   const [schoolContext, dismissSchoolContext] = useSchoolContextLink(authenticatedApi);
-  const attachedContext = schoolContext.status === "attached" ? schoolContext.context : undefined;
+  const attachedContext = !teacherOnboarding && schoolContext.status === "attached" ? schoolContext.context : undefined;
 
   useEffect(() => {
     if (schoolContext.status !== "refused") return;
@@ -69,7 +71,6 @@ export const HomePage = ({ prompt }: { prompt?: string }) => {
       .then((list) => {
         if (cancelled) return;
         setModels(list);
-        setSelectedModel(getStoredSelectedModel(list));
       })
       .catch((err) => {
         logRpcFailure("Failed to fetch models:", err);
@@ -85,7 +86,7 @@ export const HomePage = ({ prompt }: { prompt?: string }) => {
   }, [authenticatedApi]);
 
   const handleModelChange = useCallback((value: string | null) => {
-    setSelectedModel(value);
+    setPickedModel({ modelId: value });
     persistSelectedModel(value);
   }, []);
 
@@ -182,58 +183,30 @@ export const HomePage = ({ prompt }: { prompt?: string }) => {
         onModelChange={handleModelChange}
         newChat
         offerFormats
+        showAttachmentActions={teacherOnboarding}
+        renderAttachmentReview={teacherOnboarding ? attachments => <TeacherMaterialReview attachments={attachments} /> : undefined}
         autoFocus
         minRows={3}
         seedText={seed?.text}
         seedNonce={seed?.nonce}
-        draftStorageKey={currentUser
-          ? composerDraftStorageKey(currentUser.id, "home")
-          : undefined}
+        draftStorageKey={draftStorageKey}
       />
     </>
   );
 
-  return (
-    <div className={`relative isolate flex min-h-full w-full flex-col items-center px-4 pb-12 sm:px-8 ${district ? "pt-8 sm:pt-12" : "pt-10 sm:pt-16 lg:pt-24"}`}>
-      <UpdateAvailableNotice />
-      {!district && <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[460px] overflow-hidden"
-        style={{
-          maskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 95%)",
-          WebkitMaskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 95%)",
-        }}
-      >
-        <MeshBackground />
-      </div>}
-      <div className={`flex w-full flex-col items-stretch gap-8 ${district ? "max-w-3xl" : "max-w-2xl"}`}>
-        {district ? <SchoolHomeIntro /> : <header className="text-center">
-          <h1 className="text-3xl font-semibold tracking-tight leading-tight text-kumo-default sm:text-4xl">
-            What are we working on?
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-[14px] leading-5 tracking-[-0.25px] text-kumo-subtle">
-            Ask a question, create an output, or create an app that works with your tools and data.
-          </p>
-        </header>}
-
-        {district ? (
-          <LayerCard className="overflow-visible rounded-2xl">
-            <LayerCard.Secondary className="justify-between px-5 py-4">
-              <h2 className="text-sm font-medium text-kumo-default">Start a conversation</h2>
-              <Sparkle size={18} className="text-kumo-brand" aria-hidden="true" />
-            </LayerCard.Secondary>
-            <LayerCard.Primary className="gap-0 overflow-visible p-0 pr-0">{composer}</LayerCard.Primary>
-          </LayerCard>
-        ) : composer}
-
-        {district ? (
-          <SchoolTaskSuggestions onPick={(text) => setSeed((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }))} />
-        ) : (
-          <HomeTaskSuggestions onPick={(text) => setSeed((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }))} />
-        )}
-      </div>
-    </div>
+  return teacherOnboarding ? (
+    <TeacherOnboarding
+      key={draftStorageKey}
+      composer={composer}
+      draftStorageKey={draftStorageKey}
+      onPrepare={(text) => setSeed({ text, nonce: 1 })}
+      onBack={() => navigate({ to: "/", search: {} })}
+    />
+  ) : (
+    <HomeLanding
+      composer={composer}
+      onPick={(text) => setSeed((previous) => ({ text, nonce: (previous?.nonce ?? 0) + 1 }))}
+      onTeacherOnboarding={() => navigate({ to: "/teacher-onboarding" })}
+    />
   );
 };

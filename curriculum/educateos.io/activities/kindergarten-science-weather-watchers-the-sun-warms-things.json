@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a short text about sunlight and shade. Tell what the sun does.",
+    "passage": "The sun gives us light. Sunlight also makes things warm. It warms the sand at the beach. It warms the slide at the park. When a tree blocks the sunlight, it makes shade. Things in the shade stay cooler. That is why we like to sit in the shade on a hot day.",
+    "questions": [
+      {
+        "prompt": "What does sunlight do to the sand?"
+      },
+      {
+        "prompt": "What makes shade?"
+      },
+      {
+        "prompt": "Is it cooler in the sun or in the shade?"
+      },
+      {
+        "prompt": "Where do you like to sit on a hot day? Why?"
+      }
+    ],
+    "sentenceFrames": [
+      "Sunlight makes ___ warm.",
+      "The shade is ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "The Sun Warms Things"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-the-sun-warms-things",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

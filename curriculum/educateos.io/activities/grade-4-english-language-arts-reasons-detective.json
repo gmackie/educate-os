@@ -1,0 +1,55 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Read a model opinion piece and find each of its parts.",
+    "passage": "Our School Needs a Garden\nby a fourth grader\n\nI think our school should plant a garden in the empty space behind the gym. A garden would help us learn, help us eat well, and make our school more beautiful.\n\nFirst, a garden is an outdoor classroom. We could measure how fast bean plants grow in math and watch the life cycle of a plant in science. For example, last year my cousin's class grew sunflowers and charted their height every week.\n\nAlso, kids who grow vegetables are more likely to try them. When I grew tomatoes with my grandmother, I ate them right off the vine, even though I used to hate tomatoes. A school garden could give every student that chance.\n\nFinally, right now the space behind the gym is just dirt and weeds. Flowers and vegetables would make it a place people want to visit.\n\nFor all these reasons, a garden would make our school a better place to learn and grow. Let's dig in!",
+    "questions": [
+      {
+        "prompt": "What is the writer's opinion? Copy the sentence that states it."
+      },
+      {
+        "prompt": "List the three reasons the writer gives."
+      },
+      {
+        "prompt": "What example supports the reason about learning outdoors?"
+      },
+      {
+        "prompt": "Find three linking words or phrases the writer uses to connect ideas."
+      },
+      {
+        "prompt": "How does the conclusion restate the opinion?"
+      },
+      {
+        "prompt": "Which reason is most convincing to you? Explain why, and say what evidence would make another reason stronger."
+      }
+    ],
+    "sentenceFrames": [
+      "The writer's opinion is ___.",
+      "One reason is ___.",
+      "The writer supports it with ___.",
+      "The most convincing reason is ___ because ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Reasons Detective"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-reasons-detective",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

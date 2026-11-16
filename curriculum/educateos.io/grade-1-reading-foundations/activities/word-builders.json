@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f682da1024174924baa357ee9e9ad79e2d5298627a8e7d6913842020cf912450",
+      "id": "educateos.io/grade-1-reading-foundations-word-builders",
+      "version": "1.0.0"
+    }
+  },
+  "id": "word-builders",
+  "role": "assignment",
+  "title": "Word Builders"
+}

@@ -27,35 +27,40 @@
   <div class="wrap">
     <a class="logo" href="/" aria-label="EducateOS home">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
-      EducateOS
+      <span class="wordmark">EducateOS</span>
     </a>
     <nav class="links" aria-label="Primary">
-      <a href="/#platform">Platform</a>
+      <a href="/tour/">Product tour</a>
       <a href="/integrations/">Integrations</a>
       <a href="/gadgets/" aria-current="page">Gadgets</a>
+      <a href="/courses/">Courses</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
       <a href="/developers/">Developers</a>
     </nav>
     <div class="right">
-      <a class="btn hide-sm" href="/demo/">Try the demo</a>
-      <a class="btn primary" href="/interest/">Share your interest</a>
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
       <details class="menu">
         <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
           <a href="/#platform">Platform</a>
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
           <a href="/gadgets/" aria-current="page">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
           <a href="/developers/">Developers</a>
           <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
           <a href="/students/">For students</a>
           <a href="/parents/">For families</a>
           <a href="/teachers/">For teachers</a>
           <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
           <a href="/schools/">Schools</a>
           <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
         </nav>
@@ -72,14 +77,16 @@
       <h1 class="rise" style="--d:1">Ask for an app. Share it as a blueprint.</h1>
       <p class="lede rise" style="--d:2">In Cloudflare OS, a <b class="strong">gadget</b> is a small app the agent builds when you describe it, running in its own sandbox. A <b class="strong">blueprint</b> shares the gadget's code, so another teacher or school can make their own copy and connect it to their own classes. Here are gadgets a school could build today with connectors and MCP servers.</p>
       <nav class="filters rise" style="--d:3" aria-label="Gallery sections">
-        <a class="btn" href="#lms">On your LMS</a><a class="btn" href="#teaching">Teaching</a><a class="btn" href="#families">Families and school life</a><a class="btn" href="#cs">Clubs and CS</a><a class="btn" href="#blueprints">How blueprints work</a>
+        <a class="btn" href="#teacher-starters">Teacher starters</a><a class="btn" href="#lms">On your LMS</a><a class="btn" href="#teaching">Teaching</a><a class="btn" href="#families">Families and school life</a><a class="btn" href="#cs">Clubs and CS</a><a class="btn" href="#blueprints">How blueprints work</a>
       </nav>
       <div class="legend rise" style="--d:3">
         <span class="status avail">Available in Cloudflare OS</span><span class="status dev">In development</span><span class="status planned">Planned</span><span class="status byo">Your MCP server</span>
-        <span>These are examples, not shipped products. Each lists the connections it needs and their status today. "Your MCP server" means the district connects a server it chooses.</span>
+        <span>The teacher starters below are bundled blueprint implementations awaiting live production verification. The other cards are ideas, not shipped products. Each lists its connections and status. "Your MCP server" means the district connects a server it chooses.</span>
       </div>
     </div>
   </section>
+
+  <section class="tight band" id="teacher-starters"><div class="wrap"><div class="eyebrow">Teacher starter collection</div><h2>Three useful starting points. Your connections, your copy.</h2><p class="lede">Built as reusable blueprints, with read-only source access and preparation notes saved in each workspace. These screenshots use fictional data. Live provider and independent-install verification are still in progress.</p><div class="gallery"><article class="gcard"><a href="/assets/teacher-blueprints/teacher-week-ahead.png"><img src="/assets/teacher-blueprints/teacher-week-ahead.png" alt="Fictional Week Ahead example showing source cards and teacher preparation notes" width="1200" height="900" loading="lazy" style="display:block;width:100%;height:auto;border-radius:8px"></a><div class="gtop"><h3>Week Ahead</h3></div><div class="who">Teachers and school teams · <span class="status dev">In development</span></div><p>Start the week with a clear view of your teaching calendar and a preparation checklist.</p><div class="uses"><small>Connection and setup</small><div><b>Google Calendar</b></div><p>Choose a calendar, then refresh a seven-day window in its time zone. No events are changed.</p></div><p><a href="https://git.forgegraf.com/gmackie/educate-os/src/branch/main/packages/bundled-blueprints/blueprints/teacher-week-ahead">Blueprint source and setup ↗</a></p></article><article class="gcard"><a href="/assets/teacher-blueprints/teacher-research-kit.png"><img src="/assets/teacher-blueprints/teacher-research-kit.png" alt="Fictional Research Kit example showing source cards and teacher preparation notes" width="1200" height="900" loading="lazy" style="display:block;width:100%;height:auto;border-radius:8px"></a><div class="gtop"><h3>Research Kit</h3></div><div class="who">Teachers and school teams · <span class="status dev">In development</span></div><p>Find lesson sources, review their original pages and keep your own teaching notes beside them.</p><div class="uses"><small>Connection and setup</small><div><b>Web Search</b></div><p>Enable Web Search and ask the Workshop agent to attach WEB_SEARCH to this gadget. It requires this extra setup step.</p></div><p><a href="https://git.forgegraf.com/gmackie/educate-os/src/branch/main/packages/bundled-blueprints/blueprints/teacher-research-kit">Blueprint source and setup ↗</a></p></article><article class="gcard"><a href="/assets/teacher-blueprints/teacher-assignment-companion.png"><img src="/assets/teacher-blueprints/teacher-assignment-companion.png" alt="Fictional Assignment Companion example showing source cards and teacher preparation notes" width="1200" height="900" loading="lazy" style="display:block;width:100%;height:auto;border-radius:8px"></a><div class="gtop"><h3>Assignment Companion</h3></div><div class="who">Teachers and school teams · <span class="status dev">In development</span></div><p>Prepare for class with app-created coursework and a checklist you control.</p><div class="uses"><small>Connection and setup</small><div><b>Google Classroom</b></div><p>Connect a course you teach. Lists only coursework created through this Google connection; due dates are not exposed.</p></div><p><a href="https://git.forgegraf.com/gmackie/educate-os/src/branch/main/packages/bundled-blueprints/blueprints/teacher-assignment-companion">Blueprint source and setup ↗</a></p></article></div><p class="muted">On an installation that ships this collection, choose Week Ahead, Research Kit or Assignment Companion from Blueprints. Each recipient connects their own resources. Sharing a blueprint copies its code, not stored notes, credentials or source records. No AI model, external writes or active schedule is required.</p></div></section>
 
   <section class="tight band" id="lms">
     <div class="wrap">
@@ -134,7 +141,7 @@
               <div class="li" style="background:var(--color-kumo-elevated)"><div class="t"><b class="strong">Connections your copy needs</b><small>You'll pick your own. Nothing of Ms. Rivera's is shared.</small></div></div>
               <div class="li"><span class="logo-tile sm" style="background:#188038">GC</span><div class="t"><b class="strong">A Google Classroom course</b><small>One you teach</small></div><span class="mini-btn">Choose</span></div>
               <div class="li"><span class="logo-tile sm" style="background:#188038">G</span><div class="t"><b class="strong">Gmail</b><small>For drafted nudges · sends need your approval</small></div><span class="mini-btn">Choose</span></div>
-              <div class="li"><span class="logo-tile sm" style="background:#f59e0b">ST</span><div class="t"><b class="strong">Scheduled Tasks</b><small>Runs Monday mornings · starts switched off</small></div><span class="mini-btn">Choose</span></div>
+              <div class="li"><span class="logo-tile sm" style="background:#b45309">ST</span><div class="t"><b class="strong">Scheduled Tasks</b><small>Runs Monday mornings · starts switched off</small></div><span class="mini-btn">Choose</span></div>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end"><span class="mini-btn">View code</span><span class="mini-btn primary">Create my copy</span></div>
           </div>
@@ -149,7 +156,7 @@
       <div class="cta">
         <h2>Have a gadget your school needs?</h2>
         <p class="lede" style="margin-left:auto;margin-right:auto">Tell us what it should do and what it connects to. We're collecting examples to build with pilot schools.</p>
-        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=A%20gadget%20idea">Email hello@educateos.io</a><a class="btn" href="/developers/">For developers</a></div>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=A%20gadget%20idea" data-glass-event="contact_requested" data-glass-prop-location="gadgets">Email hello@educateos.io</a><a class="btn" href="/developers/">For developers</a></div>
       </div>
     </div>
   </section>
@@ -166,12 +173,15 @@
       <div>
         <h4>Product</h4>
         <ul>
+          <li><a href="/tour/">Product tour</a></li>
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
           <li><a href="/gadgets/" aria-current="page">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
           <li><a href="/mcp/">MCP</a></li>
           <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
         </ul>
       </div>
       <div>
@@ -181,14 +191,19 @@
           <li><a href="/parents/">Families</a></li>
           <li><a href="/teachers/">Teachers</a></li>
           <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
           <li><a href="/developers/">Developers</a></li>
           <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
         </ul>
       </div>
       <div>
         <h4>Trust</h4>
         <ul>
           <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
           <li><a href="/student-privacy/">Student privacy</a></li>
           <li><a href="/privacy/">Privacy Policy</a></li>
           <li><a href="/student-privacy/dpa/">DPA template</a></li>
@@ -199,6 +214,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
           <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>
@@ -206,10 +222,11 @@
     <div class="legal">
       <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
       <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
-      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
     </div>
   </div>
 </footer>
 <!-- /site:footer -->
+<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->
 </body>
 </html>

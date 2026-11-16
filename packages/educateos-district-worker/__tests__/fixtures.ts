@@ -17,16 +17,39 @@ export const LTI_TOOL_ORIGIN = "https://district.example";
 export const DEVICE_TOKEN_SECRET = "test-device-token-secret-0123456789-abcdef";
 /** The synthetic LMS the LTI tests register (SCHO-177). Not one of Northfield's trusted issuers. */
 export const LMS_ISSUER = "https://lms.northfield.example";
+/**
+ * Where a synthetic third-party tool of the district's LTI Platform publishes its keys (SCHO-179).
+ * It publishes the synthetic LMS's public key, so the tests sign its client assertions with that.
+ */
+export const PLATFORM_TOOL_JWKS_URL = "https://quiz-tool.example/.well-known/jwks.json";
+
+/** The district's synthetic OAuth authorization server for its MCP endpoint (SCHO-174), standing in for Nathan. */
+export const MCP_ISSUER = "https://id.northfield.example";
+/** The district's public origin as the MCP tests deploy it; the resource is `<origin>/mcp`. */
+export const MCP_ORIGIN = "https://district.example";
+/** Each staff member's subject at {@link MCP_ISSUER}: a link of its own, beside their Access one. */
+export const mcpSubject = (principalId: string) => `nathan-${principalId}`;
+
+/** Northfield with an identity link at {@link MCP_ISSUER} for each staff member, after their Access link. */
+const NORTHFIELD_WITH_MCP_LINKS = {
+  ...NORTHFIELD,
+  district: { ...NORTHFIELD.district, trustedIssuers: [...NORTHFIELD.district.trustedIssuers, MCP_ISSUER] },
+  principals: NORTHFIELD.principals.map((p) => p.kind !== "staff" ? p : {
+    ...p,
+    externalIdentities: [...p.externalIdentities, { districtId: p.districtId, issuer: MCP_ISSUER, subject: mcpSubject(p.id) }],
+  }),
+};
 
 /** Northfield as the district's seed, its records owned by the roster, funded for one synthetic model. */
 export const TEST_CONFIG: DistrictWorkerConfig = {
-  directory: NORTHFIELD,
+  directory: NORTHFIELD_WITH_MCP_LINKS,
   workshopPolicy: {
     personalCreation: true,
     personalBlueprints: ["personal-notebook"],
     classBlueprints: [{ blueprintId: "english-authoring", offeringId: "off_nf-eng9-fall-p3" as never }],
     models: [{ provider: "cloudflare", modelId: "synthetic-model" }],
     connectors: [{ vendorId: "educateos", accountId: 7, resourceUrlPatterns: ["school://approved"], resources: ["SchoolTools"] }],
+    teacherConnectors: [{ vendorId: "google", resourceUrlPatterns: ["https://classroom.googleapis.com/courses/:courseId"] }],
   },
   fundingPools: [{
     id: "fpl_courses" as never,
@@ -41,7 +64,17 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
   email: { from: "educateos@northfield.example", fromName: "Northfield EducateOS", appUrl: "https://learn.northfield.example" },
   // SCHO-305: student posts are screened by the (fake) Hall Monitor the test object answers with.
   discussionScreening: { tenantId: "northfield", profileId: "discussion-posts", revision: "r1", costCenterId: "cc-discussions" },
+  // SCHO-174: the organization MCP endpoint, for the synthetic issuer the test object trusts.
+  mcp: { origin: MCP_ORIGIN, issuer: MCP_ISSUER, jwksUri: `${MCP_ISSUER}/jwks`, algorithms: ["ES256"] },
+  // SCHO-326: the demo showcase, which the test Worker's DEMO_SHOWCASE var names too.
+  demo: { showcase: "northfield" },
 };
 
 /** Where the test district reaches Hall Monitor; the test object answers it with the fake. */
 export const HALL_MONITOR_URL = "https://hall-monitor.example";
+
+/** The demo operator's token as the tests deploy it (SCHO-326): `DEMO_OPERATOR_TOKEN`. */
+export const DEMO_OPERATOR_TOKEN = "test-demo-operator-token-0123456789-abcdef";
+
+/** The point-in-time recovery routes' token as the tests deploy it (SCHO-373): `RECOVERY_TOKEN`. */
+export const RECOVERY_TOKEN = "test-recovery-token-0123456789-abcdefghij";

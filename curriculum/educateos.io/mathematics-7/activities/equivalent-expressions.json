@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:77fca6cf74ebe5e8f10ea740205e400331e361f0aa8a249b8497bf6f6a49dd65",
+      "id": "educateos.io/mathematics-7-equivalent-expressions",
+      "version": "1.0.0"
+    }
+  },
+  "id": "equivalent-expressions",
+  "role": "assignment",
+  "title": "Equivalent Expressions"
+}

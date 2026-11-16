@@ -1,0 +1,133 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Compare the same moment written as a story and as a poem.",
+    "passage": "Read the same moment written two ways.\n\nAS A STORY\nEvery morning, the bus came around the corner at 7:40. It was so cold that Mia could see her breath. When the bus doors opened with a hiss, warm air rushed out, and she climbed the steps and slid into her favorite seat by the window.\n\nAS A POEM\nThe Morning Bus\n\nSeven-forty, corner, cold,\nmy breath a little cloud.\nThe doors unfold, the warm air rolls,\na hiss, a sigh, out loud.\n\nUp the steps and down the aisle,\nmy window seat is free.\nThe city stretches out a mile\nand waits outside for me.",
+    "questions": [
+      {
+        "prompt": "The story is written in sentences and a paragraph. How is the poem written? Name two differences in how it looks on the page."
+      },
+      {
+        "prompt": "Read the poem out loud and tap the beat. Describe the rhythm. Does the story have the same kind of beat?"
+      },
+      {
+        "prompt": "Which words rhyme in the poem? Why might the poet use rhyme?"
+      },
+      {
+        "prompt": "Find one detail that is in both versions. How is it said differently in each?"
+      },
+      {
+        "prompt": "The poem says \"my breath a little cloud.\" What kind of figurative language is this, and what does it mean?"
+      },
+      {
+        "prompt": "Which version helps you feel the moment more? Explain using an example from the text."
+      }
+    ],
+    "sentenceFrames": [
+      "The poem is written in ___, but the story is written in ___.",
+      "In the story it says ___, but in the poem it says ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Poem or Story? The Morning Bus"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-poem-or-story",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Names structural differences: lines, stanzas, rhythm, rhyme"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses examples from both versions"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains the effect of each form"
+      }
+    ],
+    "title": "Poem and prose"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

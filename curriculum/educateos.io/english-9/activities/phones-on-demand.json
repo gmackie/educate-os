@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8e61c1296bc4460387cfc0ada626474fe4396b7a76f7b3376e9426c6a03b3de1",
+      "id": "educateos.io/english-9-phones-on-demand",
+      "version": "1.0.0"
+    }
+  },
+  "id": "phones-on-demand",
+  "role": "assessment",
+  "title": "On-Demand Argument: Phones in Class"
+}

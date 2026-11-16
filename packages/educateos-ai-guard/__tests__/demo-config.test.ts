@@ -41,9 +41,10 @@ describe("schoolos.gmac.io demo guard config", () => {
     expect(config.directory?.principals.find((p) => p.id === context?.principal.principalId)?.kind).toBe("staff");
   });
 
-  it("prices every Workers AI model the Workshop suggests, within the per-principal cap", () => {
+  it("prices every visible Workers AI model the Workshop suggests, within the per-principal cap", () => {
     const capUsdNano = BigInt(config.policy.aiMonthlyCapCentsPerPrincipal) * 10_000_000n;
     for (const [modelId, model] of Object.entries(SUGGESTED_MODELS.cloudflare)) {
+      if ("hidden" in model && model.hidden) continue;
       const rate = rateFor(config, { provider: "cloudflare", modelId });
       expect(rate, modelId).toBeDefined();
       const hold = BigInt(estimateMaxUsdNano(rate!, model.outputLimit));
@@ -55,6 +56,17 @@ describe("schoolos.gmac.io demo guard config", () => {
     const total = config.fundingPools.reduce((sum, pool) => sum + BigInt(pool.monthlyAllocationUsdNano), 0n);
     expect(total).toBeLessThan(10_000_000_000n);
     expect(config.fundingPools.map((pool) => pool.purpose).toSorted()).toEqual(["personal", "safety"]);
+  });
+
+  it("gives K-5 its own profile, on the strictest student profile Hall Monitor has (SCHO-325)", () => {
+    // Hall Monitor v0.3.0 has no K-5 profile, and its overlays only tighten the profiles it has.
+    expect(config.profiles["student-k5"]).toEqual({
+      hallMonitorProfileId: "student-6-8", revision: "builtin-1", moderateInput: true, failureMode: "fail-closed",
+      outputModeration: "required", answerAssistance: "scaffolded",
+    });
+    // Each student profile mirrors its Hall Monitor profile's answer assistance.
+    expect(config.profiles["student-6-8"]?.answerAssistance).toBe("scaffolded");
+    expect(config.profiles["student-9-12"]?.answerAssistance).toBe("contextual");
   });
 
   it("has a profile for every audience class", () => {
@@ -69,6 +81,7 @@ describe("schoolos.gmac.io demo guard config", () => {
     const context = (await resolver.resolve({ initiator: { type: "gadget", id: ADMIN } }))!;
     const ledger = new AiLedger({ districtId: config.districtId, store: new InMemoryLedgerStore(), source: new ConfiguredGovernanceSource(config) });
     for (const [modelId, model] of Object.entries(SUGGESTED_MODELS.cloudflare)) {
+      if ("hidden" in model && model.hidden) continue;
       const ref = { provider: "cloudflare" as const, modelId };
       const reserved = await ledger.reserve(`demo-${modelId.replaceAll(/[^a-z0-9]/g, "-")}`, context.principal, context.workspace, ref,
         estimateMaxUsdNano(rateFor(config, ref)!, model.outputLimit));

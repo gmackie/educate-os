@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:46c017c6f5b358ee062b16594811e8a5697384b3dbc4b383ead9e9d96760592e",
+      "id": "educateos.io/biology-1-follow-a-carbon-atom",
+      "version": "1.0.0"
+    }
+  },
+  "id": "follow-a-carbon-atom",
+  "role": "assignment",
+  "title": "Follow a Carbon Atom"
+}

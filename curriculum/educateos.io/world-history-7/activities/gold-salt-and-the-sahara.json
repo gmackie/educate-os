@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c73138787dfebd2f993abbfd79237cff4c87b69a9fd8dccf7b49e38d5bf3114e",
+      "id": "educateos.io/world-history-7-gold-salt-and-the-sahara",
+      "version": "1.0.0"
+    }
+  },
+  "id": "gold-salt-and-the-sahara",
+  "role": "lesson",
+  "title": "Gold, Salt and the Sahara"
+}

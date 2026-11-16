@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:70038c772c77367b1802f5ee2c44111309209d382bce255a6a85418ffd9ed5e0",
+      "id": "educateos.io/english-9-anatomy-of-an-argument",
+      "version": "1.0.0"
+    }
+  },
+  "id": "anatomy-of-an-argument",
+  "role": "lesson",
+  "title": "Anatomy of an Argument"
+}

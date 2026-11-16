@@ -1,0 +1,179 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "How did Progressive reformers turn public outrage into lasting change? Use at least two of the sources, and explain one way the reform that resulted differed from what a reformer wanted.",
+    "contextualizationQuestions": [
+      "What conditions in American cities and industries around 1900 gave muckrakers so much to write about?",
+      "Women had organized for the vote since the 1848 Seneca Falls convention. Why do you think the Nineteenth Amendment was ratified in 1920 rather than earlier?"
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 2,
+    "overview": "Analyze a muckraking novel, a president's response to the muckrakers, and three Progressive amendments to see how reform happened.",
+    "sources": [
+      "the-jungle",
+      "man-with-the-muck-rake",
+      "progressive-amendments"
+    ],
+    "sourcingQuestions": [
+      "The Jungle is a novel. What makes a novel based on weeks of investigation useful as historical evidence, and what makes it risky?",
+      "Why might a president both praise and criticize the journalists who exposed wrongdoing?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Muckrakers and Lawmakers"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.14.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-muckrakers-and-lawmakers",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Upton Sinclair, The Jungle (1906), chapter 14; and Upton Sinclair, \"What Life Means to Me,\" Cosmopolitan, October 1906. Public domain.",
+      "body": "From the novel, describing the sausage rooms of a Chicago meatpacking plant:\n\"There would be meat that had tumbled out on the floor, in the dirt and sawdust, where the workers had tramped and spit uncounted billions of consumption germs.\"\n\nSinclair, later in 1906, on the public's response:\n\"I aimed at the public's heart, and by accident I hit it in the stomach.\"\n\nAbout the source: Sinclair, a socialist, spent seven weeks in the Chicago stockyards and wrote the novel to expose the lives of immigrant workers. Readers were most outraged by its descriptions of contaminated meat. President Theodore Roosevelt sent investigators to Chicago, and on June 30, 1906, he signed the Meat Inspection Act and the Pure Food and Drug Act.",
+      "id": "the-jungle",
+      "title": "Upton Sinclair, The Jungle (1906), and his reflection on it"
+    },
+    {
+      "attribution": "Theodore Roosevelt, address in Washington, D.C., April 14, 1906. Public domain.",
+      "body": "\"There is filth on the floor and it must be scraped up with the muck-rake; and there are times and places where this service is the most needed of all the services that can be performed.\"\n\nAbout the source: Roosevelt borrowed the image of the man with the muck-rake from John Bunyan's The Pilgrim's Progress, a figure so busy raking filth that he never looks up. In the same speech he warned that writers who only expose wrongdoing, and never offer anything else, can do harm. Journalists who exposed corruption soon adopted his insult as a badge of honor: muckrakers.",
+      "id": "man-with-the-muck-rake",
+      "title": "Theodore Roosevelt, \"The Man with the Muck-rake\" (1906), excerpt"
+    },
+    {
+      "attribution": "Constitution of the United States, Amendments XVI (ratified 1913), XVII (1913) and XIX (1920). Public domain (U.S. government work).",
+      "body": "Amendment XVI (1913): \"The Congress shall have power to lay and collect taxes on incomes, from whatever source derived, without apportionment among the several States, and without regard to any census or enumeration.\"\n\nAmendment XVII (1913), first sentence: \"The Senate of the United States shall be composed of two Senators from each State, elected by the people thereof, for six years; and each Senator shall have one vote.\"\n\nAmendment XIX (1920): \"The right of citizens of the United States to vote shall not be denied or abridged by the United States or by any State on account of sex. Congress shall have power to enforce this article by appropriate legislation.\"\n\nNote: Amendment XVIII (1919) prohibited the manufacture, sale and transportation of alcoholic beverages. It was repealed by Amendment XXI in 1933.",
+      "id": "progressive-amendments",
+      "title": "The Progressive Amendments, 1913-1920"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

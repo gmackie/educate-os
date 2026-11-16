@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:9a503e5ef5c57a15bfe9aca6d9a3769abc7a707b57637cd3a93f4691ce1d5af3",
+      "id": "educateos.io/biology-1-ecology-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "ecology-check",
+  "role": "assessment",
+  "title": "Ecology Check"
+}

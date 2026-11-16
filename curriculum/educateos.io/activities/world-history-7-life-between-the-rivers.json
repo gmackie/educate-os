@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 120,
+    "minimumCitations": 1,
+    "overview": "Read about how people turned a dry river plain into a land of cities, then explain the connection in your own words.",
+    "prompt": "Read \"The Land Between the Rivers.\" In one or two paragraphs, explain how the Tigris and Euphrates rivers and irrigation made it possible for cities to grow in Mesopotamia. Use the words surplus and irrigation, and include at least one detail from the reading. End with one problem that irrigation caused.",
+    "resources": [
+      "land-between-rivers"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Life Between the Rivers"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.4.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-life-between-the-rivers",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Mesopotamia means \"the land between the rivers.\" It is the plain between the Tigris and Euphrates rivers, mostly in present-day Iraq. Rain there is scarce, and summers are very hot. Yet the rivers flood every spring and leave behind rich soil.\n\nFarmers learned to dig canals and build earth banks to carry river water to their fields and to hold back floods. This is called irrigation. With irrigation, a farming family could grow more barley than it needed. That surplus fed people who did not farm: priests, potters, metalworkers, merchants and soldiers.\n\nBy about 3500 BCE, Sumerian cities such as Uruk had grown into some of the largest settlements in the world. Each city had a great temple tower called a ziggurat, built for the city's god. Keeping track of grain, workers and trade became complicated, so scribes began pressing marks into wet clay with a reed. Over centuries those marks became cuneiform, one of the first writing systems.\n\nCities often fought over water and land. Around 2334 BCE, Sargon of Akkad united many of them into what is often called the first empire. Later, around 1750 BCE, King Hammurabi made Babylon the center of a large kingdom and had his laws carved in stone for all to see.\n\nIrrigation had a cost. When river water evaporates from fields, it leaves salt behind. Over many centuries, salty soil made some southern fields less fertile, one reason power in Mesopotamia shifted north over time.",
+      "id": "land-between-rivers",
+      "title": "The Land Between the Rivers"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

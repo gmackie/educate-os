@@ -118,6 +118,31 @@ describe("course content (SCHO-186)", () => {
     expect(await code(service.createModule(MORGAN, BIO_SPRING.offeringId, { title: "Late" }))).toBe("forbidden");
   });
 
+  it("keeps teacher-only notes from students even in a published module, and removes their pages with them (SCHO-331)", async () => {
+    const { service } = setup();
+    const source = { kind: "course", packageId: "educateos.io/grade-9-biology", version: "1.0.0", packageDigest: `sha256:${"a".repeat(64)}`, unitKey: "u1" } as const;
+    const module = await service.createModule(MORGAN, BIO.offeringId, { title: "Unit 1: Cells" }, source);
+    expect(module.source).toStrictEqual(source);
+    const { page } = await service.addPage(MORGAN, BIO.offeringId, module.id, { title: "Overview", body: "Cells are small." });
+    const guide = await service.addTeacherNote(MORGAN, BIO.offeringId, module.id, { title: "Teacher guide", body: "Day 1: microscopes.", purpose: "context" });
+    const key = await service.addTeacherNote(MORGAN, BIO.offeringId, module.id, { title: "Answer key", body: "1. nucleus", purpose: "answer-key" });
+    expect(key.item).toMatchObject({ kind: "teacher-note", pageId: key.page.id, purpose: "answer-key" });
+    expect(await code(service.addTeacherNote(MORGAN, BIO.offeringId, module.id, { title: "x", body: "y", purpose: "secret" }))).toBe("validation-failed");
+    expect(await code(service.addTeacherNote(AMARA, BIO.offeringId, module.id, { title: "x", body: "y", purpose: "context" }))).toBe("forbidden");
+    await service.updateModule(MORGAN, BIO.offeringId, module.id, { published: true });
+
+    const student = await service.outline(AMARA, BIO.offeringId);
+    expect(student.outline.modules[0]!.items.map((i) => i.kind)).toStrictEqual(["page"]);
+    expect(student.outline.pages).toStrictEqual([page]);
+    const teacher = await service.outline(MORGAN, BIO.offeringId);
+    expect(teacher.outline.modules[0]!.items.map((i) => i.kind)).toStrictEqual(["page", "teacher-note", "teacher-note"]);
+
+    await service.removeItem(MORGAN, BIO.offeringId, module.id, guide.item.id);
+    expect((await service.outline(MORGAN, BIO.offeringId)).outline.pages.map((p) => p.title)).toStrictEqual(["Overview", "Answer key"]);
+    await service.deleteModule(MORGAN, BIO.offeringId, module.id);
+    expect((await service.outline(MORGAN, BIO.offeringId)).outline).toMatchObject({ modules: [], pages: [] });
+  });
+
   it("refuses a commit made over a revision that has since changed", async () => {
     const { storage } = setup();
     const outline = { offeringId: BIO.offeringId, revision: 1, modules: [], pages: [] };

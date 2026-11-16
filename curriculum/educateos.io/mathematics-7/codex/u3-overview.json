@@ -1,0 +1,7 @@
+{
+  "body": "Rational numbers are numbers that can be written as fractions: positive and negative whole numbers, fractions and decimals. You meet them in temperatures, elevations, bank balances and scores.\n\nAdding and subtracting: think of a number line.\n- Adding a positive number moves right; adding a negative number moves left.\n- Subtracting a number is the same as adding its opposite: 3 - 8 = 3 + (-8) = -5.\n- A number and its opposite add to zero: 6 + (-6) = 0.\n\nMultiplying and dividing:\n- Same signs give a positive answer: (-4)(-5) = 20.\n- Different signs give a negative answer: (-24) ÷ 6 = -4.\n\nWorked example: At 6 a.m. it was -4°F. By noon it was 9°F. How much did it warm up?\n9 - (-4) = 9 + 4 = 13 degrees.\nThe distance between -4 and 9 on the number line is 13.\n\nIn this unit you will use these rules to solve problems with money, temperature, elevation and measurement.",
+  "id": "u3-overview",
+  "purpose": "context",
+  "title": "Below Zero and Back",
+  "visibility": "students"
+}

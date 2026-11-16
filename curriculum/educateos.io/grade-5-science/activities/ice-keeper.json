@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a999b3773467a61c66314cc197450111f241d7cf5ab6fb5d5e08b0d812fcdd80",
+      "id": "educateos.io/grade-5-science-ice-keeper",
+      "version": "1.0.0"
+    }
+  },
+  "id": "ice-keeper",
+  "role": "assignment",
+  "title": "Keep It Cold: Design an Ice Keeper"
+}

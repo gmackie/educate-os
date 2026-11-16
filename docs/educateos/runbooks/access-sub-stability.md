@@ -164,7 +164,7 @@ is `same`, say so in the ADR. It means the upstream subject is a usable fallback
 3. Update ADR-0003's "Caveat" bullet with the outcome's text from the table above, and link the
    SCHO-37 comment. If the outcome is `sub-keyed-by-email-sticky`, write a new ADR that supersedes
    the Access part of ADR-0003, instead of editing it.
-4. Write the offboarding step into the district offboarding runbook. That runbook doesn't exist yet,
-   so create `docs/educateos/runbooks/offboarding.md` with it.
+4. Write the offboarding step into the district offboarding runbook,
+   [district-offboarding.md](district-offboarding.md) (step 4).
 5. **Delete `recording.json`.** It holds live tokens for the test organization. Then delete
    person B, and person A if you no longer need them.

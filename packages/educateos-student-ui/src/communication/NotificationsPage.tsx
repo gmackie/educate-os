@@ -8,6 +8,7 @@ import { formatDateTime } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import type { NotificationView } from "../model.ts";
 import { activityPath, coursePath } from "../router.tsx";
+import { PageHeading } from "../PageHeading.tsx";
 
 /** Where a notification leads: the activity it is about, or else its class. */
 const hrefOf = (notification: NotificationView): string =>
@@ -43,7 +44,7 @@ export const NotificationsPage = () => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Text variant="heading" size="lg" as="h1">Notifications</Text>
+        <PageHeading>Notifications</PageHeading>
         {unread > 0 ? (
           <Button variant="secondary" loading={marking === "running"} onClick={() => void markRead({ all: true }, "All notifications marked as read")}>
             Mark all as read
@@ -74,7 +75,7 @@ export const NotificationsPage = () => {
                       size="sm"
                       variant="ghost"
                       disabled={marking === "running"}
-                      aria-label={`Mark "${notification.title}" as read`}
+                      aria-label={`Mark read: ${notification.title}`}
                       onClick={() => void markRead({ ids: [notification.id] }, "Marked as read")}
                     >
                       Mark read

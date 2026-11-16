@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:129750debedbab34b2493df94c65a4222a906e7da74da7c1af2381bf2bf4f610",
+      "id": "educateos.io/grade-4-english-language-arts-chapter-one",
+      "version": "1.0.0"
+    }
+  },
+  "id": "chapter-one",
+  "role": "lesson",
+  "title": "Chapter 1: Setting, Narrator and Characters"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:296ff2b93d576663dd73a379b13e29a07a830995c77c3340764e9bcaa0badf48",
+      "id": "educateos.io/mathematics-7-rational-world",
+      "version": "1.0.0"
+    }
+  },
+  "id": "rational-world",
+  "role": "assignment",
+  "title": "Rational Numbers in the Real World"
+}

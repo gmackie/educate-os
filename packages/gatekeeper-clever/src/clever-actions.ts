@@ -103,6 +103,8 @@ async function audit(host: CleverActionHost, identity: { userId: string; distric
 /** The Clever action set, bound once per binding. */
 export const CLEVER_ACTIONS = defineActions<CleverActionHost, CleverActions>({
   createAssignment: {
+    kind: { tag: "create-assignment", label: "Create an assignment" },
+    autoApprovable: false,
     delivery: "continue-with-simulation",
     claimBeforeApply: true,
     describe: ({ sectionId, sectionName, draft }) => ({
@@ -149,6 +151,8 @@ export const CLEVER_ACTIONS = defineActions<CleverActionHost, CleverActions>({
   },
 
   setGrade: {
+    kind: { tag: "set-grade", label: "Record a grade" },
+    autoApprovable: false,
     delivery: "continue-with-simulation",
     describe: grade => ({
       title: sanitizeTitle(`Grade Clever assignment: ${grade.points} out of ${grade.pointsPossible}`),
@@ -184,6 +188,8 @@ export const CLEVER_ACTIONS = defineActions<CleverActionHost, CleverActions>({
   },
 
   turnIn: {
+    kind: { tag: "turn-in", label: "Turn in an assignment" },
+    autoApprovable: false,
     delivery: "continue-with-simulation",
     describe: ({ sectionId, sectionName, assignmentId, assignmentTitle }) => ({
       title: sanitizeTitle(`Turn in Clever assignment: ${assignmentTitle}`),

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2a5ff59f63c7e641b5087d135ad1b949fbc37d8804b3ee0223626b81d37b8491",
+      "id": "educateos.io/biology-1-transcription-translation",
+      "version": "1.0.0"
+    }
+  },
+  "id": "transcription-translation",
+  "role": "assignment",
+  "title": "Transcription and Translation Practice"
+}

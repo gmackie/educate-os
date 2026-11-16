@@ -162,13 +162,21 @@ export const cleverRows = {
     };
   },
 
-  section(record: CleverRecord<"sections">, status: CleverStatus): RowShapes["classes.csv"] {
+  /**
+   * A section. Clever names a section after its course, teacher and period ("Earth Science 8 -
+   * Whitaker - Period 1"), and EducateOS shows a class as its course's title and its section's
+   * name, so a name that starts with `courseName` keeps only the rest ("Whitaker - Period 1").
+   */
+  section(record: CleverRecord<"sections">, status: CleverStatus, courseName?: string): RowShapes["classes.csv"] {
     const grade = cleverGradeCode(record.grade);
+    const name = record.name ?? record.course_name ?? "";
+    const prefix = courseName === undefined || courseName === "" ? undefined : `${courseName} - `;
+    const own = prefix !== undefined && name.startsWith(prefix) && name.length > prefix.length ? name.slice(prefix.length) : name;
     return {
       sourcedId: record.id,
       status,
       // OneRoster caps a class title at 100 characters; Clever builds long section names.
-      title: (record.name ?? record.course_name ?? "").slice(0, 100),
+      title: own.slice(0, 100),
       grades: grade === undefined ? [] : [grade],
       courseSourcedId: record.course ?? sectionCourseSourcedId(record.id),
       classType: record.subject?.toLowerCase() === "homeroom/advisory" ? "homeroom" : "scheduled",

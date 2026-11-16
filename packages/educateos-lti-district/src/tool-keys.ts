@@ -13,8 +13,15 @@ import type { RecordTable } from "./table.ts";
 
 /** The collection the district's tool keys are kept in, under {@link TOOL_KEYS_RECORD}. */
 export const TOOL_KEYS_COLLECTION = "lti.tool-keys";
-/** The one record in {@link TOOL_KEYS_COLLECTION}: the whole key set, written in one step. */
+/** The one record in a key collection: the whole key set, written in one step. */
 export const TOOL_KEYS_RECORD = "current";
+/**
+ * The collection the district's LTI Platform signing keys are kept in (SCHO-179), under
+ * {@link TOOL_KEYS_RECORD}. They sign the launches EducateOS sends third-party tools, so they are a
+ * separate key set from the tool keys: a key that signs EducateOS's messages as a Tool never signs
+ * a launch as a Platform, and rotating one leaves the other alone.
+ */
+export const PLATFORM_KEYS_COLLECTION = "lti.platform-keys";
 
 /**
  * How many retired public keys stay published after a rotation. One is enough for a platform to
@@ -46,10 +53,12 @@ export interface ToolKeyRotation {
 }
 
 /**
- * The tool's signing keys, kept in the district's record table so they survive restarts and
- * deploys, with rotation. The first read generates a key if none is stored. Generating is
- * asynchronous, so it happens before the atomic step that stores it, and if two first reads race,
- * the key stored first wins and the other is discarded: every isolate signs with the same key.
+ * A district's RS256 signing keys, kept in the district's record table so they survive restarts and
+ * deploys, with rotation: the tool's keys in {@link TOOL_KEYS_COLLECTION} by default, or the LTI
+ * Platform's in {@link PLATFORM_KEYS_COLLECTION}. The first read generates a key if none is stored.
+ * Generating is asynchronous, so it happens before the atomic step that stores it, and if two first
+ * reads race, the key stored first wins and the other is discarded: every isolate signs with the
+ * same key.
  *
  * The broker reads keys synchronously (`LtiBrokerOptions.toolKeys`), so a host awaits
  * {@link keySet} once per request and hands the broker the result.
@@ -57,11 +66,13 @@ export interface ToolKeyRotation {
 export class TableToolKeyStore {
   readonly #table: RecordTable;
   readonly #now: Clock;
+  readonly #collection: string;
   #imported: { fingerprint: string; set: Promise<ToolKeySet> } | undefined;
 
-  constructor(table: RecordTable, now: Clock = Date.now) {
+  constructor(table: RecordTable, now: Clock = Date.now, collection: string = TOOL_KEYS_COLLECTION) {
     this.#table = table;
     this.#now = now;
+    this.#collection = collection;
   }
 
   /** The current key set, generating and storing the first key if there is none. */
@@ -83,7 +94,7 @@ export class TableToolKeyStore {
       const record: StoredToolKeySet = current === undefined
         ? { signing: next, retired: [], since }
         : { signing: next, retired: [current.signing, ...current.retired].slice(0, Math.max(0, keepRetired)), since };
-      this.#table.put(TOOL_KEYS_COLLECTION, TOOL_KEYS_RECORD, StoredToolKeySet.parse(record));
+      this.#table.put(this.#collection, TOOL_KEYS_RECORD, StoredToolKeySet.parse(record));
       return record;
     });
     return { signingKid: rotated.signing.kid, retiredKids: rotated.retired.map((key) => key.kid), since: rotated.since };
@@ -94,16 +105,16 @@ export class TableToolKeyStore {
     return this.#table.atomically(() => {
       const raced = this.#read();
       if (raced !== undefined) return raced;
-      this.#table.put(TOOL_KEYS_COLLECTION, TOOL_KEYS_RECORD, first);
+      this.#table.put(this.#collection, TOOL_KEYS_RECORD, first);
       return first;
     });
   }
 
   #read(): StoredToolKeySet | undefined {
-    const row = this.#table.get(TOOL_KEYS_COLLECTION, TOOL_KEYS_RECORD);
+    const row = this.#table.get(this.#collection, TOOL_KEYS_RECORD);
     if (row === undefined) return undefined;
     const parsed = StoredToolKeySet.safeParse(row.value);
-    if (!parsed.success) throw new LtiStoredRecordError(`a ${TOOL_KEYS_COLLECTION} record does not match its schema`);
+    if (!parsed.success) throw new LtiStoredRecordError(`a ${this.#collection} record does not match its schema`);
     return parsed.data;
   }
 

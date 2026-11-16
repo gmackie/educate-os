@@ -181,3 +181,21 @@ describe("LtiAdminService grade routes (SCHO-76)", () => {
     expect(await district.stores.contextServices.list(ENG9)).toEqual([]);
   });
 });
+
+describe("administrator course connections", () => {
+  it("authorizes before parsing and requires a district administrator", async () => {
+    const district = createDistrict();
+    const registration = canvasRegistration();
+    await district.stores.registrations.save(registration);
+    const input = { issuer: registration.issuer, clientId: registration.clientId, contextId: "new-course", offeringId: BIO, deploymentId: "new-deployment" };
+    for (const principal of [SCHOOL_ADMIN, MORGAN, AMARA]) {
+      expect(await rejection(district.admin.addCourseLink(as(principal), input))).toBe("forbidden");
+      expect(await rejection(district.admin.addCourseLink(as(principal), {}))).toBe("forbidden");
+    }
+    expect(await district.stores.registrations.get(registration)).toEqual(registration);
+    await district.admin.addCourseLink(as(ADMIN), input);
+    expect((await district.stores.registrations.get(registration))?.offerings).toContainEqual({ contextId: input.contextId, offeringId: BIO });
+    expect(await rejection(district.admin.addCourseLink(as(ADMIN), {}))).toBe("validation-failed");
+    expect(district.audit.some(e => e.principalId === ADMIN && e.resourceKind === "district" && e.effect === "allow")).toBe(true);
+  });
+});

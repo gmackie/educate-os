@@ -109,7 +109,7 @@ async function workspace(owner: Principal): Promise<DurableObjectStub<OverseerDu
   let stub = env.TEST_OVERSEER.getByName(`revocation-${++counter}`);
   await runInDurableObject(stub, async (instance: OverseerDurableObject) => {
     let impl = (instance as unknown as { impl: any }).impl;
-    let commitId = await impl.gitStore.writeFilesAsCommit(new Map([["server.js", SERVER_JS]]), {
+    let commitId = await impl.gitCache.writeFilesAsCommit(new Map([["server.js", SERVER_JS]]), {
       parents: [],
       author: { name: "Owner", email: "owner@example.com" },
       message: "synthetic gadget",
@@ -246,6 +246,55 @@ describe("revoking what an owner minted while allowed", () => {
   });
 });
 
+describe("the idle recheck", () => {
+  // SCHO-402: it read the live-session Set as a map of counts, so it found every workspace idle and
+  // restarted it, dropping every connected session, once each recheck period.
+  it("keeps a workspace someone has open, and restarts one nobody holds", async () => {
+    let owner = await principal("owner");
+    let ws = await workspace(owner);
+    await admit(ws, owner, "gadget.execute");
+    let runRecheck = async () => {
+      let alarm = await runInDurableObject(ws, (_instance, state) => state.storage.getAlarm());
+      vi.spyOn(Date, "now").mockReturnValue(alarm! + 1);
+      expect(await runDurableObjectAlarm(ws)).toBe(true);
+      vi.restoreAllMocks();
+    };
+
+    let leave = await runInDurableObject(ws, (instance: OverseerDurableObject) =>
+        (instance as unknown as { impl: any }).impl.joinSession({ kind: "build", profileId: owner.userId }));
+    await runRecheck();
+    using gadget = await ws.testGadgetFacet(GADGET_ID);
+    expect(await outcome(gadget.hello())).toMatch(/^ok:/);
+
+    await runInDurableObject(ws, () => leave());
+    await runRecheck();
+    await expectRevoked(() => gadget.hello());
+  });
+
+  it("keeps a workspace its owner has open alone (SCHO-402)", async () => {
+    let owner = await principal("owner");
+    let ws = await workspace(owner);
+    await admit(ws, owner, "gadget.execute");
+    let runRecheck = async () => {
+      let alarm = await runInDurableObject(ws, (_instance, state) => state.storage.getAlarm());
+      vi.spyOn(Date, "now").mockReturnValue(alarm! + 1);
+      expect(await runDurableObjectAlarm(ws)).toBe(true);
+      vi.restoreAllMocks();
+    };
+
+    let opened = await ws.open(owner.userId, owner.name, () => {});
+    await runRecheck();
+    using gadget = await ws.testGadgetFacet(GADGET_ID);
+    expect(await outcome(gadget.hello())).toMatch(/^ok:/);
+
+    opened[Symbol.dispose]();
+    await vi.waitFor(async () => {
+      await runRecheck();
+      expect(await outcome(gadget.hello())).toMatch(/^error:/);
+    }, { timeout: 5_000, interval: 100 });
+  });
+});
+
 describe("revoking a collaborator", () => {
   it("restarts every workspace they hold capabilities in when their user object learns they left",
       async () => {
@@ -253,7 +302,7 @@ describe("revoking a collaborator", () => {
     let student = await principal("collaborator");
     let ws = await workspace(owner);
     await student.user.recordSharedWorkspaceOpen(
-        ws.id.toString(), "Synthetic workspace", { type: "user", id: owner.name, name: "owner" }, "build");
+        ws.id.toString(), "Synthetic workspace", { type: "user", id: owner.name, name: "owner" }, "build", []);
     await admit(ws, owner, "gadget.execute");
     await admit(ws, student, "gadget.execute");
     using gadget = await ws.testGadgetFacet(GADGET_ID);

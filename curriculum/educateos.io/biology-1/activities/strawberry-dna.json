@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:80737a0586498397a22a23c3e0e8f32405cbfe4684f035ef78c8eac8e66b2ec4",
+      "id": "educateos.io/biology-1-strawberry-dna",
+      "version": "1.0.0"
+    }
+  },
+  "id": "strawberry-dna",
+  "role": "lesson",
+  "title": "Strawberry DNA Extraction"
+}

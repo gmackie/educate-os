@@ -1,0 +1,104 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to each question about the seasons. Tell or draw your answers.",
+    "passage": "Four seasons come every year: fall, winter, spring and summer. Each one has its own weather.",
+    "questions": [
+      {
+        "prompt": "Which season is the coldest?"
+      },
+      {
+        "prompt": "In which season do many leaves fall?"
+      },
+      {
+        "prompt": "In which season do flowers start to grow?"
+      },
+      {
+        "prompt": "What season comes after winter?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a summer day. Show what you would wear."
+      }
+    ],
+    "sentenceFrames": [
+      "The coldest season is ___.",
+      "After winter comes ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Seasons Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-seasons-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "name",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can name the four seasons"
+      },
+      {
+        "id": "weather",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell the weather in each season"
+      }
+    ],
+    "title": "Seasons"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

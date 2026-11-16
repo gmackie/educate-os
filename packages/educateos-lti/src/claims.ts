@@ -17,6 +17,7 @@ export const LTI_CLAIM = {
   targetLinkUri: `${LTI}target_link_uri`,
   resourceLink: `${LTI}resource_link`,
   context: `${LTI}context`,
+  roles: `${LTI}roles`,
   custom: `${LTI}custom`,
   deepLinkingSettings: `${LTI_DL}deep_linking_settings`,
   contentItems: `${LTI_DL}content_items`,

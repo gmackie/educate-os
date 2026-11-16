@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1fc780bc0f75c1c72e422b72bd7abb7f851f68593a416c6a5f9cb0a6848f9909",
+      "id": "educateos.io/english-9-seminar-who-is-responsible",
+      "version": "1.0.0"
+    }
+  },
+  "id": "seminar-who-is-responsible",
+  "role": "assignment",
+  "title": "Seminar: Who Is Responsible?"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:68ed0b43dc95422acd40d8a9424f86bf2a6d8fdbabd5a24f1267cdfe5b8bf28f",
+      "id": "educateos.io/united-states-history-law-and-the-movement",
+      "version": "1.0.0"
+    }
+  },
+  "id": "law-and-the-movement",
+  "role": "assignment",
+  "title": "Law and the Movement"
+}

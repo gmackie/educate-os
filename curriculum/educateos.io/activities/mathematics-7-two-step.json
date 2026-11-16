@@ -1,0 +1,94 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 13,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Write and solve two-step equations for real situations.",
+    "problems": [
+      {
+        "prompt": "Solve 4x - 7 = 21."
+      },
+      {
+        "prompt": "A gym charges a $25 sign-up fee and $15 per month. Kofi's sister paid $130. Write and solve an equation for the number of months."
+      },
+      {
+        "prompt": "The perimeter of a rectangle is 54 cm. Its length is 15 cm. Write and solve an equation for the width."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Two-Step Equations in Context"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-two-step",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "equation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Writes the equation"
+      },
+      {
+        "id": "solution",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Solves and checks"
+      }
+    ],
+    "title": "Equations"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

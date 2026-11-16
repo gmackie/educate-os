@@ -55,7 +55,7 @@ async function withCheckpoint(fn: (impl: any, caller: any) => Promise<void>) {
   await runInDurableObject(stub, async (instance: OverseerDurableObject) => {
     const impl = (instance as unknown as {impl: any}).impl;
     impl.ownerId = "owner-id";
-    const commitId = await impl.gitStore.writeFilesAsCommit(source, {
+    const commitId = await impl.gitCache.writeFilesAsCommit(source, {
       parents: [], author: {name: "Student", email: "student@example.com"},
       message: "checkpoint", timestamp: new Date(1700000000_000),
     });
@@ -116,10 +116,10 @@ describe("owner-scoped checkpoint capability in workerd", () => {
     await expect(impl.getCurrentGadgetCheckpoint(2, caller)).rejects.toThrow();
   }));
 
-  it("rechecks access after asynchronous source reads", () => withCheckpoint(async (impl, caller) => {
-    const read = impl.gitStore.readCommitFiles.bind(impl.gitStore);
-    impl.gitStore.readCommitFiles = async (commit: string) => {
-      const files = await read(commit);
+  it("rechecks access after source reads and asynchronous hashing", () => withCheckpoint(async (impl, caller) => {
+    const read = impl.gitCache.readCommitFiles.bind(impl.gitCache);
+    impl.gitCache.readCommitFiles = (commit: string) => {
+      const files = read(commit);
       impl.storage.gadgets.put({...impl.storage.gadgets.get(1), commitId: "c".repeat(40)});
       return files;
     };

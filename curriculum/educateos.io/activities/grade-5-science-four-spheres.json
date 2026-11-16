@@ -1,0 +1,58 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "5",
+    "overview": "Read about Earth's four spheres and how they change each other, then answer the questions.",
+    "passage": "Four Spheres That Work Together\n\nScientists describe Earth as four connected systems. The geosphere is the solid Earth: rock, soil, sand and the melted rock deep below. The hydrosphere is all of Earth's water. The atmosphere is the layer of air around the planet. The biosphere is every living thing.\n\nThe atmosphere changes the geosphere. In a desert, strong winds pick up grains of sand. The sand hits rock again and again, slowly wearing it into strange shapes. This wearing away of rock is called weathering.\n\nThe hydrosphere changes the geosphere too. Rain soaks into cracks in rock. When the water freezes, it expands and pushes the cracks wider. Rivers carry bits of broken rock and soil downstream and drop them somewhere else. Moving rock and soil from one place to another is called erosion. Ocean waves erode beaches and cliffs in the same way.\n\nThe biosphere has its part. Plant roots grow into cracks and slowly split rocks apart. But roots also hold soil in place, so a hill covered with grass and trees loses less soil in a storm than a bare hill.\n\nEach sphere also needs the others. Plants need water from the hydrosphere, air from the atmosphere and soil from the geosphere. When one sphere changes, the others change too.",
+    "questions": [
+      {
+        "prompt": "Name the four spheres and tell what each one includes."
+      },
+      {
+        "prompt": "Describe one way the atmosphere changes the geosphere."
+      },
+      {
+        "prompt": "Plants change the geosphere in two different ways. What are they?"
+      },
+      {
+        "prompt": "Use the text to explain the difference between weathering and erosion."
+      },
+      {
+        "prompt": "Choose a rainstorm on a bare hill. Explain how at least two spheres interact during the storm."
+      },
+      {
+        "prompt": "Most paragraphs in the middle of the article are organized the same way. Is the structure chronology, comparison, or cause and effect? Explain how you know."
+      }
+    ],
+    "sentenceFrames": [
+      "The ___ changes the ___ when ___.",
+      "Weathering is ___, but erosion is ___.",
+      "The article uses ___ because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Four Spheres That Work Together"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-four-spheres",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

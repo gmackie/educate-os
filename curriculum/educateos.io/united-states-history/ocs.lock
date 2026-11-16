@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:fb99b38d764ee090eb2106b36e7556ac40f1660de784a49607a5e6d1dcc97a59",
+    "id": "educateos.io/united-states-history",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

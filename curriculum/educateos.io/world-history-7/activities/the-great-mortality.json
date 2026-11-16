@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7894c095fd3735bd34a88b7ee975815fe6fe80466b7c90160e96ae337a3f9f89",
+      "id": "educateos.io/world-history-7-the-great-mortality",
+      "version": "1.0.0"
+    }
+  },
+  "id": "the-great-mortality",
+  "role": "assignment",
+  "title": "The Great Mortality"
+}

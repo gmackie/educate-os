@@ -1,0 +1,79 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw 26 with ten-sticks and dots. Then draw 41.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "lookPrompt": "We can draw a ten as a long stick and a one as a little dot.",
+    "overview": "Draw numbers with ten-sticks and dots. Tell how many tens and ones.",
+    "sentenceFrames": [
+      "26 is ___ tens and ___ ones.",
+      "41 is ___ tens and ___ one."
+    ],
+    "subject": "mathematics",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Draw It With Tens"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.B.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-draw-it-with-tens",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "draw",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I drew the tens and ones"
+      },
+      {
+        "id": "tell",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told how many tens and ones"
+      }
+    ],
+    "title": "Draw it with tens"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

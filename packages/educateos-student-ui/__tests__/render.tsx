@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach } from "vitest";
 import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { StudentApp } from "../src/App.tsx";
-import type { Embedding, StudentFeatures } from "../src/AppContext.tsx";
+import type { Embedding, StudentFeatures, StudentHost } from "../src/AppContext.tsx";
 import type { DistrictApiClient, PairingClient } from "@educateos/api-client";
 import type { SchoolManifest } from "@educateos/shell";
 
@@ -35,6 +35,8 @@ export interface RenderOptions {
    */
   school?: SchoolManifest | false;
   pairing?: PairingClient;
+  /** What a host runs in place of the district's pieces, as the demo does. */
+  host?: StudentHost;
 }
 
 let mounted: { root: Root; container: HTMLElement }[] = [];
@@ -56,6 +58,7 @@ export async function renderApp(district: DistrictApiClient, path = "/", feature
           {...(embedding === undefined ? {} : { embedding })}
           {...(school === false ? {} : { shell: { school } })}
           {...(options.pairing === undefined ? {} : { pairing: options.pairing })}
+          {...(options.host === undefined ? {} : { host: options.host })}
         />
       </ThemeProvider>,
     );

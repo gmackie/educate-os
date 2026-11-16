@@ -1,0 +1,172 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 12,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 400,
+    "minimumCitations": 1,
+    "overview": "Write an argumentative essay on whether high schools should require community service hours to graduate.",
+    "prompt": "Should Northfield High School require 40 hours of community service to graduate? Write an argument with a precise claim, evidence from at least one source, reasoning, and a fair counterclaim.",
+    "resources": [
+      "service-brief"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Should Community Service Be Required to Graduate?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.B",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.C",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.1.D",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.9.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-service-argument",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. An illustrative policy brief; the district, survey and figures are invented for teaching.",
+      "body": "Prepared for the Northfield School Board, Policy Committee\n\nThe question\nShould Northfield High School require every student to complete 40 hours of community service before graduation, beginning with next year's ninth graders?\n\nBackground\nAbout one in five U.S. school districts has some form of service requirement, and one state requires service-learning for a high school diploma. Northfield students already volunteer: in last spring's district survey, 38 percent of seniors reported at least 10 hours of service in the past year. Participation was uneven. Students who held paid jobs or cared for family members reported far less service than students who did not.\n\nWhat students said\nIn the same survey, students who volunteered reported stronger connections to their community than students who did not: 71 percent of volunteers agreed with the statement \"I feel I can make a difference in my town,\" compared with 44 percent of non-volunteers. The survey cannot show whether service caused that feeling or whether students who already felt connected were more likely to volunteer.\n\nArguments made for a requirement\n- Service introduces students to people, places and careers they would not otherwise meet.\n- A requirement reaches students who would never volunteer on their own, including those who assume service is \"for other people.\"\n- Employers and colleges value documented service and the skills it builds, such as teamwork and reliability.\n\nArguments made against a requirement\n- Forty hours is a real burden for students who work, care for family members or ride long bus routes.\n- Required service may feel like a chore, which could make students less likely to volunteer as adults.\n- Tracking and verifying hours would cost staff time, and some organizations cannot take minors.\n\nOptions the committee is considering\n1. No requirement; expand voluntary programs.\n2. A 40-hour requirement with no exceptions.\n3. A 40-hour requirement in which paid work, family caregiving and in-school service projects can count, with hours spread across four years.\n\nThe committee will hear public comment before making a recommendation.",
+      "id": "service-brief",
+      "title": "District Brief: A Community Service Graduation Requirement"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Introduces a precise, debatable claim and distinguishes it from opposing claims.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Precise claim"
+      },
+      {
+        "description": "Supports the claim with accurate evidence from the brief and explains how each piece of evidence connects to the claim.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence and reasoning"
+      },
+      {
+        "description": "Presents the strongest opposing argument fairly, with its strengths and limitations, and responds to it.",
+        "id": "counterclaim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Counterclaims"
+      },
+      {
+        "description": "Uses transitions, a formal style and objective tone, and standard English conventions.",
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Style and conventions"
+      }
+    ],
+    "title": "Argument essay"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c8b444db797de0750a6f4a18524f622214bbb277bcbf0753667713266be43a34",
+      "id": "educateos.io/grade-4-mathematics-decimal-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "decimal-check",
+  "role": "assessment",
+  "title": "Decimal Check"
+}

@@ -10,6 +10,8 @@ import { isLocal, type School, type Term } from "../classes/authoring.ts";
 import { bandsOf, draftOf, isComplete, SchoolFields, type SchoolDraft } from "../classes/SchoolsSection.tsx";
 import { STATE_LABEL } from "../classes/TermsSection.tsx";
 import { useAuthoringAction } from "../classes/useAuthoringAction.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
+import { useConsoleTitle } from "../app/consoleTitle.ts";
 
 type DistrictClass = RouteResponse<"admin.listOfferings">[number];
 
@@ -64,6 +66,7 @@ const SchoolHeading = ({ view, onChanged }: { view: SchoolView; onChanged: () =>
   const action = useAuthoringAction(onChanged);
   const [editing, setEditing] = useState<SchoolDraft>();
   const { school } = view;
+  useConsoleTitle(school.name);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -154,7 +157,7 @@ export const SchoolPage = ({ schoolId }: { schoolId: string }) => {
               <Text as="h3" variant="heading" id="school-classes">Classes</Text>
               <Text variant="secondary" size="sm">{count(view.classes.length, "class", "classes")}</Text>
               {view.classes.length > 0 && (
-                <div className="overflow-x-auto">
+                <TableScroll label="This school's classes">
                   <Table>
                     <caption className="sr-only">This school's classes</caption>
                     <Table.Header><Table.Row><Table.Head>Class</Table.Head><Table.Head>Term</Table.Head><Table.Head>Teachers</Table.Head><Table.Head>Students</Table.Head></Table.Row></Table.Header>
@@ -169,7 +172,7 @@ export const SchoolPage = ({ schoolId }: { schoolId: string }) => {
                       ))}
                     </Table.Body>
                   </Table>
-                </div>
+                </TableScroll>
               )}
             </section>
             <section aria-labelledby="school-staff" className="flex flex-col gap-3">

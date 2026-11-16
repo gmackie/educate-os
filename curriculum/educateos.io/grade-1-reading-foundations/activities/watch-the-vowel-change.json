@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b183c27bf6fbde936039eb3887bec057713b471ebd89c71f9bf0a62eb7a2acca",
+      "id": "educateos.io/grade-1-reading-foundations-watch-the-vowel-change",
+      "version": "1.0.0"
+    }
+  },
+  "id": "watch-the-vowel-change",
+  "role": "lesson",
+  "title": "Watch the Vowel Change"
+}

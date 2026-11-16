@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:711835681749b7dab938dfff7ee4d8ebd422ea5eedd42dfde686af5ff8115d8f",
+      "id": "educateos.io/mathematics-7-angles-area-volume",
+      "version": "1.0.0"
+    }
+  },
+  "id": "angles-area-volume",
+  "role": "assignment",
+  "title": "Angles, Area and Volume"
+}

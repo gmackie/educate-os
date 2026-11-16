@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./libraries/*/client": "./libraries/*/client.ts",
-    "./libraries/*/server": "./libraries/*/server.ts"
+    "./libraries/*/server": "./libraries/*/server.ts",
+    "./blueprints/*/persona": "./blueprints/*/files/lib/persona.ts"
   },
   "scripts": {
     "test:run": "vitest run",

@@ -1,0 +1,171 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "4",
+    "minWords": 250,
+    "minimumCitations": 0,
+    "overview": "Write a narrative about a character who finds something that once belonged to someone else.",
+    "prompt": "Write a story about a character who finds an object that once belonged to someone else, such as a letter, a toy, a photograph or a key. Introduce your character and the situation at the beginning. Use dialogue and description to show what your characters do, think and feel. Use transition words such as later, that night and finally to show the order of events. End with a conclusion that shows what the character learned or how things changed. Use quotation marks correctly for dialogue.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Write Your Own Story: A Found Object"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-my-narrative",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "situation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Introduces a narrator or characters and a situation"
+      },
+      {
+        "id": "technique",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses dialogue and description to show experiences and feelings"
+      },
+      {
+        "id": "sequence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Events unfold in order with transition words"
+      },
+      {
+        "id": "conclusion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Ends with a conclusion that follows from the events"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals, punctuation and quotation marks"
+      }
+    ],
+    "title": "Narrative writing"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

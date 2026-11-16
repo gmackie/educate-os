@@ -1,0 +1,152 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "5",
+    "minWords": 150,
+    "minimumCitations": 2,
+    "overview": "Read facts about a pond and write an opinion on whether the town should add bass, using the food web as evidence.",
+    "prompt": "Read \"Willow Pond: Facts for the Town Meeting.\" Should the town add 200 largemouth bass to Willow Pond? State your opinion in your first paragraph. Give at least two reasons, each supported by facts from the fact sheet. At least one reason must explain how adding bass would change the food web, step by step (for example, what happens to an animal the bass eat, and then to what that animal eats). End with a conclusion that restates your opinion.",
+    "resources": [
+      "willow-pond-fact-sheet"
+    ],
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Should Willow Pond Get Bass?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.9",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-willow-pond-bass",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The town of Ridgeview is deciding whether to add 200 largemouth bass to Willow Pond so that people can fish there. Here are facts about the pond.\n\nWHO LIVES IN WILLOW POND\n- Producers: algae, duckweed and cattails.\n- Tadpoles and snails eat algae.\n- Minnows eat algae, tiny animals and mosquito larvae (young mosquitoes that live in water).\n- Dragonfly larvae eat mosquito larvae and small tadpoles.\n- Herons and kingfishers, two kinds of birds, eat minnows and frogs.\n- Bacteria and fungi in the mud break down dead plants and animals.\n\nABOUT LARGEMOUTH BASS\n- Bass are predators. They eat minnows, frogs, tadpoles and dragonfly larvae.\n- A bass can live for 10 years or more.\n- Willow Pond has no animals that eat full-grown bass.\n\nWHAT PEOPLE SAY\n- The fishing club says the bass would bring visitors to the town and give families a place to fish close to home.\n- The park ranger says the pond is small, and that bass could eat most of the minnows within two or three years.\n- Neighbors say mosquitoes are already a problem near the pond every summer.",
+      "id": "willow-pond-fact-sheet",
+      "title": "Willow Pond: Facts for the Town Meeting"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "opinion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear opinion"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reasons supported by facts from the fact sheet"
+      },
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains effects through the food web"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Linking words and a conclusion"
+      }
+    ],
+    "title": "Opinion with evidence"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

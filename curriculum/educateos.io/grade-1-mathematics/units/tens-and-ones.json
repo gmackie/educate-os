@@ -1,0 +1,41 @@
+{
+  "id": "tens-and-ones",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u2-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "sams-straws"
+    },
+    {
+      "kind": "activity",
+      "ref": "tens-and-ones"
+    },
+    {
+      "kind": "activity",
+      "ref": "draw-it-with-tens"
+    },
+    {
+      "kind": "activity",
+      "ref": "tens-and-ones-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.B.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Bundle objects into tens and see each two-digit number as some tens and some ones.",
+  "title": "Tens and Ones"
+}

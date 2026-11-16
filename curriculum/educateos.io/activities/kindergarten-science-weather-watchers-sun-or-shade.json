@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Touch two things, one in the sun and one in the shade. Tell which one is warmer.",
+    "passage": "Our class did a test. We put one rock in the sun. We put one rock in the shade. After lunch, we touched both rocks. Now you try it with two things that are the same, like two rocks or two blocks.",
+    "questions": [
+      {
+        "prompt": "Touch the one in the sun. How does it feel?"
+      },
+      {
+        "prompt": "Touch the one in the shade. How does it feel?"
+      },
+      {
+        "prompt": "Which one is warmer?"
+      },
+      {
+        "prompt": "Why do you think it is warmer?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw your two things. Show the sun and the shade."
+      }
+    ],
+    "sentenceFrames": [
+      "The one in the ___ is warmer.",
+      "I think it is warmer because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Sun or Shade: Which Is Warmer?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-sun-or-shade",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "compare",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I compared the two things"
+      },
+      {
+        "id": "why",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told why one was warmer"
+      }
+    ],
+    "title": "Sun or shade"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

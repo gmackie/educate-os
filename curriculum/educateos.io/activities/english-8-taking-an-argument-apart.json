@@ -1,0 +1,55 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "8",
+    "overview": "Read a student's argument for a later school start and find its claim, reasons, evidence, counterclaim and rebuttal.",
+    "passage": "Let Us Sleep: Why Middle School Should Start at 8:45\n\nEvery school morning, half of my homeroom is asleep with their eyes open. Our school day starts at 7:40, and that is too early. Our district should move the middle school start time to 8:45.\n\nThe first reason is health. Sleep doctors recommend nine to twelve hours of sleep a night for children aged six to twelve, and eight to ten hours for teenagers. During puberty, the body clock shifts later, so most teenagers do not feel sleepy until around eleven at night. A student who falls asleep at eleven and wakes at six for a 7:40 start gets seven hours at most.\n\nThe second reason is learning. When our student council surveyed 212 eighth graders last spring, 64 percent said they had fallen asleep or nearly fallen asleep in a morning class in the past month. A student who is fighting to stay awake is not learning algebra.\n\nSome families worry that a later start would make after-school sports and jobs end too late, and that families who leave for work early would have nowhere to send their children. These are real concerns. However, the school already opens its library at 7:00 for students who need to arrive early, and practices could move from outdoor fields to the lit gym in the winter months. A schedule can be rearranged; a tired brain cannot.\n\nAn extra hour in the morning is a small change with a big payoff. Let us sleep, and watch what we can do when we are awake.",
+    "questions": [
+      {
+        "prompt": "What is the writer's claim? Copy the sentence that states it."
+      },
+      {
+        "prompt": "The writer gives two reasons. Name each reason in a few words."
+      },
+      {
+        "prompt": "Choose one reason and list the evidence the writer gives for it."
+      },
+      {
+        "prompt": "What counterclaim does the writer include? Restate it in your own words."
+      },
+      {
+        "prompt": "Is the student council survey strong evidence for the second reason? Explain one strength and one weakness of this evidence."
+      },
+      {
+        "prompt": "How does the writer answer the counterclaim? Do you find the rebuttal convincing? Why or why not?"
+      }
+    ],
+    "sentenceFrames": [
+      "The writer claims that ___.",
+      "One reason is ___, and the evidence is ___.",
+      "The evidence is strong because ___, but ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Taking an Argument Apart"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-taking-an-argument-apart",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

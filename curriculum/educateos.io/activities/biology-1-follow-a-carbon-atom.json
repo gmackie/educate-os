@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "9-12",
+    "minWords": 400,
+    "minimumCitations": 1,
+    "overview": "Write an informative explanation that follows one carbon atom from the air, through a plant and an animal, and back to the air.",
+    "prompt": "Imagine a single carbon atom that starts in a molecule of carbon dioxide in the air above a field of wheat. Write an informative explanation of its journey: into a leaf, into a sugar molecule, into a slice of bread, into one of your muscle cells, and back into the air. At each step, name the process and the organelle involved, and explain what happens to energy along the way. Use both the photosynthesis and the cellular respiration equations, and cite the reading at least once. End by explaining why we say matter cycles but energy flows.",
+    "resources": [
+      "carbon-journey"
+    ],
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Follow a Carbon Atom"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-follow-a-carbon-atom",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Carbon is the backbone of every molecule of life: sugars, fats, proteins and DNA. Yet the total amount of carbon on Earth barely changes. The same atoms are used again and again, passing between the air, living things, the oceans and the rocks.\n\nInto the living world. Air is about 0.04 percent carbon dioxide. A leaf takes it in through tiny pores called stomata. Inside the chloroplasts, photosynthesis uses the energy of sunlight to join carbon dioxide and water into glucose, releasing oxygen. Light energy is now stored as chemical energy in the bonds of the sugar. A plant uses glucose as fuel and as building material: it links glucose units into starch for storage and into cellulose for its cell walls. That is why the mass of a tree comes mostly from the air.\n\nThrough the food web. When an animal eats a plant, it digests starch back into glucose. Its blood carries glucose to every cell. Some carbon is built into the animal's own body; the rest is used for fuel.\n\nBack to the air. In the mitochondria, cellular respiration breaks glucose apart with oxygen. The carbon atoms leave as carbon dioxide, which the animal breathes out. The energy that was stored in the sugar is moved into ATP, which powers the cell's work, and in the end leaves the body as heat. Plants respire too, day and night, and decomposers such as fungi and bacteria respire the carbon in dead leaves and bodies.\n\nThe difference. A carbon atom can make this round trip many times: matter cycles. But the energy cannot be reused. Each transfer turns some of it into heat that radiates away into space. The living world runs only because the sun keeps supplying new energy: energy flows.",
+      "id": "carbon-journey",
+      "title": "Matter Cycles, Energy Flows"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Describes photosynthesis and cellular respiration correctly, including organelles, reactants and products.",
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Scientific accuracy"
+      },
+      {
+        "description": "Follows the carbon atom through every step in a logical order with clear transitions.",
+        "id": "sequence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sequence of the cycle"
+      },
+      {
+        "description": "Distinguishes the cycling of carbon from the one-way flow of energy.",
+        "id": "energy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Matter and energy"
+      },
+      {
+        "description": "Cites the reading accurately and uses domain-specific terms precisely.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence and vocabulary"
+      }
+    ],
+    "title": "Informative explanation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,144 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 20,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "9-12",
+    "minWords": 500,
+    "minimumCitations": 0,
+    "overview": "Analyze how a character in a coming-of-age story changes and what theme that change develops.",
+    "prompt": "Choose a coming-of-age story we read. Analyze how the main character changes and how that change develops a theme. Cite at least two passages.",
+    "resources": [
+      "the-garden-on-cutler-street",
+      "the-last-ferry"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "What Changes a Character?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.9.A",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-coming-of-age-essay",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. An original short story.",
+      "body": "The summer I turned fourteen, my mother drove me to my grandmother's house on Cutler Street with two suitcases and an apology. The apology was for the job in another city that would keep her away until August. The suitcases were for me.\n\nI had already decided the summer would be boring, and my grandmother's garden was Exhibit A. It took up the whole backyard: tomato cages leaning like tired soldiers, beans climbing strings, a row of something feathery that turned out to be carrots. There was no pool. There was barely a television. There was, every morning at six, my grandmother's voice at the bottom of the stairs saying, \"Marisol. The weeds are not going to pull themselves.\"\n\n\"They could,\" I said the first morning, into my pillow. \"If they tried.\"\n\nShe did not laugh. She was not a laughing kind of grandmother. She was small and brown and fast, and she wore a man's straw hat with a hole in the brim, and she talked to the plants the way other people talk to dogs. \"You are thirsty,\" she told the squash. \"You are showing off,\" she told the sunflowers. To me she said very little, except where the hoe was and which green things were weeds and which were not.\n\nFor the first two weeks I did the minimum. I pulled what she pointed at. I sat on the back step with my phone, which got one bar of signal if I held it above my head, and I counted the days until August on my fingers. My friends sent pictures of the lake. I sent back a picture of a zucchini the size of my forearm, with the caption \"send help.\"\n\nThe change, when it came, came on a Tuesday, and it came because of a rabbit.\n\nI found it in the lettuce at dawn, a young one, all ears, eating with the calm of someone who has never been caught. I should have chased it. Instead I watched it, and I realized I had been in the garden for sixteen days and had never once looked at anything long enough to see it. The rabbit's nose moved. The light came over the fence and lit the edges of the lettuce so that each leaf looked outlined in gold. Somewhere a mourning dove was saying the same sad thing over and over.\n\n\"Well,\" said my grandmother behind me. I had not heard her come out. \"Now you see the thief.\"\n\n\"Should I chase it?\"\n\nShe thought about it. \"Tomorrow we build a fence,\" she said. \"Today, let him have breakfast. He worked hard to find it.\"\n\nWe built the fence the next day, and the day after that she showed me how to tie the tomatoes so the stems would not snap, and the day after that she let me pick the first ripe one. It was warm from the sun and split a little at the top. She cut it into quarters on the back step, salted it, and handed me a piece. I had eaten tomatoes my whole life. I had never eaten one like that.\n\nAfter that I started asking questions, and she started answering them. She told me that the seeds for the tall red tomatoes had come from her own mother's garden, carried across a border in a handkerchief. She told me she had planted the first row on Cutler Street the spring my grandfather died, because she had needed something to keep alive. She told me that a garden is a conversation: you say something with a seed, and months later the ground answers.\n\n\"What if it answers wrong?\" I asked.\n\n\"Then you listen better next year,\" she said.\n\nIn July a hailstorm came through at night. I heard it on the roof like gravel thrown by a giant, and in the morning half the beans were shredded and two tomato cages lay flat in the mud. I stood in the doorway and felt something I did not expect: grief, real grief, over plants. I had tied those stems. I had counted those flowers.\n\nMy grandmother walked out into the wreck in her straw hat and stood still for a long moment. Then she bent and lifted one of the fallen cages. \"Marisol,\" she said. \"Bring the string.\"\n\nWe worked all morning. We saved what we could and pulled what we could not. When we were done she sat on the back step and pressed her hands against her knees, and for the first time all summer she looked old to me. I sat down next to her. Neither of us said anything, and it was the best conversation we had.\n\nMy mother came back in August. She stood in the driveway and said, \"You look different,\" and I did not know how to explain that I was. I had not grown much taller. I had not learned anything I could have put on a test. But I had learned to look at something until I saw it, and I had learned that you can lose half of what you planted and still have a harvest.\n\nBefore we left, my grandmother handed me a folded handkerchief. Inside were seeds, dry and pale, from the tall red tomatoes.\n\n\"For next year,\" she said. \"Wherever you are.\"\n\nI have them still. I have not planted them yet. I am waiting until I know how to listen.",
+      "id": "the-garden-on-cutler-street",
+      "title": "The Garden on Cutler Street"
+    },
+    {
+      "attribution": "Written for EducateOS. An original short story.",
+      "body": "Every summer since he was six, Theo had crossed to the island on the last ferry of the day with his cousin Ray. Ray was nine years older. Ray knew which deckhand would let you stand at the rail and which one would yell. Ray could whistle through his fingers loud enough to make gulls change direction. When Theo was small, Ray carried him on his shoulders down the gangway, and the island rose up out of the water like something Ray had personally arranged.\n\nThis summer Ray was twenty-four, and he was not coming.\n\n\"He has a job,\" Theo's mother said in the car. \"A real one, with a boss. You're old enough to go across on your own.\"\n\nTheo was fifteen. He had argued for this. He had said, more than once, that he did not need to be babysat. Now, standing on the dock with his duffel bag and his ticket, he discovered that winning an argument and wanting what you won are two different things.\n\nThe ferry was smaller than he remembered. The paint on the rail was chipped. The deckhand who used to let them stand at the front was gone, replaced by a young woman with a clipboard who told him to keep behind the yellow line. He kept behind the yellow line. He watched the mainland slide backward and felt, absurdly, as if he had been left on the wrong side of something.\n\nHalfway across, a boy of about six broke away from his father and ran toward the rail. The deckhand was at the other end of the boat. Theo did not think. He stepped forward and caught the back of the boy's shirt just as the boy reached the yellow line.\n\n\"Hey,\" Theo said. \"You can see better from here.\" He crouched and pointed. \"See the white house? That's where the island starts. And watch the gulls.\"\n\nHe put two fingers in his mouth and whistled. It was not as loud as Ray's. It was not even close. But one gull tilted, and the boy shrieked with joy, and his father, arriving out of breath, said, \"Thank you. He's fast.\"\n\n\"They all are,\" Theo said, which was something Ray used to say, and he realized it only as it left his mouth.\n\nThe boy wanted to know everything after that: why the water was green near the shore and gray in the middle, whether whales ever came this close, what the bell on the dock was for. Theo answered what he could and invented the rest with what he hoped was a straight face. When the ferry bumped against the island dock, the boy reached up, and for a moment Theo thought he wanted to be carried.\n\nInstead the boy held out his hand to shake, very formally, the way someone had taught him.\n\nTheo shook it. Then he picked up his duffel and walked down the gangway by himself, and the island rose up out of the water exactly where it had always been, and no one had arranged it but the island.\n\nThat night he texted Ray a picture of the sunset from the dock. Ray wrote back three minutes later: \"You make the gull whistle yet?\"\n\nTheo looked at the message for a long time before he answered.\n\n\"Working on it,\" he wrote. \"Taught a kid.\"",
+      "id": "the-last-ferry",
+      "title": "The Last Ferry"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise theme as a sentence and shows how it emerges and is refined across the story.",
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Theme"
+      },
+      {
+        "description": "Traces the character from beginning through threshold to end and explains what causes the change.",
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis of change"
+      },
+      {
+        "description": "Cites at least two well-chosen passages and explains how each supports the analysis.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Textual evidence"
+      }
+    ],
+    "title": "Literary analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

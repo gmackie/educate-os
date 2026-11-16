@@ -1,0 +1,162 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Explain your results in terms of osmosis and concentration gradients. Which solution was hypertonic to the egg, and how do you know?",
+    "dataColumns": [
+      {
+        "name": "Solution"
+      },
+      {
+        "name": "Starting mass",
+        "unit": "g"
+      },
+      {
+        "name": "Mass after 24 h",
+        "unit": "g"
+      },
+      {
+        "name": "Percent change",
+        "unit": "%"
+      }
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Describe how you will prepare the eggs, which solutions you will use, what you will hold constant and how often you will measure mass.",
+    "overview": "Use a shell-less egg as a model cell to investigate osmosis.",
+    "question": "How does the concentration of the surrounding solution affect the mass of a shell-less egg?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "The Naked Egg: Osmosis Lab"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-egg-osmosis",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a testable prediction about mass change in each solution and explains it with the direction of water movement.",
+        "id": "hypothesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Hypothesis"
+      },
+      {
+        "description": "Describes a repeatable procedure that names the variable tested and the conditions held constant.",
+        "id": "method",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Controlled method"
+      },
+      {
+        "description": "Records every measurement with units in an organized table and calculates percent change correctly.",
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Data and units"
+      },
+      {
+        "description": "Explains results with osmosis and concentration gradients, citing specific data, and identifies the hypertonic and hypotonic solutions.",
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis uses evidence"
+      }
+    ],
+    "title": "Lab report"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

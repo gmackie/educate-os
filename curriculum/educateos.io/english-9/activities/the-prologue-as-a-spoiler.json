@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:39a42e377e32dd5c99f0624c419eb95e01c43405fa8cc3d7969baeb671585ca0",
+      "id": "educateos.io/english-9-the-prologue-as-a-spoiler",
+      "version": "1.0.0"
+    }
+  },
+  "id": "the-prologue-as-a-spoiler",
+  "role": "lesson",
+  "title": "The Prologue as a Spoiler"
+}

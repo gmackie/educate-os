@@ -2,7 +2,10 @@
 // tools. This module imports nothing Workers-only, so it is type-checked on the web-standard surface
 // with the rest of the EducateOS libraries it composes (ADR-0009); `district-object.ts` is the
 // Durable Object shell around it.
-import type { JWTVerifyGetKey } from "jose";
+import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
+import { createSchoolMcpApi } from "@educateos/external-mcp";
+import { externalSchoolTools } from "@educateos/external-mcp/registry";
+import { DelegatedResourceAuthority } from "@educateos/external-mcp/resource-auth";
 import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot, EducateOsError, PrincipalId } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
@@ -15,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, classroomCourseOf, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type ClassroomGradeSource, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -26,7 +29,13 @@ import { ReleaseTrust } from "@educateos/releases";
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 import type { DiscussionScreening, DiscussionScreeningSettings } from "@educateos/discussions";
 // LTI 1.3 Tool (SCHO-177)
-import { startDistrictLti, type DistrictLti } from "./lti.ts";
+import { startDistrictLti, type DistrictLti, type DistrictLtiOptions } from "./lti.ts";
+import { ltiPlatformEnabled } from "./lti-platform.ts";
+import { platformToolPolicySources, TablePlatformAgsStore, TablePlatformToolStore } from "@educateos/lti-district";
+import { DurableObjectRecordTable } from "@educateos/lti-district/durable-object";
+// Demo showcase (SCHO-326)
+import { showcaseEnabled, startDistrictShowcase, withShowcaseReadings, type DistrictShowcase, type ShowcaseEvent } from "./showcase.ts";
+import { demoOperatorEnabled, startDemoOperator, type DemoOperator, type DemoOperatorEvent } from "./demo-operator.ts";
 
 /** The district application and its school tools. */
 export interface District {
@@ -38,7 +47,19 @@ export interface District {
   lti: DistrictLti | undefined;
   /** Who a Workshop sign-in is, for the Workshop's `PRINCIPAL_RESOLVER` (SCHO-259). */
   principals: DistrictPrincipals;
+  /** The organization MCP endpoint and its RFC 9728 metadata, when `DISTRICT_CONFIG.mcp` turns it on (SCHO-174). */
+  mcp: { fetch(request: Request): Promise<Response> } | undefined;
+  /** The demo showcase's administrators' routes, on a demo district only (SCHO-326, see showcase.ts). */
+  showcase: DistrictShowcase | undefined;
+  /** The demo operator's token-authenticated seed routes, on a demo district with `DEMO_OPERATOR_TOKEN` only (SCHO-326, see demo-operator.ts). */
+  demoOperator: DemoOperator | undefined;
 }
+
+/** The paths the organization MCP endpoint answers (SCHO-174). */
+export const MCP_PATHS: readonly string[] = ["/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"];
+
+/** The scope every MCP access token must carry. It opens the transport; the delegation and policy decide the rest. */
+export const MCP_SCOPE = "mcp:tools";
 
 /**
  * The Workshop's principal resolver seam over the district directory as it stands (SCHO-259), so
@@ -72,6 +93,8 @@ export interface DistrictSettings {
   accessAudiences: string | undefined;
   /** `LTI_TOOL_ORIGIN`, the LTI Tool's public https origin. Without it the district serves no LTI routes. */
   ltiToolOrigin?: string | undefined;
+  /** `LTI_PLATFORM`: `on` runs the LTI Platform beside the Tool (SCHO-179); anything else, or unset, does not. */
+  ltiPlatform?: string | undefined;
   /** `CLEVER_DISTRICT_TOKEN`, the district-app token Clever issued for the district (SCHO-203). Without it no Clever roster syncs. */
   cleverDistrictToken?: string | undefined;
   /** `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a JSON service-account key with district-authorized DWD. */
@@ -92,6 +115,17 @@ export interface DistrictSettings {
   // Marketplace (SCHO-209)
   /** `MARKETPLACE_TRUST`, the release keys marketplace listings are verified against, as JSON. Without it none installs. */
   marketplaceTrust?: string | undefined;
+  // Course library (SCHO-331)
+  /** `COURSE_LIBRARY_TRUST`, the OCS publishers whose signed course bundles the library imports, as JSON. Without it none imports. */
+  courseLibraryTrust?: string | undefined;
+  // Demo showcase (SCHO-326)
+  /** `DEMO_SHOWCASE`, the showcase a demo deployment may seed; `DISTRICT_CONFIG.demo` must name it too. */
+  demoShowcase?: string | undefined;
+  /** `DEMO_OPERATOR_TOKEN`, the bearer token of the demo operator's seed routes, a Worker secret. */
+  demoOperatorToken?: string | undefined;
+  // Product analytics (SCHO-350)
+  /** `PRODUCT_ANALYTICS`, the analytics service the district's pages may send usage events to, as JSON. Without it analytics stays off. */
+  productAnalytics?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -102,10 +136,16 @@ export interface DistrictSeams {
   importFetch: ImportFetch;
   /** The keys Access assertions are verified with. Defaults to the team's published certs. */
   accessKeys?: JWTVerifyGetKey;
+  /** The keys MCP access tokens are verified with (SCHO-174). Defaults to the configured `mcp.jwksUri`. */
+  mcpKeys?: JWTVerifyGetKey;
   /** The Worker's Cloudflare Email Service binding (`SEND_EMAIL`), if it has one (SCHO-189). */
   sendEmail?: SendEmailBinding;
   /** Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), to log it. */
   onUnreadableConfigRevision?: (revisionId: string) => void;
+  /** Told the counts and size of each district export (SCHO-364), to log them. */
+  onDistrictExported?: DistrictAppOptions["onDistrictExported"];
+  /** Told the item count, withheld count and size of each student archive (SCHO-371), to log them. */
+  onStudentArchiveExported?: DistrictAppOptions["onStudentArchiveExported"];
   /** The fetch LTI platform calls go through (SCHO-177). Defaults to the global fetch. */
   platformFetch?: typeof fetch;
   /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
@@ -118,6 +158,12 @@ export interface DistrictSeams {
    * district that configures screening refuses every student post as screening-unavailable.
    */
   discussionHallMonitor?: (settings: DiscussionScreeningSettings) => DiscussionScreening["hallMonitor"];
+  /** Told why a Classroom grade read was unavailable (SCHO-403), to log it. */
+  onClassroomGradesUnavailable?: DistrictAppOptions["onClassroomGradesUnavailable"];
+  /** Told what each demo showcase route did (SCHO-326), to log it. */
+  onShowcaseEvent?: (event: ShowcaseEvent) => void;
+  /** Told what each demo operator route did (SCHO-326), to log it. */
+  onDemoOperatorEvent?: (event: DemoOperatorEvent) => void;
 }
 
 /** The Hall Monitor of a district that configures screening but cannot reach it: it refuses every post. */
@@ -143,6 +189,41 @@ export function readMarketplaceTrust(text: string | undefined): ReleaseTrust | u
   const parsed = ReleaseTrust.safeParse(json);
   if (!parsed.success) throw new Error("MARKETPLACE_TRUST is not a release trust");
   return parsed.data;
+}
+
+/**
+ * Parses `COURSE_LIBRARY_TRUST` (SCHO-331): a `PublisherTrust` of OCS publisher domains and their
+ * public keys. Unset or empty means the district imports no course bundles; anything else malformed
+ * fails the start, so a misconfigured pin is never mistaken for none. The error never quotes the value.
+ */
+export function readCourseLibraryTrust(text: string | undefined): PublisherTrust | undefined {
+  if (text === undefined || text === "") return undefined;
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("COURSE_LIBRARY_TRUST is not JSON");
+  }
+  const parsed = PublisherTrust.safeParse(json);
+  if (!parsed.success) throw new Error("COURSE_LIBRARY_TRUST is not a publisher trust");
+  return parsed.data;
+}
+
+function withClassroomGrades(
+  source: ClassroomGradeSource | undefined,
+  onUnavailable: DistrictAppOptions["onClassroomGradesUnavailable"],
+): Pick<DistrictAppOptions, "classroomGrades" | "onClassroomGradesUnavailable"> {
+  if (source === undefined) return {};
+  return { classroomGrades: source, ...(onUnavailable === undefined ? {} : { onClassroomGradesUnavailable: onUnavailable }) };
+}
+
+/** The LTI Tool's Classroom grade passback (SCHO-428), when the district has a Classroom writer. */
+function withClassroomPassback(
+  provider: googleclassroom.GoogleClassroomProvider | undefined,
+  stores: Parameters<typeof classroomCourseOf>[0],
+): Pick<DistrictLtiOptions, "classroom"> {
+  if (provider === undefined) return {};
+  return { classroom: { provider, courseOf: (offeringId) => classroomCourseOf(stores, offeringId) } };
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -182,6 +263,71 @@ export function workerRosterSource(
 }
 
 /**
+ * The live, read-only Classroom grade reads behind the "From Google Classroom" panel (SCHO-403),
+ * when the deployment has a Classroom connection and its key; otherwise `undefined`, and the
+ * panel's routes answer `not-connected`. Tokens ask for the roster reads plus reading coursework
+ * and submissions, in the `.readonly` or read-write form the domain delegated (`rosterScopes`).
+ * Requests are short and retried once, so a page load never waits long on Classroom.
+ */
+export function workerClassroomGrades(
+  classroom: { config: NonNullable<DistrictWorkerConfig["classroom"]>; key: string | undefined } | undefined,
+  classroomFetch: typeof fetch,
+): ClassroomGradeSource | undefined {
+  if (classroom === undefined || !classroom.key) return undefined;
+  const tokens = googleclassroom.serviceAccountTokens({
+    key: classroom.key,
+    scopes: classroom.config.rosterScopes === "read-write"
+      ? googleclassroom.CLASSROOM_GRADE_READ_SCOPES_READ_WRITE
+      : googleclassroom.CLASSROOM_GRADE_READ_SCOPES,
+    fetch: classroomFetch,
+    retry: CLASSROOM_GRADE_RETRY,
+  });
+  return new googleclassroom.ClassroomGradeReader(new googleclassroom.GoogleClassroomClient({
+    tokens,
+    admin: classroom.config.admin,
+    fetch: classroomFetch,
+    retry: CLASSROOM_GRADE_RETRY,
+    limits: { maxResponseBytes: 4 * 1024 * 1024, maxListItems: 10_000, requestTimeoutMs: 8_000 },
+  }));
+}
+
+/**
+ * Publishing approved grades to Google Classroom (SCHO-428), when the deployment has a Classroom
+ * connection and its key; otherwise `undefined`, and no offering can be routed to Classroom. Each
+ * write acts as the course's owner, with the delegated roster scopes plus
+ * `classroom.coursework.students`: the read-write roster scopes for a read-write domain, the
+ * read-only ones otherwise (that domain must then delegate `coursework.students` too, or writes are
+ * refused). The provider never retries a create, and only coursework this project created is graded.
+ */
+export function workerClassroomWriter(
+  classroom: { config: NonNullable<DistrictWorkerConfig["classroom"]>; key: string | undefined } | undefined,
+  classroomFetch: typeof fetch,
+): googleclassroom.GoogleClassroomProvider | undefined {
+  if (classroom === undefined || !classroom.key) return undefined;
+  const tokens = googleclassroom.serviceAccountTokens({
+    key: classroom.key,
+    scopes: classroom.config.rosterScopes === "read-write"
+      ? googleclassroom.CLASSROOM_GRADE_READ_SCOPES_READ_WRITE
+      : googleclassroom.CLASSROOM_GRADE_SCOPES,
+    fetch: classroomFetch,
+    retry: CLASSROOM_WRITE_RETRY,
+  });
+  return new googleclassroom.GoogleClassroomProvider(new googleclassroom.GoogleClassroomClient({
+    tokens,
+    admin: classroom.config.admin,
+    fetch: classroomFetch,
+    retry: CLASSROOM_WRITE_RETRY,
+    limits: { maxResponseBytes: 4 * 1024 * 1024, maxListItems: 10_000, requestTimeoutMs: 15_000 },
+  }));
+}
+
+/** An administrator or teacher is waiting, but a grade is worth one more try than a page view. */
+const CLASSROOM_WRITE_RETRY = { maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2_000, maxRetryAfterMs: 5_000 };
+
+/** Two attempts, a short wait, and no long `Retry-After`: a page is waiting. */
+const CLASSROOM_GRADE_RETRY = { maxAttempts: 2, baseDelayMs: 250, maxDelayMs: 1_000, maxRetryAfterMs: 2_000 };
+
+/**
  * Starts the district in `storage`: its stores (the directory seeded from the configuration on
  * first start), the application over them, and the directory's operations as school tools,
  * decided by the application's engine with writes queued in the same storage. Both the `/api`
@@ -202,30 +348,57 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       await stores.directory.commit(next, version);
     }
   }
+  const audiences = accessAudiences(settings.accessAudiences);
   const verifyRequest = accessRequestVerifier({
     issuer: settings.accessIssuer ?? "",
-    audiences: accessAudiences(settings.accessAudiences),
+    audiences,
     ...(seams.accessKeys === undefined ? {} : { keys: seams.accessKeys }),
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
   const authority = authorityFor(config.authority);
   const marketplaceTrust = readMarketplaceTrust(settings.marketplaceTrust);
+  const courseLibraryTrust = readCourseLibraryTrust(settings.courseLibraryTrust);
+  const productAnalytics = readProductAnalyticsDeployment(settings.productAnalytics);
   const analytics = analyticsSettings({
     CF_ANALYTICS_TOKEN: settings.analyticsToken,
     CF_ACCOUNT_ID: settings.analyticsAccountId,
     ANALYTICS_SCRIPTS: settings.analyticsScripts,
     ANALYTICS_ZONE_TAG: settings.analyticsZoneTag,
   });
+  // The LTI Platform (SCHO-179): its registered tools are subjects of the district's policy engine
+  // on the `lti-service` channel, with the authority their deployments give them (NRPS rosters, AGS
+  // line items, results and scores).
+  const ltiPlatform = settings.ltiToolOrigin !== undefined && settings.ltiToolOrigin !== "" && ltiPlatformEnabled(settings.ltiPlatform);
+  // Demo showcase (SCHO-326): on only where the configuration and the deployment both name it.
+  const showcase = showcaseEnabled(config.demo, settings.demoShowcase);
   const app = await createDistrictApp({
     stores,
     verifyRequest,
+    // IT review (SCHO-376): how sign-ins are verified, for the console's read-only settings. The
+    // audience tags themselves are not passed, only how many there are.
+    signIn: {
+      verifier: "cloudflare-access",
+      teamDomain: settings.accessIssuer!,
+      applications: audiences.length,
+      ...(config.cleverSso === undefined ? {} : { cleverDistrictId: config.cleverSso.districtId }),
+    },
+    ...(ltiPlatform
+      ? { policySources: platformToolPolicySources(new TablePlatformToolStore(new DurableObjectRecordTable(storage)), new TablePlatformAgsStore(new DurableObjectRecordTable(storage))) }
+      : {}),
     ...(seams.workshopReleases === undefined ? {} : { workshopReleases: seams.workshopReleases }),
-    importFetch: seams.importFetch,
+    importFetch: showcase === undefined ? seams.importFetch : withShowcaseReadings(seams.importFetch),
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
+    ...(seams.onDistrictExported === undefined ? {} : { onDistrictExported: seams.onDistrictExported }),
+    ...(seams.onStudentArchiveExported === undefined ? {} : { onStudentArchiveExported: seams.onStudentArchiveExported }),
     authority,
     // Scheduled roster sync (SCHO-203)
     rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init)),
       config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey }),
+    // From Google Classroom (SCHO-403): over the same connection and fetch as the roster.
+    ...withClassroomGrades(workerClassroomGrades(
+      config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey },
+      seams.rosterFetch ?? ((input, init) => fetch(input, init)),
+    ), seams.onClassroomGradesUnavailable),
     ...(config.rosterServicePrincipalId === undefined ? {} : { rosterServicePrincipalId: config.rosterServicePrincipalId }),
     ...(config.fundingPools === undefined ? {} : { fundingPools: config.fundingPools }),
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),
@@ -250,10 +423,15 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       },
     }),
     ...(config.unscreenedStudentPosts === undefined ? {} : { unscreenedStudentPosts: config.unscreenedStudentPosts }),
+    ...(config.homeLearning === undefined ? {} : { homeLearning: config.homeLearning }),
     // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
     release: { version: settings.releaseVersion },
     // Marketplace (SCHO-209): listings are verified offline against the deployment's pin.
     ...(marketplaceTrust === undefined ? {} : { marketplaceTrust }),
+    // Course library (SCHO-331): bundles are verified against the deployment's publisher pin.
+    ...(courseLibraryTrust === undefined ? {} : { courseLibraryTrust }),
+    // Product analytics (SCHO-350): the service the deployment names; an administrator still turns it on.
+    ...(productAnalytics === undefined ? {} : { productAnalytics }),
     ...(analytics === undefined ? {} : {
       opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
     }),
@@ -262,7 +440,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });
   const runner = new SchoolToolRunner({
     engine: app.engine,
-    tools: academicSchoolTools(stores.directory, directory, authority),
+    tools: academicSchoolTools(stores.directory, directory),
     approvals: { store: new DurableObjectToolApprovalStore(storage) },
   });
   const tools = createSchoolToolService({
@@ -290,9 +468,14 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       stores,
       verifyRequest,
       toolOrigin: settings.ltiToolOrigin,
+      platform: ltiPlatform,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
       // The issuers people sign in with are never an LMS's (SCHO-306).
       reservedIssuers: [...(settings.accessIssuer ? [settings.accessIssuer] : []), CLEVER_ISSUER],
+      ...withClassroomPassback(workerClassroomWriter(
+        config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey },
+        seams.rosterFetch ?? ((input, init) => fetch(input, init)),
+      ), stores),
     });
   // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
   // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.
@@ -316,5 +499,66 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       return { outcome: active ? "active" : "inactive" };
     },
   };
-  return { app, tools, lti, principals };
+  return {
+    app,
+    tools,
+    lti,
+    principals,
+    mcp: startDistrictMcp(storage, config, stores, app, directory, seams.mcpKeys),
+    showcase: showcase === undefined ? undefined : startDistrictShowcase({
+      app,
+      verifyRequest,
+      accessIssuer: settings.accessIssuer,
+      name: showcase,
+      ...(seams.onShowcaseEvent === undefined ? {} : { onEvent: seams.onShowcaseEvent }),
+    }),
+    demoOperator: !demoOperatorEnabled(config.demo, settings.demoShowcase, settings.demoOperatorToken) ? undefined : startDemoOperator({
+      app,
+      token: settings.demoOperatorToken,
+      verifyRequest,
+      ...(seams.onDemoOperatorEvent === undefined ? {} : { onEvent: seams.onDemoOperatorEvent }),
+    }),
+  };
+}
+
+/**
+ * The organization MCP endpoint (SCHO-174), or `undefined` when the configuration does not turn it
+ * on. It is an OAuth protected resource for the one configured issuer: each request's token is
+ * verified against that issuer's keys, its `(iss, sub)` resolved through the directory as it
+ * stands, and its `client_id` matched to the one delegation in force from that person, which then
+ * bounds every call. Its curated tools queue writes in the same approval store as the district's
+ * own, for a person to approve through the district.
+ */
+function startDistrictMcp(
+  storage: DistrictSqlStorage,
+  config: DistrictWorkerConfig,
+  stores: ReturnType<typeof durableDistrictStores>,
+  app: DistrictApp,
+  directory: AcademicDirectory,
+  keys: JWTVerifyGetKey | undefined,
+): District["mcp"] {
+  const settings = config.mcp;
+  if (settings === undefined) return undefined;
+  const tokens = new DelegatedResourceAuthority({
+    resource: `${settings.origin}/mcp`,
+    issuer: {
+      issuer: settings.issuer,
+      keys: keys ?? createRemoteJWKSet(new URL(settings.jwksUri), { timeoutDuration: 5000, cooldownDuration: 30_000 }),
+      algorithms: settings.algorithms,
+    },
+    requiredScopes: [MCP_SCOPE],
+    resolver: async () => createDirectoryPrincipalResolver((await stores.directory.load()).snapshot),
+    delegations: stores.delegations,
+  });
+  return createSchoolMcpApi({
+    districtId: app.districtId,
+    runner: new SchoolToolRunner({
+      engine: app.engine,
+      tools: externalSchoolTools(stores.directory, directory),
+      approvals: { store: new DurableObjectToolApprovalStore(storage) },
+    }),
+    tokens,
+    allowedOrigins: settings.allowedOrigins ?? [],
+    resource: { origin: settings.origin, authorizationServers: [settings.issuer], scopes: [MCP_SCOPE] },
+  });
 }

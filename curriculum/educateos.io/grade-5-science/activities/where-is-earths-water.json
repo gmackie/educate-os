@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ae026e76bd9238f73753d810e7f7a6052f345bdb8d2c8c0865ff6e7f9b4c9ff2",
+      "id": "educateos.io/grade-5-science-where-is-earths-water",
+      "version": "1.0.0"
+    }
+  },
+  "id": "where-is-earths-water",
+  "role": "lesson",
+  "title": "Where Is Earth's Water?"
+}

@@ -1,0 +1,84 @@
+{
+  "gradeBand": "1",
+  "id": "educateos.io/grade-1-reading-foundations",
+  "language": "en",
+  "modules": [],
+  "outline": [
+    {
+      "kind": "unit",
+      "unit": "short-vowel-sounds"
+    },
+    {
+      "kind": "unit",
+      "unit": "stories-we-love"
+    },
+    {
+      "kind": "unit",
+      "unit": "letter-buddies"
+    },
+    {
+      "kind": "unit",
+      "unit": "magic-e"
+    },
+    {
+      "kind": "unit",
+      "unit": "animal-facts"
+    },
+    {
+      "kind": "unit",
+      "unit": "rhymes-and-fluency"
+    }
+  ],
+  "overrides": [],
+  "specVersion": "1.1",
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "subject": "english-language-arts",
+  "summary": "A semester of Grade 1 reading: short vowels, retelling stories, letter buddies, Magic E, true texts about animals, and poems read aloud smoothly. Six units, each with a read-aloud overview for students, a teacher guide with a five-day plan, a lesson, assignments, an assessment with a rubric and an answer key.",
+  "title": "Grade 1 Reading Foundations",
+  "version": "1.0.0"
+}

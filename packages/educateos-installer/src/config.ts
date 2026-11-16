@@ -1,7 +1,9 @@
 import { CapabilityId, CommercialAccountId, InstanceId } from "@educateos/contracts";
 import { ContactRole } from "@educateos/fleet";
+import { ReleaseTrust } from "@educateos/releases";
 import { z } from "zod";
 import { ReleasePin } from "./manifest.ts";
+import { DATA_JURISDICTIONS } from "./cloudflare-api.ts";
 import { DistrictSlug, MANAGED_ZONE, managedHostname } from "./slug.ts";
 
 const DnsLabel = z.string().regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/, "expected a DNS label");
@@ -98,7 +100,16 @@ export const DistrictInstallConfig = z.strictObject({
     /** The Zero Trust team name, i.e. `<team>.cloudflareaccess.com`. */
     teamName: DnsLabel,
     /** Email domains whose verified users the Access policy admits, e.g. `northfield.example`. */
-    allowedEmailDomains: z.array(DomainName).min(1).max(20),
+    allowedEmailDomains: z.array(DomainName).max(20).default([]),
+    /**
+     * Individual people the Access policy admits by verified email, beside (or instead of) whole
+     * domains: a demo district admits its operator and test identities, never every address at a
+     * public mail provider (SCHO-243).
+     */
+    allowedEmails: z.array(z.email()).max(50).default([]),
+  }).refine((access) => access.allowedEmailDomains.length + access.allowedEmails.length > 0, {
+    message: "admit at least one email domain or email",
+    path: ["allowedEmailDomains"],
   }),
   /**
    * Break-glass administrator emails, written to the backend's `ADMINS` var. They live only in
@@ -120,6 +131,14 @@ export const DistrictInstallConfig = z.strictObject({
     .default({}),
   /** Creates an AI Gateway named after the instance and points the backend at it. */
   aiGateway: z.boolean().default(false),
+  /**
+   * The Cloudflare jurisdiction the install's storage is kept in (ADR-0015). `us` creates its R2
+   * buckets and D1 databases in Cloudflare's US jurisdiction and pins the district's Durable Object
+   * there (the district Worker's `DATA_JURISDICTION`). New installs set it. Unset, nothing is pinned,
+   * as on every install made before ADR-0015. Cloudflare can't move existing storage between
+   * jurisdictions, so planning refuses to add, change or remove it where the storage already exists.
+   */
+  dataJurisdiction: z.enum(DATA_JURISDICTIONS).optional(),
   /**
    * The AI workspace at `/ai` on a one-origin install (ADR-0014): one that installs the district
    * service, whose router then serves the district at the root of the public hostname. Off, the
@@ -163,6 +182,12 @@ export const DistrictInstallConfig = z.strictObject({
   ltiToolOrigin: z.url({ protocol: /^https$/ })
     .refine((url) => URL.canParse(url) && new URL(url).origin === url, "expected an https origin: no path, query or trailing slash")
     .optional(),
+  /**
+   * The release keys the district verifies marketplace listings against (SCHO-209), written to the
+   * district Worker's `MARKETPLACE_TRUST` on a one-origin install. Unset, the district refuses every
+   * listing.
+   */
+  marketplaceTrust: ReleaseTrust.optional(),
   /**
    * The managed default hostname, `<slug>.educateos.io` (ADR-0013 addendum A1). It is an alias of
    * the public hostname, which stays the instance's identity, so removing it moves no data: an

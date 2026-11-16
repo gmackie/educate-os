@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1553d87955273f8fc209df4b4cec7f10ee3ebcb7c21c19e511a189e65528f41e",
+      "id": "educateos.io/english-8-finding-the-central-idea",
+      "version": "1.0.0"
+    }
+  },
+  "id": "finding-the-central-idea",
+  "role": "lesson",
+  "title": "Finding the Central Idea"
+}

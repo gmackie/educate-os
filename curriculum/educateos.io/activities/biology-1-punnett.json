@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Use Punnett squares to predict genotypes and phenotypes.",
+    "problems": [
+      {
+        "prompt": "In pea plants, purple flowers (P) are dominant to white (p). Cross Pp × Pp. What fraction of offspring will have white flowers?"
+      },
+      {
+        "prompt": "A brown-furred rabbit (Bb) is crossed with a white rabbit (bb). Give the expected genotype and phenotype ratios."
+      },
+      {
+        "prompt": "Two tall plants produce 75 tall and 25 short offspring. What are the parents' genotypes? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Punnett Square Practice"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.CP.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-punnett",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Sets up each cross with the right parental alleles on the edges and fills every box correctly.",
+        "id": "squares",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct Punnett squares"
+      },
+      {
+        "description": "States genotype and phenotype ratios or probabilities correctly and explains the reasoning in words.",
+        "id": "ratios",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Ratios and explanation"
+      }
+    ],
+    "title": "Genetics"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

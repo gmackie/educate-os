@@ -1,0 +1,171 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 3,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about the Progressive Era by reading its key documents closely and explaining their causes, effects and limits.",
+    "problems": [
+      {
+        "prompt": "Read the Sixteenth Amendment. In your own words, what power does it give Congress? What Populist and Progressive demand did it answer?"
+      },
+      {
+        "prompt": "Read the Seventeenth Amendment. Who chose United States senators before 1913, who chooses them after, and what problem were reformers trying to solve?"
+      },
+      {
+        "prompt": "Read the Nineteenth Amendment. What exactly does it forbid? Explain one reason that some American women still could not vote after 1920."
+      },
+      {
+        "prompt": "Sinclair wrote, \"I aimed at the public's heart, and by accident I hit it in the stomach.\" Explain what he meant, using what Congress did in 1906."
+      },
+      {
+        "prompt": "Roosevelt said there are times when muckraking is \"the most needed of all the services that can be performed.\" Why, then, did he call the journalists muckrakers? What did he want from reformers?"
+      },
+      {
+        "prompt": "Using the reference card, name one group the Progressive reforms left out or failed, and give specific evidence."
+      }
+    ],
+    "resources": [
+      "progressive-amendments",
+      "the-jungle",
+      "man-with-the-muck-rake",
+      "progressive-reforms-reference"
+    ],
+    "showWork": false,
+    "subject": "history-social-studies",
+    "template": "problem-set",
+    "title": "Progressive Era Document Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-progressive-document-check",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Constitution of the United States, Amendments XVI (ratified 1913), XVII (1913) and XIX (1920). Public domain (U.S. government work).",
+      "body": "Amendment XVI (1913): \"The Congress shall have power to lay and collect taxes on incomes, from whatever source derived, without apportionment among the several States, and without regard to any census or enumeration.\"\n\nAmendment XVII (1913), first sentence: \"The Senate of the United States shall be composed of two Senators from each State, elected by the people thereof, for six years; and each Senator shall have one vote.\"\n\nAmendment XIX (1920): \"The right of citizens of the United States to vote shall not be denied or abridged by the United States or by any State on account of sex. Congress shall have power to enforce this article by appropriate legislation.\"\n\nNote: Amendment XVIII (1919) prohibited the manufacture, sale and transportation of alcoholic beverages. It was repealed by Amendment XXI in 1933.",
+      "id": "progressive-amendments",
+      "title": "The Progressive Amendments, 1913-1920"
+    },
+    {
+      "attribution": "Upton Sinclair, The Jungle (1906), chapter 14; and Upton Sinclair, \"What Life Means to Me,\" Cosmopolitan, October 1906. Public domain.",
+      "body": "From the novel, describing the sausage rooms of a Chicago meatpacking plant:\n\"There would be meat that had tumbled out on the floor, in the dirt and sawdust, where the workers had tramped and spit uncounted billions of consumption germs.\"\n\nSinclair, later in 1906, on the public's response:\n\"I aimed at the public's heart, and by accident I hit it in the stomach.\"\n\nAbout the source: Sinclair, a socialist, spent seven weeks in the Chicago stockyards and wrote the novel to expose the lives of immigrant workers. Readers were most outraged by its descriptions of contaminated meat. President Theodore Roosevelt sent investigators to Chicago, and on June 30, 1906, he signed the Meat Inspection Act and the Pure Food and Drug Act.",
+      "id": "the-jungle",
+      "title": "Upton Sinclair, The Jungle (1906), and his reflection on it"
+    },
+    {
+      "attribution": "Theodore Roosevelt, address in Washington, D.C., April 14, 1906. Public domain.",
+      "body": "\"There is filth on the floor and it must be scraped up with the muck-rake; and there are times and places where this service is the most needed of all the services that can be performed.\"\n\nAbout the source: Roosevelt borrowed the image of the man with the muck-rake from John Bunyan's The Pilgrim's Progress, a figure so busy raking filth that he never looks up. In the same speech he warned that writers who only expose wrongdoing, and never offer anything else, can do harm. Journalists who exposed corruption soon adopted his insult as a badge of honor: muckrakers.",
+      "id": "man-with-the-muck-rake",
+      "title": "Theodore Roosevelt, \"The Man with the Muck-rake\" (1906), excerpt"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Use this card as a starting point. Strong essays add evidence from class readings and your own research.\n\nProtecting consumers: the Meat Inspection Act and the Pure Food and Drug Act (both 1906).\nRegulating business: the Hepburn Act (1906) strengthened railroad regulation; the Supreme Court ordered Standard Oil broken up (1911); the Clayton Antitrust Act and the Federal Trade Commission (both 1914).\nMoney and taxes: the Sixteenth Amendment allowed a federal income tax (1913); the Federal Reserve Act created a central bank (1913).\nDemocracy: the Seventeenth Amendment provided for direct election of senators (1913); many states adopted the initiative, referendum, recall and direct primaries; the Nineteenth Amendment barred denying the vote on account of sex (1920).\nWork: after the Triangle Shirtwaist Factory fire killed 146 garment workers in New York City in 1911, New York passed dozens of factory safety laws. In Muller v. Oregon (1908) the Supreme Court upheld a limit on women's working hours. Congress banned goods made by child labor from interstate commerce in 1916, but the Supreme Court struck the law down in Hammer v. Dagenhart (1918).\nConservation: under Theodore Roosevelt the federal government set aside about 230 million acres of public land, and the National Park Service was created in 1916.\nWho was left out: most Progressive reforms did nothing to stop the spread of segregation laws and the denial of Black Americans' voting rights in the South. Journalist Ida B. Wells documented lynching and campaigned against it; in 1909 reformers founded the National Association for the Advancement of Colored People (NAACP).",
+      "id": "progressive-reforms-reference",
+      "title": "Progressive Era Reforms: A Reference Card"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Answers are factually correct and use specific names, dates and terms.",
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical accuracy"
+      },
+      {
+        "description": "Answers point to specific lines, figures or details in the readings.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Use of evidence"
+      },
+      {
+        "description": "Answers explain why or how, not only what, and connect causes to effects.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reasoning"
+      }
+    ],
+    "title": "Document check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

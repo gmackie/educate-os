@@ -9,6 +9,8 @@ import {existsSync, readFileSync, readdirSync, statSync} from "node:fs";
 import {dirname, join, relative, sep} from "node:path";
 import {test} from "node:test";
 import {fileURLToPath} from "node:url";
+import {CATALOG_DIR, renderCatalog} from "./catalog.mjs";
+import {DYNAMIC_PATHS} from "../../packages/educateos-control-plane/src/app.ts";
 
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), "public");
 
@@ -17,20 +19,33 @@ const publicDir = join(dirname(fileURLToPath(import.meta.url)), "public");
 // page, so the check gives the same answer whether or not the demo has been built.
 const DEMO = {dir: join(publicDir, "demo"), source: join(publicDir, "../../../packages/educateos-demo/index.html")};
 
+// public/courses/ is the course catalog (SCHO-333), which build.mjs generates from curriculum/ and
+// git ignores. It is rendered here in memory, so the check covers the catalog as the next build
+// would write it, whether or not public/courses/ exists or is stale.
+const CATALOG = {dir: join(publicDir, CATALOG_DIR), files: new Map([...await renderCatalog()].map(([path, content]) => [join(publicDir, path), content]))};
+const read = (file) => CATALOG.files.get(file) ?? readFileSync(file, "utf8");
+
 function htmlFiles(dir) {
   return readdirSync(dir, {withFileTypes: true}).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (path === DEMO.dir) return [];
+    if (path === DEMO.dir || path === CATALOG.dir) return [];
     if (entry.isDirectory()) return htmlFiles(path);
     return entry.name.endsWith(".html") ? [path] : [];
   });
 }
 
 function isFile(path) {
+  if (path.startsWith(CATALOG.dir + sep)) return CATALOG.files.has(path);
   return existsSync(path) && statSync(path).isFile();
 }
 
+// The paths the site Worker serves itself (run_worker_first, site-config.test.mjs), such as the guided
+// install at /app/install (SCHO-340): a link to one resolves to the Worker, not a file.
+const WORKER = "worker";
+const isWorkerPath = (pathname) => DYNAMIC_PATHS.some((path) => (path.endsWith("/*") ? pathname.startsWith(path.slice(0, -1)) : pathname === path));
+
 function resolveTarget(pathname) {
+  if (isWorkerPath(pathname)) return WORKER;
   if (pathname === "/demo/") return isFile(DEMO.source) ? DEMO.source : null;
   const local = join(publicDir, decodeURIComponent(pathname));
   if (pathname.endsWith("/")) return isFile(join(local, "index.html")) ? join(local, "index.html") : null;
@@ -41,7 +56,7 @@ function resolveTarget(pathname) {
 }
 
 function ids(file) {
-  return new Set([...readFileSync(file, "utf8").matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  return new Set([...read(file).matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
 }
 
 function pagePath(file) {
@@ -49,7 +64,7 @@ function pagePath(file) {
   return "/" + rel.replace(/(^|\/)index\.html$/, "$1");
 }
 
-const pages = htmlFiles(publicDir);
+const pages = [...htmlFiles(publicDir), ...[...CATALOG.files.keys()].filter((file) => file.endsWith(".html"))];
 
 test("the site has pages to check", () => {
   assert.ok(pages.length > 1);
@@ -57,7 +72,7 @@ test("the site has pages to check", () => {
 
 for (const page of pages) {
   test(`links on ${relative(publicDir, page)} resolve`, () => {
-    const html = readFileSync(page, "utf8").replace(/<!--[\s\S]*?-->/g, "");
+    const html = read(page).replace(/<!--[\s\S]*?-->/g, "");
     const base = new URL(pagePath(page), "https://educateos.io");
     const broken = [];
     for (const [, ref] of html.matchAll(/\s(?:href|src)="([^"]+)"/g)) {
@@ -70,10 +85,33 @@ for (const page of pages) {
         continue;
       }
       const fragment = decodeURIComponent(url.hash.slice(1));
-      if (fragment && target.endsWith(".html") && !ids(target).has(fragment)) {
+      if (fragment && target !== WORKER && target.endsWith(".html") && !ids(target).has(fragment)) {
         broken.push(`${ref} (no id="${fragment}" on ${relative(publicDir, target)})`);
       }
     }
     assert.deepEqual(broken, [], `Broken internal links on ${relative(publicDir, page)}`);
   });
 }
+
+// security.txt (RFC 9116, SCHO-372) is served from public/.well-known/, which wrangler uploads
+// although it is a dot-directory. Its Policy and Canonical must resolve, and its Expires must stay
+// in the future: renew it about a year out when this fails (docs/educateos/security/vulnerability-disclosure.md).
+test("security.txt names the security contact, resolves its links and has not expired", () => {
+  const text = readFileSync(join(publicDir, ".well-known/security.txt"), "utf8");
+  const fields = new Map(text.split("\n").filter((line) => line && !line.startsWith("#")).map((line) => {
+    const at = line.indexOf(": ");
+    return [line.slice(0, at), line.slice(at + 2)];
+  }));
+  assert.equal(fields.get("Contact"), "mailto:security@educateos.io");
+  assert.equal(fields.get("Preferred-Languages"), "en");
+  assert.equal(fields.get("Canonical"), "https://educateos.io/.well-known/security.txt");
+  for (const field of ["Canonical", "Policy"]) {
+    const url = new URL(fields.get(field));
+    assert.equal(url.hostname, "educateos.io", field);
+    assert.ok(resolveTarget(url.pathname), `${field} ${url} has no file in public/`);
+  }
+  const expires = Date.parse(fields.get("Expires"));
+  const day = 24 * 60 * 60 * 1000;
+  assert.ok(expires - Date.now() > 30 * day, `security.txt Expires ${fields.get("Expires")} is less than 30 days away`);
+  assert.ok(expires - Date.now() < 400 * day, "RFC 9116 recommends an Expires less than a year ahead");
+});

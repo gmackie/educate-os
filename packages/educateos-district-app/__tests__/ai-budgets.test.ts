@@ -83,7 +83,7 @@ describe("AI budget routes", () => {
     ]);
     expect(report.safety).toMatchObject({
       pool: { poolId: "fpl_safety", monthlyAllocationUsdNano: "3000000000", chargedUsdNano: "114000", remainingUsdNano: "2999886000", threshold: "none" },
-      population: { activeTeachers: 4, aiEnabledStudents: 5 },
+      population: { activeTeachers: 10, aiEnabledStudents: 22 },
       recommendedMinimumUsdNano: "5000000000",
       belowRecommended: true,
     });

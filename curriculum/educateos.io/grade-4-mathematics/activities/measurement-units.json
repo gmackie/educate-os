@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:622e00efffdf6cdff9e5a27dd5092c4de7807fd018f52fea68a754fcb66fde30",
+      "id": "educateos.io/grade-4-mathematics-measurement-units",
+      "version": "1.0.0"
+    }
+  },
+  "id": "measurement-units",
+  "role": "lesson",
+  "title": "Measurement Units and Conversions"
+}

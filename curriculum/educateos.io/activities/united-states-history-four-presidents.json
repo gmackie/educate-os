@@ -1,0 +1,187 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "From Truman to Reagan, what stayed the same and what changed in how American presidents described the nation's role in the world? Support your claim with at least three of the four sources.",
+    "contextualizationQuestions": [
+      "What was happening in the Cold War when each of these speeches was given?",
+      "What had changed in the Soviet Union by 1987 that made Reagan's challenge possible?"
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 3,
+    "overview": "Analyze four presidents' words from 1947 to 1987 to trace what changed and what stayed the same in America's Cold War.",
+    "sources": [
+      "truman-doctrine",
+      "eisenhower-farewell",
+      "kennedy-inaugural",
+      "reagan-brandenburg-gate"
+    ],
+    "sourcingQuestions": [
+      "What was each president's audience and purpose? How does a farewell address differ from an inaugural address?",
+      "Why might Eisenhower, a former general, be the president who warned about the military-industrial complex?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Four Presidents, One Cold War"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.2.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.9",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-four-presidents",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Harry S. Truman, address to a joint session of Congress, March 12, 1947. Public domain (U.S. government work).",
+      "body": "\"I believe that it must be the policy of the United States to support free peoples who are resisting attempted subjugation by armed minorities or by outside pressures.\"",
+      "id": "truman-doctrine",
+      "title": "Harry S. Truman, Address to Congress (The Truman Doctrine, 1947), excerpt"
+    },
+    {
+      "attribution": "Dwight D. Eisenhower, farewell radio and television address, January 17, 1961. Public domain (U.S. government work).",
+      "body": "\"In the councils of government, we must guard against the acquisition of unwarranted influence, whether sought or unsought, by the military-industrial complex. The potential for the disastrous rise of misplaced power exists and will persist.\"\n\nAbout the author: Eisenhower commanded the Allied invasion of Europe in 1944 before serving two terms as president.",
+      "id": "eisenhower-farewell",
+      "title": "Dwight D. Eisenhower, Farewell Address (1961), excerpt"
+    },
+    {
+      "attribution": "John F. Kennedy, inaugural address, January 20, 1961. Public domain (U.S. government work).",
+      "body": "\"Let every nation know, whether it wishes us well or ill, that we shall pay any price, bear any burden, meet any hardship, support any friend, oppose any foe, in order to assure the survival and the success of liberty.\"\n\n\"And so, my fellow Americans: ask not what your country can do for you—ask what you can do for your country.\"",
+      "id": "kennedy-inaugural",
+      "title": "John F. Kennedy, Inaugural Address (1961), excerpts"
+    },
+    {
+      "attribution": "Ronald Reagan, remarks at the Brandenburg Gate, West Berlin, June 12, 1987. Public domain (U.S. government work).",
+      "body": "\"General Secretary Gorbachev, if you seek peace, if you seek prosperity for the Soviet Union and Eastern Europe, if you seek liberalization: Come here to this gate! Mr. Gorbachev, open this gate! Mr. Gorbachev, tear down this wall!\"",
+      "id": "reagan-brandenburg-gate",
+      "title": "Ronald Reagan, Remarks at the Brandenburg Gate (1987), excerpt"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

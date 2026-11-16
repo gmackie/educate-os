@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teacher quickstart · EducateOS founding pilot</title>
+<meta name="description" content="A printable quickstart for teachers in an EducateOS founding pilot: sign in, find your classes, post an assignment, build a timed quiz with extended time, use the gradebook, and what the AI tools and safety screening do.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<!-- The pilot handouts (SCHO-398): one task a printed page. Editable source: docs/educateos/pilot/teacher-quickstart.md. -->
+<style>
+  .task { border-top: 1px solid var(--color-kumo-hairline); }
+  .task .doc h2 { margin-top: 0; font-size: clamp(1.4rem, 2.6vw, 1.8rem); }
+  .task .doc h3 { margin-top: 26px; }
+  .task ol, .task ul { display: block; padding-left: 22px; margin: 14px 0 0; }
+  .task li + li { margin-top: 8px; }
+  .task ol { list-style: decimal; }
+  .task ul { list-style: disc; }
+  .task .spec.info th { width: auto; }
+  .task .doc > p { margin: 14px 0 0; }
+  .task .spec.info td:first-child { width: 32%; }
+  .task .shot { margin-top: 22px; max-width: 760px; }
+  .task .shot .frame img { display: block; width: 100%; height: auto; }
+  .ui { font-weight: 600; color: var(--text-color-kumo-strong); }
+  .rule { margin-top: 24px; padding: 16px 18px; border-radius: var(--eo-radius); border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); max-width: 76ch; }
+  .rule b { color: var(--text-color-kumo-strong); }
+  .fill { display: inline-block; min-width: 18ch; border-bottom: 1px solid var(--color-kumo-line); }
+  .checked { margin-top: 28px; font-size: .88rem; color: var(--text-color-kumo-subtle); }
+  @media print {
+    .task { break-before: page; border-top: 0; }
+    .subnav { display: none; }
+    .shot .frame { box-shadow: none; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+  <section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow"><a href="/pilot/">Founding pilot</a> · For teachers</div>
+      <h1>Teacher quickstart</h1>
+      <p class="lede">For teachers in an EducateOS founding pilot: one school in your district, a few teachers, about ten weeks. One task a page, so you can print the pages you need.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><button type="button" class="btn primary" onclick="window.print()">Print this guide</button><a class="btn" href="/demo/">Practice in the demo</a><a class="btn" href="/pilot/teachers/training/">Kickoff training outline</a></div>
+      <div class="rule"><b>The pilot's one rule about data.</b> Until your district signs a data processing agreement with EducateOS, use only made-up (synthetic) students and staff accounts. Don't enter real student names, work or grades, and don't paste them into the AI workspace. Your pilot lead will tell you when that changes.</div>
+      <p class="muted" style="max-width:76ch;margin-top:18px"><b class="strong">Practice any time</b> at <a href="/demo/">educateos.io/demo</a>. It needs no sign-in, runs in your browser and uses a fictional district. Choose a teacher in the picker: Daniel Yazzie (grade 1), Fatima Al-Sayed (grade 4), Tomás Ortega (World History 7) or Sam Rivera (English 9). Reloading the page starts the demo over.</p>
+      <nav class="subnav" aria-label="Tasks in this guide">
+        <a href="#sign-in">1. Sign in</a><a href="#classes">2. Your classes</a><a href="#assignment">3. Post an assignment</a><a href="#quiz">4. Quiz and extended time</a><a href="#gradebook">5. Gradebook</a><a href="#ai">6. Your AI tools</a><a href="#data">7. Your data</a><a href="#help">8. Getting help</a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="tight task" id="sign-in">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 1</div>
+      <h2>Sign in</h2>
+      <ol>
+        <li>Open your district's EducateOS address. Your pilot lead gives it to you. It is your district's own web address, such as <code>yourdistrict.educateos.io</code> or a district domain.<br>Address: <span class="fill">&nbsp;</span></li>
+        <li>Sign in the way your district set up, usually your school Google or Microsoft account, or a one-time code sent to your school email.</li>
+        <li>As a teacher you land in <span class="ui">Teacher Studio</span>. The page says "Opening Teacher Studio" first.</li>
+      </ol>
+      <p>If you see <span class="ui">"You're signed in, but you haven't been added to this school yet"</span>, your sign-in worked but your account isn't linked to the school's records. Choose <span class="ui">Copy your sign-in ID</span>, send it to your pilot lead or school administrator, and reload the page once they've added you.</p>
+      <h3>The menu on the left</h3>
+      <table class="spec info">
+        <tbody>
+          <tr><td>Today, Classes</td><td>Your class list, <span class="ui">My classes</span>.</td></tr>
+          <tr><td>Gradebook</td><td>Your class list. Pick a class, then its Gradebook tab.</td></tr>
+          <tr><td>Calendar, Inbox</td><td>Due dates and notifications.</td></tr>
+          <tr><td>AI workspace</td><td>The AI tools, at <code>/ai</code> on the same address. Shown only if your district has turned AI on.</td></tr>
+          <tr><td>Content studio</td><td>Your class list. Pick a class, then its Resources tab.</td></tr>
+        </tbody>
+      </table>
+      <p><span class="ui">Sign out</span> is in the account menu, next to your name.</p>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="classes">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 2</div>
+      <h2>Your classes</h2>
+      <p><span class="ui">My classes</span> lists each class you teach, with how many students are enrolled. A co-teacher's classes show a <span class="ui">Co-teacher</span> badge. If you see "No classes yet", your district hasn't added you to a class: tell your pilot lead.</p>
+      <p>Open a class. Its tabs, in order: <span class="ui">Roster</span>, <span class="ui">Modules</span>, <span class="ui">Resources</span>, <span class="ui">Create activity</span>, <span class="ui">Submissions</span>, <span class="ui">Gradebook</span>, <span class="ui">Announcements</span>, <span class="ui">Discussions</span>, <span class="ui">Quizzes</span>.</p>
+      <ul>
+        <li><span class="ui">Roster</span>: each student, whether they're enrolled, and how many activities they've turned in. Your district's roster decides who is in a class; you can't add students yourself.</li>
+        <li><span class="ui">Modules</span>: the units of the course. <span class="ui">Add a course</span> brings in a course from your district's course library as drafts you can edit. Teacher guides and answer keys arrive as teacher-only notes, which students never see.</li>
+      </ul>
+      <figure class="shot"><div class="frame"><img src="/pilot/teachers/class-gradebook.webp" width="1024" height="594" decoding="async" alt="Teacher Studio for English 9, Period 3: the breadcrumb My classes, then the class tabs Roster, Modules, Resources, Create activity, Submissions, Gradebook (selected), Announcements, Discussions and Quizzes, above the gradebook with Gradebook settings and Export CSV buttons."></div><figcaption>A class's tabs, in the demo as Mr. Rivera. The class and its students are fictional.</figcaption></figure>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="assignment">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 3</div>
+      <h2>Post an assignment</h2>
+      <p>In a class, open <span class="ui">Create activity</span>.</p>
+      <ol>
+        <li><span class="ui">Template</span>: Writing task, Science investigation, Primary-source analysis, Problem set, or, for K-2, Picture response and Read and respond.</li>
+        <li><span class="ui">About the activity</span>: a <span class="ui">Title</span> and an <span class="ui">Overview for students</span>, then the template's own fields. A writing task has a <span class="ui">Prompt</span>, <span class="ui">Kind of writing</span>, <span class="ui">Minimum length in words</span> and <span class="ui">Sources to cite</span>.</li>
+        <li>Optional: <span class="ui">Learning goals</span> (standards), <span class="ui">Resources</span> your class already has, and notes.</li>
+        <li><span class="ui">AI help</span>: <span class="ui">None</span>, <span class="ui">Hints only</span> or <span class="ui">Full</span>. Your district may allow less. If it does, you're told when you preview.</li>
+        <li><span class="ui">Rubric</span>: <span class="ui">No rubric</span>, a rubric from an earlier activity in this class, or a new one (<span class="ui">Rubric title</span>, <span class="ui">Criteria</span> one per line, <span class="ui">Save and use this rubric</span>).</li>
+        <li>Choose <span class="ui">Preview as student</span>. You see the activity as a student will, and how it is assessed.</li>
+        <li>Under <span class="ui">Publish and assign</span>, set a <span class="ui">Due date</span> (leave it empty for the end of the term) and choose <span class="ui">Publish and assign</span>. <span class="ui">Back to editing</span> returns to the form.</li>
+      </ol>
+      <p>Once published, students in the class can open it. Later changes make a new version and don't change what students already have. Their work appears under <span class="ui">Submissions</span>.</p>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="quiz">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 4</div>
+      <h2>Build a quiz, set a time limit and give a student extended time</h2>
+      <p>In a class, open <span class="ui">Quizzes</span>.</p>
+      <ol>
+        <li>Type a <span class="ui">Quiz title</span> and choose <span class="ui">Create quiz</span>.</li>
+        <li>Under <span class="ui">Settings</span>: <span class="ui">Attempts allowed</span>, <span class="ui">Time limit in minutes (optional)</span>, <span class="ui">Opens</span> and <span class="ui">Closes</span> (optional), whether each student sees the questions or choices in their own order, when students see the correct answers, and <span class="ui">Which attempt counts</span>.</li>
+        <li>Add questions: <span class="ui">Add multiple choice</span>, <span class="ui">Add multiple select</span>, <span class="ui">Add true or false</span>, <span class="ui">Add number</span>, <span class="ui">Add short answer</span> or <span class="ui">Add essay</span>. Each has its points and its correct answer.</li>
+        <li><span class="ui">Release scores as grades for</span>: leave "A new gradebook assignment for this quiz, made when you publish it", or pick an existing assignment. Optionally <span class="ui">Place it in a module</span>.</li>
+        <li>Choose <span class="ui">Save quiz</span>, then <span class="ui">Publish</span>. <span class="ui">Unpublish</span> makes it a draft again. Once students have started, the questions lock so every attempt is scored against the same key; settings can still change.</li>
+      </ol>
+      <figure class="shot"><div class="frame"><img src="/pilot/teachers/quiz-settings.webp" width="960" height="493" decoding="async" alt="The quiz Settings panel: Attempts allowed 1, Time limit in minutes (optional) 20, empty Opens and Closes dates, two unchecked boxes for showing each student the questions and the choices in their own order, Show students the correct answers and feedback set to After you release scores, and Which attempt counts set to Their best attempt."></div><figcaption>A 20-minute time limit on a new quiz, in the demo.</figcaption></figure>
+      <h3>Extended time</h3>
+      <p>At the bottom of the quiz page, under <span class="ui">Extended time</span>, choose the <span class="ui">Student</span>, then the <span class="ui">Time</span>: 1.25×, 1.5×, 2×, 3×, 4× or <span class="ui">No time limit</span>. With a 20-minute limit, 1.5× shows as "1.5× time (30 minutes)". Choose <span class="ui">Give extended time</span>. Each student with extended time is listed, with a button beside them to remove it.</p>
+      <ul>
+        <li>Use the amount the student's IEP or 504 plan sets.</li>
+        <li>Only the class's teachers and district administrators see this list. Each student sees only their own time.</li>
+        <li>An attempt already in progress gets the extra time at once.</li>
+        <li>Extended time does nothing until the quiz has a time limit.</li>
+      </ul>
+      <figure class="shot"><div class="frame"><img src="/pilot/teachers/extended-time.webp" width="960" height="228" decoding="async" alt="The Extended time section: an explanation that only the class's teachers and district administrators see it and each student sees only their own time, the entry Elena Sato: 1.5× time (30 minutes) with Remove Elena Sato's extended time, and the Student and Time pickers with a Give extended time button."></div><figcaption>A fictional student given 1.5× time on a 20-minute quiz, in the demo.</figcaption></figure>
+      <p>Afterwards, <span class="ui">Results and grading</span> shows each student's score and anything marked <span class="ui">Needs grading</span> (short answers and essays). <span class="ui">Release scores</span> sends them to the gradebook as official grades.</p>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="gradebook">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 5</div>
+      <h2>Gradebook basics</h2>
+      <p>In a class, open <span class="ui">Gradebook</span>.</p>
+      <ul>
+        <li>It shows <b class="strong">official grades only</b>: a grade you approved, or quiz scores you released. A draft score or a suggestion never appears here.</li>
+        <li>Choose a cell (or move to it with the arrow keys and press Enter) to mark it <span class="ui">Excused</span>, <span class="ui">Missing</span> or <span class="ui">Late</span>. Marks change how totals add up; they never change a grade.</li>
+        <li><span class="ui">Gradebook settings</span>: add all scores together or <span class="ui">Weighted by group</span>, combine by points or percent, count missing work as zero, assignment groups with a <span class="ui">Weight (%)</span> and <span class="ui">Drop lowest</span>, and the letter-grade scale.</li>
+        <li><span class="ui">Export CSV</span> downloads the gradebook.</li>
+      </ul>
+      <h3>Grading written work</h3>
+      <ol>
+        <li><span class="ui">Submissions</span>, pick the activity, then <span class="ui">Review [student]'s work</span>.</li>
+        <li>Choose a level for each rubric criterion and <span class="ui">Save score</span>. Add comments.</li>
+        <li><span class="ui">Approve official grade</span>. It asks once more before the grade becomes official.</li>
+        <li><span class="ui">Share feedback with student</span> is a separate choice. The student sees your comments and scores only after you share them.</li>
+      </ol>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="ai">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 6</div>
+      <h2>Your AI tools</h2>
+      <p>The pilot starts with AI for teachers. Your district decides whether it is on. If it is, <span class="ui">AI workspace</span> appears in the menu and opens at <code>/ai</code> on your district's address.</p>
+      <h3>What they do</h3>
+      <ul>
+        <li>The AI workspace's home, <span class="ui">Teaching companion</span>, has a <span class="ui">Start a conversation</span> box and four starters: <span class="ui">Plan a lesson</span>, <span class="ui">Create practice questions</span>, <span class="ui">Adapt an activity</span> and <span class="ui">Draft a family update</span>. Each asks you questions first, then drafts something for you to review.</li>
+        <li>On a student's work page, <span class="ui">Ask AI about this</span> opens the AI workspace about that submission. It appears only where your district has AI.</li>
+        <li>Teacher starter blueprints, <span class="status dev">In development</span>: Week Ahead (reads one Google Calendar), Research Kit (web search results with their sources) and Assignment Companion (coursework from one Google Classroom course). They are read-only, keep your preparation notes, and make no AI calls. Use them only if your pilot lead says your district has added them.</li>
+      </ul>
+      <h3>What they don't do</h3>
+      <ul>
+        <li>They don't grade. Suggested scores count only when you save them as your own and approve the grade.</li>
+        <li>They don't send anything to students or families. A draft reaches them only if you put it into Teacher Studio and publish it. Anything an agent would write elsewhere, such as an email, waits for your approval.</li>
+        <li>They can be wrong. Check facts, dates and sources before you use a draft.</li>
+        <li>During the pilot, don't paste student information into a prompt.</li>
+      </ul>
+      <h3>Your district sets the policy</h3>
+      <p>Your district chooses whether AI is on, which models, and how much each person may spend each month. A class can be stricter than the district, never looser. <span class="ui">AI help</span> on an activity is how you choose for students.</p>
+      <h3>Requests are screened</h3>
+      <p>Every AI request goes through the AI call guard in your district's own Cloudflare account before it reaches a model. Where your district's settings call for it, Hall Monitor, the screening service, checks the message first, and can check the reply before you see it.</p>
+      <p>If something is flagged, you get a short message in the conversation instead of a reply. It never says why and never quotes you. The default wording, written for students (your district can change it):</p>
+      <table class="spec info">
+        <thead><tr><th scope="col">What happened</th><th scope="col">What you see</th></tr></thead>
+        <tbody>
+          <tr><td>Your message was flagged</td><td>"This message can't be sent to the AI assistant. Try rephrasing it, or ask your teacher for help."</td></tr>
+          <tr><td>The reply was flagged</td><td>"The AI assistant's reply can't be shown. Try asking in a different way, or ask your teacher for help."</td></tr>
+          <tr><td>It reads as someone in distress</td><td>A supportive message pointing to a counselor or another trusted adult.</td></tr>
+          <tr><td>Screening can't run right now</td><td>"The AI assistant isn't available right now. You can keep working without it, or ask your teacher." Your district can let staff requests go ahead unscreened while screening is down.</td></tr>
+          <tr><td>The monthly AI budget is used up</td><td>"The AI budget for this work has been used up. You can keep working without the assistant."</td></tr>
+          <tr><td>Your account isn't linked yet</td><td>"Your account isn't linked to your school's records yet, so the AI assistant is off. Ask your school's administrator to link it."</td></tr>
+        </tbody>
+      </table>
+      <p>Nothing else happens to you: no alert, no strike. Rephrase, or carry on without the AI. If a message was stopped that shouldn't have been, tell your pilot lead what you were trying to do; don't resend the text by email. The district keeps no per-message record of these checks; administrators see AI spend.</p>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="data">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 7</div>
+      <h2>Where your data goes</h2>
+      <ul>
+        <li>EducateOS runs in your district's own Cloudflare account. Classes, work and grades are stored there, and your district is their custodian.</li>
+        <li>AI requests go from that account to the model your district chose, through the AI call guard. By default, prompts are kept out of the AI gateway's logs.</li>
+        <li>EducateOS staff can't reach your district unless your district lets them, and everything they do is logged.</li>
+        <li>No advertising, and no sale of data.</li>
+        <li>During the pilot: synthetic or staff-only data until the DPA is signed.</li>
+      </ul>
+      <p>More: <a href="/student-privacy/">Student privacy at EducateOS</a>.</p>
+    </div></div>
+  </section>
+
+  <section class="tight task" id="help">
+    <div class="wrap"><div class="doc">
+      <div class="eyebrow">Task 8</div>
+      <h2>Getting help during the pilot</h2>
+      <ul>
+        <li><b class="strong">First, your school's pilot lead.</b><br>Name: <span class="fill">&nbsp;</span> Contact: <span class="fill">&nbsp;</span></li>
+        <li><b class="strong">EducateOS:</b> <a href="mailto:hello@educateos.io?subject=EducateOS%20pilot%20question">hello@educateos.io</a>. Say which district, which page (copy the address bar), what you did and what you expected. A screenshot helps; make sure it shows no student information.</li>
+        <li><b class="strong">Feedback:</b> <a href="/feedback/?source=teachers">educateos.io/feedback</a>.</li>
+        <li><b class="strong">Practice:</b> <a href="/demo/">educateos.io/demo</a>.</li>
+      </ul>
+      <p class="checked">Every step in this guide was checked against the current Teacher Studio. Tasks 2 to 5 were also done in the public demo; tasks 1 and 6 were checked against the product's code, because the demo has no sign-in and no AI workspace. Screenshots are from the demo's fictional Northfield district.</p>
+    </div></div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c02885bf17c594d3cbb2c14f7169084d9de3e6522fd66e1a78be8ae2c4904ca5",
+      "id": "educateos.io/world-history-7-which-changed-more",
+      "version": "1.0.0"
+    }
+  },
+  "id": "which-changed-more",
+  "role": "assessment",
+  "title": "Which Changed More?"
+}

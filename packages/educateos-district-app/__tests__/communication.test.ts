@@ -337,7 +337,7 @@ describe("weekly family digest", () => {
 
     await district.ok(rivera, "teacher.releaseFeedback", { params: { submissionId: receipt.submissionId }, body: { state: "shared-with-student" } });
     await district.ok(rivera, "teacher.recordGrade", { params: { submissionId: receipt.submissionId }, body: { score: { points: 9, maxPoints: 10 } } });
-    expect(await district.app.communication.runWeeklyDigest()).toMatchObject({ week: "2026-W44", sent: 1, skipped: 1 });
+    expect(await district.app.communication.runWeeklyDigest()).toMatchObject({ week: "2026-W44", sent: 1, skipped: 3 });
     expect(mail.sent).toHaveLength(1);
     const [email] = mail.sent;
     expect(email!.to).toBe("grace.okafor@family.example");
@@ -345,7 +345,7 @@ describe("weekly family digest", () => {
     // Never the comment, the grade or a sibling's or classmate's work.
     expect(`${email!.text}${email!.html}`).not.toMatch(/Private comment text|9\s*\/\s*10|points|Elena|Chidi/);
     // Running again in the same week sends nothing more.
-    expect(await district.app.communication.runWeeklyDigest()).toMatchObject({ sent: 0, alreadyDone: 2 });
+    expect(await district.app.communication.runWeeklyDigest()).toMatchObject({ sent: 0, alreadyDone: 4 });
     expect(mail.sent).toHaveLength(1);
   });
 
@@ -365,7 +365,7 @@ describe("weekly family digest", () => {
     const second = await digestDistrict([revoked]);
     const nothing = await second.district.ok(second.district.tokenFor(NF.admin), "admin.previewDigest", { params: { guardianPrincipalId: GUARDIAN.okafor } });
     expect(nothing).toMatchObject({ digest: { children: [] }, empty: true });
-    expect(await second.district.app.communication.runWeeklyDigest()).toMatchObject({ sent: 0, skipped: 2 });
+    expect(await second.district.app.communication.runWeeklyDigest()).toMatchObject({ sent: 0, skipped: 4 });
     expect(second.mail.sent).toStrictEqual([]);
   });
 
@@ -387,7 +387,7 @@ describe("weekly family digest", () => {
     // Another district instance, with the guardian opted out.
     const next = await digestDistrict([OKAFOR_AMARA]);
     await next.district.app.stores.communication.preferences.put(GUARDIAN.okafor as PrincipalId, { announcements: true, assignments: true, feedback: true, grades: true, digest: false });
-    expect(await next.district.app.communication.runWeeklyDigest()).toMatchObject({ sent: 0, skipped: 2 });
+    expect(await next.district.app.communication.runWeeklyDigest()).toMatchObject({ sent: 0, skipped: 4 });
     expect(await next.district.app.stores.communication.digestLedger.get(GUARDIAN.okafor as PrincipalId, "2026-W44")).toMatchObject({ status: "skipped", reason: "opted-out" });
   });
 });

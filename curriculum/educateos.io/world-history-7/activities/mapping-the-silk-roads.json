@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3b6583a3f80623c8e862ef5ce2b1be3d6095e519eaa4a7219543838755428c07",
+      "id": "educateos.io/world-history-7-mapping-the-silk-roads",
+      "version": "1.0.0"
+    }
+  },
+  "id": "mapping-the-silk-roads",
+  "role": "lesson",
+  "title": "Mapping the Silk Roads"
+}

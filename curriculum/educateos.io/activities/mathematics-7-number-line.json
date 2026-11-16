@@ -1,0 +1,45 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "7",
+    "overview": "Use a number line to add and subtract positive and negative numbers in real situations.",
+    "problems": [
+      {
+        "prompt": "The temperature was -6°F at dawn and rose 11 degrees by noon. What was the temperature at noon?"
+      },
+      {
+        "prompt": "Compute -8 + 3. Show the jumps on a number line."
+      },
+      {
+        "prompt": "Compute 4 - 10."
+      },
+      {
+        "prompt": "Compute -7 - (-12), and rewrite it as an addition problem."
+      },
+      {
+        "prompt": "A diver is at -15 meters. She rises 9 meters. Write an addition expression and find her new position."
+      },
+      {
+        "prompt": "Explain why 5 + (-5) = 0, using a real situation."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Moving on the Number Line"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.NS.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-number-line",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:67ba471ccad43749e2351851cd0f6683df7c6dfa5f4b6e1cecc1c8e64be9f3b4",
+      "id": "educateos.io/english-9-fate-or-choice",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fate-or-choice",
+  "role": "assignment",
+  "title": "Fate or Choice?"
+}

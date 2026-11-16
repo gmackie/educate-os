@@ -1,0 +1,144 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 300,
+    "minimumCitations": 1,
+    "overview": "Prepare for a class seminar on who bears the most responsibility for the deaths of Romeo and Juliet, then reflect on what you heard.",
+    "prompt": "Before the seminar, write your preparation notes: (1) your claim about which character or group is most responsible for the tragedy; (2) three pieces of evidence from the play, each with a sentence explaining it; (3) the strongest argument for a different answer; and (4) two open questions you could ask to move the discussion forward. After the seminar, add a short reflection: name one classmate's point that challenged or changed your thinking, and say whether you would now qualify your claim and how.",
+    "resources": [
+      "the-play-in-brief",
+      "key-passages"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Seminar: Who Is Responsible?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1.C",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1.D",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-seminar-who-is-responsible",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Romeo and Juliet takes place over about four days in the Italian city of Verona, where two rich families, the Montagues and the Capulets, have feuded for so long that no one remembers why.\n\nAct 1. A street brawl between the families' servants ends with the Prince of Verona declaring that anyone who fights again will be put to death. Romeo, a Montague, is lovesick over a young woman named Rosaline. To cheer him up, his friends Benvolio and Mercutio bring him, masked, to a Capulet party. There he sees Juliet, the Capulets' thirteen-year-old daughter, and forgets Rosaline instantly. They speak, kiss, and only afterward learn each other's family names. Juliet's hot-tempered cousin Tybalt recognizes Romeo and swears revenge.\n\nAct 2. That night Romeo climbs into the Capulet orchard and overhears Juliet, on her balcony, wishing he were not a Montague. They declare their love and agree to marry. Friar Laurence, Romeo's adviser, agrees to marry them in secret, hoping the match will end the feud, though he warns Romeo against rushing. Juliet's Nurse carries messages between them. The next afternoon they are married.\n\nAct 3. Tybalt challenges Romeo, who refuses to fight his new, secret relative. Mercutio fights Tybalt instead and is fatally wounded when Romeo steps between them. Enraged, Romeo kills Tybalt. The Prince banishes Romeo from Verona. Romeo and Juliet spend one night together before he flees. Juliet's father, unaware of her marriage, announces that she will marry Paris, a nobleman, in a few days, and threatens to throw her out when she refuses.\n\nAct 4. Desperate, Juliet goes to Friar Laurence, who gives her a potion that will make her appear dead for about two days. He promises to send word to Romeo so that he can return and take her away when she wakes. Juliet drinks the potion; her family finds her \"dead\" on her wedding morning.\n\nAct 5. The Friar's message never reaches Romeo; the messenger is quarantined because of plague. Romeo hears only that Juliet is dead. He buys poison, returns to her tomb, kills Paris there, drinks the poison and dies beside her. Juliet wakes, sees Romeo dead, and stabs herself with his dagger. The families arrive, learn the whole story from the Friar, and finally make peace over their children's bodies.",
+      "id": "the-play-in-brief",
+      "title": "Romeo and Juliet in Brief"
+    },
+    {
+      "attribution": "William Shakespeare, Romeo and Juliet (first printed 1597). Public domain. Short excerpts; act and scene numbers and spelling follow common modern editions.",
+      "body": "Passage A. Act 1, Scene 5. Romeo, seeing Juliet for the first time at the Capulet party:\nDid my heart love till now? forswear it, sight!\nFor I ne'er saw true beauty till this night.\n\nPassage B. Act 2, Scene 2. Juliet, alone on her balcony, not knowing Romeo can hear her:\n'Tis but thy name that is my enemy;\nThou art thyself, though not a Montague.\nWhat's Montague? it is nor hand, nor foot,\nNor arm, nor face, nor any other part\nBelonging to a man. O, be some other name!\nWhat's in a name? that which we call a rose\nBy any other name would smell as sweet;\n\nPassage C. Act 2, Scene 3. Friar Laurence, after Romeo asks to be married at once:\nWisely and slow; they stumble that run fast.\n\nPassage D. Act 2, Scene 6. Friar Laurence, just before the wedding:\nThese violent delights have violent ends\nAnd in their triumph die, like fire and powder,\nWhich as they kiss consume: the sweetest honey\nIs loathsome in his own deliciousness\nAnd in the taste confounds the appetite:\nTherefore love moderately; long love doth so;\nToo swift arrives as tardy as too slow.\n\nPassage E. Act 3, Scene 1. Mercutio, wounded, and Romeo, after he kills Tybalt:\nMERCUTIO: A plague o' both your houses!\nROMEO: O, I am fortune's fool!\n\nPassage F. Act 5, Scene 3. The Prince, closing the play:\nA glooming peace this morning with it brings;\nThe sun, for sorrow, will not show his head:\nGo hence, to have more talk of these sad things;\nSome shall be pardon'd, and some punished:\nFor never was a story of more woe\nThan this of Juliet and her Romeo.",
+      "id": "key-passages",
+      "title": "Key Passages from Romeo and Juliet"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Comes with a clear claim, three explained pieces of evidence and the strongest opposing view.",
+        "id": "preparation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Preparation"
+      },
+      {
+        "description": "Poses open questions that connect the discussion to larger ideas.",
+        "id": "questions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Questions"
+      },
+      {
+        "description": "Summarizes a classmate's point fairly and explains whether and how it qualifies the claim.",
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Responding to others"
+      }
+    ],
+    "title": "Seminar preparation and reflection"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

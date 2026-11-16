@@ -1,0 +1,45 @@
+{
+  "id": "magic-e",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "watch-the-vowel-change"
+    },
+    {
+      "kind": "activity",
+      "ref": "make-it-magic"
+    },
+    {
+      "kind": "activity",
+      "ref": "draw-the-magic-word"
+    },
+    {
+      "kind": "activity",
+      "ref": "short-or-long"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Use a silent final e to read and write words with long vowel sounds.",
+  "title": "Magic E: Long Vowels"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5fb23ca7fe656108713d355316a55e12c5649373f701a633350ca4d71bd6499e",
+      "id": "educateos.io/kindergarten-science-weather-watchers-the-sun-warms-things",
+      "version": "1.0.0"
+    }
+  },
+  "id": "the-sun-warms-things",
+  "role": "lesson",
+  "title": "The Sun Warms Things"
+}

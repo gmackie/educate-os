@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:15869fde5198c09f474c5d47cb8ac832e130472ffb311196955e9d02b020f66b",
+      "id": "educateos.io/biology-1-one-letter-disease",
+      "version": "1.0.0"
+    }
+  },
+  "id": "one-letter-disease",
+  "role": "assignment",
+  "title": "From One Letter to a Disease"
+}

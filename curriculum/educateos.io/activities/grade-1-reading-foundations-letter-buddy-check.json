@@ -1,0 +1,117 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to each word and write it.",
+    "passage": "Your teacher will say five words. Each word has a letter buddy. Listen, say the word to yourself, and write it.",
+    "questions": [
+      {
+        "prompt": "Write the word: shed."
+      },
+      {
+        "prompt": "Write the word: chop."
+      },
+      {
+        "prompt": "Write the word: then."
+      },
+      {
+        "prompt": "Write the word: duck."
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Read this word out loud: whip."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Letter Buddy Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-letter-buddy-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "hears-buddy",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I heard the letter buddy"
+      },
+      {
+        "id": "writes-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I spelled the word"
+      },
+      {
+        "id": "reads-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read the word"
+      }
+    ],
+    "title": "Letter buddy check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

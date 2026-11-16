@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e205a253da08d0597e9c4ea976a8412dc96458df441eeb050c41ea8e10ac9351",
+      "id": "educateos.io/english-9-coming-of-age-essay",
+      "version": "1.0.0"
+    }
+  },
+  "id": "coming-of-age-essay",
+  "role": "assignment",
+  "title": "What Changes a Character?"
+}

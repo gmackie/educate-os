@@ -17,4 +17,14 @@ describe("describeChange", () => {
     expect(describeChange({ ...read, approvalId: "a1", needs: "confirmation" }))
       .toMatchObject({ title: "Change school records (list_student_work)", implementsRevert: false });
   });
+
+  it("shows the record, version and digest the district pinned the change to", () => {
+    const digest = "a".repeat(64);
+    const { fields } = describeChange({ ...read, approvalId: "a1", needs: "approval", target: { kind: "artifact", id: "art_lab", version: "3" }, digest });
+    expect(fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "Target", value: "artifact art_lab" }),
+      expect.objectContaining({ label: "Version", value: "3" }),
+      expect.objectContaining({ label: "Digest", value: digest }),
+    ]));
+  });
 });

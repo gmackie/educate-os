@@ -1,0 +1,7 @@
+{
+  "body": "Every cell needs a steady supply of energy, and almost all of it starts as sunlight.\n\nPhotosynthesis happens in chloroplasts. Plants, algae and some bacteria use light energy to build sugar from carbon dioxide and water, and release oxygen:\n6 CO2 + 6 H2O + light energy -> C6H12O6 (glucose) + 6 O2\n\nCellular respiration happens in the mitochondria of nearly every cell, plant and animal alike. It releases the energy stored in glucose and stores it in ATP, the molecule cells spend to do work:\nC6H12O6 + 6 O2 -> 6 CO2 + 6 H2O + energy (stored in ATP)\n\nNotice that each equation is the other one run backward. The oxygen you breathe out of the air was released by photosynthesis, and the carbon dioxide you breathe out is the raw material a plant builds with.\n\nWhen there is no oxygen, some cells switch to fermentation. It releases far less energy per glucose, but it keeps a cell going for a while. Yeast fermenting sugar is what makes bread rise.\n\nRemember Unit 1: the mitochondrion was the organelle that makes most of a cell's ATP. This unit opens it up. You will measure photosynthesis in floating leaf disks, measure respiration in yeast, and follow a single carbon atom through the living world.",
+  "id": "u3-overview",
+  "purpose": "context",
+  "title": "Energy In, Energy Out",
+  "visibility": "students"
+}

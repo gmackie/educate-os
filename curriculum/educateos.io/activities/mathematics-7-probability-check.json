@@ -1,0 +1,141 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 11,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Find and explain probabilities, make predictions, and work with compound events.",
+    "problems": [
+      {
+        "prompt": "A bag has 5 green, 3 orange and 2 black marbles. Find P(orange) and P(not green)."
+      },
+      {
+        "prompt": "Is an event with probability 0.95 likely or unlikely? Give an example of an event with a probability close to 0.95."
+      },
+      {
+        "prompt": "A spinner landed on blue 36 times in 120 spins. Estimate the probability of blue, and predict how many times it would land on blue in 500 spins."
+      },
+      {
+        "prompt": "A number cube is rolled twice. What is the probability of rolling a 6 both times?"
+      },
+      {
+        "prompt": "A family has 3 children. Assume a girl or a boy is equally likely each time. List all the outcomes and find the probability of exactly two girls."
+      },
+      {
+        "prompt": "Kai says that when you roll two number cubes, a sum of 2 is as likely as a sum of 7, because each is just one sum. Explain why Kai is wrong."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Probability Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.8",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-probability-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "model",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Builds the sample space or model"
+      },
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct probabilities"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains predictions"
+      }
+    ],
+    "title": "Probability check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

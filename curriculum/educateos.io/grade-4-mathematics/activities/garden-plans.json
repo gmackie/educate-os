@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a20d327127b8fae73c0147a2ae0aaa0e1d7c6439166578b722454b8fae606d9f",
+      "id": "educateos.io/grade-4-mathematics-garden-plans",
+      "version": "1.0.0"
+    }
+  },
+  "id": "garden-plans",
+  "role": "assignment",
+  "title": "Garden Plans: Area and Perimeter"
+}

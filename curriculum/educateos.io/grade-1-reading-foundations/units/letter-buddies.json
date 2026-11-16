@@ -1,0 +1,45 @@
+{
+  "id": "letter-buddies",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u3-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "meet-the-letter-buddies"
+    },
+    {
+      "kind": "activity",
+      "ref": "digraph-picture-sort"
+    },
+    {
+      "kind": "activity",
+      "ref": "fix-the-word"
+    },
+    {
+      "kind": "activity",
+      "ref": "letter-buddy-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read and write words with the letter buddies sh, ch, th, wh and ck.",
+  "title": "Two Letters, One Sound"
+}

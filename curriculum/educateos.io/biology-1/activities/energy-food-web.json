@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4130e89bedb405806b2522447942b3c996fad75477ee03caa04724770248dffc",
+      "id": "educateos.io/biology-1-energy-food-web",
+      "version": "1.0.0"
+    }
+  },
+  "id": "energy-food-web",
+  "role": "assignment",
+  "title": "Energy Through the Food Web"
+}

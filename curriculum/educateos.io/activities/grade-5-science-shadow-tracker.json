@@ -1,0 +1,160 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Graph your results as points on a coordinate grid, with hours after 8 a.m. on the x-axis and shadow length in centimeters on the y-axis. When was the shadow shortest, and which way did it point then? Write your longest shadow in meters. Use Earth's spin to explain the pattern you found.",
+    "dataColumns": [
+      {
+        "name": "Time"
+      },
+      {
+        "name": "Shadow length",
+        "unit": "cm"
+      },
+      {
+        "name": "Shadow direction"
+      }
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "methodPrompt": "Write your prediction first. Stand a stick straight up in the ground (or tape a pencil upright on a board in a sunny window). Describe your steps. What will you keep the same each time? How will you measure the shadow's length, and how will you record which way it points?",
+    "overview": "Measure a shadow every hour on a sunny day and find the pattern.",
+    "question": "How do the length and direction of a shadow change during a sunny day?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Shadow Tracker"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.G.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.MD.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-shadow-tracker",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "hypothesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Testable question or hypothesis"
+      },
+      {
+        "id": "method",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Fair test"
+      },
+      {
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Data recorded with units"
+      },
+      {
+        "id": "conclusion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Conclusion uses data"
+      }
+    ],
+    "title": "Shadow investigation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

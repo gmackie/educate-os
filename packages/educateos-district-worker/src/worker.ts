@@ -25,18 +25,21 @@ import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/co
 import type { AdmittedSubjectRequest, GuardDirectory, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolService } from "@educateos/gatekeeper";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
-import { configuredDistrictId } from "./district.ts";
+import { configuredDistrictId, MCP_PATHS } from "./district.ts";
+import { readDistrictWorkerConfig } from "./config.ts";
 import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
 import { aiDisabledResponse, isAiPath } from "./ai-disabled.ts";
+import { inJurisdiction, readDataJurisdiction } from "./jurisdiction.ts";
 
 /** The pairing relay's page for a phone with no computer nearby (SCHO-261), behind Access like the LMS. */
 const CONNECT_PHONE_PATH = "/connect-phone";
 
 export { DistrictObject } from "./district-object.ts";
 
-/** The district's object. */
+/** The district's object, in the district's data jurisdiction when it has one (ADR-0015). */
 function districtObject(env: Cloudflare.Env, exports: Cloudflare.Exports) {
-  return exports.DistrictObject.getByName(configuredDistrictId(env.DISTRICT_CONFIG));
+  return inJurisdiction(exports.DistrictObject, readDataJurisdiction(env.DATA_JURISDICTION))
+    .getByName(configuredDistrictId(env.DISTRICT_CONFIG));
 }
 
 /** Backend-only WORKSHOP_CAPABILITY_POLICY target; never expose this binding to gadgets. */
@@ -106,9 +109,9 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
     return districtObject(this.env, this.ctx.exports).callTool(subject, name, args);
   }
 
-  /** Approves a queued change as `approver`'s own decision. */
-  async approveChange(approver: VerifiedPrincipal, approvalId: string): Promise<ToolDecisionOutcome> {
-    return districtObject(this.env, this.ctx.exports).approveChange(approver, approvalId);
+  /** Approves a queued change as `approver`'s own decision, only as reviewed when given its `digest`. */
+  async approveChange(approver: VerifiedPrincipal, approvalId: string, options?: { digest?: string }): Promise<ToolDecisionOutcome> {
+    return districtObject(this.env, this.ctx.exports).approveChange(approver, approvalId, options);
   }
 
   /** Declines a queued change as `decider`'s own decision, with a reason the requester sees. */
@@ -208,7 +211,8 @@ export default {
    * The district's `/api` surface; `/healthz`, a liveness probe that reads nothing and needs no
    * sign-in (a deployment exempts it from Access); and the LTI Tool's `/lti/*` endpoints (SCHO-177),
    * which platform users reach from their LMS, so a deployment exempts exactly those paths from
-   * Access too; and the pairing relay's `/connect-phone` page (SCHO-261). Nothing else is served; a deployment that serves the district's UIs does so as
+   * Access too; the pairing relay's `/connect-phone` page (SCHO-261); and, when configured, the
+   * organization MCP endpoint and its metadata (SCHO-174), exempt from Access too. Nothing else is served; a deployment that serves the district's UIs does so as
    * static assets in front of this handler.
    */
   async fetch(request, env, ctx): Promise<Response> {
@@ -216,11 +220,21 @@ export default {
     if (pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
     // The public school manifest (ADR-0014): no sign-in, so a deployment exempts it from Access too.
     if (pathname === SCHOOL_MANIFEST_PATH) {
-      return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag });
+      // The name is the directory's (SCHO-344); the configured one stands in when it cannot be read.
+      const districtName = request.method === "GET" || request.method === "HEAD"
+        ? await Promise.resolve().then(() => districtObject(env, ctx.exports).districtName()).catch(() => undefined)
+        : undefined;
+      return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag, districtName });
     }
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
     // The pairing relay's connect page (SCHO-261). Its API, `/api/pair/*`, is under `/api/` below.
     if (pathname === CONNECT_PHONE_PATH) return districtObject(env, ctx.exports).fetch(request);
+    // The organization MCP endpoint (SCHO-174): an OAuth protected resource whose callers bring
+    // their own bearer tokens, so a deployment exempts these paths from Access. Off unless configured.
+    if (MCP_PATHS.includes(pathname)) {
+      if (readDistrictWorkerConfig(env.DISTRICT_CONFIG).mcp === undefined) return new Response(null, { status: 404 });
+      return districtObject(env, ctx.exports).fetch(request);
+    }
     if (isAiPath(pathname)) return aiDisabledResponse(request, env.AI_DEMO_URL);
     return serveApi(request, env, ctx.exports);
   },

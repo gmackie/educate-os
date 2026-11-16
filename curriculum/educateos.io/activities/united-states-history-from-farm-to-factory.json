@@ -1,0 +1,56 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Read a short history of American industrialization and answer questions that prepare you to analyze sources from the period.",
+    "problems": [
+      {
+        "prompt": "Read From Farm to Factory. Who worked in the Lowell mills in the 1830s and 1840s, and why might a farm family send a daughter there?"
+      },
+      {
+        "prompt": "Describe a mill worker's hours. How did conditions change in the 1840s, and how did workers respond?"
+      },
+      {
+        "prompt": "Compare the first wave of industrialization (before the Civil War) with the second (after it). Give two differences in what was produced, who worked, or how large businesses became."
+      },
+      {
+        "prompt": "Choose one way workers or farmers answered the new industrial order between 1877 and 1894. What did they want, and what happened?"
+      },
+      {
+        "prompt": "Imagine three sources about Lowell: a mill owner's newspaper advertisement for workers, a worker's private diary, and a newspaper editorial against the ten-hour petition. For each, name one thing it would be useful for and one reason to be cautious."
+      }
+    ],
+    "resources": [
+      "farm-to-factory"
+    ],
+    "showWork": false,
+    "subject": "history-social-studies",
+    "template": "problem-set",
+    "title": "From Farm to Factory"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-from-farm-to-factory",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "In 1800 most Americans lived on farms and made much of what they used at home. By 1900 the United States was the largest industrial economy in the world. Historians call this transformation the Industrial Revolution, and it happened in two waves.\n\nThe first wave began in New England textile mills. In the 1820s investors known as the Boston Associates built water-powered mills along the Merrimack River at Lowell, Massachusetts. They hired young, unmarried women from New England farms, housed them in company boardinghouses, and paid them cash wages. A typical worker labored about twelve hours a day, six days a week. In the 1840s, as mill owners cut piece rates and sped up the machines, workers organized. The Lowell Female Labor Reform Association, formed in 1845, petitioned the Massachusetts legislature for a ten-hour workday. The legislature held hearings but passed no law. By the 1850s Irish immigrants, many of them fleeing famine, made up a growing share of the mill workforce.\n\nThe second wave, after the Civil War, was larger and faster. Railroads, steel, oil, and electricity created national markets and giant corporations. Between 1870 and 1900 about twelve million immigrants arrived, many from southern and eastern Europe, and most found work in industry. Wealth grew enormously, and so did the gap between owners and workers. Industrial work was dangerous: thousands of workers died in accidents each year, and there was no unemployment insurance or workers' compensation.\n\nWorkers responded by organizing. The Knights of Labor grew rapidly in the 1880s. The American Federation of Labor, founded in 1886 under Samuel Gompers, organized skilled workers by craft and pressed for higher wages and an eight-hour day. Major strikes, including the Great Railroad Strike of 1877, the Homestead strike at a Carnegie steel works in 1892, and the Pullman strike of 1894, often ended when state militias or federal troops were sent in. Farmers, squeezed by debt and falling crop prices, formed the People's Party in 1892 to challenge the power of railroads and banks.",
+      "id": "farm-to-factory",
+      "title": "From Farm to Factory, 1820-1900"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

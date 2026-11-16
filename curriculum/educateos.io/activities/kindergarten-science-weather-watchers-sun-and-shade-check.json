@@ -1,0 +1,104 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a story about the park. Tell or draw your answers.",
+    "passage": "Max and Rosa go to the park on a sunny day. The metal slide is out in the sun. The bench is under a big tree.",
+    "questions": [
+      {
+        "prompt": "Which is warmer, the slide or the bench?"
+      },
+      {
+        "prompt": "Why is the bench cooler?"
+      },
+      {
+        "prompt": "What makes things warm?"
+      },
+      {
+        "prompt": "Max puts a big umbrella over the slide. Will the slide get warmer or cooler?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw one way to make shade."
+      }
+    ],
+    "sentenceFrames": [
+      "The ___ is warmer.",
+      "Shade is cooler because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Sun and Shade Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-sun-and-shade-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "warm",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell that sunlight warms things"
+      },
+      {
+        "id": "shade",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell why shade is cooler"
+      }
+    ],
+    "title": "Sun and shade"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

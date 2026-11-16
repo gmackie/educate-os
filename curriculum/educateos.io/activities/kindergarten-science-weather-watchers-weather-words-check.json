@@ -1,0 +1,125 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to each question. Say or draw your answer.",
+    "passage": "Weather is what the sky and the air are like outside. It can be sunny, cloudy, rainy, snowy or windy. Weather watchers use weather words to tell what they see.",
+    "questions": [
+      {
+        "prompt": "Water is falling from the clouds. What is the weather word?"
+      },
+      {
+        "prompt": "The sun is bright and there are no clouds. What is the weather word?"
+      },
+      {
+        "prompt": "Leaves are blowing down the street. What is the weather word?"
+      },
+      {
+        "prompt": "Count the clouds: ☁️ ☁️ ☁️ ☁️. How many clouds?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw today's weather. Then say one weather word for it."
+      }
+    ],
+    "sentenceFrames": [
+      "The weather word is ___.",
+      "I count ___ clouds."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Weather Words Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.K.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-weather-words-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "words",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can say weather words"
+      },
+      {
+        "id": "count",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can count what I see in the sky"
+      },
+      {
+        "id": "draw",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can draw and tell the weather"
+      }
+    ],
+    "title": "Weather words"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

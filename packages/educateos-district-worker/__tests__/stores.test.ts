@@ -79,6 +79,82 @@ describe("DurableObjectAcademicStore", () => {
       await expect(store.load()).rejects.toThrow(/unreadable at terms/);
     });
   });
+
+  // SCHO-390: a load reuses the directory it last parsed while the stored version has not moved.
+  describe("reusing a parsed directory", () => {
+    const rename = (snapshot: typeof NORTHFIELD, suffix: string) => ({ ...snapshot, terms: snapshot.terms.map((t) => ({ ...t, name: `${t.name}${suffix}` })) });
+
+    it("sees a commit at once, through the committing store or another over the same storage", async () => {
+      await runInDurableObject(fresh(), async (_instance, state) => {
+        const store = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+        const other = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+        const { snapshot } = await store.load();
+        await other.load();
+        await store.commit(rename(snapshot, " (a)"), 0);
+        for (const s of [store, other]) {
+          const loaded = await s.load();
+          expect(loaded.version).toBe(1);
+          expect(loaded.snapshot.terms.every((t) => t.name.endsWith(" (a)"))).toBe(true);
+        }
+        await other.commit(rename((await other.load()).snapshot, " (b)"), 1);
+        expect((await store.load()).snapshot.terms.every((t) => t.name.endsWith(" (a) (b)"))).toBe(true);
+      });
+    });
+
+    it("hands out copies, so a caller's edit never reaches the next load", async () => {
+      await runInDurableObject(fresh(), async (_instance, state) => {
+        const store = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+        const first = await store.load();
+        first.snapshot.principals.length = 0;
+        expect((await store.load()).snapshot.principals).toEqual(NORTHFIELD.principals);
+      });
+    });
+
+    it("never serves a commit an enclosing transaction rolled back", async () => {
+      await runInDurableObject(fresh(), async (_instance, state) => {
+        const store = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+        const { snapshot } = await store.load();
+        expect(() => state.storage.transactionSync(() => {
+          void store.commit(rename(snapshot, " (rolled back)"), 0);
+          // Loaded inside the transaction, so the rolled-back directory is parsed and kept.
+          void store.load();
+          throw new Error("roll back");
+        })).toThrow("roll back");
+        const after = await store.load();
+        expect(after.version).toBe(0);
+        expect(after.snapshot.terms).toEqual(NORTHFIELD.terms);
+        // The same version number reached again by a real commit is that commit's directory.
+        await store.commit(rename(snapshot, " (kept)"), 0);
+        expect((await store.load()).snapshot.terms.every((t) => t.name.endsWith(" (kept)"))).toBe(true);
+      });
+    });
+
+    it("reads a row changed outside the store once its writer moves the version, and only reads the head until then", async () => {
+      await runInDurableObject(fresh(), async (_instance, state) => {
+        const store = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+        await store.load();
+        const sql = state.storage.sql;
+        const exec = sql.exec.bind(sql);
+        let rowsRead = 0;
+        sql.exec = ((query: string, ...bindings: SqlStorageValue[]) => {
+          const cursor = exec(query, ...bindings);
+          const rows = cursor.toArray();
+          rowsRead += cursor.rowsRead;
+          return { toArray: () => rows } as never;
+        }) as typeof sql.exec;
+        try {
+          await store.load();
+        } finally {
+          sql.exec = exec;
+        }
+        expect(rowsRead).toBe(1);
+        const [term] = NORTHFIELD.terms;
+        exec("UPDATE academic_terms SET record_json = ? WHERE id = ?", JSON.stringify({ ...term, name: "Renamed" }), term!.id);
+        exec("UPDATE academic_directory SET version = version + 1 WHERE singleton = 1");
+        expect((await store.load()).snapshot.terms.find((t) => t.id === term!.id)!.name).toBe("Renamed");
+      });
+    });
+  });
 });
 
 describe("DurableObjectArtifactRecordStore", () => {
@@ -526,6 +602,33 @@ describe("DurableObjectQuizStorage", () => {
       expect(book!.attempts[0]!.answers[0]!.response).toStrictEqual({ type: "essay", text: long });
       expect(book!.releases.map((r) => r.id)).toStrictEqual(["qzr_1", "qzr_2"]);
       expect(await new DurableObjectQuizStorage(state.storage).load("off_nf-eng9-fall-p3" as never)).toBeUndefined();
+    });
+  });
+
+  it("keeps students' accommodations, replacing and clearing them, and loads a book stored before they existed (SCHO-383)", async () => {
+    const object = fresh();
+    const accommodation = (quizId: string, studentId: string, extendedTime: number | "unlimited") => ({ quizId, studentId, extendedTime, setBy: "prn_nf-morgan-lee", setAt: at });
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      await store.commit(BIO, write(1, { quizzes: [quiz("qz_a"), quiz("qz_b")] }), 0);
+      // A district Durable Object from before SCHO-383 has no accommodations table.
+      state.storage.sql.exec("DROP TABLE educateos_quiz_accommodations");
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      expect((await store.load(BIO))!.accommodations).toStrictEqual([]);
+      await store.commit(BIO, write(2, { accommodations: [accommodation("qz_a", "prn_nf-student-amara", 1.5), accommodation("qz_a", "prn_nf-student-elena", 2), accommodation("qz_b", "prn_nf-student-amara", "unlimited")] }), 1);
+      await store.commit(BIO, write(3, { accommodations: [accommodation("qz_a", "prn_nf-student-amara", 2)], clearedAccommodations: [{ quizId: "qz_a", studentId: "prn_nf-student-elena" }] }), 2);
+      // Deleting a quiz deletes its accommodations; an invalid one is refused whole.
+      await store.commit(BIO, write(4, { deletedQuizIds: ["qz_b"] }), 3);
+      await expect(store.commit(BIO, write(5, { accommodations: [accommodation("qz_a", "prn_nf-student-amara", 9)] }), 4)).rejects.toThrow();
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const book = await new DurableObjectQuizStorage(state.storage).load(BIO);
+      expect(book!.revision).toBe(4);
+      expect(book!.accommodations.map((a) => [a.quizId, a.studentId, a.extendedTime])).toStrictEqual([["qz_a", "prn_nf-student-amara", 2]]);
     });
   });
 

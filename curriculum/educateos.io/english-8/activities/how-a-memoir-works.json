@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:0b74b3cbe604d052da42c54f42e943f8b3479fb2e63c8ff329f2c85d3a872a30",
+      "id": "educateos.io/english-8-how-a-memoir-works",
+      "version": "1.0.0"
+    }
+  },
+  "id": "how-a-memoir-works",
+  "role": "lesson",
+  "title": "How a Memoir Works"
+}

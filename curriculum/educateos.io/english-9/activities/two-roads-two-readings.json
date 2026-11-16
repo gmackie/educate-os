@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c4fafd428d3d6289edd8e36dd1e5fb28c20697bf6ce4183fb8cd10708cf6eb48",
+      "id": "educateos.io/english-9-two-roads-two-readings",
+      "version": "1.0.0"
+    }
+  },
+  "id": "two-roads-two-readings",
+  "role": "assignment",
+  "title": "Two Roads, Two Readings"
+}

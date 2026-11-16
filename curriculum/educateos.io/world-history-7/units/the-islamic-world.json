@@ -1,0 +1,69 @@
+{
+  "id": "the-islamic-world",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u3-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "a-faith-and-an-empire"
+    },
+    {
+      "kind": "activity",
+      "ref": "house-of-wisdom"
+    },
+    {
+      "kind": "activity",
+      "ref": "ideas-that-traveled-on"
+    },
+    {
+      "kind": "activity",
+      "ref": "baghdads-golden-age"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.2.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.2.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "The rise and spread of Islam from the 600s, the Abbasid capital of Baghdad, and how scholars there preserved, translated and created knowledge that spread across Afro-Eurasia.",
+  "title": "The Islamic World"
+}

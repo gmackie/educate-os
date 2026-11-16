@@ -235,3 +235,11 @@ version 2 export dropped in a `<name>.gadget`'s place.
 
 Administrators can also publish and promote ordinary blueprints at runtime instead of rebuilding a
 deployment.
+
+## Teacher connector collection
+
+- `teacher-week-ahead`: seven local calendar days from one selected Google Calendar, with preparation notes and tasks.
+- `teacher-research-kit`: public Web Search source cards and teacher notes. Web Search is an account singleton, not a URL-addressed blueprint binding: after installation, enable it and ask the agent to attach `WEB_SEARCH` explicitly. No Context collection is read by v1.
+- `teacher-assignment-companion`: the selected Google Classroom course’s app-owned coursework, never roster, submissions or grades. The current connector does not return due dates or assignments created in Classroom’s UI.
+
+These share the `teacher-board` gadget library. Provider records are fetched on demand and never cached in gadget storage. Teacher-authored preparation is stored per gadget and excluded from blueprint publication. Fictional examples are opt-in. No external writes, model calls or schedules are made. See each installed README for connection setup and sharing limits. Production provider readback and independent-account installs remain launch acceptance requirements.

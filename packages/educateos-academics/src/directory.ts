@@ -14,6 +14,7 @@ import {
   type CourseId,
   type CourseOffering,
   type Decision,
+  type District,
   type DistrictDirectorySnapshot,
   type Enrollment,
   type EnrollmentId,
@@ -32,6 +33,7 @@ import { assertOperationRoutable, bindingsFromAuthorityMap, type DirectoryEntity
 import {
   CoursePatch,
   DepartedStatus,
+  DistrictRename,
   NewCourse,
   NewEnrollment,
   NewOffering,
@@ -40,6 +42,7 @@ import {
   NewTerm,
   OfferingPatch,
   PrincipalPatch,
+  ProductAnalyticsChange,
   SchoolPatch,
   TermPatch,
   type OfferingFilter,
@@ -233,6 +236,17 @@ export class AcademicDirectory {
     this.#bindings = bindingsFromAuthorityMap(options.authority);
     this.#authorizer = options.authorizer;
     this.#now = options.now ?? (() => new Date());
+  }
+
+  /**
+   * Refuses a write by `operation` to `kind` that the directory's binding does not route, naming
+   * the source of record, exactly as the directory's own writes do once they have authorized their
+   * caller. Call it only for someone already authorized for the change, such as an approver
+   * deciding a queued call: a caller who would get `forbidden` or `not-found` must not learn the
+   * owner.
+   */
+  assertRoutableWrite(operation: string, kind: DirectoryEntityKind): void {
+    assertOperationRoutable(this.#bindings, kind, { name: operation, writes: true });
   }
 
   // Schools
@@ -730,6 +744,44 @@ export class AcademicDirectory {
     this.#assertKeepsAnAdmin(snapshot, caller, principalId, "remove administration from");
     const kept = snapshot.roleAssignments.filter((a) => !(isAdminAssignment(a) && a.source === "local-grant"));
     await this.#commit({ ...snapshot, roleAssignments: kept }, version);
+  }
+
+  // The district
+
+  /**
+   * Renames the district (SCHO-344): the name every screen, the school manifest and the calendar
+   * feed show. A district administrator's `update` on the district, decided (and so audited) by the
+   * authorizer. The name is the district's own, whatever owns its roster, so no binding refuses it;
+   * renaming it to its current name changes nothing.
+   */
+  async renameDistrict(caller: Caller, rawInput: DistrictRename): Promise<District> {
+    const { name } = parseInput(DistrictRename, rawInput);
+    const { snapshot, version } = await this.#store.load();
+    await this.#require(caller, "update", new Targets(snapshot).district("district"));
+    if (snapshot.district.name === name) return snapshot.district;
+    const district: District = { ...snapshot.district, name };
+    await this.#commit({ ...snapshot, district }, version);
+    return district;
+  }
+
+  /**
+   * Turns product analytics on or off for the district (SCHO-350), stamping who decided it and
+   * when. A district administrator's `update` on the district, decided (and so audited) by the
+   * authorizer, as a rename is. The decision is the district's own, whatever owns its roster.
+   * Setting it to what it already is changes nothing, so the stamp keeps the decision that counts.
+   * Whether the deployment names an analytics service at all is the caller's to check first.
+   */
+  async setProductAnalytics(caller: Caller, rawInput: ProductAnalyticsChange): Promise<District> {
+    const { enabled } = parseInput(ProductAnalyticsChange, rawInput);
+    const { snapshot, version } = await this.#store.load();
+    await this.#require(caller, "update", new Targets(snapshot).district("district"));
+    if ((snapshot.district.productAnalytics?.enabled ?? false) === enabled) return snapshot.district;
+    const district: District = {
+      ...snapshot.district,
+      productAnalytics: { enabled, changedAt: this.#now().toISOString(), changedBy: caller.principal.principalId },
+    };
+    await this.#commit({ ...snapshot, district }, version);
+    return district;
   }
 
   // Authorization and commit

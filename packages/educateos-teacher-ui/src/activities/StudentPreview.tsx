@@ -14,6 +14,8 @@ const responseNote = (response: Step["response"]): string | undefined => {
       return `A table with columns: ${response.columns.map((c) => (c.unit === undefined ? c.name : `${c.name} (${c.unit})`)).join(", ")}.`;
     case "writing":
       return response.minWords === undefined ? undefined : `At least ${response.minWords} words.`;
+    case "artifact":
+      return response.artifactType === "image" ? "A drawing or a photo." : response.artifactType === "audio" ? "A voice recording." : undefined;
     default:
       return undefined;
   }
@@ -78,6 +80,7 @@ export const StudentPreview = ({ definition, releases, offeringId, rubric }: {
               <Text bold as="span">{`Step ${index + 1}: ${step.title}`}</Text>
               <Text as="span"><span className="whitespace-pre-line">{step.prompt}</span></Text>
               {responseNote(step.response) !== undefined && <Text variant="secondary" size="sm" as="span">{responseNote(step.response)}</Text>}
+              {step.sentenceFrames !== undefined && <Text variant="secondary" size="sm" as="span">{`Sentence starters: ${step.sentenceFrames.join(" · ")}`}</Text>}
             </li>
           ))}
         </ol>

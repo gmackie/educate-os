@@ -1,0 +1,61 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "8",
+    "overview": "Read the scene \"The Volcano\" and look at how stage directions and dialogue tell the story.",
+    "passage": "Read the scene \"The Volcano\" in this activity's reading. Read it twice: once for the story, then once paying attention to the stage directions in parentheses. Then answer the questions.",
+    "questions": [
+      {
+        "prompt": "What does the audience learn in Anika's first line that Dev does not know? How does the playwright tell the audience?"
+      },
+      {
+        "prompt": "Why does Anika move to stand on the corner of the towel? What does this stage direction show about her?"
+      },
+      {
+        "prompt": "Choose one line of Dev's that raises the stakes of the scene and explain how it does so."
+      },
+      {
+        "prompt": "Dev tells a story about hiding Dad's broken phone. How does this line provoke Anika's decision?"
+      },
+      {
+        "prompt": "Does Dev know, when he tells the phone story, that Anika broke the volcano? Use details to explain your answer."
+      }
+    ],
+    "resources": [
+      "volcano-scene"
+    ],
+    "sentenceFrames": [
+      "The stage direction ___ shows that ___.",
+      "This line raises the stakes because ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Reading a Script"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-reading-a-script",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Volcano: a scene in one act\n\nWritten for EducateOS.\n\nCHARACTERS: DEV, 13. ANIKA, his sister, 11. MOM, offstage voice.\n\nSETTING: A garage, 7:15 on a school morning. A workbench. Under a beach towel on the floor, out of DEV's sight, is the broken half of a papier-mache volcano.\n\n(Lights up. ANIKA stands alone holding a roll of tape. She looks at the towel, then at the audience.)\n\nANIKA: (To the audience.) I was only trying to see if it really erupts. It did not erupt. It fell.\n\n(DEV bursts in, backpack half on.)\n\nDEV: Have you seen my volcano? The science fair bus leaves at eight.\n\nANIKA: (Too quickly.) What volcano?\n\nDEV: The one I've been building for three weeks. The one on this bench. Yesterday.\n\nANIKA: Maybe Mom moved it.\n\nDEV: (Calling offstage.) Mom! Did you move my volcano?\n\nMOM: (Offstage.) Why would I touch your volcano?\n\n(DEV starts searching. He lifts a box, a bucket. He steps right next to the towel. ANIKA moves to stand on the corner of it.)\n\nDEV: If I don't have it, I have nothing. Ms. Reyes said the project is a third of our grade.\n\nANIKA: You could explain volcanoes. With your hands. Like, very dramatically.\n\nDEV: (Not laughing.) Anika.\n\n(Pause. ANIKA looks at the audience, then at DEV.)\n\nDEV: (Quietly.) You know, last year when I broke Dad's phone, I hid it in the laundry for two days. The hiding was worse than the breaking. I couldn't eat. I kept thinking someone was about to find it.\n\n(ANIKA steps off the towel. She lifts it. The broken volcano sits on the floor. DEV stares at it.)\n\nANIKA: I wanted to see it erupt. I'm sorry.\n\n(Long pause.)\n\nDEV: (Kneeling.) The base is fine. It's just the top. (He picks up the tape.) Hold this side. If we're fast, we can make the bus. And you are explaining to Ms. Reyes why it looks like this.\n\nANIKA: Dramatically?\n\nDEV: Very dramatically.\n\n(They work together as the lights fade.)",
+      "id": "volcano-scene",
+      "title": "The Volcano: a scene in one act"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

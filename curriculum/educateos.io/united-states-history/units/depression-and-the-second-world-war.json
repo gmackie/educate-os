@@ -1,0 +1,81 @@
+{
+  "id": "depression-and-the-second-world-war",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "depression-in-numbers"
+    },
+    {
+      "kind": "activity",
+      "ref": "fear-itself-and-four-freedoms"
+    },
+    {
+      "kind": "activity",
+      "ref": "a-grave-injustice"
+    },
+    {
+      "kind": "activity",
+      "ref": "new-deal-assessment"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.11.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.6.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.5.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.11.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.12.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.1.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "summary": "The Great Depression in numbers, how the New Deal redefined the federal government's role in the economy, what Americans fought for in the Second World War, and the wartime incarceration of Japanese Americans.",
+  "title": "Unit 6: Depression and the Second World War"
+}

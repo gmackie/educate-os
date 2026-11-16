@@ -9,3 +9,9 @@ export const useClassTitle = (offeringId: string, fallback: string): string => {
   const [offerings] = useQuery("offerings", (api) => api.call("student.listOfferings"));
   return offerings.status === "ready" ? classTitleIn(offerings.data, offeringId) : fallback;
 };
+
+/** The grade band of one of the student's classes, such as "K-2", once the classes have loaded. */
+export const useClassGradeBand = (offeringId: string): string | undefined => {
+  const [offerings] = useQuery("offerings", (api) => api.call("student.listOfferings"));
+  return offerings.status === "ready" ? offerings.data.find((entry) => entry.offering.id === offeringId)?.course.gradeBand : undefined;
+};

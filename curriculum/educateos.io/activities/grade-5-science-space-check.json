@@ -1,0 +1,141 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "5",
+    "minWords": 150,
+    "minimumCitations": 0,
+    "overview": "Write an explanation of the sun, shadows and the stars for a younger student.",
+    "prompt": "A second grader asks you three questions: \"Why does the sun move across the sky? Why does my shadow change during the day? Why can't I see the same stars in summer and winter?\" Write an explanation that answers all three. For each answer, explain what Earth is doing that causes it. Then add one more fact: why the sun looks so much brighter than the other stars. Use words a second grader can understand, but use the science words spin, orbit and star correctly.",
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Earth and Space Check: Explain It to a Second Grader"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-space-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate science ideas"
+      },
+      {
+        "id": "explanation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains causes, not just what happens"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear order with linking words"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Earth and space explanation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

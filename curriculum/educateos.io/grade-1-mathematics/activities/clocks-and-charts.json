@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3de5e5b013ed204f65f9d9f107ad87a2741ad59cf7085352430bf54fb21172a7",
+      "id": "educateos.io/grade-1-mathematics-clocks-and-charts",
+      "version": "1.0.0"
+    }
+  },
+  "id": "clocks-and-charts",
+  "role": "assignment",
+  "title": "Clocks and Charts"
+}

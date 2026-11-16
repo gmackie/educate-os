@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:9985fced50f11bd7e5feb1834eb7727c50b4c497b118eae7ede8dd7c7a06a4d4",
+      "id": "educateos.io/grade-1-reading-foundations-fix-the-word",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fix-the-word",
+  "role": "assignment",
+  "title": "Fix the Word"
+}

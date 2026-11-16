@@ -23,47 +23,54 @@ const useIsPhone = (): boolean =>
 /** Who the Learning Home is showing: a student, or a guardian's family view (ADR-0012). */
 export type Audience = "student" | "family";
 
-const MainNav = ({ label, audience }: { label: string; audience: Audience }) => (
-  <nav aria-label={label}>
-    <ul className="flex items-center gap-6">
-      {audience === "student" ? (
-        <>
+/**
+ * The main navigation, in the header on a wide screen or along the bottom on a phone, where its
+ * entries share the width with each icon over its label, so all four fit at 320px (WCAG 1.4.10).
+ */
+const MainNav = ({ label, audience, placement }: { label: string; audience: Audience; placement: "header" | "bottom" }) => {
+  const entry = placement === "bottom" ? "flex flex-col items-center gap-1 py-2 text-sm" : "flex items-center gap-2 py-2";
+  return (
+    <nav aria-label={label}>
+      <ul className={placement === "bottom" ? "flex items-center justify-between gap-2" : "flex items-center gap-4 whitespace-nowrap lg:gap-6"}>
+        {audience === "student" ? (
+          <>
+            <li>
+              <Link href="/" variant="plain" className={entry}>
+                <HouseIcon aria-hidden size={20} />
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link href="/my-space" variant="plain" className={entry}>
+                <LockSimpleIcon aria-hidden size={20} />
+                My space
+              </Link>
+            </li>
+            <li>
+              <Link href="/grades" variant="plain" className={entry}>
+                <ExamIcon aria-hidden size={20} />
+                Grades
+              </Link>
+            </li>
+            <li>
+              <Link href="/calendar" variant="plain" className={entry}>
+                <CalendarBlankIcon aria-hidden size={20} />
+                Calendar
+              </Link>
+            </li>
+          </>
+        ) : (
           <li>
-            <Link href="/" variant="plain" className="flex items-center gap-2 py-2">
-              <HouseIcon aria-hidden size={20} />
-              Home
+            <Link href="/family" variant="plain" className={entry}>
+              <UsersThreeIcon aria-hidden size={20} />
+              My children
             </Link>
           </li>
-          <li>
-            <Link href="/my-space" variant="plain" className="flex items-center gap-2 py-2">
-              <LockSimpleIcon aria-hidden size={20} />
-              My space
-            </Link>
-          </li>
-          <li>
-            <Link href="/grades" variant="plain" className="flex items-center gap-2 py-2">
-              <ExamIcon aria-hidden size={20} />
-              Grades
-            </Link>
-          </li>
-          <li>
-            <Link href="/calendar" variant="plain" className="flex items-center gap-2 py-2">
-              <CalendarBlankIcon aria-hidden size={20} />
-              Calendar
-            </Link>
-          </li>
-        </>
-      ) : (
-        <li>
-          <Link href="/family" variant="plain" className="flex items-center gap-2 py-2">
-            <UsersThreeIcon aria-hidden size={20} />
-            My children
-          </Link>
-        </li>
-      )}
-    </ul>
-  </nav>
-);
+        )}
+      </ul>
+    </nav>
+  );
+};
 
 /**
  * The frame every screen sits in: a skip link, the header, the main landmark, and the navigation,
@@ -81,14 +88,16 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
         Skip to content
       </a>
       <header className="border-b border-kumo-hairline">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
+        {/* Wider than the page below it, so the navigation and controls keep to one line on a laptop. */}
+        {/* Wraps the controls under the name when a phone at 320px has no room for both (WCAG 1.4.10). */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Text variant="heading" as="p">
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 whitespace-nowrap">
               <BookOpenIcon aria-hidden size={24} />
               Learning Home
             </span>
           </Text>
-          {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} />}
+          {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} placement="header" />}
           <div className="flex items-center gap-3">
             {audience === "student" ? <NotificationsLink /> : null}
             {audience === undefined ? null : (
@@ -97,7 +106,8 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
               </Link>
             )}
             <ThemeModeButton onAnnounce={announce} />
-            {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
+            {/* A phone's or tablet's header has no room for the name beside the controls; the page greets them by name. */}
+            {studentName === undefined || isPhone ? null : <span className="whitespace-nowrap max-lg:hidden"><Text variant="secondary">{studentName}</Text></span>}
             {audience === undefined || embedded ? null : <SignOut />}
           </div>
         </div>
@@ -106,8 +116,8 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
         {children}
       </main>
       {isPhone && audience !== undefined ? (
-        <div className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-elevated px-6 pb-[env(safe-area-inset-bottom)]">
-          <MainNav label="Main" audience={audience} />
+        <div className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-elevated px-4 pb-[env(safe-area-inset-bottom)]">
+          <MainNav label="Main" audience={audience} placement="bottom" />
         </div>
       ) : null}
     </div>

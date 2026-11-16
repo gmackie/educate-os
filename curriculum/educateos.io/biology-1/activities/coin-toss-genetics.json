@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b09e981f65b2de43ada156a97b10842e0e83616fe5a7dc0c7009c829d7ee23f1",
+      "id": "educateos.io/biology-1-coin-toss-genetics",
+      "version": "1.0.0"
+    }
+  },
+  "id": "coin-toss-genetics",
+  "role": "lesson",
+  "title": "Coin-Toss Genetics"
+}

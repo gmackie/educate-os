@@ -1,0 +1,168 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Read a new article on your own and show what you know about main ideas, details, new words and text structure.",
+    "passage": "Why Leaves Change Color\n\nIn summer, the leaves of most trees are green. The green comes from chlorophyll, a pigment, or coloring, that leaves use to make food from sunlight. A leaf is full of chlorophyll all summer long, and the green hides every other color in the leaf.\nIn autumn, the days get shorter and the nights get cooler. Trees begin to get ready for winter. They stop making new chlorophyll, and the chlorophyll that is left breaks down. As the green fades, yellow and orange pigments that were in the leaf all along finally show through.\nSome trees, such as many maples, also make a new pigment in the fall. It is red or purple. Sunny days and cool nights help trees make more of it, so a fall with bright days and chilly nights often brings the brightest reds.\nFinally, a thin layer of cells grows where each leaf joins its twig. It cuts the leaf off from the tree, and the leaf drops. The tree rests through the winter and grows new green leaves in spring.",
+    "questions": [
+      {
+        "prompt": "What is the main idea of the article? Write it in one sentence."
+      },
+      {
+        "prompt": "What is chlorophyll? Which words in the text help you know?"
+      },
+      {
+        "prompt": "Explain why yellow and orange appear in autumn. Use details from the text."
+      },
+      {
+        "prompt": "Why might one fall have brighter red leaves than another?"
+      },
+      {
+        "prompt": "The article explains causes and their effects. Write one cause and the effect it has."
+      },
+      {
+        "prompt": "Write a summary of the article in three or four sentences."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Reading Check: Why Leaves Change Color"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-leaves-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "main-idea",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Main idea and summary"
+      },
+      {
+        "id": "details",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Key details explain what happens and why"
+      },
+      {
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses context to explain new words"
+      },
+      {
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Describes how the text is built"
+      }
+    ],
+    "title": "Informational reading"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -34,6 +34,11 @@ describe("the student journey", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Should the school day start later?" })).toBeTruthy();
     const sections = screen.getAllByRole("region").map((region) => region.getAttribute("aria-labelledby"));
     expect(sections.slice(0, 3)).toStrictEqual(["instructions", "resources", "my-work"]);
+    // Each resource by its release's title; one the district could not name, by position (SCHO-328).
+    const resources = screen.getAllByRole("region").find((region) => region.getAttribute("aria-labelledby") === "resources")!;
+    expect(within(resources).getByText("Why Teens Need More Sleep")).toBeTruthy();
+    expect(within(resources).getByText("Resource 2")).toBeTruthy();
+    expect(within(resources).queryByText("Resource 1")).toBeNull();
     expect(screen.getByText(COURSE)).toBeTruthy();
 
     const editor = await screen.findByRole("textbox", { name: "Your work for Draft your argument" });

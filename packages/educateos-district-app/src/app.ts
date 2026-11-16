@@ -18,8 +18,8 @@ import {
   type VerifiedPrincipal,
 } from "@educateos/contracts";
 import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
-import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName } from "@educateos/academics";
-import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
+import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName, type AcademicStore } from "@educateos/academics";
+import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule, type RelationshipSource, type SubjectSource } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
 import { AssessmentService, GradebookService, AssignmentId } from "@educateos/assessment";
@@ -35,17 +35,19 @@ import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type A
 import { AssessmentCi, AssessmentRuns, assertRubricAuthority, builtinRegistry, signRubricRelease, verifyRubricRelease, type EvaluatorRegistry } from "@educateos/assessment-ci";
 import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
-import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
+import { CORRELATION_HEADER, errorResponse, fileResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { type AssignmentViewBody, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
+import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type FileDownload, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface, type WithCookie } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
-import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
+import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
 import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
+import { familyAdults, HomeLearningService, type ChildSession, type HomeLearningPurge } from "@educateos/home-learning";
+import { childSessionToken, deleteCommunityPrincipal, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type Announcement, type MailSender } from "./communication/index.ts";
@@ -56,13 +58,27 @@ import { QuizService } from "@educateos/quizzes";
 import { quizGrading } from "./quizzes.ts";
 // Devices (SCHO-261)
 import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord } from "./devices.ts";
+import { productAnalyticsForAdmin, productAnalyticsForClient, type ProductAnalyticsDeployment } from "./product-analytics.ts";
 import type { DeviceBody } from "./routes.ts";
 // Pairing (SCHO-261)
 import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
 // Marketplace (SCHO-209)
 import { installListing, packBody, packTemplates } from "./marketplace.ts";
+// Course library (SCHO-331)
+import type { PublisherTrust } from "@educateos/ocs";
+import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
+import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
+// District export (SCHO-364)
+import { buildDistrictExport } from "./district-export.ts";
+// Student archive (SCHO-371)
+import { DistrictStudentRecordSource, StudentArchiveExporter } from "@educateos/portability";
 // Operations (SCHO-263)
+// IT review (SCHO-376)
+import { decisionEntry, MAX_SCREENING_ENTRIES, OUTCOME_EFFECTS, screeningEntries, signInCoverage, type DecisionPageBody, type SignInDeployment } from "./admin-review.ts";
+import { WRITE_ACTIONS, type PolicyAuditPage } from "@educateos/policy";
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
+// From Google Classroom (SCHO-403)
+import { studentClassroomGrades, teacherClassroomGrades, type ClassroomGradeSource, type ClassroomGradesInput } from "./classroom-grades.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -138,6 +154,13 @@ export interface DistrictAppOptions {
    * deployment's pin, never anything a request carries. Without it no marketplace listing installs.
    */
   marketplaceTrust?: ReleaseTrust;
+  /**
+   * The publishers whose OCS courses the district's course library accepts (SCHO-331): the
+   * deployment's committed pin of publisher domains and their public keys, and the district's own
+   * domains, which publish unsigned. Never anything a request carries. Without it no course bundle
+   * imports.
+   */
+  courseLibraryTrust?: PublisherTrust;
   /** Resolves resource and activity alignments. Defaults to the district's approved catalog releases. */
   alignments?: AlignmentSource;
   /** The Content Studio's optional AI reviewer. */
@@ -151,12 +174,29 @@ export interface DistrictAppOptions {
   /** The policy floor before the first configuration revision is applied. */
   defaultPolicy?: PolicySettings;
   /**
+   * Told the size of each district export an administrator takes (SCHO-364), counts only, for the
+   * Worker to log: once the streamed ZIP has been sent whole (SCHO-367). Shared code imports no
+   * logger, so the Node harness can run it.
+   */
+  onDistrictExported?: (exported: { counts: DistrictExportManifest["counts"]; bytes: number }) => void;
+  /**
+   * Told the size of each student archive a student takes (SCHO-371): how many items it holds,
+   * how many were withheld, and its bytes, for the Worker to log. Never who, or what.
+   */
+  onStudentArchiveExported?: (exported: { items: number; withheld: number; bytes: number }) => void;
+  /**
    * Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), once per
    * revision, for the Worker to log. Shared code imports no logger, so the Node harness can run it.
    */
   onUnreadableConfigRevision?: (revisionId: string) => void;
   /** The policy rule table. Defaults to `DISTRICT_APP_RULES`. */
   rules?: readonly PolicyRule[];
+  /**
+   * Policy facts the district's other services keep: subjects that are not directory principals
+   * and the relationships their records establish, such as a registered LTI tool and its
+   * deployments (SCHO-179). The engine reads them beside the directory's.
+   */
+  policySources?: { subjects?: readonly SubjectSource[]; relationships?: readonly RelationshipSource[] };
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
   /**
@@ -166,6 +206,11 @@ export interface DistrictAppOptions {
    * hands the link over.
    */
   guardianInvitationPage?: string;
+  /**
+   * Home learning for families (ADR-0016), as a community installation offers it, with how it
+   * admits newcomers. Without it the family and learner routes answer `not-found`.
+   */
+  homeLearning?: HomeLearningOptions;
 
   // Communication (SCHO-189)
   /** Where notification and digest email goes, through a provider in the district's own account. Without it nothing is emailed. */
@@ -191,6 +236,30 @@ export interface DistrictAppOptions {
    * one shorter than 32 characters) device sign-in is off, and `/api/m/*` answers 503.
    */
   deviceTokenSecret?: string;
+
+  // Product analytics (SCHO-350)
+  /**
+   * The analytics service this deployment names (`PRODUCT_ANALYTICS`). Without it, product
+   * analytics cannot be turned on and every signed-in person's pages are told it is off.
+   */
+  productAnalytics?: ProductAnalyticsDeployment;
+
+  // IT review (SCHO-376)
+  /**
+   * How this deployment verifies sign-ins, for the admin console's read-only sign-in settings.
+   * Without it the console says the deployment did not say.
+   */
+  signIn?: SignInDeployment;
+
+  // From Google Classroom (SCHO-403)
+  /**
+   * Where class grades are read live from Google Classroom, when the deployment has a Classroom
+   * connection. Without it, or when the head configuration's roster is not Classroom, the
+   * `classroomGrades` routes answer `not-connected` and the panels show nothing.
+   */
+  classroomGrades?: ClassroomGradeSource;
+  /** Told why a Classroom grade read was unavailable, for the Worker to log. */
+  onClassroomGradesUnavailable?: (failure: { surface: "student" | "teacher"; error: unknown }) => void;
 
   // Operations (SCHO-263)
   /** What the district says about the release it runs, on `/api/ops/health` and `/api/ops/releases`. */
@@ -274,6 +343,12 @@ export interface DistrictApp {
   /** The roster sync job (SCHO-203). Not on the `/api` surface. */
   readonly rostering: RosterJobs;
   /**
+   * Home learning's scheduled job (ADR-0016): deletes practice, and the audit trail's decisions
+   * about families, older than the retention period, with spent child-session tokens and expired
+   * invitations.
+   */
+  readonly homeLearning: { purgeExpired(): Promise<{ ran: false } | ({ ran: true; auditEvents: number } & HomeLearningPurge)> };
+  /**
    * The device token service (SCHO-261): device registration for the pairing relay and the browser
    * sign-in path, and revocation for administrators and operators. Not on the `/api` surface itself.
    */
@@ -289,7 +364,7 @@ export interface DistrictApp {
 export const DEFAULT_AUTHORITY = ONEROSTER_AUTHORITY;
 
 /** The routes a verified sign-in reaches before it is anyone's principal (ADR-0012). */
-type OnboardingRouteName = "onboarding.previewGuardianInvitation" | "onboarding.redeemGuardianInvitation";
+type OnboardingRouteName = "onboarding.previewGuardianInvitation" | "onboarding.redeemGuardianInvitation" | "onboarding.community" | "onboarding.joinCommunity";
 
 /** Which principal kinds a surface answers. */
 const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPrincipal["kind"][]> = {
@@ -298,6 +373,8 @@ const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPri
   teacher: ["staff"],
   admin: ["staff"],
   guardian: ["guardian"],
+  family: ["guardian"],
+  learner: ["guardian"],
 };
 
 /** The principal a request runs as: who it is, without the sign-in that proved it. */
@@ -331,6 +408,20 @@ const seedReleasesOnly: VerifyRelease = async (release) => {
   }
 };
 
+// IT review (SCHO-376)
+/** How many decisions one page of the console's audit screens lists. */
+const AUDIT_PAGE = 50;
+/** What the admin audit log counts as a change: every write, and exports. */
+const ADMIN_CHANGES = [...WRITE_ACTIONS, "export"] as const;
+
+/** A page of the decision trail as the console lists it. */
+function decisionPage(page: PolicyAuditPage, snapshot: DistrictDirectorySnapshot): DecisionPageBody {
+  return {
+    entries: page.entries.map((stored) => decisionEntry(stored, snapshot)),
+    ...(page.nextBefore === undefined ? {} : { nextBefore: String(page.nextBefore) }),
+  };
+}
+
 /**
  * Composes one district's EducateOS domain services into one application behind a typed `/api`
  * surface (see `ROUTES`). Every request:
@@ -355,18 +446,43 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const retention = RetentionPolicy.parse(options.retention ?? { courseWorkspaceRetentionDays: 365 });
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
-  const information = directoryPolicyInformation(stores.directory, policySource, {
-    relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],
+  const informationOver = (directory: AcademicStore) => directoryPolicyInformation(directory, policySource, {
+    relationships: [
+      guardianRelationships(stores.guardianRelationships, directory, now),
+      familyAdults(stores.homeLearning),
+      ...options.policySources?.relationships ?? [],
+    ],
+    subjects: options.policySources?.subjects ?? [],
     delegations: stores.delegations,
     now,
   });
+  const information = informationOver(stores.directory);
   const rules = options.rules ?? DISTRICT_APP_RULES;
   const engine = new PolicyEngine({ information, audit: stores.audit, rules, now });
   // The same engine for explaining decisions (SCHO-175), except that it records nothing: the audit
   // trail holds only decisions that took effect.
   const simulator = new PolicyEngine({ information, audit: { record: async () => {} }, rules, now });
   const catalog = new CatalogMirror({ storage: stores.catalog, verifyRelease: options.verifyCatalogRelease ?? seedReleasesOnly });
-  const alignments = options.alignments ?? catalogAlignmentSource(catalog);
+  // Each request reads a framework's approved release at most once, rather than once for every
+  // competency it resolves: a course install resolves hundreds, and reading a release is the
+  // whole framework (cloned, or parsed and hashed from storage).
+  const requestAlignments = (): AlignmentSource => {
+    if (options.alignments !== undefined) return options.alignments;
+    const approved = new Map<string, ReturnType<CatalogMirror["approvedRelease"]>>();
+    return catalogAlignmentSource({
+      approvedRelease: (key) => {
+        let release = approved.get(key);
+        if (release === undefined) {
+          release = catalog.approvedRelease(key);
+          approved.set(key, release);
+        }
+        return release;
+      },
+    });
+  };
+  // Course library (SCHO-331): reading the library needs no trust (its parts were checked as they
+  // entered); this one admits nothing, so a library without a pin is still readable.
+  const courseTrust = (): PublisherTrust => options.courseLibraryTrust ?? { localDomains: [], publishers: [] };
   const fundingPools = async () => effectivePools(options.fundingPools ?? [], (await stores.fundingAllocations.list()).at(-1));
   const fundingBody = async () => {
     const [report, revision] = await Promise.all([
@@ -465,6 +581,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     return { provider, settings, source: built.source };
   }
 
+  /** What a Classroom grade read needs (SCHO-403): the source, whether the roster is Classroom, and its source map. */
+  async function classroomGradesInput(): Promise<ClassroomGradesInput> {
+    const base = { source: options.classroomGrades, onUnavailable: options.onClassroomGradesUnavailable };
+    if (options.classroomGrades === undefined) return { ...base, classroomRostered: false, sources: oneroster.EMPTY_SOURCE_MAP };
+    const head = (await stores.config.list()).at(-1);
+    const desired = head === undefined ? undefined : DesiredState.safeParse(head.desired);
+    const classroomRostered = desired?.success === true && desired.data.rostering.provider === "google-classroom";
+    return { ...base, classroomRostered, sources: classroomRostered ? await stores.rosterSources.load() : oneroster.EMPTY_SOURCE_MAP };
+  }
+
   /**
    * One roster sync at a time: the sync record has no version check, so a scheduled run and an
    * administrator's run that overlapped (each provider call lets other requests in) could save
@@ -490,6 +616,10 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     readonly decider: PolicyDecider;
     readonly authorizer: Authorizer;
     readonly origin: string;
+    /** The district's approved standards, as this request resolves alignments against them. */
+    readonly alignments: AlignmentSource = requestAlignments();
+    /** The browser's open child session (ADR-0016), resolved before any handler runs. */
+    childSession: ChildSession | undefined = undefined;
 
     constructor(correlationId: string, principal: RequestPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
       this.correlationId = correlationId;
@@ -503,6 +633,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     get subject() {
       return this.caller.principal;
+    }
+
+    homeLearning(): HomeLearningService {
+      if (options.homeLearning === undefined) throw new EducateOsError("not-found", "Home learning isn't offered here.");
+      const contact = options.homeLearning.contact;
+      return new HomeLearningService({
+        store: stores.homeLearning, authorizer: this.authorizer, districtId, now, ...homeLearningRetention(),
+        operator: { name: this.snapshot.district.name, ...(contact === undefined ? {} : { contact }) },
+      });
+    }
+
+    async deleteOwnPrincipal(): Promise<void> {
+      await deleteCommunityPrincipal(stores.directory, this.subject.principalId);
     }
 
     academics(): AcademicDirectory {
@@ -540,16 +683,17 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return new AssessmentCi({ assessment: this.assessment(), runs: assessmentRuns });
     }
 
-    studio(): ContentStudio {
+    /** The Content Studio, importing URLs with `fetch` (the district's import fetch unless given another, as a course install's readings are). */
+    studio(fetch: ImportFetch = options.importFetch): ContentStudio {
       return new ContentStudio({
         districtId,
         storage: stores.contentStudio,
         authorizer: this.authorizer,
         channel: "http",
-        fetch: options.importFetch,
+        fetch,
         // Uploads are not offered by this application yet, so no malware scanner is configured.
         scanner: undefined,
-        alignments,
+        alignments: this.alignments,
         ...(options.contentReviewer === undefined ? {} : { reviewer: options.contentReviewer }),
         now: () => now().toISOString(),
       });
@@ -562,7 +706,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         authorizer: this.authorizer,
         channel: "http",
         releases: contentStudioReleases(stores.contentStudio),
-        alignments,
+        alignments: this.alignments,
         aiHelpPolicy: options.aiHelp ?? { layersFor: async () => ({ district: "full" }) },
         publisher: stores.codex,
         storage: stores.curriculum,
@@ -627,6 +771,31 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     /** Requires the engine to allow `action` on a district-level resource, answering `forbidden` otherwise. */
     async requireDistrict(action: Action, kind: ResourceRef["kind"]): Promise<void> {
       await this.require(action, { kind, scope: { level: "district", districtId }, classification: "district-internal" }, "Only a district administrator can do this.");
+    }
+
+    /** The services a course install in `offeringId` acts through, as this request's caller (SCHO-331). */
+    async courseInstall(offeringId: OfferingId, plan: Awaited<ReturnType<typeof planLibraryInstall>>): Promise<CourseInstallServices> {
+      const offering = this.offeringScope(offeringId);
+      // Installing a course authors the class's activities and content: refused at once to anyone who could not.
+      await this.require("create", { kind: "activity", scope: offering, classification: "teacher-only" }, "Only the class's teachers can install a course in it.");
+      return {
+        offering,
+        caller: this.caller,
+        snapshot: this.snapshot,
+        curriculum: this.curriculum(),
+        content: this.courseContent(),
+        studio: this.studio(readingsFetch(plan.imports)),
+        assessment: this.assessment(),
+        signRubric: async (draft) => {
+          await this.require("create", { kind: "rubric", scope: offering, classification: "teacher-only" }, "Only the class's teachers can sign its rubrics.");
+          const release = await signRubricRelease(draft, this.caller, evaluators, now());
+          await stores.rubrics.put(release);
+          return { rubricId: release.rubricId, version: release.version };
+        },
+        isApproved: async (frameworkKey, competencyUri) => (await this.alignments.resolve(frameworkKey, competencyUri)) !== undefined,
+        store: stores.courseLibrary,
+        now: () => now().toISOString(),
+      };
     }
 
     courseContent(): CourseContentService {
@@ -734,28 +903,28 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   });
 
   // Communication (SCHO-189): the service over a decider, and its assessment reads through the same one.
-  const communicationFor = (decider: PolicyDecider, assessment: AssessmentService = systemAssessment(decider)) =>
+  const communicationFor = (decider: PolicyDecider, assessment: AssessmentService = systemAssessment(decider), directory: AcademicStore = stores.directory) =>
     new CommunicationService({
       districtId,
       stores: stores.communication,
-      directory: stores.directory,
+      directory,
       decider,
       assessment,
       ...(options.mail === undefined ? {} : { mail: options.mail }),
       ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
       now,
     });
-  function systemAssessment(decider: PolicyDecider): AssessmentService {
+  function systemAssessment(decider: PolicyDecider, directory: AcademicStore = stores.directory): AssessmentService {
     const artifacts = new LearningArtifacts({
       records: stores.artifactRecords,
       content: stores.artifactContent,
       workspaces: stores.workspaces,
-      directory: stores.directory,
+      directory,
       policy: decider,
       approvedExternalHosts: options.approvedExternalHosts ?? [],
       now,
     });
-    return new AssessmentService({ records: stores.assessment, artifacts, content: stores.artifactContent, directory: stores.directory, policy: decider, now });
+    return new AssessmentService({ records: stores.assessment, artifacts, content: stores.artifactContent, directory, policy: decider, now });
   }
   // The weekly family digest goes out over the district's own guardian relationships (ADR-0012,
   // SCHO-188): the store the guardian routes and the policy engine read.
@@ -770,6 +939,17 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       now,
     });
   const jobDecider: PolicyDecider = { decide: (request, decideOptions) => engine.decide(request, decideOptions) };
+  /**
+   * The notification sweep's screen (SCHO-370): the same reads and decisions over one read of the
+   * directory, recording none, so an hour in which nothing changed writes nothing and reads the
+   * directory once. Only students it finds owed a notification are synced through `jobDecider`,
+   * whose decisions are recorded as any other system read is.
+   */
+  async function notificationScreen(): Promise<CommunicationService> {
+    const directory = await directoryAsRead(stores.directory);
+    const quiet = new PolicyEngine({ information: informationOver(directory), audit: { record: async () => {} }, rules, now });
+    return communicationFor(quiet, systemAssessment(quiet, directory), directory);
+  }
   /** The calendar feed: the one route a token alone authorizes, so it is served before sign-in. */
   async function serveCalendarFeed(request: Request, correlationId: string): Promise<Response | undefined> {
     const match = /^\/api\/calendar\/([^/]+)\.ics$/.exec(new URL(request.url).pathname);
@@ -784,7 +964,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     });
   }
 
-  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  /** A guardian's home-learning status for `me.get` (ADR-0016): whether they have a family, and who is practicing here. */
+  async function homeLearningStatus(ctx: RequestContext): Promise<NonNullable<RouteResponse<"me.get">["homeLearning"]>> {
+    const hasFamily = await stores.homeLearning.familyOfAdult(ctx.subject.principalId) !== undefined;
+    if (ctx.childSession === undefined) return { hasFamily, childSession: null };
+    const { learner } = await ctx.homeLearning().practiceHome(ctx.subject, ctx.childSession);
+    return { hasFamily, childSession: { learnerId: learner.id, displayName: learner.displayName, avatar: learner.avatar } };
+  }
+
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | HomeLearningRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   /**
    * Runs a route bound to an academic operation (SCHO-173): its path parameters and body are the
@@ -800,6 +988,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   }
 
   const handlers: Handlers = {
+    // Anyone signed in learns whether their pages may send usage events (SCHO-350); nothing about who decided.
+    "me.productAnalytics": async (ctx) => productAnalyticsForClient(ctx.snapshot.district, options.productAnalytics),
     "me.get": async (ctx) => {
       const me = ctx.snapshot.principals.find((p) => p.id === ctx.principal.principalId)!;
       const facts = subjectFactsFrom(ctx.snapshot, me.id);
@@ -817,6 +1007,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         enrollments: ctx.snapshot.enrollments
           .filter((e) => e.principalId === me.id && e.status === "active")
           .map(({ offeringId, role }) => ({ offeringId, role })),
+        ...(options.homeLearning !== undefined && me.kind === "guardian" ? { homeLearning: await homeLearningStatus(ctx) } : {}),
       };
     },
 
@@ -877,6 +1068,23 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "student.withdrawSubmission": (ctx, { params }) => ctx.assessment().withdraw(ctx.caller, params.submissionId),
     "student.officialGrades": (ctx, { params }) =>
       ctx.assessment().officialGrades(ctx.caller, params.assignmentId, ctx.principal.principalId),
+    // Student archive (SCHO-371): the exporter asks the engine about every item as the caller, so
+    // what the archive holds is exactly what policy lets them export, each decision audited.
+    "student.exportArchive": async (ctx) => {
+      const exporter = new StudentArchiveExporter({
+        artifacts: ctx.artifacts(),
+        workspaces: ctx.workspaces(),
+        directory: stores.directory,
+        policy: ctx.decider,
+        records: new DistrictStudentRecordSource({ assessment: stores.assessment, studio: stores.contentStudio, directory: stores.directory }),
+        mappings: stores.exportMappings,
+        now,
+      });
+      const { bytes, manifest, withheld } = await exporter.exportStudentArchive(ctx.caller);
+      options.onStudentArchiveExported?.({ items: manifest.items.length, withheld: withheld.length, bytes: bytes.byteLength });
+      const fileName = `educateos-archive-${manifest.exportedAt.slice(0, 10)}.educateos`;
+      return { fileName, mediaType: STUDENT_ARCHIVE_MEDIA_TYPE, base64: encodeBase64(bytes), manifest, withheld };
+    },
 
     // Teacher
     "teacher.listOfferings": async (ctx) => {
@@ -917,6 +1125,33 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const scope = ctx.offeringScope(params.offeringId);
       await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" }, "Only the class's teachers can create its activities.");
       return packTemplates(await stores.marketplacePacks.list());
+    },
+    // Course library (SCHO-331)
+    "teacher.libraryCourses": async (ctx, { params }) => {
+      // Offered to whoever may author the class's activities, which is what a course install does.
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" }, "Only the class's teachers can install a course in it.");
+      const offering = ctx.snapshot.offerings.find((o) => o.id === params.offeringId)!;
+      const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
+      const installs = await stores.courseLibrary.loadInstalls(params.offeringId);
+      return latestCourses(await stores.courseLibrary.listCourses()).map((entry) => {
+        const installed = installs?.courses.findLast((c) => c.packageId === entry.packageId);
+        return {
+          ...entry,
+          matchesClass: course !== undefined && entry.subject === course.subject && entry.gradeBand === course.gradeBand,
+          ...(installed === undefined ? {} : { installed: { version: installed.version, done: installed.completedAt !== undefined } }),
+        };
+      });
+    },
+    "teacher.previewCourseInstall": async (ctx, { params, body }) => {
+      const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
+      return previewCourseInstall(await ctx.courseInstall(params.offeringId, plan), plan);
+    },
+    "teacher.installCourse": async (ctx, { params, body }) => {
+      const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
+      const indexed = (await stores.courseLibrary.listCourses()).find((c) => c.packageId === body.packageId && c.version === body.version);
+      if (indexed === undefined) throw new EducateOsError("not-found", "That course is not in the district's course library.");
+      return installCourse(await ctx.courseInstall(params.offeringId, plan), plan, { maxUnits: body.maxUnits, digest: indexed.digest });
     },
     "teacher.publishActivity": (ctx, { params }) => ctx.curriculum().publish(ctx.subject, params.definitionId),
     "teacher.installActivity": (ctx, { params, body }) =>
@@ -1040,6 +1275,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const head = revisions.at(-1);
       return {
         districtId,
+        districtName: snapshot.district.name,
         directory: {
           schools: snapshot.schools.length,
           terms: snapshot.terms.length,
@@ -1131,6 +1367,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.installMarketplacePack": async (ctx, { body }) => {
       await ctx.requireDistrict("create", "marketplace-pack");
       return packBody(await installListing(stores.marketplacePacks, options.marketplaceTrust, body, { by: ctx.principal.principalId, at: now().toISOString() }));
+    },
+    // Course library (SCHO-331)
+    "admin.listLibraryCourses": async (ctx) => {
+      await ctx.requireDistrict("list", "course-package");
+      return stores.courseLibrary.listCourses();
+    },
+    "admin.importCourseBundle": async (ctx, { body }) => {
+      await ctx.requireDistrict("create", "course-package");
+      return importCourseBundle(stores.courseLibrary, options.courseLibraryTrust, body, { by: ctx.principal.principalId, at: now().toISOString() });
     },
     "admin.previewRoster": async (ctx, { body }) => {
       await ctx.requireDistrict("update", "enrollment");
@@ -1369,6 +1614,40 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       await ctx.academics().revokeDistrictAdmin(ctx.caller, params.principalId);
       return authoringPrincipalById((await stores.directory.load()).snapshot, params.principalId, now());
     },
+    "admin.renameDistrict": (ctx, { body }) => ctx.academics().renameDistrict(ctx.caller, body),
+    // District export (SCHO-364): decided on the district as a restricted resource, so only the
+    // export rule can allow it.
+    "admin.exportDistrict": async (ctx) => {
+      await ctx.require("export", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can export the district.");
+      const exportedAt = now();
+      const { body, manifest } = await buildDistrictExport(stores, ctx.snapshot, ctx.principal.principalId, exportedAt);
+      // Told once the whole ZIP has been sent, with its size; a failed or abandoned export tells nothing.
+      let bytes = 0;
+      const counted = body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          bytes += chunk.byteLength;
+          controller.enqueue(chunk);
+        },
+        flush() {
+          options.onDistrictExported?.({ counts: manifest.counts, bytes });
+        },
+      }));
+      return { fileName: `${districtId}-${exportedAt.toISOString().slice(0, 10)}.zip`, body: counted };
+    },
+    // Product analytics (SCHO-350): read like the district's health; changed like its name.
+    "admin.productAnalytics": async (ctx) => {
+      await ctx.requireDistrict("read", "district");
+      return productAnalyticsForAdmin(ctx.snapshot.district, options.productAnalytics);
+    },
+    "admin.setProductAnalytics": async (ctx, { body }) => {
+      if (body.enabled && options.productAnalytics === undefined) {
+        // Decided first, so a non-administrator learns nothing about the deployment.
+        await ctx.requireDistrict("update", "district");
+        throw new EducateOsError("conflict", "This deployment names no analytics service, so product analytics cannot be turned on.");
+      }
+      const district = await ctx.academics().setProductAnalytics(ctx.caller, body);
+      return productAnalyticsForAdmin(district, options.productAnalytics);
+    },
 
     // Gradebook (SCHO-187). Kept in one block, apart from the handlers above.
     "teacher.gradebook": (ctx, { params }) => ctx.gradebook().grid(ctx.caller, params.offeringId),
@@ -1376,6 +1655,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.setGradeMarker": (ctx, { params, body }) => ctx.gradebook().setMarker(ctx.caller, params.offeringId, body),
     "teacher.exportGradebookCsv": (ctx, { params }) => ctx.gradebook().exportCsv(ctx.caller, params.offeringId),
     "student.gradeSummary": (ctx, { params }) => ctx.gradebook().studentSummary(ctx.caller, params.offeringId),
+    // From Google Classroom (SCHO-403): authorized as the gradebook is, then read live.
+    "student.classroomGrades": async (ctx, { params }) => {
+      await ctx.gradebook().authorizeRead(ctx.caller, params.offeringId, "own-row");
+      return studentClassroomGrades(await classroomGradesInput(), params.offeringId, ctx.caller.principal.principalId);
+    },
+    "teacher.classroomGrades": async (ctx, { params }) => {
+      await ctx.gradebook().authorizeRead(ctx.caller, params.offeringId, "grid");
+      return teacherClassroomGrades(await classroomGradesInput(), params.offeringId, ctx.snapshot);
+    },
 
     // Communication (SCHO-189). Kept in one block, apart from the handlers above.
     "student.announcements": async (ctx) => (await communicationFor(ctx.decider, ctx.assessment()).studentAnnouncements(ctx.caller)),
@@ -1452,7 +1740,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // Explaining any principal's access reads what the audit trail would: a district administrator's.
       await ctx.require("read", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can simulate decisions.");
       const { decision, ruleId, grantId } = await simulator.decide({
-        subject: { principalId: body.principalId, districtId },
+        subject: { principalId: body.principalId, districtId, ...(body.delegationId === undefined ? {} : { delegationId: body.delegationId }) },
         action: body.action,
         resource: body.resource,
         context: { channel: body.channel, ...(body.termState === undefined ? {} : { termState: body.termState }) },
@@ -1462,6 +1750,58 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         ...(decision.effect === "allow" ? {} : { reason: decision.reason }),
         ruleId,
         ...(grantId === undefined ? {} : { grantId }),
+      };
+    },
+    // IT review (SCHO-376): each a district administrator's alone, as a person (see the rules).
+    "admin.decisionLog": async (ctx, { query }) => {
+      await ctx.require("list", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read the decision log.");
+      const effects = OUTCOME_EFFECTS[query.outcome ?? "all"];
+      return decisionPage(await stores.audit.search({
+        limit: AUDIT_PAGE,
+        ...(query.before === undefined ? {} : { before: query.before }),
+        ...(effects === undefined ? {} : { effects: [...effects] }),
+        ...(query.rule === undefined ? {} : { rule: query.rule }),
+        ...(query.principalId === undefined ? {} : { principalId: query.principalId }),
+        ...(query.resourceKind === undefined ? {} : { resourceKind: query.resourceKind }),
+      }), ctx.snapshot);
+    },
+    "admin.auditLog": async (ctx, { query }) => {
+      await ctx.require("list", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read the audit log.");
+      return decisionPage(await stores.audit.search({
+        limit: AUDIT_PAGE,
+        effects: ["allow"],
+        rule: "admin.",
+        actions: [...ADMIN_CHANGES],
+        ...(query.before === undefined ? {} : { before: query.before }),
+        ...(query.principalId === undefined ? {} : { principalId: query.principalId }),
+        ...(query.resourceKind === undefined ? {} : { resourceKind: query.resourceKind }),
+      }), ctx.snapshot);
+    },
+    "admin.screeningLog": async (ctx) => {
+      await ctx.require("list", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read Hall Monitor's decisions.");
+      const boards = (await Promise.all(ctx.snapshot.offerings.map((o) => stores.discussions.load(o.id)))).filter((b) => b !== undefined);
+      const entries = screeningEntries(boards, ctx.snapshot);
+      return {
+        screening: options.discussionScreening !== undefined ? "hall-monitor" as const
+          : options.unscreenedStudentPosts === "publish" ? "published-unscreened" as const : "held-for-teachers" as const,
+        entries: entries.slice(0, MAX_SCREENING_ENTRIES),
+        truncated: entries.length > MAX_SCREENING_ENTRIES,
+      };
+    },
+    "admin.signInSettings": async (ctx) => {
+      await ctx.require("read", { kind: "district", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can read the sign-in settings.");
+      const head = (await stores.config.list()).at(-1);
+      const desired = head === undefined ? undefined : DesiredState.safeParse(head.desired);
+      const identity = desired?.success === true ? desired.data.identity : undefined;
+      const pendingLinks = (await stores.identityLinks.read()).open().filter((request) => request.status === "pending").length;
+      return {
+        ...(identity === undefined ? {} : { provider: identity.provider }),
+        ...(identity?.classlink === undefined ? {} : {
+          classlink: { tenantId: identity.classlink.tenantId, issuer: identity.classlink.issuer, clientId: identity.classlink.clientId, subjectClaim: identity.classlink.subjectClaim },
+        }),
+        ...signInCoverage(ctx.snapshot),
+        pendingLinks,
+        ...(options.signIn === undefined ? {} : { deployment: options.signIn }),
       };
     },
     "admin.previewDigest": async (ctx, { params }) => {
@@ -1554,6 +1894,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return { ...results, names: ctx.namesOf(results.students.map((row) => row.studentId)) };
     },
     "teacher.releaseQuizScores": (ctx, { params }) => ctx.quizzes().release(ctx.subject, params.offeringId, params.quizId),
+    "teacher.quizAccommodations": async (ctx, { params }) => {
+      const view = await ctx.quizzes().accommodations(ctx.subject, params.offeringId, params.quizId);
+      return { ...view, names: ctx.namesOf(view.accommodations.map((a) => a.studentId)) };
+    },
+    "teacher.setQuizAccommodation": async (ctx, { params, body }) => {
+      const view = await ctx.quizzes().setAccommodation(ctx.subject, params.offeringId, params.quizId, body);
+      return { ...view, names: ctx.namesOf(view.accommodations.map((a) => a.studentId)) };
+    },
     "teacher.quizAttempt": async (ctx, { params }) => {
       const view = await ctx.quizzes().staffAttempt(ctx.subject, params.offeringId, params.attemptId);
       return { ...view, studentName: ctx.namesOf([view.attempt.studentId])[0]?.displayName ?? "" };
@@ -1583,6 +1931,12 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
   // Guardians (ADR-0012, SCHO-188)
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
+  // Home learning (ADR-0016)
+  const homeLearningRoutes = homeLearningHandlers<RequestContext>();
+  function homeLearningRetention() {
+    const days = options.homeLearning?.retentionDays;
+    return days === undefined ? {} : { retentionDays: days };
+  }
 
   /**
    * Serves one `/api` request. Without `servedAs`, the caller is whoever the request's credential
@@ -1615,6 +1969,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // Onboarding answers a verified sign-in that is nobody's principal yet. Its one route only
       // starts a request an administrator decides, so it needs no principal and grants nothing.
       if (spec.surface === "onboarding") {
+        if ((matched.name as OnboardingRouteName) === "onboarding.community") {
+          return jsonResponse({ homeLearning: options.homeLearning !== undefined, signup: options.homeLearning?.signup ?? null }, 200, correlationId);
+        }
+        if ((matched.name as OnboardingRouteName) === "onboarding.joinCommunity") {
+          const { body } = await parseInput() as { body: { displayName: string } };
+          const answer = await joinCommunity({ directory: stores.directory, identityLinks: stores.identityLinks, options: options.homeLearning, now }, identity, body.displayName);
+          return jsonResponse(answer, spec.status ?? 200, correlationId);
+        }
         const { body } = await parseInput() as { body: { token: string } };
         const invitations = guardianInvitationsFor(engine);
         const answer = (matched.name as OnboardingRouteName) === "onboarding.previewGuardianInvitation"
@@ -1638,11 +2000,30 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     const input = await parseInput();
     const ctx = new RequestContext(correlationId, principal, snapshot, url.origin);
+    // A browser in a child session (ADR-0016) may only practice, whatever route it asks for. Only a
+    // browser carries the cookie: a device or service served as a principal never has one.
+    if (options.homeLearning !== undefined && principal.kind === "guardian" && servedAs === undefined) {
+      const token = childSessionToken(request);
+      ctx.childSession = token === undefined ? undefined : await ctx.homeLearning().childSession(ctx.subject, token);
+    }
+    if (options.homeLearning === undefined && (spec.surface === "family" || spec.surface === "learner")) {
+      throw new EducateOsError("not-found", "Home learning isn't offered here.");
+    }
+    enforceChildSession(matched.name, spec.surface, ctx.childSession);
     const { operation } = spec as RouteSpec;
     if (operation !== undefined) {
       return jsonResponse(await runOperation(ctx, operation, input as { params?: object; body?: object }), spec.status ?? 200, correlationId);
     }
-    const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
+    const handler = (handlers[matched.name as keyof Handlers]
+      ?? guardianRoutes[matched.name as GuardianRouteName]
+      ?? homeLearningRoutes[matched.name as HomeLearningRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
+    if (spec.download !== undefined) return fileResponse(await handler(ctx, input) as FileDownload, spec.download, correlationId);
+    if ((spec as RouteSpec).cookie !== undefined) {
+      const { body, setCookie } = await handler(ctx, input) as WithCookie<unknown>;
+      const response = jsonResponse(body, spec.status ?? 200, correlationId);
+      response.headers.set("set-cookie", setCookie);
+      return response;
+    }
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
 
@@ -1727,8 +2108,18 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     catalog,
     stores,
     communication: {
-      runNotificationJob: () => communicationFor(jobDecider).runNotificationJob(),
+      runNotificationJob: async () => communicationFor(jobDecider).runNotificationJob(await notificationScreen()),
       runWeeklyDigest: () => familyDigest(communicationFor(jobDecider)).runWeeklyJob(),
+    },
+    homeLearning: {
+      // A system job: it deletes by age alone and reads nobody's records, so it asks no policy.
+      purgeExpired: async () => {
+        if (options.homeLearning === undefined) return { ran: false as const };
+        const purge = await new HomeLearningService({ store: stores.homeLearning, authorizer: { authorize: async () => ({ effect: "deny", reason: "no-matching-grant" }) }, districtId, now, ...homeLearningRetention() }).purgeExpired();
+        // Decisions about families age out with the practice they were about.
+        const auditEvents = purge.practiceSessions === undefined ? 0 : await stores.audit.deleteFamilyDecisionsBefore(purge.practiceSessions.before);
+        return { ran: true as const, auditEvents, ...purge };
+      },
     },
     rostering: {
       async runScheduledSync() {
@@ -1830,5 +2221,19 @@ function deviceBody(device: DeviceRecord): DeviceBody {
     status: device.status,
     revokedAt: device.revokedAt,
     revokedReason: device.revokedReason,
+  };
+}
+
+/**
+ * `store`'s directory as read now: every load returns a copy of that one read, and nothing commits.
+ * For a job that only reads, so its many decisions do not each read the whole directory again.
+ */
+async function directoryAsRead(store: AcademicStore): Promise<AcademicStore> {
+  const read = await store.load();
+  return {
+    load: async () => structuredClone(read),
+    commit: async () => {
+      throw new EducateOsError("conflict", "This directory is a read for one job; it takes no commits.");
+    },
   };
 }

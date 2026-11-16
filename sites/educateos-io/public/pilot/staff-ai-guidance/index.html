@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff AI guidance · EducateOS</title>
+<meta name="description" content="AI use guidance for staff at EducateOS founding pilot schools: good uses, what never goes into AI before a data processing agreement, reviewing output, how screening works and what to do when a message is stopped, academic integrity and accessibility.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+  /* Staff guidance (SCHO-399). Editable source: docs/educateos/pilot/staff-ai-guidance.md. */
+  .doc li { line-height: 1.55; }
+  .doc .status { margin-left: 4px; vertical-align: 1px; }
+  .rule { margin-top: 18px; padding: 18px 20px; border-radius: var(--eo-radius); border: 2px solid var(--color-kumo-brand); }
+  .rule p { margin: 0; }
+  .jump { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+  .blank { font-weight: 600; color: var(--text-color-kumo-strong); background: var(--color-kumo-tint); border-radius: 4px; padding: 0 3px; }
+  @media print {
+    @page { margin: 14mm; }
+    .jump { display: none !important; }
+    .wrap { max-width: none !important; }
+    .doc { font-size: 10.5pt; }
+    .doc h2 { break-after: avoid; margin-top: 18px; }
+    .status { border: 1px solid currentColor; }
+    .blank { background: none; padding: 0; }
+    a { color: inherit; }
+  }
+</style>
+<script>
+  // Print in light mode whatever the reader's theme, so the handout is dark text on white.
+  addEventListener("beforeprint", () => { document.documentElement.dataset.mode = "light"; });
+  addEventListener("afterprint", () => { document.documentElement.dataset.mode = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; });
+</script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+  <section class="hero page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow"><a href="/pilot/">Founding pilot</a> · For staff</div>
+      <h1>Staff AI use guidance</h1>
+      <p class="lede">How teachers and staff at a pilot school use AI in EducateOS: what it's good for, what never goes into it, how requests are screened and what to do when one is stopped. The district's own AI and data policies come first; where they say more, follow them.</p>
+      <div class="jump">
+        <a class="btn" href="javascript:print()">Print or save as PDF</a>
+        <a class="btn" href="/pilot/students/">Student AI guidelines</a>
+        <a class="btn" href="/pilot/families/">Family letter</a>
+      </div>
+      <div class="note-box">
+        <b>How to read the status.</b>
+        <span class="status avail">In place</span> true in the code today.
+        <span class="status dev">Built, not proven</span> exists and is tested, but has not run in a real district.
+        <span class="status planned">Planned</span> does not exist yet.
+        No real district has run EducateOS yet, so nothing here has been proven with real students. Editable copy: <code>docs/educateos/pilot/staff-ai-guidance.md</code>.
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" style="padding-top:0">
+    <div class="wrap doc">
+      <h2 id="no-student-data">1. During the pilot, before a DPA: no real student data</h2>
+      <div class="rule">
+        <p>Until the district has signed a data processing agreement (DPA) covering EducateOS, <b>put no real student information into EducateOS or any AI tool it connects to.</b> That includes names, initials with class details, ID numbers, grades, work samples, IEP or 504 details, behavior notes, health information, photos and anything a student wrote.</p>
+      </div>
+      <p>Use instead:</p>
+      <ul>
+        <li>the synthetic people and classes the pilot provides, or ones you invent ("Student A, grade 4, reading below grade level");</li>
+        <li>your own materials: lesson plans, curriculum guides, rubrics, open course content;</li>
+        <li>information about yourself you are comfortable sharing.</li>
+      </ul>
+      <p>If real student data goes in by mistake, tell the pilot lead the same day. The district administers the account and can help remove it. Don't just delete it yourself: the pilot lead needs to know where it went.</p>
+      <p>After a DPA is signed, the district's policy decides what student information may be used, and EducateOS's policy settings can only be made stricter below the district level (a school, class or activity can't loosen what the district set). <span class="status dev">Built, not proven</span></p>
+
+      <h2 id="good-uses">2. Good uses</h2>
+      <ul>
+        <li>Planning lessons and units, and adapting them for different reading levels or languages.</li>
+        <li>Drafting materials: question sets, exemplars, rubrics, instructions, family messages (review before sending).</li>
+        <li>Building small classroom gadgets (a simulation, flashcards, a lab plotter) by asking an agent. Each runs in its own sandbox. <span class="status avail">In place</span></li>
+        <li>Summarizing or reorganizing your own documents, and connecting an agent to the resources you choose, such as a Drive folder or the district's curriculum guide. An agent reads only what you connect. <span class="status avail">In place</span></li>
+        <li>Drafting feedback against a rubric, for you to edit. Drafting in a Workshop chat works today; AI-drafted feedback inside Teacher Studio is <span class="status planned">Planned</span></li>
+      </ul>
+
+      <h2 id="not-for-ai">3. Not for AI</h2>
+      <ul>
+        <li>Real student data before a DPA (section 1), and after one, anything the district's policy rules out.</li>
+        <li>Decisions about a student: grades, placement, discipline, special education eligibility, safeguarding. AI may help you draft; a person decides. In EducateOS an official grade is written only when a teacher records or approves it, and a grade an agent drafts waits for your approval. <span class="status dev">Built, not proven</span></li>
+        <li>Passwords, credentials and other staff members' personal information.</li>
+        <li>Judging whether a student used AI. AI-detection tools are unreliable; talk with the student.</li>
+        <li>Profiling students' emotions or behavior. EducateOS's policy prohibits automated social-emotional profiling, and no setting can turn it on. <span class="status dev">Built, not proven</span></li>
+      </ul>
+
+      <h2 id="review">4. Review everything AI produces</h2>
+      <ul>
+        <li><b>Check facts, quotes, citations and math.</b> Models invent plausible things.</li>
+        <li><b>Check level and tone</b> for your students, and for bias or stereotypes.</li>
+        <li><b>Check accessibility</b> (section 8).</li>
+        <li><b>Agents' writes wait for you.</b> Emails, calendar events and documents an agent prepares wait in your approval queue. Read each one before you approve it. <span class="status avail">In place</span></li>
+        <li><b>Nothing reaches students until you publish or approve it</b> in Teacher Studio. <span class="status dev">Built, not proven</span></li>
+      </ul>
+
+      <h2 id="screening">5. How screening works, and what to do when a message is stopped</h2>
+      <p>Every AI request in EducateOS passes the <b>AI call guard</b>, which runs in the district's account. <span class="status dev">Built, not proven</span> (deployed on the demo instance)</p>
+      <ul>
+        <li><b>Your own messages</b> are sent to <b>Hall Monitor</b>, the district's screening service, before the model sees them, under the educator profile. Replies to staff are screened only if the district's settings require it.</li>
+        <li><b>Students' messages and the replies to them</b> are both screened, at the student's grade band. If screening is unavailable, a student's request is refused (it "fails closed").</li>
+        <li><b>Gadgets are screened as if a student were typing,</b> because a student may be using them: at the grade band the gadget declares, or K–2 if it declares none. So when you test a gadget, you may see stricter screening than in your own chats. That is expected.</li>
+        <li><b>What you see when a message is stopped:</b> a neutral "can't help with that" message (Hall Monitor's <i>hold</i> or <i>block</i>), or a short supportive message pointing to a trusted adult (<i>support</i>). A message with a picture is refused for students, because screening reads text only.</li>
+        <li><b>What is recorded:</b> the decision, its reason codes and IDs, in the district's own account. The guard never logs or stores the message text. <span class="status dev">Built, not proven</span></li>
+        <li><b>What does not happen:</b> EducateOS does not alert anyone when a message is stopped, and has no safeguarding referral route. <span class="status planned">Planned</span> (gated on privacy review) Hall Monitor's thresholds have not yet been calibrated on human-labelled data, so expect some wrong stops and some misses.</li>
+      </ul>
+      <h3>What to do</h3>
+      <ul>
+        <li><b>Your message was stopped and you think it shouldn't have been:</b> rephrase it plainly. Don't try to get around the check. Tell the pilot lead what kind of request it was and when, so the team can tune the settings.</li>
+        <li><b>A student tells you the AI stopped them, or showed the "talk to a trusted adult" message:</b> follow your school's existing safeguarding and counseling procedures, exactly as if the student had told you directly. Don't rely on EducateOS to notice or report anything.</li>
+        <li><b>The AI produced something harmful or inappropriate:</b> stop using that gadget or chat, note when it happened, and tell the pilot lead.</li>
+      </ul>
+
+      <h2 id="integrity">6. Academic integrity</h2>
+      <ul>
+        <li>Tell students, for each assignment, whether AI is allowed and how (none, hints only, full help). EducateOS's activity setting for AI help has the same three levels, and the conservative default profile allows hints only. <span class="status dev">Built, not proven</span></li>
+        <li>The bundled tutors give hints, not answers, and ask what the student tried. That is an instruction to the model, not a guarantee, so screening also nudges the model back toward hints when a student's message looks like an attempt to get graded work done for them. <span class="status dev">Built, not proven</span></li>
+        <li>Ask students to disclose AI use (see the <a href="/pilot/students/">student guidelines</a>), and design tasks where the process shows: drafts, conversations, oral explanation.</li>
+        <li>Treat a suspicion of AI misuse as a conversation, not a verdict.</li>
+      </ul>
+
+      <h2 id="conversations">7. Students' AI conversations</h2>
+      <ul>
+        <li>A student's <i>personal</i> AI conversations are private from teachers, classmates and families under both default policy profiles. <span class="status dev">Built, not proven</span> (checked at the policy engine, not yet through the app's API)</li>
+        <li>A tutor gadget keeps one conversation. If you share one tutor with the class, you and everyone you shared it with may see it. Prefer giving each student their own copy, and tell students their teacher may see their tutor chats (the student guidelines already say so).</li>
+        <li>A student can export a tutor conversation as a file to hand to you.</li>
+        <li>Families don't see AI conversations through EducateOS. <span class="status dev">Built, not proven</span></li>
+      </ul>
+
+      <h2 id="accessibility">8. Accessibility</h2>
+      <ul>
+        <li>AI-generated materials need the same accessibility as anything else: headings, alt text for images, sufficient contrast, captions or transcripts, and a reading level that fits.</li>
+        <li>Tutors can read their replies aloud using the browser's own speech, which never leaves the device. K–2 activities can read every instruction aloud and take spoken and drawn answers. <span class="status dev">Built, not proven</span></li>
+        <li>The accessibility audit of EducateOS's student, teacher and admin screens has not been done yet. If a student can't use something with a keyboard or screen reader, tell the pilot lead and use another route for that student.</li>
+        <li>Don't make AI the only way to do an assignment: some students and families will opt out.</li>
+      </ul>
+
+      <h2 id="contacts">9. Who to contact</h2>
+      <ul>
+        <li>Questions about this guidance or the pilot: <span class="blank">[Pilot lead name]</span>, <span class="blank">[contact]</span>.</li>
+        <li>A safeguarding concern: your school's designated safeguarding lead, as always.</li>
+        <li>Data put in by mistake, or a family's request to see or remove data: <span class="blank">[Pilot lead name]</span>, who reaches the district's EducateOS administrator.</li>
+        <li>The EducateOS team: <a href="mailto:hello@educateos.io">hello@educateos.io</a>. Don't include student information.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

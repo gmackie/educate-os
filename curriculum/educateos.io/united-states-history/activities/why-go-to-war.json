@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1961b41bbf23569cf5d90d95076f117883442ae57c5a2847f5930fabe5db1b6a",
+      "id": "educateos.io/united-states-history-why-go-to-war",
+      "version": "1.0.0"
+    }
+  },
+  "id": "why-go-to-war",
+  "role": "lesson",
+  "title": "Why Did America Go to War?"
+}

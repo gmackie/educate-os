@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "8",
+    "overview": "Read \"Bus Stop, January\" twice, then explain its comparisons and how its tone changes.",
+    "passage": "Bus Stop, January\n\nThe cold this morning is a locked door\nand we are six kids without a key,\nstamping our boots like impatient horses,\nbreathing small gray ghosts\nthat rise and quit before they reach the streetlight.\n\nNobody talks. Talking costs heat.\nThe sky is the color of a nickel\nsomeone left in the rain.\n\nThen the bus turns the corner,\nyellow as a struck match,\nand every one of us\nleans toward it\nthe way sunflowers lean\nwithout being told.",
+    "questions": [
+      {
+        "prompt": "\"The cold this morning is a locked door / and we are six kids without a key.\" What does this metaphor suggest about how the cold feels?"
+      },
+      {
+        "prompt": "Find one simile in the poem and explain what two things it compares."
+      },
+      {
+        "prompt": "\"Nobody talks. Talking costs heat.\" How do these short sentences add to the mood of the second stanza?"
+      },
+      {
+        "prompt": "How does the tone change in the last stanza? Name the word or image where it changes."
+      },
+      {
+        "prompt": "Why might the poet compare the kids to sunflowers at the end? What does it suggest about the bus?"
+      }
+    ],
+    "sentenceFrames": [
+      "The poet compares ___ to ___, which suggests ___.",
+      "The tone shifts from ___ to ___ when ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Reading a Poem Closely"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.8.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-reading-a-poem-closely",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

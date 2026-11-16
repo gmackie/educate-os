@@ -91,19 +91,70 @@ export const ProblemSetInput = z.strictObject({
 /** A problem set's inputs. */
 export type ProblemSetInput = z.input<typeof ProblemSetInput>;
 
+/** Sentence starters for young learners, such as "I see a ___." */
+const SentenceFrames = z.array(Text(200)).max(10).default([]);
+
+/**
+ * A picture response, for young learners (K-2, and 3-5): look at or listen to a short prompt, draw
+ * or photograph an answer, then optionally record themselves telling about it. The activity's
+ * resources, such as a picture to look at, are the first step's sources.
+ */
+export const PictureResponseInput = z.strictObject({
+  template: z.literal("picture-response"),
+  ...CommonInput,
+  /** What students look at or listen to first. One or two short sentences: it is read aloud. */
+  lookPrompt: Text(1000),
+  /** What to draw or photograph, such as "Draw an animal that lives in a pond." */
+  drawPrompt: Text(500),
+  /** Whether a last step asks students to record themselves telling about their picture. */
+  tellAboutIt: z.boolean().default(true),
+  /** Starters for telling about the picture, such as "I drew a ___." */
+  sentenceFrames: SentenceFrames,
+  pictureRubric: RubricRef.optional(),
+});
+/** A picture response's inputs. */
+export type PictureResponseInput = z.input<typeof PictureResponseInput>;
+
+/** How a young learner answers a question: a recording of their voice, a drawing or photo, or typed words. */
+export const AnswerMode = z.enum(["speaking", "drawing", "writing"]);
+/** An answer mode. */
+export type AnswerMode = z.infer<typeof AnswerMode>;
+
+/**
+ * Read and respond, for young learners (K-2, and 3-5): listen to a short text read aloud, then
+ * answer one question a step, by speaking, drawing or writing.
+ */
+export const ReadAndRespondInput = z.strictObject({
+  template: z.literal("read-and-respond"),
+  ...CommonInput,
+  /** The short text students hear. A few sentences suit K-2. */
+  passage: Text(3000),
+  /** The questions, one a step. A question's `answerBy` overrides the activity's. */
+  questions: z.array(z.strictObject({ prompt: Text(500), answerBy: AnswerMode.optional() })).min(1).max(10),
+  /** How students answer a question that does not say. */
+  answerBy: AnswerMode.default("speaking"),
+  /** Starters offered with every question, such as "The story is about ___." */
+  sentenceFrames: SentenceFrames,
+  responseRubric: RubricRef.optional(),
+});
+/** Read-and-respond inputs. */
+export type ReadAndRespondInput = z.input<typeof ReadAndRespondInput>;
+
 /** The inputs to any template, discriminated by `template`. */
 export const TemplateInput = z.discriminatedUnion("template", [
   WritingTaskInput,
   ScienceInvestigationInput,
   PrimarySourceAnalysisInput,
   ProblemSetInput,
+  PictureResponseInput,
+  ReadAndRespondInput,
 ]);
 /** Template inputs, as a caller writes them. */
 export type TemplateInput = z.input<typeof TemplateInput>;
 type ParsedInput = z.output<typeof TemplateInput>;
 
-const step = (id: string, title: string, prompt: string, response: ActivityStep["response"], sources: ActivityStep["sources"] = []): ActivityStep =>
-  ({ id, title, prompt, sources, response });
+const step = (id: string, title: string, prompt: string, response: ActivityStep["response"], sources: ActivityStep["sources"] = [], sentenceFrames: readonly string[] = []): ActivityStep =>
+  ({ id, title, prompt, sources, response, ...(sentenceFrames.length === 0 ? {} : { sentenceFrames: [...sentenceFrames] }) });
 
 const numbered = (lines: readonly string[]) => lines.map((line, index) => `${index + 1}. ${line}`).join("\n");
 
@@ -199,6 +250,49 @@ function problemSet(input: Extract<ParsedInput, { template: "problem-set" }>): G
   };
 }
 
+function pictureResponse(input: Extract<ParsedInput, { template: "picture-response" }>): Generated {
+  const tell = input.tellAboutIt;
+  return {
+    steps: [
+      step("look", "Look and listen", input.lookPrompt, { kind: "none" }, input.resources),
+      // Without a telling step, the starters help students talk about the drawing itself.
+      step("draw", "Draw it", input.drawPrompt, { kind: "artifact", artifactType: "image" }, [], tell ? [] : input.sentenceFrames),
+      ...(tell ? [step("tell", "Tell about it", "Tell about your picture.", { kind: "artifact", artifactType: "audio" }, [], input.sentenceFrames)] : []),
+    ],
+    rubricSlots: [slot("picture", "Picture: answers the prompt, with details that show what the student noticed.", input.pictureRubric)],
+    responseType: "artifact",
+    criteria: [
+      { id: "answers-prompt", description: "The picture answers the prompt." },
+      { id: "shows-detail", description: "The picture includes details that show what the student noticed." },
+      ...(tell ? [{ id: "tells-about-it", description: "Tells about the picture in their own words." }] : []),
+    ],
+  };
+}
+
+const ANSWER_RESPONSES: Record<AnswerMode, ActivityStep["response"]> = {
+  speaking: { kind: "artifact", artifactType: "audio" },
+  drawing: { kind: "artifact", artifactType: "image" },
+  writing: { kind: "writing" },
+};
+
+function readAndRespond(input: Extract<ParsedInput, { template: "read-and-respond" }>): Generated {
+  const modes = new Set(input.questions.map((question) => question.answerBy ?? input.answerBy));
+  const only = modes.size === 1 ? [...modes][0] : undefined;
+  return {
+    steps: [
+      step("listen", "Listen", input.passage, { kind: "none" }, input.resources),
+      ...input.questions.map((question, index) =>
+        step(`question-${index + 1}`, `Question ${index + 1}`, question.prompt, ANSWER_RESPONSES[question.answerBy ?? input.answerBy], [], input.sentenceFrames)),
+    ],
+    rubricSlots: [slot("response", "Response: recalls key details and answers each question about the text.", input.responseRubric)],
+    responseType: only === "speaking" ? "audio" : only === "writing" ? "text" : "artifact",
+    criteria: [
+      { id: "recalls-details", description: "Recalls key details from the text." },
+      { id: "answers-questions", description: "Answers each question about the text." },
+    ],
+  };
+}
+
 /**
  * Generates activity content from a template's inputs. Templates only generate: the content they
  * return is the same runtime model whatever the template, and is validated and installed by the
@@ -218,6 +312,10 @@ export function generateActivity(input: unknown): ActivityContent {
         return primarySourceAnalysis(parsed);
       case "problem-set":
         return problemSet(parsed);
+      case "picture-response":
+        return pictureResponse(parsed);
+      case "read-and-respond":
+        return readAndRespond(parsed);
     }
   })();
   const resources = [...parsed.resources];

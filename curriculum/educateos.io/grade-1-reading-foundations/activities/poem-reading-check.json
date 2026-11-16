@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3d9151572ffe61a7a83e95ab54bc5aec3b72c88f09499fb77046a03780a17453",
+      "id": "educateos.io/grade-1-reading-foundations-poem-reading-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "poem-reading-check",
+  "role": "assessment",
+  "title": "Poem Reading Check"
+}

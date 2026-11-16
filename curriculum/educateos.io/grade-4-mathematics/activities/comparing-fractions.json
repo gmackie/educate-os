@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8723b1f63deb7a0868d27ca1989a32d301bcdcf51c6ef8663b91e8dbf1c4e67a",
+      "id": "educateos.io/grade-4-mathematics-comparing-fractions",
+      "version": "1.0.0"
+    }
+  },
+  "id": "comparing-fractions",
+  "role": "assignment",
+  "title": "Which Is Greater?"
+}

@@ -1,0 +1,110 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 8,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Use proportional reasoning to solve percent problems about prices, tips, tax, interest and change.",
+    "problems": [
+      {
+        "prompt": "A jacket costs $64. It is on sale for 25% off. What is the sale price?"
+      },
+      {
+        "prompt": "A family's restaurant bill is $38. They leave a 20% tip. What is the total they pay?"
+      },
+      {
+        "prompt": "The sales tax is 6%. What is the total cost of a $45 bike helmet, including tax?"
+      },
+      {
+        "prompt": "A school had 520 students last year and 572 students this year. What is the percent increase?"
+      },
+      {
+        "prompt": "A store buys a lamp for $30 and marks the price up 40%. Later it puts the lamp on sale for 40% off the marked price. Is the sale price $30? Explain."
+      },
+      {
+        "prompt": "A savings account pays 3% simple interest per year. How much interest does $400 earn in 2 years?"
+      },
+      {
+        "prompt": "Rosa guessed there were 50 beans in a jar. There were actually 40. What is her percent error?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Percent Problems: Tax, Tips and Discounts"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-percent-problems",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "setup",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sets up each percent problem"
+      },
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct solutions"
+      }
+    ],
+    "title": "Percent reasoning"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

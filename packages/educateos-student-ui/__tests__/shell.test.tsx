@@ -1,6 +1,6 @@
 // The Learning Home in the district shell (SCHO-260): each role's navigation, the pages every role
 // shares, "Ask AI about this" only where the district has AI, and the one-time phone banner.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import type { DistrictApiClient, RouteName, RouteResponse } from "@educateos/api-client";
@@ -128,5 +128,35 @@ describe("the phone banner on Home", () => {
     await renderApp(fakeDistrict(), "/", undefined, undefined, { school });
     await screen.findByRole("heading", { level: 1, name: "Hi, Amara Okafor" });
     expect(screen.queryByRole("region", { name: "Get Northfield on your phone" })).toBeNull();
+  });
+});
+
+describe("staff on a student page", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** Renders `me` at `path` on the district origin, and returns where the page was sent. */
+  const sentTo = async (me: Partial<Me>, path: string, onOrigin = true) => {
+    const replace = vi.fn();
+    vi.stubGlobal("location", { ...window.location, replace });
+    await renderApp(signedInAs(fakeDistrict(), me), path, undefined, undefined, onOrigin ? {} : { school: false });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return replace.mock.calls.map(([href]) => href);
+  };
+
+  it("sends a teacher from the Learning Home to Teacher Studio", async () => {
+    expect(await sentTo(TEACHER, "/")).toStrictEqual(["/teach/"]);
+    expect(await sentTo(TEACHER, "/grades")).toStrictEqual(["/teach/"]);
+  });
+
+  it("sends a school admin to the admin console", async () => {
+    expect(await sentTo(ADMIN, "/")).toStrictEqual(["/admin/"]);
+  });
+
+  it("leaves staff on the pages the shell links them to here", async () => {
+    for (const path of ["/calendar", "/notifications", "/settings", "/devices"]) expect(await sentTo(TEACHER, path)).toStrictEqual([]);
+  });
+
+  it("sends nobody anywhere where a host embeds the app, with no Teacher Studio beside it", async () => {
+    expect(await sentTo(TEACHER, "/", false)).toStrictEqual([]);
   });
 });

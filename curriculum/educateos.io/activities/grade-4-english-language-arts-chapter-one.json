@@ -1,0 +1,58 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Read the first chapter of \"The Clocktower Key\" and describe the setting, the narrator and a character.",
+    "passage": "The clock in the middle of Millbrook said 3:15. It said 3:15 when we drove into town, and it said 3:15 the next morning, and the next. \"It hasn't moved in twenty years,\" the woman at the bakery told Mom. \"Nobody remembers how to fix it.\"\n\nI didn't care about the clock. I cared that I had left my best friend, my old school and my whole life three hundred miles away. Our new house was tall and creaky, with a tower room at the top that smelled like dust and pencil shavings.\n\nOn our third day, I was exploring the tower room when one of the floorboards wobbled. I pried it up. Underneath was a small wooden box, and inside the box, wrapped in a soft cloth, was a heavy brass key as long as my hand. Its handle was shaped like a little clock face, with the hands pointing to three and fifteen.\n\nI ran next door to ask our neighbor if he knew anything about it. Mr. Okafor was sweeping his porch. He was tall and thin and had a gray beard and a frown that looked permanent.\n\n\"I found this in our house,\" I said, holding up the key.\n\nHe stopped sweeping. For a second something flickered across his face, like a light switching on and then off. \"Put that back where you found it,\" he said. Then he went inside and shut the door.\n\nI stood on his steps holding the key. That was the moment I decided I was going to find out what it opened.",
+    "questions": [
+      {
+        "prompt": "Describe the setting of the story. Use at least two details."
+      },
+      {
+        "prompt": "Who is telling the story? Is it told in first person or third person? How do you know?"
+      },
+      {
+        "prompt": "How does Ivy feel about moving to Millbrook? Use a detail from the text."
+      },
+      {
+        "prompt": "Describe Mr. Okafor. Use what he looks like, what he says and what he does."
+      },
+      {
+        "prompt": "The narrator says \"something flickered across his face, like a light switching on and then off.\" What does this tell you about Mr. Okafor?"
+      },
+      {
+        "prompt": "Why do you think the key's handle points to three and fifteen? Make a prediction."
+      }
+    ],
+    "sentenceFrames": [
+      "The story takes place ___.",
+      "The narrator is ___. I know because ___.",
+      "Mr. Okafor seems ___ because ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Chapter 1: Setting, Narrator and Characters"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-chapter-one",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

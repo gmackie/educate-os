@@ -9,6 +9,7 @@ import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { childPath } from "../router.tsx";
 import { FamilyPrivacyNote } from "./ChildPage.tsx";
 import { scoreText } from "./familyText.ts";
+import { PageHeading } from "../PageHeading.tsx";
 
 /** One assignment as a guardian sees it. */
 type ChildAssignment = RouteResponse<"guardian.childCourse">["assignments"][number];
@@ -98,7 +99,7 @@ export const ChildCoursePage = ({ studentId, offeringId }: { studentId: string; 
         {`${childName}'s classes`}
       </Link>
       <div className="flex flex-col gap-1">
-        <Text variant="heading" size="lg" as="h1">{title}</Text>
+        <PageHeading title={`${title} · ${childName}`}>{title}</PageHeading>
         <Text variant="secondary">{`${childName} · ${course.term.name}`}</Text>
         <FamilyPrivacyNote childName={childName} />
       </div>

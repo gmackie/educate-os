@@ -27,7 +27,7 @@ import {
 } from "@gmacko/hall-monitor-contracts";
 import { denialErrorCode, type AiDenialReason, type ModelRef } from "@educateos/ai-governance";
 import { guardMessages, type GuardConfig, type GuardMessages } from "./config.ts";
-import type { GuardContext, GuardContextResolver } from "./context.ts";
+import { gadgetGradeBand, studentProfileKey, type GuardContext, type GuardContextResolver } from "./context.ts";
 import { receiptAttempts, type GuardHallMonitorClient } from "./hall-monitor.ts";
 import { sourceEligibility } from "./source-governance.ts";
 import type { DistrictAiLedger } from "./ledger-object.ts";
@@ -39,6 +39,8 @@ type GuardLogFields = {
   callSite: string;
   checkId: string;
   audience: string;
+  profileId: string;
+  gradeBand: string;
   decision: string;
   reason: string;
   reasonCodes: string[];
@@ -86,6 +88,15 @@ function textChunks(parts: AiCallMessagePart[]): string[] {
     start = end;
   }
   return chunks;
+}
+
+/** Who a call is moderated as, for its log entries: the audience, profile and grade band labels. */
+function contextFields(context: GuardContext): Partial<GuardLogFields> {
+  return {
+    audience: context.audience,
+    profileId: context.profile.hallMonitorProfileId,
+    ...(context.gradeBand === undefined ? {} : { gradeBand: context.gradeBand }),
+  };
 }
 
 function machineReason(prefix: string, reason: AiDenialReason): string {
@@ -158,15 +169,16 @@ export class AiCallGuardService {
       log.error("AI call refused: the district directory could not say who the call is for", { event: "ai_guard.failed", reason: "context_unavailable", error: error instanceof Error ? error.name : "unknown" });
       return deny("context_unavailable", this.#messages.aiUnavailable);
     }
-    if (context !== null && call.initiator.type === "gadget") context = this.#gadgetContext(context);
+    if (context !== null && call.initiator.type === "gadget") context = this.#gadgetContext(context, call.audience);
     if (context === null) {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
       return deny("unknown_principal", this.#messages.unknownPrincipal);
     }
+    const contextLog = log.with(contextFields(context));
     try {
       sourceEligibility(this.#config, context, Math.floor(Date.now() / 1000));
     } catch {
-      log.info("AI call refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
+      contextLog.info("AI call refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
       return deny("source_eligibility_unavailable", this.#messages.aiUnavailable);
     }
     const model: ModelRef = { provider: call.model.provider, modelId: call.model.id };
@@ -174,7 +186,7 @@ export class AiCallGuardService {
     if (rate === undefined) {
       // Refused rather than guessed: a model with no configured rate cannot be held for, so any
       // spend on it would escape the budget.
-      log.warn("AI call refused: model has no configured rate", { event: "ai_guard.denied", reason: "model_unpriced" });
+      contextLog.warn("AI call refused: model has no configured rate", { event: "ai_guard.denied", reason: "model_unpriced" });
       return deny("model_unpriced", this.#messages.notAllowed);
     }
 
@@ -188,31 +200,31 @@ export class AiCallGuardService {
     });
     if (reserved.outcome === "denied") {
       const reason = machineReason("ledger", reserved.reason);
-      log.info("AI call refused by the ledger", { event: "ai_guard.denied", reason });
+      contextLog.info("AI call refused by the ledger", { event: "ai_guard.denied", reason });
       return deny(reason, denialErrorCode(reserved.reason) === "budget-exceeded" ? this.#messages.budget : this.#messages.notAllowed);
     }
     if (reserved.status !== "held") {
-      log.warn("AI call refused: its call ID was already settled", { event: "ai_guard.denied", reason: "request_already_completed" });
+      contextLog.warn("AI call refused: its call ID was already settled", { event: "ai_guard.denied", reason: "request_already_completed" });
       return deny("request_already_completed", this.#messages.notAllowed);
     }
 
     let moderation: Moderation;
     try {
-      moderation = await this.#moderate(call, context, log.with({ audience: context.audience }));
+      moderation = await this.#moderate(call, context, contextLog);
     } catch (error) {
       await this.#ledger.void(call.callId);
-      log.error("AI call refused: the guard failed while moderating", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
+      contextLog.error("AI call refused: the guard failed while moderating", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
       return deny("guard_error", this.#messages.aiUnavailable);
     }
     if (moderation.kind === "deny") {
       await this.#ledger.void(call.callId);
-      log.info("AI call refused by moderation", { event: "ai_guard.denied", reason: moderation.reason });
+      contextLog.info("AI call refused by moderation", { event: "ai_guard.denied", reason: moderation.reason });
       return deny(moderation.reason, moderation.message);
     }
     const languageModel = call.kind === "language-model";
     const screenOutput = languageModel && context.profile.outputModeration === "required";
     const coach = languageModel && moderation.coach;
-    log.debug("AI call admitted", { event: "ai_guard.admitted", ...(coach ? { decision: "coach" } : {}) });
+    contextLog.debug("AI call admitted", { event: "ai_guard.admitted", ...(coach ? { decision: "coach" } : {}) });
     return {
       action: "proceed",
       ...(screenOutput ? { screenOutput } : {}),
@@ -241,24 +253,25 @@ export class AiCallGuardService {
       return withhold("unknown_call", this.#messages.notAllowed);
     }
     let context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
-    if (context !== null && output.initiator?.type === "gadget") context = this.#gadgetContext(context);
+    if (context !== null && output.initiator?.type === "gadget") context = this.#gadgetContext(context, output.audience);
     if (context === null) {
       log.warn("AI response withheld: its principal is no longer served", { event: "ai_guard.output.withheld", reason: "unknown_principal" });
       return withhold("unknown_principal", this.#messages.notAllowed);
     }
+    const contextLog = log.with(contextFields(context));
     const checks = textChunks(output.parts).map((text, c) => ({ checkId: `${callId}.o.c${c}`, text }));
     let moderation: Moderation;
     try {
-      moderation = await this.#evaluate(callId, context, checks, "interaction.output", log.with({ audience: context.audience }));
+      moderation = await this.#evaluate(callId, context, checks, "interaction.output", contextLog);
     } catch (error) {
-      log.error("AI response withheld: the guard failed while screening it", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
+      contextLog.error("AI response withheld: the guard failed while screening it", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
       return withhold("guard_error", this.#messages.aiUnavailable);
     }
     if (moderation.kind === "deny") {
-      log.info("AI response withheld by moderation", { event: "ai_guard.output.withheld", reason: moderation.reason });
+      contextLog.info("AI response withheld by moderation", { event: "ai_guard.output.withheld", reason: moderation.reason });
       return withhold(moderation.reason, moderation.message);
     }
-    log.debug("AI response released", { event: "ai_guard.output.released" });
+    contextLog.debug("AI response released", { event: "ai_guard.output.released" });
     return RELEASE;
   }
 
@@ -317,16 +330,20 @@ export class AiCallGuardService {
   }
 
   /**
-   * The context a gadget's own model call is moderated under (SCHO-307). Its initiator is the
-   * gadget's owner, who pays for it, but whoever the gadget is shown to may be typing: a student
-   * using a teacher's shared gadget, say. The Workshop cannot tell, so the call is moderated as for
-   * the youngest students (`student-k5`, grades K-2). A configuration with no such profile keeps a
-   * student owner's own profile, and refuses anyone else's call.
+   * The context a gadget's own model call is moderated under (SCHO-307, SCHO-325). Its initiator is
+   * the binding's owner, who pays for it, but whoever the gadget is shown to may be typing: a
+   * student using a teacher's shared gadget, say. The Workshop cannot tell, so the call is
+   * moderated as a student's, failing closed, at the band {@link gadgetGradeBand} picks: the
+   * youngest (K-2) unless the gadget's model binding declares an older one, and never older than
+   * the owner's own band. The band's profile is used, else `student-k5`'s; a configuration with
+   * neither keeps a student owner's own profile, and refuses anyone else's call.
    */
-  #gadgetContext(context: GuardContext): GuardContext | null {
-    const profile = this.#config.profiles["student-k5"] ?? (context.audience === "student" ? context.profile : undefined);
+  #gadgetContext(context: GuardContext, declared: string | undefined): GuardContext | null {
+    const gradeBand = gadgetGradeBand(declared, context);
+    const { profiles } = this.#config;
+    const profile = profiles[studentProfileKey(gradeBand)] ?? profiles["student-k5"] ?? (context.audience === "student" ? context.profile : undefined);
     if (profile === undefined) return null;
-    return { ...context, audience: "student", gradeBand: "K-2", profile };
+    return { ...context, audience: "student", gradeBand, profile };
   }
 
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {

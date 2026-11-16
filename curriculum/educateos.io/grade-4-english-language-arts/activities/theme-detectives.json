@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:43cda463dbd09f69b2fdaa0f681d00a6f787152061724ed50c78d60ba0777c5e",
+      "id": "educateos.io/grade-4-english-language-arts-theme-detectives",
+      "version": "1.0.0"
+    }
+  },
+  "id": "theme-detectives",
+  "role": "lesson",
+  "title": "Theme Detectives"
+}

@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Practice taking notes in your own words and recording where each fact came from.",
+    "passage": "How researchers take notes\n\nResearchers do not copy whole sentences. They read a part of the text, look away, and write the important idea in their own words, using only a few key words. Then they write down where the idea came from, so they can find it again and give credit.\n\nRead this paragraph from a book called Tiny Flyers:\n\n\"The ruby-throated hummingbird is one of the smallest birds in North America. It weighs about as much as a penny. To stay in the air, it beats its wings more than 50 times every second, which makes the humming sound that gives the bird its name. All that flapping uses a great deal of energy, so a hummingbird must drink nectar from hundreds of flowers every day.\"\n\nHere is one researcher's note: \"wings beat 50+ times a second = humming sound (Tiny Flyers)\".",
+    "questions": [
+      {
+        "prompt": "Why do researchers write notes in their own words instead of copying sentences?"
+      },
+      {
+        "prompt": "Write a note, using only key words, about how much a ruby-throated hummingbird weighs."
+      },
+      {
+        "prompt": "Write a note about why hummingbirds must drink nectar from hundreds of flowers. Use your own words."
+      },
+      {
+        "prompt": "Look at the researcher's note. Why does it end with (Tiny Flyers)?"
+      },
+      {
+        "prompt": "Write one focus question you could research next about hummingbirds."
+      }
+    ],
+    "sentenceFrames": [
+      "My note: ___ (source).",
+      "Researchers use their own words so that ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Taking Notes Like a Researcher"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-taking-notes",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

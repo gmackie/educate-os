@@ -1,0 +1,53 @@
+{
+  "id": "animal-facts",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "facts-about-frogs"
+    },
+    {
+      "kind": "activity",
+      "ref": "animal-homes"
+    },
+    {
+      "kind": "activity",
+      "ref": "new-animal-words"
+    },
+    {
+      "kind": "activity",
+      "ref": "busy-beaver"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read true texts about animals: the main topic, key details and new words.",
+  "title": "Animal Facts"
+}

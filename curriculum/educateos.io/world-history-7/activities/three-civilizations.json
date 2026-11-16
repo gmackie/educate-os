@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:72a52cf3c2c9294a35dfc93a773f29179554f39cb85acf828c687555c0d5f89e",
+      "id": "educateos.io/world-history-7-three-civilizations",
+      "version": "1.0.0"
+    }
+  },
+  "id": "three-civilizations",
+  "role": "lesson",
+  "title": "Three Civilizations, Three Environments"
+}

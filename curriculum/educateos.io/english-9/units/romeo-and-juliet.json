@@ -1,0 +1,73 @@
+{
+  "id": "romeo-and-juliet",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "the-prologue-as-a-spoiler"
+    },
+    {
+      "kind": "activity",
+      "ref": "fate-or-choice"
+    },
+    {
+      "kind": "activity",
+      "ref": "seminar-who-is-responsible"
+    },
+    {
+      "kind": "activity",
+      "ref": "the-friars-warning"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.9.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1.C",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.9-10.1.D",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read Shakespeare's Romeo and Juliet through its prologue and key scenes: dramatic structure, character choices, figurative language, and who is responsible for the tragedy.",
+  "title": "Unit 4: Drama: Romeo and Juliet"
+}

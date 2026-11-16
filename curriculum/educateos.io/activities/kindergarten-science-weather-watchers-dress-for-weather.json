@@ -1,0 +1,83 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "drawPrompt": "Draw yourself ready to go out in the rain.",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "lookPrompt": "It is raining! 🌧️ What will you wear outside?",
+    "overview": "Draw yourself ready for a rainy day. Tell what you are wearing.",
+    "sentenceFrames": [
+      "I wear ___.",
+      "I bring ___."
+    ],
+    "subject": "science",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Dress for a Rainy Day"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-dress-for-weather",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "clothes",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I chose clothes for the weather"
+      },
+      {
+        "id": "tell",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told about my picture"
+      }
+    ],
+    "title": "Dress for the weather"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

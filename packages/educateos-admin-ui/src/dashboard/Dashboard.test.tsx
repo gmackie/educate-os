@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 // The aggregates never name a minor and never show what anyone wrote: the screens read only the
 // count-and-total routes, and nothing they render carries a name or a per-person row.
-import { describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/dom";
+import { describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/dom";
 import { STUDENT_NAMES, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 
 /** The routes whose answers are counts and totals only. */
 // `me.get` is the shell asking who is signed in, to name them and draw their navigation (SCHO-260).
-const AGGREGATE_ROUTES = new Set(["admin.health", "admin.aiUsage", "admin.getConfig", "admin.planConfig", "me.get"]);
+// `admin.productAnalytics` is the district's own on/off setting, never anything about a person (SCHO-350).
+const AGGREGATE_ROUTES = new Set(["admin.health", "admin.aiUsage", "admin.getConfig", "admin.planConfig", "admin.productAnalytics", "me.get"]);
 
 describe("the dashboard", () => {
   it("shows counts and totals for every area, and no student's name", async () => {
@@ -40,6 +41,90 @@ describe("the dashboard", () => {
     expect(within(roster).getByText("None")).toBeTruthy();
     expect(within(roster).getByText(/managed by hand/)).toBeTruthy();
     expect(within(roster).queryByText("OneRoster CSV export")).toBeNull();
+  });
+});
+
+describe("the district's name", () => {
+  it("renames the district, trimmed, and offers no rename until the name changes (SCHO-344)", async () => {
+    const district = fakeDistrict();
+    const { user } = renderConsole(district.client, "dashboard");
+    const form = await screen.findByRole("form", { name: "Rename the district" });
+    const name = within(form).getByRole("textbox", { name: /Name/ });
+    const rename = within(form).getByRole("button", { name: "Rename" }) as HTMLButtonElement;
+    expect((name as HTMLInputElement).value).toBe("Fake Unified");
+    expect(rename.disabled).toBe(true);
+
+    await user.clear(name);
+    expect(rename.disabled).toBe(true);
+    await user.type(name, "  Northfield Co-op ");
+    await user.click(rename);
+    expect(await screen.findByText("The district is now named Northfield Co-op.", { selector: "*:not([data-testid=announcer])" })).toBeTruthy();
+    expect(district.calls.find((c) => c.name === "admin.renameDistrict")!.input).toStrictEqual({ body: { name: "Northfield Co-op" } });
+    // The dashboard reloads the district, whose name now matches what was typed.
+    await waitFor(() => expect(rename.disabled).toBe(true));
+  });
+
+  it("turns product analytics on and off, saying what it sends and that a privacy review comes first (SCHO-350)", async () => {
+    const district = fakeDistrict();
+    const { user } = renderConsole(district.client, "dashboard");
+    const card = (await screen.findByRole("heading", { name: "Product analytics" })).parentElement!;
+    const toggle = (await within(card).findByRole("switch", { name: "Count visits to this district's pages" })) as HTMLButtonElement;
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(within(card).getByText("Turn this on only after your district's student-privacy review approves it.")).toBeTruthy();
+    expect(within(card).getByText(/never sends a name, an id, what anyone wrote/)).toBeTruthy();
+    expect(within(card).getByText("Off since the district was set up.")).toBeTruthy();
+
+    await user.click(toggle);
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    expect(district.calls.find((c) => c.name === "admin.setProductAnalytics")!.input).toStrictEqual({ body: { enabled: true } });
+    expect(within(card).getByText(/^Turned on on /)).toBeTruthy();
+    expect(card.textContent).not.toMatch(/prn_/);
+
+    await user.click(toggle);
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("false"));
+    expect(district.calls.filter((c) => c.name === "admin.setProductAnalytics").map((c) => c.input)).toStrictEqual([{ body: { enabled: true } }, { body: { enabled: false } }]);
+  });
+
+  it("offers no switch to flip where the deployment names no analytics service (SCHO-350)", async () => {
+    const district = fakeDistrict({ productAnalyticsConfigured: false });
+    renderConsole(district.client, "dashboard");
+    const card = (await screen.findByRole("heading", { name: "Product analytics" })).parentElement!;
+    const toggle = (await within(card).findByRole("switch", { name: "Count visits to this district's pages" })) as HTMLButtonElement;
+    expect(toggle.disabled || toggle.getAttribute("aria-disabled") === "true").toBe(true);
+    expect(within(card).getByText("This deployment has no analytics service, so it cannot be turned on.")).toBeTruthy();
+    expect(district.calls.some((c) => c.name === "admin.setProductAnalytics")).toBe(false);
+  });
+});
+
+describe("the district export (SCHO-367)", () => {
+  it("downloads the streamed ZIP under the name the district gives it", async () => {
+    const district = fakeDistrict();
+    const download = vi.fn(async () => new Response(new Uint8Array([0x50, 0x4b]), { headers: { "content-disposition": 'attachment; filename="dst_nf-2026-11-13.zip"' } }));
+    const saved: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.download);
+    });
+    Object.assign(URL, { createObjectURL: vi.fn(() => "blob:export"), revokeObjectURL: vi.fn() });
+    try {
+      const { user } = renderConsole({ ...district.client, download: download as never }, "dashboard");
+      const card = (await screen.findByRole("heading", { name: "Export the district" })).parentElement!;
+      await user.click(within(card).getByRole("button", { name: "Export" }));
+      await waitFor(() => expect(saved).toStrictEqual(["dst_nf-2026-11-13.zip"]));
+      expect(download).toHaveBeenCalledWith("admin.exportDistrict");
+      expect(screen.getByTestId("announcer").textContent).toBe("The district export is downloading.");
+
+      // The announcement is about the dashboard: it does not follow the administrator to the next screen (SCHO-410).
+      await user.click(within(screen.getByRole("list", { name: "Admin" })).getByRole("link", { name: "Policies" }));
+      await waitFor(() => expect(screen.getByTestId("announcer").textContent).toBe(""));
+    } finally {
+      click.mockRestore();
+    }
+  });
+
+  it("is not offered where the console's client cannot stream a file", async () => {
+    renderConsole(fakeDistrict().client, "dashboard");
+    await screen.findByRole("heading", { name: "Product analytics" });
+    expect(screen.queryByRole("heading", { name: "Export the district" })).toBeNull();
   });
 });
 

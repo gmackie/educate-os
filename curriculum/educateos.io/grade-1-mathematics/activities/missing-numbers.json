@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:0a2fae4a7c93bac54c9f24bd59017beb2bc107fd159be7c52963b9d239096475",
+      "id": "educateos.io/grade-1-mathematics-missing-numbers",
+      "version": "1.0.0"
+    }
+  },
+  "id": "missing-numbers",
+  "role": "assignment",
+  "title": "Fact Families and Missing Numbers"
+}

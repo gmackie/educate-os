@@ -27,35 +27,40 @@
   <div class="wrap">
     <a class="logo" href="/" aria-label="EducateOS home">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
-      EducateOS
+      <span class="wordmark">EducateOS</span>
     </a>
     <nav class="links" aria-label="Primary">
-      <a href="/#platform">Platform</a>
+      <a href="/tour/">Product tour</a>
       <a href="/integrations/">Integrations</a>
       <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
       <a href="/developers/">Developers</a>
     </nav>
     <div class="right">
-      <a class="btn hide-sm" href="/demo/">Try the demo</a>
-      <a class="btn primary" href="/interest/">Share your interest</a>
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
       <details class="menu">
         <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
           <a href="/#platform">Platform</a>
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
           <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
           <a href="/developers/">Developers</a>
           <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
           <a href="/students/">For students</a>
           <a href="/parents/">For families</a>
           <a href="/teachers/">For teachers</a>
           <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
           <a href="/schools/">Schools</a>
           <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
         </nav>
@@ -96,6 +101,15 @@
     </div>
   </section>
 
+  <section class="tight" id="launcher">
+    <div class="wrap">
+      <h2>Set it up with the launcher</h2>
+      <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os connect oneroster --csv-dir ./export</code></div>
+      <p style="margin-top:12px">Run by your IT team after the install, it sends a OneRoster 1.2 CSV export (from your SIS, or ClassLink Roster Server) to the district's preview, shows every change and anything that blocks it, and applies it only if you agree. Scheduled OneRoster API and ClassLink sync aren't available yet, and the launcher says so.</p>
+      <p class="muted" style="font-size:.88rem"><span class="status unit" data-status="launcher.connect">Harness-tested</span> The launcher's setup is tested against simulated systems, not yet against a real one. <a href="/it/install/#connect">After install: connect your LMS →</a></p>
+    </div>
+  </section>
+
   <section>
     <div class="wrap">
       <div class="cta">
@@ -118,12 +132,15 @@
       <div>
         <h4>Product</h4>
         <ul>
+          <li><a href="/tour/">Product tour</a></li>
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
           <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
           <li><a href="/mcp/">MCP</a></li>
           <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
         </ul>
       </div>
       <div>
@@ -133,14 +150,19 @@
           <li><a href="/parents/">Families</a></li>
           <li><a href="/teachers/">Teachers</a></li>
           <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
           <li><a href="/developers/">Developers</a></li>
           <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
         </ul>
       </div>
       <div>
         <h4>Trust</h4>
         <ul>
           <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
           <li><a href="/student-privacy/">Student privacy</a></li>
           <li><a href="/privacy/">Privacy Policy</a></li>
           <li><a href="/student-privacy/dpa/">DPA template</a></li>
@@ -151,6 +173,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
           <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>
@@ -158,7 +181,7 @@
     <div class="legal">
       <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
       <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
-      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
     </div>
   </div>
 </footer>

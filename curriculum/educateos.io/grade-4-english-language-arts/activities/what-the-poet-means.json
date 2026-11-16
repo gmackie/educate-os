@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a2a73de3a41b345d26d475463fd90c00ffa1ec5ed2bf22ee1f9893f4af0ee592",
+      "id": "educateos.io/grade-4-english-language-arts-what-the-poet-means",
+      "version": "1.0.0"
+    }
+  },
+  "id": "what-the-poet-means",
+  "role": "assignment",
+  "title": "What the Poet Means: \"Grandpa's Hands\""
+}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   roleAssignmentInForce,
+  type Action,
   type DelegationId,
   type DistrictDirectorySnapshot,
   type PolicySettings,
@@ -35,8 +36,12 @@ export interface SubjectFacts extends PrincipalFacts {
  * - `guardian-of`: a confirmed, in-force `GuardianRelationship` makes the subject a guardian of the
  *   student who owns the resource, or who is actively enrolled in the offering an unowned resource
  *   belongs to (ADR-0012, {@link guardianRelationships}).
+ * - `lti-deployment`: the subject is a registered LTI tool with an active deployment to the
+ *   resource's offering that allows the LTI service the resource and action need (SCHO-179).
+ * - `family-adult`: the subject is an adult of the family a `family` resource names, or of the
+ *   family whose child a `home-practice` resource names (ADR-0016).
  */
-export const Relationship = z.enum(["share-grantee", "appeal-reviewer", "guardian-of"]);
+export const Relationship = z.enum(["share-grantee", "appeal-reviewer", "guardian-of", "lti-deployment", "family-adult"]);
 /** A relationship. */
 export type Relationship = z.infer<typeof Relationship>;
 
@@ -53,11 +58,16 @@ export interface RelationshipFact {
  * state only and answer for the exact resource (`kind`, `id`, scope and owner). A source whose
  * records name one resource (a share, an appeal grant) returns nothing for a resource with no
  * `id`; a source whose records relate the subject to a person (a guardian relationship) may also
- * answer for a `list` at a scope, since the request's owner and scope are what it checks.
+ * answer for a `list` at a scope, since the request's owner and scope are what it checks. A source
+ * whose records allow some actions on a resource and not others (an LTI deployment's services)
+ * answers for the request's `action`.
  */
 export interface RelationshipSource {
-  /** The relationships `subject` holds to `resource`. */
-  relationships(subject: PrincipalId, resource: ResourceRef): Promise<readonly RelationshipFact[]>;
+  /**
+   * The relationships `subject` holds to `resource`, for `action` when the engine asks. A source
+   * whose relationships depend on the action holds none when it is not given.
+   */
+  relationships(subject: PrincipalId, resource: ResourceRef, action?: Action): Promise<readonly RelationshipFact[]>;
 }
 
 /**
@@ -76,8 +86,8 @@ export interface PolicyInformationPoint {
    * is not in, and so fall inside that school's grants.
    */
   scopeExists(scope: Scope): Promise<boolean>;
-  /** The relationships `subject` holds to one resource. */
-  relationships(subject: PrincipalId, resource: ResourceRef): Promise<readonly RelationshipFact[]>;
+  /** The relationships `subject` holds to one resource, for `action`. */
+  relationships(subject: PrincipalId, resource: ResourceRef, action: Action): Promise<readonly RelationshipFact[]>;
   /**
    * The delegation a delegated subject names, read fresh from its store, or `undefined`. An
    * information point with no delegations answers `undefined`, so every delegated request is denied.
@@ -146,8 +156,23 @@ export function scopeExistsIn(snapshot: DistrictDirectorySnapshot, scope: Scope)
   return snapshot.offerings.some((offering) => offering.id === scope.offeringId && offering.schoolId === scope.schoolId);
 }
 
+/**
+ * Where facts about subjects the directory does not hold come from: a registered LTI tool calling
+ * the district's LTI Platform services, for one (SCHO-179). It must read trusted stored state only,
+ * answer only for IDs it issued, and never give a subject a role.
+ */
+export interface SubjectSource {
+  /** The facts about `principalId`, or `undefined` if it is not one of this source's subjects. */
+  subjectFacts(principalId: PrincipalId): Promise<SubjectFacts | undefined>;
+}
+
 /** What {@link directoryPolicyInformation} reads besides the directory and the policy floor. */
 export interface DirectoryPolicyInformationOptions {
+  /**
+   * Sources of subjects that are not directory principals, asked in order for an ID the directory
+   * does not have. A directory principal is never looked up in them.
+   */
+  subjects?: readonly SubjectSource[];
   /** The services whose records establish relationships, such as artifact shares, appeal and guardian grants. */
   relationships?: readonly RelationshipSource[];
   /** Where delegations are kept. Without it, every delegated request is denied. */
@@ -170,14 +195,20 @@ export function directoryPolicyInformation(
   const now = options.now ?? (() => new Date());
   return {
     async subjectFacts(principalId) {
-      return subjectFactsFrom((await store.load()).snapshot, principalId, now());
+      const facts = subjectFactsFrom((await store.load()).snapshot, principalId, now());
+      if (facts !== undefined) return facts;
+      for (const source of options.subjects ?? []) {
+        const found = await source.subjectFacts(principalId);
+        if (found !== undefined) return { ...found, roles: [] };
+      }
+      return undefined;
     },
     effectivePolicy: (scope) => policy.effectivePolicy(scope),
     async scopeExists(scope) {
       return scopeExistsIn((await store.load()).snapshot, scope);
     },
-    async relationships(subject, resource) {
-      return (await Promise.all(sources.map((source) => source.relationships(subject, resource)))).flat();
+    async relationships(subject, resource, action) {
+      return (await Promise.all(sources.map((source) => source.relationships(subject, resource, action)))).flat();
     },
     delegation: async (id) => options.delegations?.get(id),
   };

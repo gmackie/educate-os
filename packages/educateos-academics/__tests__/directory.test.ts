@@ -554,4 +554,57 @@ describe("managing people (SCHO-212)", () => {
     const { directory } = directoryFor(projected);
     expect((await rejectsWith(directory.revokeDistrictAdmin(NF.admin, RIVERA), "conflict")).message).toContain("roster");
   });
+
+  it("lets a district administrator rename the district, trimmed, and no one else", async () => {
+    const { store, directory } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    const renamed = await directory.renameDistrict(NF.admin, { name: "  Northfield Co-op " });
+    expect(renamed).toStrictEqual({ ...NORTHFIELD.district, name: "Northfield Co-op" });
+    expect((await store.load()).snapshot.district).toStrictEqual(renamed);
+    // The same name again changes nothing.
+    const { version } = await store.load();
+    await directory.renameDistrict(NF.admin, { name: "Northfield Co-op" });
+    expect((await store.load()).version).toBe(version);
+    await rejectsWith(directory.renameDistrict(NF.admin, { name: "   " }), "validation-failed");
+    await rejectsWith(directory.renameDistrict(NF.admin, { name: "x".repeat(121) }), "validation-failed");
+    await rejectsWith(directory.renameDistrict(NF.highPrincipal, { name: "X" }), "forbidden");
+    await rejectsWith(directory.renameDistrict(NF.morgan, { name: "X" }), "forbidden");
+    await rejectsWith(directory.renameDistrict(RB_ADMIN, { name: "X" }), "forbidden");
+    expect((await store.load()).version).toBe(version);
+  });
+
+  it("lets a district administrator turn product analytics on and off, stamped, and no one else (SCHO-350)", async () => {
+    let clock = new Date("2026-11-07T12:00:00.000Z");
+    const { store, directory } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL, now: () => clock });
+    // A district starts without a decision: off.
+    expect((await store.load()).snapshot.district.productAnalytics).toBeUndefined();
+    // Turning it off when it was never on changes nothing.
+    const { version: untouched } = await store.load();
+    expect(await directory.setProductAnalytics(NF.admin, { enabled: false })).toStrictEqual(NORTHFIELD.district);
+    expect((await store.load()).version).toBe(untouched);
+
+    const on = await directory.setProductAnalytics(NF.admin, { enabled: true });
+    expect(on).toStrictEqual({
+      ...NORTHFIELD.district,
+      productAnalytics: { enabled: true, changedAt: "2026-11-07T12:00:00.000Z", changedBy: NF.admin.principal.principalId },
+    });
+    expect((await store.load()).snapshot.district).toStrictEqual(on);
+    // The same decision again keeps the stamp of the one that counts.
+    clock = new Date("2026-11-08T09:30:00.000Z");
+    const { version } = await store.load();
+    expect(await directory.setProductAnalytics(NF.admin, { enabled: true })).toStrictEqual(on);
+    expect((await store.load()).version).toBe(version);
+
+    // Only a district administrator decides; the body is exactly { enabled }.
+    await rejectsWith(directory.setProductAnalytics(NF.highPrincipal, { enabled: false }), "forbidden");
+    await rejectsWith(directory.setProductAnalytics(NF.morgan, { enabled: false }), "forbidden");
+    await rejectsWith(directory.setProductAnalytics(RB_ADMIN, { enabled: false }), "forbidden");
+    await rejectsWith(directory.setProductAnalytics(NF.admin, { enabled: "yes" } as never), "validation-failed");
+    await rejectsWith(directory.setProductAnalytics(NF.admin, { enabled: false, host: "https://elsewhere.example" } as never), "validation-failed");
+    expect((await store.load()).version).toBe(version);
+
+    const off = await directory.setProductAnalytics(NF.admin, { enabled: false });
+    expect(off.productAnalytics).toStrictEqual({ enabled: false, changedAt: "2026-11-08T09:30:00.000Z", changedBy: NF.admin.principal.principalId });
+    // The rest of the district record is untouched.
+    expect({ ...off, productAnalytics: undefined }).toStrictEqual({ ...NORTHFIELD.district, productAnalytics: undefined });
+  });
 });

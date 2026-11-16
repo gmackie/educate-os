@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f7ce4c17812028869dd447fca03832cd727027534536adff284c77b1a8313b37",
+      "id": "educateos.io/grade-4-english-language-arts-another-point-of-view",
+      "version": "1.0.0"
+    }
+  },
+  "id": "another-point-of-view",
+  "role": "assignment",
+  "title": "The Same Scene, Another Point of View"
+}

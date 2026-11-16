@@ -1,0 +1,7 @@
+{
+  "body": "Predicting offspring\n\nWhy do some children have a parent's eye color and others a grandparent's? About 160 years ago, a monk named Gregor Mendel answered part of that question by crossing pea plants and counting thousands of offspring.\n\nEach parent passes on one allele (version) of each gene. An organism's two alleles are its genotype; the trait you can observe is its phenotype. A dominant allele (B) shows its trait even when only one copy is present; a recessive allele (b) shows only when there are two copies (bb).\n\nA Punnett square shows every combination of alleles the offspring could receive. For two heterozygous parents (Bb x Bb):\n\n        B     b\n  B    BB    Bb\n  b    Bb    bb\n\nThat gives genotypes in a 1 BB : 2 Bb : 1 bb ratio, and a 3 : 1 ratio of dominant to recessive phenotypes.\n\nA Punnett square gives probabilities, not guarantees. Each offspring is a new coin toss. In this unit you will test that idea with real coin tosses, practice crosses, read family pedigrees, and meet traits that do not follow the simple dominant-recessive pattern.",
+  "id": "u2-overview",
+  "purpose": "context",
+  "title": "Punnett Squares",
+  "visibility": "students"
+}

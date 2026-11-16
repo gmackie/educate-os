@@ -156,6 +156,40 @@ redirects to the district registered for the user's Clever district, where Acces
 Clever sign-in. A self-hosted install registers its own landing page as the first redirect URI
 instead (see ADR-0013).
 
+## Demo showcase (SCHO-326)
+
+`src/showcase.ts` lets a district administrator of a demo district seed the K-12 showcase
+(`NORTHFIELD_SHOWCASE`) inside the district and link presenters' Access sign-ins to its personas, at
+`/api/demo/showcase/*`. It is on only when `DISTRICT_CONFIG.demo.showcase` and the `DEMO_SHOWCASE`
+var name the same showcase. Only the generated demo configs in `scripts/production` set that var.
+Everywhere else `/api/demo/*` is 404. Seeding keeps the fixture's IDs under the live district's ID
+and only appends. A persona's sign-in can be linked, moved or freed, but never taken from anyone who
+is not a persona. The routes, the gate and the live procedure are in
+[demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#the-k-12-showcase-scho-326).
+
+### Demo operator seed (SCHO-326)
+
+`src/demo-operator.ts` serves `GET /api/demo/operator/status` and `POST /api/demo/operator/seed`,
+which seed a standalone demo district (riverbend, prairie, cedarvalley, lakeshore, harbor) with its
+fixture roster and the bundled middle school starter pack without anyone's Access sign-in: the
+caller brings `authorization: Bearer <DEMO_OPERATOR_TOKEN>`, and the district runs
+`@educateos/harness/demo-district` in-process as its own seeded district administrator through
+`serveAs`. They are 404 unless the demo gate above holds and the `DEMO_OPERATOR_TOKEN` secret (32 or
+more characters) is set. See
+[demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#seeding-without-a-sign-in-operator-token).
+
+## Point-in-time recovery (SCHO-373)
+
+`src/recovery.ts` serves `GET /api/recovery/bookmark[?at=<time>]` and `POST /api/recovery/restore`
+(`{ districtId, bookmark }`), which restore the district object's SQLite storage to any moment in
+the last 30 days with the platform's bookmarks (`getBookmarkForTime`, `onNextSessionRestoreBookmark`,
+then `ctx.abort()` 250 ms after answering). The restore answers the bookmark that undoes it. The
+routes are served before the district application starts, so a district that no longer starts can
+still be restored. They are 404 unless the `RECOVERY_TOKEN` secret (32 or more characters) is set,
+and each request needs that token and a verified Access assertion. Local workerd hands out the
+current bookmark but refuses the rest (it keeps no history), so the tests drive the restore over a
+recording storage. See [backup-and-restore.md](../../docs/educateos/runbooks/backup-and-restore.md).
+
 ## Entrypoints
 
 | Entrypoint | For | Contract |
@@ -179,6 +213,37 @@ Access (one bypass application for exactly those paths), because LMS users launc
 browsers with no Access session. `/api/lti/*` stays behind Access. The routes, what each is decided
 as, and why each Tool path is safe without sign-in are in
 [docs/educateos/lti.md](../../docs/educateos/lti.md#the-district-workers-tool-scho-177).
+
+## Organization MCP endpoint (SCHO-174)
+
+`DISTRICT_CONFIG.mcp` turns on the district's `/mcp` endpoint for external MCP clients. It is
+absent by default, and then `/mcp` and `/.well-known/oauth-protected-resource[/mcp]` are 404. It
+stays off in every `scripts/production/*` config until the district's authorization server (Nathan)
+issues tokens for it (NATH-6). With it set, the fetch handler passes those three paths to the
+district's object. The object serves them with `@educateos/external-mcp`, which provides:
+
+- `createSchoolMcpApi`: MCP 2026-07-28 and 2025-11-25 through the pinned SDK, plus RFC 9728 metadata;
+- `DelegatedResourceAuthority`: verifies tokens against `mcp.jwksUri` and resolves `(iss, sub)`
+  through the live identity links;
+- the curated `externalSchoolTools`.
+
+`mcp` holds four settings:
+
+- `origin`: the resource is `<origin>/mcp`, and that is every token's only audience;
+- `issuer`: listed in the directory's `trustedIssuers`, with each teacher's subject linked under it;
+- `jwksUri`: on the issuer's origin;
+- `algorithms`.
+
+Every call acts under the one delegation in force (IF-06) from the token's person to its
+`client_id`, read from this object's delegation store. The call is bounded by that delegation's
+ceiling and by the teacher's roster standing as it is now. Writes wait in the same approval queue
+as the gatekeeper's. Revoking the delegation, deactivating the teacher or removing the link stops
+the next call. With no delegation the endpoint answers 403; with a bad token it answers 401,
+challenging with the metadata URL.
+
+The three paths must be exempt from Access, because MCP clients bring their own bearer tokens. That
+is a deployment step that comes with enabling the endpoint, not before. `__tests__/mcp.test.ts`
+drives the endpoint end to end with the official client and a synthetic issuer.
 
 ## Configuration and release
 
@@ -205,7 +270,10 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   Administrators then correct a person's name, email or kind (`admin.updatePrincipal`), deactivate
   or reactivate them (`admin.setPrincipalStatus`), and make staff district administrators or take
   that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always
-  keeps one active administrator, and nobody can remove their own administration.
+  keeps one active administrator, and nobody can remove their own administration. Any district
+  administrator, roster district or not, can rename the district (`admin.renameDistrict`, `POST
+  /api/admin/district`, SCHO-344): `directory.district.name` only seeds the name on the Durable
+  Object's first start, and the school manifest, every screen and the calendar feed read the stored one.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD` (a comma-separated list, see [Sign-in](#sign-in)).
 - `CLEVER_DISTRICT_TOKEN` (optional secret, SCHO-203): the district-app token Clever issued for the
   district, for the scheduled Clever roster sync. It is not a deploy input (the wizard requires every
@@ -233,7 +301,37 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   never fetches anything from educateos.io. Unset, every install answers 503 `unavailable`; a
   malformed value fails the start. The demo districts pin the project's demo release keys
   (`DEMO_MARKETPLACE_TRUST` in `scripts/production/demo-districts.ts`). Not yet a deploy input.
+- `COURSE_LIBRARY_TRUST` (optional var, SCHO-331): the OCS publishers whose signed course bundles
+  the district's course library imports, as `PublisherTrust` JSON from `@educateos/ocs`
+  (`{ "localDomains": [], "publishers": [{ "domain", "keys": [{ "keyId", "publicKey" }] }] }`,
+  public keys only, each publisher's keys pinned to its domain). An administrator imports a
+  course by posting its bundle to `admin.importCourseBundle` (or with the console's Course library
+  screen); every part's digest and signature is checked against this pin, and checked again as the
+  district's library stores it. Unset, every import answers 503 `unavailable`; a malformed value
+  fails the start. The demo districts and schoolos.gmac.io pin the educateos.io key from
+  `curriculum/educateos.io/publisher.json` (`EDUCATEOS_COURSE_LIBRARY_TRUST` in
+  `scripts/production/demo-districts.ts`). Not yet a deploy input. See
+  [docs/educateos/course-library.md](../../docs/educateos/course-library.md).
+- `PRODUCT_ANALYTICS` (optional var, SCHO-350): the self-hosted analytics service (Dataflare) the
+  district's pages may send usage events to, as `ProductAnalyticsDeployment` JSON from
+  `@educateos/district-app` (`{ "host": "<https origin>", "project": "<id>" }`). Naming it turns
+  nothing on: a district administrator decides with `admin.setProductAnalytics` (policy-decided and
+  audited, stored on the district; absent means off), and only then does `GET
+  /api/me/product-analytics` tell signed-in pages where to send events. It never appears in the
+  public school manifest, which the phone app validates strictly. Unset, analytics cannot be turned
+  on; a malformed value fails the start. Only the demo districts set it, Northfield
+  (schoolos.gmac.io) included (`DEMO_PRODUCT_ANALYTICS` in `scripts/production/demo-districts.ts`);
+  no customer district until the student-data legal review (DATFLR-3). Not a deploy input.
+- `DATA_JURISDICTION` (optional var, SCHO-374): `us` names the district's Durable Object in
+  Cloudflare's US jurisdiction (`src/jurisdiction.ts`,
+  [ADR-0015](../../docs/educateos/adr/0015-us-data-jurisdiction.md)). The installer sets it on a new
+  install; no ForgeGraph config does. Unset, the object is unpinned, as every district deployed before
+  ADR-0015 is. Never set it on an existing district: the same name in `us` is a different, empty
+  object. Local workerd doesn't implement jurisdictions, so a district with it set can't run in
+  `pnpm dev-server` or the tests. `DATA_JURISDICTIONS_SUPPORTED` (`us`, in the config) tells the
+  installer this release reads it.
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
+- `LTI_PLATFORM` (optional): `on` also serves the district as an LTI 1.3 Platform for third-party tools (SCHO-179, `src/lti-platform.ts`), at `LTI_TOOL_ORIGIN`. Any other value, or unset, leaves it off, as every production configuration does. See [docs/educateos/lti.md](../../docs/educateos/lti.md#educateos-as-an-lti-platform-scho-179-if-10).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
   config sets it from the district hostname.
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has

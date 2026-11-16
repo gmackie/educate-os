@@ -357,7 +357,7 @@ describe("the district Worker", () => {
     expect(await env.GUARD.guardSubject({ workshopUser })).toMatchObject({ kind: "student", roles: [], principal: { principalId: NF.amara } });
   });
 
-  it("answers a school tool's read at once, and refuses a write the roster owns before queueing it", async () => {
+  it("answers a school tool's read at once, and declines a write the roster owns once it is confirmed", async () => {
     const tools = await env.TOOLS.listTools();
     expect(tools.map((t) => t.name)).toContain("create_term");
 
@@ -373,12 +373,17 @@ describe("the district Worker", () => {
     expect(JSON.stringify((mine as { value: unknown }).value)).toContain(NF.eng9);
     expect(await env.TOOLS.callTool(admin!, "list_terms", {})).toMatchObject({ status: "ok" });
 
-    // This district's roster owns its directory, so an agent's directory change is refused naming the
-    // owner before anything is queued for a person (SCHO-175).
-    expect(await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" })).toMatchObject({
+    // This district's roster owns its directory. An agent's directory change still waits for a person,
+    // since nothing about the source of record is said before the caller is authorized for the record
+    // (SCHO-175); confirming it names the owner and declines it.
+    const queued = await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" });
+    expect(queued).toMatchObject({ status: "approval-required", needs: "confirmation" });
+    const approvalId = (queued as { approvalId: string }).approvalId;
+    expect(await env.TOOLS.approveChange(admin!, approvalId)).toMatchObject({
       status: "error",
       error: { code: "conflict", message: expect.stringContaining("owned by external:oneroster") },
     });
+    expect(await env.TOOLS.approveChange(admin!, approvalId)).toMatchObject({ status: "error", error: { code: "conflict", message: "This request was declined." } });
   });
 
   it("serves the /api surface to the gatekeeper's verified principal, over its entrypoint", async () => {

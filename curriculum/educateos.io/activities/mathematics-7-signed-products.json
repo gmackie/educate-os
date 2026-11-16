@@ -1,0 +1,106 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Multiply and divide positive and negative numbers, explain the sign rules, and write fractions as decimals.",
+    "problems": [
+      {
+        "prompt": "Compute (-6)(4)."
+      },
+      {
+        "prompt": "Compute (-3)(-9)."
+      },
+      {
+        "prompt": "Compute -42 ÷ 7."
+      },
+      {
+        "prompt": "Compute (-2/3) × (9/10). Write your answer in simplest form."
+      },
+      {
+        "prompt": "Write 3/8 and 2/9 as decimals. Which decimal terminates and which repeats?"
+      },
+      {
+        "prompt": "A water tank's level drops 1.5 inches each hour. Write a multiplication with signed numbers for the change in level after 6 hours, and find it."
+      },
+      {
+        "prompt": "Complete the pattern 3(-2) = -6, 2(-2) = -4, 1(-2) = ___, 0(-2) = ___, (-1)(-2) = ___. Use it to explain why the product of two negative numbers is positive."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Multiplying and Dividing Signed Numbers"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.NS.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-signed-products",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct products and quotients"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains the sign rules"
+      }
+    ],
+    "title": "Signed number operations"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

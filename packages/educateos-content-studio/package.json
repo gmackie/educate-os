@@ -6,7 +6,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./durable-object-store": "./src/durable-object-store.ts"
+    "./durable-object-store": "./src/durable-object-store.ts",
+    "./extraction": "./src/extraction.ts",
+    "./ids": "./src/ids.ts",
+    "./url-guard": "./src/url-guard.ts"
   },
   "dependencies": {
     "@educateos/catalog": "workspace:*",

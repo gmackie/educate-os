@@ -1,0 +1,88 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Solve each story. Draw a picture to show how you know.",
+    "problems": [
+      {
+        "prompt": "A bear has 8 apples 🍎. She picks 5 more. How many apples does she have now?"
+      },
+      {
+        "prompt": "There are 12 birds 🐦 on a tree. 4 fly away. How many birds are left?"
+      },
+      {
+        "prompt": "A fox has 6 red apples and 7 green apples. How many apples in all?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Apple Orchard Story Problems"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-story-problems",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "answer",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "My answers are right"
+      },
+      {
+        "id": "show",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I showed how I know"
+      }
+    ],
+    "title": "Story problems"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

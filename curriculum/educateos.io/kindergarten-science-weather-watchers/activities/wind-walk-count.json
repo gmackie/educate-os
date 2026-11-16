@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:0fedf277680e8a7c9d68d702ef2a1ca083b060869414a68b94077b50e80d2e5a",
+      "id": "educateos.io/kindergarten-science-weather-watchers-wind-walk-count",
+      "version": "1.0.0"
+    }
+  },
+  "id": "wind-walk-count",
+  "role": "assignment",
+  "title": "Wind Walk Count"
+}

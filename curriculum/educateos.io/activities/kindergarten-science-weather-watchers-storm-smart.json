@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a short text about storms. Tell how to stay safe.",
+    "passage": "Sometimes a big storm comes. You may see lightning flash and hear thunder boom. When you hear thunder, go inside a building right away. Stay inside until the storm is over. A weather forecaster studies the sky and tells us what weather is coming. When a storm is on the way, grown-ups listen to the forecast and help us get ready.",
+    "questions": [
+      {
+        "prompt": "What should you do when you hear thunder?"
+      },
+      {
+        "prompt": "How long should you stay inside?"
+      },
+      {
+        "prompt": "What does a weather forecaster do?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a safe place to be in a storm."
+      }
+    ],
+    "sentenceFrames": [
+      "When I hear thunder, I ___.",
+      "A forecaster tells us ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Storm Smart"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-storm-smart",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

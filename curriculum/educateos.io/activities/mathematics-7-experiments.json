@@ -1,0 +1,107 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Compare experimental results with probability models, make predictions, and design a simulation.",
+    "problems": [
+      {
+        "prompt": "A coin is flipped 50 times and lands heads 29 times. What is the experimental probability of heads? What is the theoretical probability? Why might they differ?"
+      },
+      {
+        "prompt": "A number cube is rolled 300 times. About how many times would you expect to roll a 6? Explain."
+      },
+      {
+        "prompt": "A spinner with three colors is spun 40 times: red 18 times, blue 12 times and green 10 times. Find the experimental probability of each color. Do the three sections seem to be the same size? Explain."
+      },
+      {
+        "prompt": "A basketball player makes 70% of her free throws. About how many would you expect her to make in 40 tries?"
+      },
+      {
+        "prompt": "Design a simulation using a number cube to model a day with a 1/3 chance of rain. Explain which numbers stand for rain and why."
+      },
+      {
+        "prompt": "A paper cup is dropped 200 times and lands on its side 124 times. Estimate the probability that it lands on its side, and predict how many times it would land on its side in 1,000 drops."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Experiments and Simulations"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.7",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-experiments",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct probabilities and predictions"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Compares results with the model"
+      }
+    ],
+    "title": "Experiments and models"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -19,6 +19,7 @@ export const CEDARVALLEY_PRINCIPALS = {
 export const CEDARVALLEY_PERSONAS: readonly Persona[] = [
   {
     id: "student",
+    kind: "student",
     name: "Rowan Ellis",
     role: "Grade 8 student",
     description: "Open Earth Science 8, write and submit an assignment, and see the classes Clever rostered you into.",
@@ -27,6 +28,7 @@ export const CEDARVALLEY_PERSONAS: readonly Persona[] = [
   },
   {
     id: "teacher",
+    kind: "teacher",
     name: "Dana Whitaker",
     role: "Earth Science and Algebra teacher",
     description: "See the classes Clever rostered for you, grade work and post an announcement.",
@@ -35,6 +37,7 @@ export const CEDARVALLEY_PERSONAS: readonly Persona[] = [
   },
   {
     id: "admin",
+    kind: "admin",
     name: "Elaine Park",
     role: "District administrator",
     description: "Run the district's first Clever roster sync, then look over the people and classes it brought in.",

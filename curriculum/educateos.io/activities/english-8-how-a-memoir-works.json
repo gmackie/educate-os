@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "8",
+    "overview": "Read a memoir excerpt and find the techniques the writer uses to bring a true moment to life.",
+    "passage": "The Summer of the Broken Bicycle (memoir excerpt)\n\nThe summer I was eleven, my bicycle was the most important thing I owned, and on the second day of July I wrecked it.\n\nI was racing my older brother down Orchard Hill, which every kid on our street knew you were not supposed to race down. The wind roared in my ears. The cracks in the road blurred into one gray stripe. I remember thinking, for exactly one second, that I was going to win. Then the front wheel hit the storm drain, and the world turned over.\n\nI had a scraped chin and two skinned palms. The bicycle had a front wheel folded like a taco.\n\n\"You can fix it,\" my grandfather said that night, turning the wheel in his hands. He didn't say he would fix it. He said I could.\n\nIt took the whole month. We went to the hardware store four times. I learned what spokes are, and that there are thirty-six of them, and that if you tighten one too much, the whole wheel pulls sideways. I learned to true a wheel by spinning it slowly past a clothespin clipped to the frame and listening for the tick where it wobbled. Most evenings I failed, and my grandfather, who could have done it in an hour, sat on an upside-down bucket and drank iced tea and said, \"Again.\"\n\nOn the last day of July, the wheel spun without a single tick. I rode it to the end of the street and back, slowly, like it was made of glass.\n\nI have thought about that summer more than I ever thought about the race. At the time I thought my grandfather was being stubborn. Now I think he was handing me something more useful than a fixed bicycle: the knowledge that a broken thing is not the end of the story, if you are willing to be patient with it, and with yourself.",
+    "questions": [
+      {
+        "prompt": "Find two sensory details in the paragraph about racing down Orchard Hill. What senses do they appeal to?"
+      },
+      {
+        "prompt": "The crash takes one sentence: \"Then the front wheel hit the storm drain, and the world turned over.\" Why might the writer tell it so quickly?"
+      },
+      {
+        "prompt": "What does the grandfather's line \"You can fix it\" reveal about him? Why does the writer point out that he did not say he would fix it?"
+      },
+      {
+        "prompt": "Find the paragraph where the adult writer reflects on the experience. What does the writer understand now that the eleven-year-old did not?"
+      },
+      {
+        "prompt": "What is the writer's purpose in sharing this memory? Use a quotation to support your answer."
+      }
+    ],
+    "sentenceFrames": [
+      "The writer uses ___ to show ___.",
+      "At the time, ___. Now, the writer understands ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "How a Memoir Works"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-how-a-memoir-works",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

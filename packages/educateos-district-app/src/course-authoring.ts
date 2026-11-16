@@ -36,7 +36,8 @@ function decodeBase64(base64: string): Uint8Array {
   return bytes;
 }
 
-function encodeBase64(bytes: Uint8Array): string {
+/** `bytes` as standard base64, in chunks so a large package does not overflow the call stack. */
+export function encodeBase64(bytes: Uint8Array): string {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
@@ -183,6 +184,10 @@ export async function exportCourseCartridge(
       items: module.items.flatMap((item): CourseCartridgeExport["modules"][number]["items"][number][] => {
         if (item.kind === "activity") {
           losses.push({ kind: "activity", module: module.id, item: item.id });
+          return [];
+        }
+        if (item.kind === "teacher-note") {
+          losses.push({ kind: "teacher-note", module: module.id, item: item.id });
           return [];
         }
         if (item.kind === "link") return [{ kind: "link", title: item.title, url: item.url }];

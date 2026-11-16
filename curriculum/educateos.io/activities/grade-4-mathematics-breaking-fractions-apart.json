@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Decompose fractions into sums, add on a number line, and see multiplication as repeated addition of a fraction.",
+    "problems": [
+      {
+        "prompt": "Write 4/5 as a sum of unit fractions (fractions with a numerator of 1)."
+      },
+      {
+        "prompt": "Write 5/6 as a sum of fractions in two different ways."
+      },
+      {
+        "prompt": "Draw a number line from 0 to 1 divided into eighths. Start at 3/8 and jump forward 2/8. Where do you land? Write the equation."
+      },
+      {
+        "prompt": "Write 3 × 1/4 as an addition equation, then find the answer."
+      },
+      {
+        "prompt": "Write 5/3 as a whole number times 1/3. Then write 5/3 as a mixed number."
+      },
+      {
+        "prompt": "Explain why 2/8 + 3/8 is not 5/16."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Breaking Fractions Apart"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-breaking-fractions-apart",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

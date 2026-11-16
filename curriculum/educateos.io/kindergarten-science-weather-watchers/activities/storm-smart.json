@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b4002b59d407ac34b3cb693d4d645638a4b79cd16678d7820560249cf10a9abb",
+      "id": "educateos.io/kindergarten-science-weather-watchers-storm-smart",
+      "version": "1.0.0"
+    }
+  },
+  "id": "storm-smart",
+  "role": "lesson",
+  "title": "Storm Smart"
+}

@@ -1,0 +1,163 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "7",
+    "minWords": 220,
+    "minimumCitations": 2,
+    "overview": "Argue whether Magna Carta or the Black Death did more to change the lives of ordinary people in medieval England.",
+    "prompt": "For an ordinary person in England, a peasant or a townsperson, which did more to change life in the 1200s and 1300s: Magna Carta or the Black Death? Write an argument with a clear claim, at least two pieces of evidence from the readings, an explanation of why your choice mattered more, and a fair answer to someone who would choose the other.",
+    "resources": [
+      "magna-carta-1215",
+      "the-great-mortality"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Which Changed More?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.1.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-which-changed-more",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "The clauses are translated and adapted into modern English for EducateOS from the Latin text of Magna Carta (1215), which is in the public domain. The introduction and note were written for EducateOS.",
+      "body": "In 1215, many of England's barons rebelled against King John. He had lost wars and lands in France, demanded heavy payments to fund new wars, and punished nobles without trial. In June 1215, at Runnymede, a meadow beside the River Thames, the king agreed to a charter of promises the barons had drawn up, written in Latin. It was later called Magna Carta, \"the Great Charter.\" Within a few months, the pope declared it invalid at John's request and war broke out again. After John died in 1216, the charter was reissued in changed forms in 1216, 1217 and 1225.\n\nClause 12: No scutage or aid [special payments to the king] shall be imposed in our kingdom except by the common counsel of our kingdom, except to ransom our person, to make our eldest son a knight, and to marry our eldest daughter once; and for these only a reasonable aid shall be taken.\n\nClause 39: No free man shall be arrested or imprisoned, or have his property taken, or be outlawed or exiled, or in any way ruined, nor will we go against him or send others against him, except by the lawful judgment of his equals or by the law of the land.\n\nClause 40: To no one will we sell, to no one will we refuse or delay, right or justice.\n\nNote: In 1215, \"free men\" did not include serfs, who were a large share of England's people.",
+      "id": "magna-carta-1215",
+      "title": "Magna Carta, 1215 (selected clauses)"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "In 1347, ships arriving in Sicily and other Mediterranean ports carried a deadly disease. Within four years it had spread across Europe, the Middle East and North Africa. People at the time called it \"the great mortality\" or \"the pestilence.\" Much later it was named the Black Death.\n\nScientists today have found the DNA of the bacterium Yersinia pestis in the remains of victims, which shows it was plague. The bacterium is carried by fleas that live on rats and other animals, and some forms can spread from person to person. The disease had moved along trade routes from Central Asia, the same routes that carried silk and spices.\n\nBetween 1347 and 1351, the plague killed perhaps a third or more of Europe's people; in some towns, half died. No one at the time knew what caused it. Some blamed bad air, or God's anger. In some places, Jewish communities were falsely blamed and attacked.\n\nThe plague changed Europe for generations. With so many workers dead, the survivors' labor was worth more. Many peasants demanded higher wages or left their manors for better pay elsewhere. Lords and kings tried to hold wages down by law; in England, a law of 1351 tried to fix wages at their old levels. Anger over such rules and over new taxes helped cause the English Peasants' Revolt of 1381. Over the next century, serfdom slowly faded in much of Western Europe.",
+      "id": "the-great-mortality",
+      "title": "The Great Mortality"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, arguable claim"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate evidence from the readings"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Compares the two developments"
+      },
+      {
+        "id": "counterclaim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Addresses the other side fairly"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

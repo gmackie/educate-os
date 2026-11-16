@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:63d39c7b384344c0c442c5b28b1cac878528d729e0e215a154753df00bb49665",
+      "id": "educateos.io/united-states-history-new-deal-assessment",
+      "version": "1.0.0"
+    }
+  },
+  "id": "new-deal-assessment",
+  "role": "assessment",
+  "title": "Did the New Deal End the Depression?"
+}

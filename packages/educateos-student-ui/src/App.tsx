@@ -3,7 +3,7 @@ import { LinkProvider } from "@cloudflare/kumo";
 import { RouterProvider, type RouterHistory } from "@tanstack/react-router";
 import type { DistrictApiClient, PairingClient } from "@educateos/api-client";
 import { ApiProvider } from "./api.tsx";
-import { AppContextProvider, type Embedding, type StudentFeatures } from "./AppContext.tsx";
+import { AppContextProvider, type Embedding, type StudentFeatures, type StudentHost } from "./AppContext.tsx";
 import { AppLink, createStudentRouter } from "./router.tsx";
 import { ShellProvider, type DistrictShell } from "./shell.tsx";
 
@@ -23,14 +23,16 @@ export interface StudentAppProps {
   shell?: DistrictShell;
   /** Opens pairing rooms for Connect phone. Without it, the page says phones can't be connected here. */
   pairing?: PairingClient;
+  /** What a host runs in place of the district's own pieces, such as the demo's sign-out. */
+  host?: StudentHost;
 }
 
 /** The Student Learning Home. */
-export const StudentApp = ({ client, features, history, embedding, shell, pairing }: StudentAppProps) => {
+export const StudentApp = ({ client, features, history, embedding, shell, pairing, host }: StudentAppProps) => {
   const [router] = useState(() => createStudentRouter(history));
   return (
     <ApiProvider client={client}>
-      <AppContextProvider features={features} {...(embedding === undefined ? {} : { embedding })}>
+      <AppContextProvider features={features} {...(embedding === undefined ? {} : { embedding })} {...(host === undefined ? {} : { host })}>
         <ShellProvider shell={shell} pairing={pairing}>
           <LinkProvider component={AppLink}>
             <RouterProvider router={router} />

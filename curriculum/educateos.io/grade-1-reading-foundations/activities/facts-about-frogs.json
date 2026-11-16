@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e9c83cfa1c1914926019159840a97d33f610178567311d907eb96fefc52f10cc",
+      "id": "educateos.io/grade-1-reading-foundations-facts-about-frogs",
+      "version": "1.0.0"
+    }
+  },
+  "id": "facts-about-frogs",
+  "role": "lesson",
+  "title": "Facts About Frogs"
+}

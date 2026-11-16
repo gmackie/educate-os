@@ -1,0 +1,142 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 33,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "8",
+    "minWords": 400,
+    "minimumCitations": 0,
+    "overview": "Write a memoir about a real moment that changed how you see yourself or the world.",
+    "prompt": "Write a memoir about a real moment that changed you, even in a small way. Set the scene so the reader knows where and when it happened. Slow down the most important part, using dialogue and sensory detail. End by reflecting: what did this moment mean, and what do you understand now that you did not then? Revise at least once after a peer conference, and keep a sentence or two at the end noting the biggest change you made.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "My Memoir: A Moment That Changed Me"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-my-memoir",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sequence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Engaging opening and clear sequence"
+      },
+      {
+        "id": "technique",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Dialogue, pacing and description"
+      },
+      {
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reflective conclusion"
+      },
+      {
+        "id": "revision",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Revision and conventions"
+      }
+    ],
+    "title": "Memoir"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

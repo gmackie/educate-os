@@ -3,6 +3,7 @@ import { Badge, Button, Input, Select, Table, Text } from "@cloudflare/kumo";
 import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, SUBJECTS, type AuthoringDirectory, type Course } from "./authoring.ts";
 import { useAuthoringAction } from "./useAuthoringAction.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 type Subject = (typeof SUBJECTS)[number][0];
 const subjectName = (subject: string) => SUBJECTS.find(([id]) => id === subject)?.[1] ?? subject;
@@ -44,51 +45,53 @@ export const CoursesSection = ({ directory, onChanged }: { directory: AuthoringD
     <section aria-labelledby="courses-heading" className="flex flex-col gap-3">
       <Text as="h3" variant="heading" id="courses-heading">Courses</Text>
       {directory.courses.length === 0 ? <Text variant="secondary">No courses yet.</Text> : (
-        <Table>
-          <caption className="sr-only">Courses</caption>
-          <Table.Header><Table.Row><Table.Head>Course</Table.Head><Table.Head>Subject</Table.Head><Table.Head>Grades</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row></Table.Header>
-          <Table.Body>
-            {directory.courses.map((c) => {
-              const archived = c.archivedAt !== undefined;
-              return (
-                <Table.Row key={c.id}>
-                  <Table.Cell>
-                    <span className="flex items-center gap-2">{c.title}{archived && <Badge variant="neutral">Archived</Badge>}</span>
-                  </Table.Cell>
-                  <Table.Cell>{subjectName(c.subject)}</Table.Cell>
-                  <Table.Cell>{c.gradeBand}</Table.Cell>
-                  <Table.Cell>
-                    {writable && (
-                      <span className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          aria-label={`Edit ${c.title}`}
-                          disabled={action.busy}
-                          onClick={() => setEditing({ course: c, draft: { title: c.title, subject: c.subject as Subject, gradeBand: c.gradeBand } })}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          aria-label={`${archived ? "Restore" : "Archive"} ${c.title}`}
-                          loading={action.running(c.id)}
-                          disabled={action.busy}
-                          onClick={() => void action.run(c.id, async (client) => {
-                            await client.call("admin.archiveCourse", { params: { courseId: c.id }, body: { archived: !archived } });
-                            return archived ? `${c.title} is restored.` : `${c.title} is archived. Its sections and work are kept.`;
-                          })}
-                        >
-                          {archived ? "Restore" : "Archive"}
-                        </Button>
-                      </span>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table>
+        <TableScroll label="Courses">
+          <Table>
+            <caption className="sr-only">Courses</caption>
+            <Table.Header><Table.Row><Table.Head>Course</Table.Head><Table.Head>Subject</Table.Head><Table.Head>Grades</Table.Head><Table.Head><span className="sr-only">Actions</span></Table.Head></Table.Row></Table.Header>
+            <Table.Body>
+              {directory.courses.map((c) => {
+                const archived = c.archivedAt !== undefined;
+                return (
+                  <Table.Row key={c.id}>
+                    <Table.Cell>
+                      <span className="flex items-center gap-2">{c.title}{archived && <Badge variant="neutral">Archived</Badge>}</span>
+                    </Table.Cell>
+                    <Table.Cell>{subjectName(c.subject)}</Table.Cell>
+                    <Table.Cell>{c.gradeBand}</Table.Cell>
+                    <Table.Cell>
+                      {writable && (
+                        <span className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            aria-label={`Edit ${c.title}`}
+                            disabled={action.busy}
+                            onClick={() => setEditing({ course: c, draft: { title: c.title, subject: c.subject as Subject, gradeBand: c.gradeBand } })}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            aria-label={`${archived ? "Restore" : "Archive"} ${c.title}`}
+                            loading={action.running(c.id)}
+                            disabled={action.busy}
+                            onClick={() => void action.run(c.id, async (client) => {
+                              await client.call("admin.archiveCourse", { params: { courseId: c.id }, body: { archived: !archived } });
+                              return archived ? `${c.title} is restored.` : `${c.title} is archived. Its sections and work are kept.`;
+                            })}
+                          >
+                            {archived ? "Restore" : "Archive"}
+                          </Button>
+                        </span>
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+        </TableScroll>
       )}
       {editing !== undefined && (
         <form

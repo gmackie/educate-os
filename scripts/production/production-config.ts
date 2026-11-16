@@ -48,12 +48,13 @@ import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE, backendAiGuardBinding } from "../ai-guard-dev.ts";
 import {
-  isGatekeeperPackage, readDeployablePackages, type DeployablePackage, type ServiceBinding,
+  districtUiAssets, isGatekeeperPackage, readDeployablePackages, type DeployablePackage, type ServiceBinding,
 } from "../release/manifest-lib.ts";
 import {
   PACKAGES_DIR, ROOT, backendGatekeeperServices, gatekeeperBaseUrl, routerServices,
   type StagingConfig,
 } from "../preview/staging-config.ts";
+import { COMMUNITY_DEPLOYMENTS } from "./communities.ts";
 import { DEMO_DISTRICT_DEPLOYMENTS } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
@@ -75,7 +76,7 @@ export const MAX_VAR_BYTES = 5000;
  */
 const SECRET_NAMES = new Set([
   "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY_API_TOKEN", "HALL_MONITOR_SIGNING_KEY",
-  "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "CLEVER_DISTRICT_TOKENS", "DISTRICT_CONFIG", "DEVICE_TOKEN_SECRET",
+  "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "CLEVER_DISTRICT_TOKENS", "DISTRICT_CONFIG", "DEVICE_TOKEN_SECRET", "DEMO_OPERATOR_TOKEN",
 ]);
 
 /** Where the Workshop is mounted on a district's one origin (ADR-0014): the backend's `PUBLIC_BASE_PATH`. */
@@ -88,24 +89,11 @@ export const ONE_ORIGIN_BASE_PATH = "/ai";
  */
 export const ONE_ORIGIN_BUILD_ENV: Readonly<Record<string, string>> = { VITE_WORKSHOP_BASE_PATH: `${ONE_ORIGIN_BASE_PATH}/` };
 
-/** The demo districts' own routes besides {@link DISTRICT_WORKER_ROUTES} once they serve `/ai` themselves. */
+/** The demo districts' own routes besides manifest-lib's `DISTRICT_WORKER_ROUTES` once they serve `/ai` themselves. */
 export const AI_DISABLED_ROUTES = ["/ai", "/ai/*"];
 
 /** The district Worker's package (and worker) name. */
 export const DISTRICT_PACKAGE = "educateos-district-worker";
-
-/**
- * Where the district Worker's static assets are, relative to its package: the three UIs as
- * assemble-district-ui.ts lays them out (student at `/`, admin at `/admin/`, teacher at `/teach/`).
- */
-export const DISTRICT_UI_DIR = "./dist/ui";
-
-/**
- * The district Worker's own routes, which run before its assets: the API (the pairing relay's
- * `/api/pair/*` among it), the liveness probe, the LTI Tool's endpoints (SCHO-177), the public school
- * manifest (ADR-0014) and the pairing relay's `/connect-phone` page (SCHO-261).
- */
-export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"];
 
 /** The EducateOS connector's package: the one gatekeeper bound to the district Worker (SCHO-218). */
 export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
@@ -160,6 +148,22 @@ export interface ProductionInstance {
      * each one as a destination before it is deployed, or it would serve without Access.
      */
     aliases?: string[];
+    /**
+     * `DEMO_SHOWCASE` (SCHO-326): the showcase an administrator may seed into a demo district, which
+     * its `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
+     */
+    showcase?: "northfield";
+    /**
+     * `COURSE_LIBRARY_TRUST` (SCHO-331): the OCS publishers, public keys only, whose signed course
+     * bundles the district's course library imports, as `PublisherTrust` JSON. Absent, it imports none.
+     */
+    courseLibraryTrust?: string;
+    /**
+     * `PRODUCT_ANALYTICS` (SCHO-350): the analytics service the district's pages may send usage
+     * events to, as `ProductAnalyticsDeployment` JSON. Demo districts only, until DATFLR-3's legal
+     * review; an administrator must still turn it on. Absent, analytics stays off.
+     */
+    productAnalytics?: string;
   };
   /**
    * One origin per district (ADR-0014): when `enabled`, the router serves the district at the root
@@ -305,11 +309,8 @@ function asDistrict(
   // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed. Behind
   // a one-origin router the district has none: the router reaches it by service binding.
   if (routed) config.routes = hostnames.map((pattern) => ({ pattern, custom_domain: true as const }));
-  config.assets = {
-    directory: DISTRICT_UI_DIR,
-    not_found_handling: "single-page-application",
-    run_worker_first: [...DISTRICT_WORKER_ROUTES, ...extraRoutes],
-  };
+  const assets = districtUiAssets();
+  config.assets = { ...assets, run_worker_first: [...assets.run_worker_first!, ...extraRoutes] };
   // The LTI Tool (SCHO-177) is served at the district's own hostname, the origin its platform
   // registrations name.
   withVars(DISTRICT_PACKAGE, config, { LTI_TOOL_ORIGIN: `https://${hostnames[0]}`, ...vars });
@@ -353,6 +354,28 @@ export interface DemoDistrictDeployment {
    * marketplace listings against, as `ReleaseTrust` JSON. Absent, it installs none.
    */
   marketplaceTrust?: string;
+  /**
+   * `COURSE_LIBRARY_TRUST` (SCHO-331): the OCS publishers, public keys only, whose signed course
+   * bundles the district's course library imports, as `PublisherTrust` JSON. Absent, it imports none.
+   */
+  courseLibraryTrust?: string;
+  /**
+   * `DEMO_SHOWCASE` (SCHO-326): the showcase an administrator may seed into the district, which its
+   * `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
+   */
+  showcase?: "northfield";
+  /**
+   * `PRODUCT_ANALYTICS` (SCHO-350): the analytics service the district's pages may send usage
+   * events to, as `ProductAnalyticsDeployment` JSON. Demo districts only, until DATFLR-3's legal
+   * review; an administrator must still turn it on. Absent, analytics stays off.
+   */
+  productAnalytics?: string;
+  /**
+   * `DATA_JURISDICTION` (ADR-0015): pins the district's Durable Object to a Cloudflare jurisdiction.
+   * Set it only before the Worker's first request: the same name in a jurisdiction is another object,
+   * so pinning a district that already has data starts it empty.
+   */
+  dataJurisdiction?: "us";
 }
 
 /** A demo district's Worker name: its own, so its own Durable Object namespace. */
@@ -402,7 +425,13 @@ export function buildDemoDistrictConfigs({
       workers_dev: false,
       preview_urls: false,
     };
-    const marketplace: Record<string, string> = district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust };
+    const marketplace: Record<string, string> = {
+      ...district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust },
+      ...district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: district.courseLibraryTrust },
+      ...district.showcase === undefined ? {} : { DEMO_SHOWCASE: district.showcase },
+      ...district.productAnalytics === undefined ? {} : { PRODUCT_ANALYTICS: district.productAnalytics },
+      ...district.dataJurisdiction === undefined ? {} : { DATA_JURISDICTION: district.dataJurisdiction },
+    };
     if (district.oneOrigin?.enabled) {
       // No router in front: the district answers /ai itself, so the Worker runs first for it.
       asDistrict(config, [district.hostname], {
@@ -543,7 +572,12 @@ export function buildProductionConfigs({
       const guardVars = instance.vars[AI_GUARD_PACKAGE] ?? {};
       const hallMonitorVars = Object.fromEntries(["HALL_MONITOR_ISSUER", "HALL_MONITOR_AUDIENCE"]
         .flatMap((name) => guardVars[name] === undefined ? [] : [[name, guardVars[name]]]));
-      vars = { ...hallMonitorVars, ...vars };
+      const showcase: Record<string, string> = {
+        ...instance.district.showcase === undefined ? {} : { DEMO_SHOWCASE: instance.district.showcase },
+        ...instance.district.productAnalytics === undefined ? {} : { PRODUCT_ANALYTICS: instance.district.productAnalytics },
+        ...instance.district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: instance.district.courseLibraryTrust },
+      };
+      vars = { ...hallMonitorVars, ...showcase, ...vars };
       if (oneOrigin) {
         // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms
         // registered, which the router redirects to the one origin with method and body kept.
@@ -644,7 +678,7 @@ export function renderProductionConfig(config: ProductionConfig): string {
 export function generateProductionConfigs({
   check,
   instance = SCHOOLOS_GMAC_IO,
-  districts = DEMO_DISTRICT_DEPLOYMENTS,
+  districts = [...DEMO_DISTRICT_DEPLOYMENTS, ...COMMUNITY_DEPLOYMENTS],
 }: {
   check: boolean;
   instance?: ProductionInstance;

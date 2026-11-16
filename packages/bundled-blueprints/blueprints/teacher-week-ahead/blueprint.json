@@ -1,0 +1,29 @@
+{
+  "blueprintId": "educateos.teacher-week-ahead",
+  "title": "Week Ahead",
+  "description": "A calmer start to the school week. Read a selected Google Calendar, then keep your preparation notes and checklist beside it.",
+  "output": {
+    "id": "teacher-board",
+    "noun": "Board",
+    "plural": "Boards",
+    "icon": "notebook"
+  },
+  "author": {
+    "type": "user",
+    "name": "EducateOS",
+    "id": "blueprints@educateos.io"
+  },
+  "revision": 1,
+  "created": "2026-11-04T00:00:00.000Z",
+  "version": 1,
+  "lastUpdated": "2026-11-04T00:00:00.000Z",
+  "bindings": {
+    "CALENDAR": {
+      "title": "Google Calendar",
+      "description": "Choose the calendar you use for teaching. This board only reads events; it never changes your calendar.",
+      "type": "gatekeeper",
+      "gatekeeperName": "google",
+      "typeUrlPattern": "https://calendar.google.com/calendar/:calendarId/*"
+    }
+  }
+}

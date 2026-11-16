@@ -1,0 +1,59 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Use a timeline to understand the major events of the Cold War and the decades since, and connect them to earlier units.",
+    "problems": [
+      {
+        "prompt": "What was containment? Name two policies from 1947 that put it into practice."
+      },
+      {
+        "prompt": "Name two times the Cold War became a shooting war involving American troops, and one time it nearly became a nuclear war."
+      },
+      {
+        "prompt": "How did the Cold War affect civil liberties at home in the early 1950s? Connect your answer to a case or law from Unit 5."
+      },
+      {
+        "prompt": "List, in order, the three events of 1989-1991 that ended the Cold War."
+      },
+      {
+        "prompt": "What law did Congress pass after the attacks of September 11, 2001, and what earlier unit does it remind you of? Explain the connection."
+      },
+      {
+        "prompt": "Choose one event on the timeline that changed American life at home, not only foreign policy, and explain how."
+      }
+    ],
+    "resources": [
+      "cold-war-timeline"
+    ],
+    "showWork": false,
+    "subject": "history-social-studies",
+    "template": "problem-set",
+    "title": "The Cold War in Twelve Events"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.2.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-cold-war-in-twelve-events",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "1945: The Second World War ends. The United States and the Soviet Union emerge as rival superpowers; Europe is divided between them.\n1947: President Truman asks Congress for aid to Greece and Turkey, announcing the Truman Doctrine. The Marshall Plan for European recovery follows.\n1948-1949: The Soviet Union blockades West Berlin; the United States and Britain supply the city by air for nearly a year. The NATO alliance forms in 1949, the year the Soviet Union tests its first atomic bomb.\n1950-1953: The Korean War. The fighting ends in an armistice near the line where it began.\nEarly 1950s: Senator Joseph McCarthy's accusations of communist infiltration feed a Red Scare in which many Americans lose jobs over their political associations.\n1957: The Soviet Union launches Sputnik, the first artificial satellite. Congress responds with new spending on science education.\n1961: President Eisenhower's farewell address in January. The Berlin Wall goes up in August.\n1962: The Cuban Missile Crisis brings the superpowers close to nuclear war.\n1964-1973: After the Gulf of Tonkin Resolution in 1964, American involvement in the Vietnam War grows to more than half a million troops. Protests divide the country. American combat forces leave in 1973; Saigon falls in 1975.\n1974: Facing impeachment over the Watergate scandal, President Richard Nixon resigns.\n1987: President Ronald Reagan speaks at the Berlin Wall. Later that year he and Soviet leader Mikhail Gorbachev sign a treaty eliminating a whole class of nuclear missiles.\n1989-1991: The Berlin Wall falls in November 1989. Germany reunites in 1990. The Soviet Union dissolves in December 1991.\n2001: Terrorists kill nearly 3,000 people on September 11. Congress passes the USA PATRIOT Act, expanding government surveillance powers, and the United States goes to war in Afghanistan.\n2008: A financial crisis sets off the Great Recession, the deepest economic downturn since the 1930s.",
+      "id": "cold-war-timeline",
+      "title": "The Cold War and After, 1945-2008: A Timeline"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

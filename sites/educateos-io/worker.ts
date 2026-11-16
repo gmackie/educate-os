@@ -9,6 +9,7 @@
  */
 import footer from "./partials/footer.html";
 import header from "./partials/header.html";
+import { handleListening } from "./listening/core.mjs";
 import { handleIntake } from "./intake/core.mjs";
 import type { ControlPlaneEnv } from "../../packages/educateos-control-plane/src/worker.ts";
 import { siteWorker } from "../../packages/educateos-control-plane/src/worker.ts";
@@ -23,6 +24,6 @@ export { InterestIntake } from "./intake/worker.ts";
 const existing = siteWorker({ header, footer });
 export default {
   async fetch(request, env, ctx) {
-    return await handleIntake(request, env) ?? existing.fetch!(request, env, ctx);
+    return await handleListening(request, env) ?? await handleIntake(request, env) ?? existing.fetch!(request, env, ctx);
   },
 } satisfies ExportedHandler<ControlPlaneEnv>;

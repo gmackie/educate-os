@@ -1,0 +1,49 @@
+{
+  "id": "rhymes-and-fluency",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u6-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "rhyme-time"
+    },
+    {
+      "kind": "activity",
+      "ref": "read-it-smoothly"
+    },
+    {
+      "kind": "activity",
+      "ref": "my-rhyme-picture"
+    },
+    {
+      "kind": "activity",
+      "ref": "poem-reading-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Hear and make rhymes, notice sound and color words in poems, and read aloud smoothly.",
+  "title": "Rhymes and Smooth Reading"
+}

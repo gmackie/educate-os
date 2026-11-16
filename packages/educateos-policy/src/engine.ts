@@ -144,7 +144,7 @@ export class PolicyEngine implements Authorizer, PolicyDecider {
       policy: async () => (policy ??= await this.#information.effectivePolicy(request.resource.scope)),
       // An inactive principal's roles end with its status, and so do its relationships.
       relationships: async () =>
-        (relationships ??= facts.active ? await this.#information.relationships(request.subject.principalId, request.resource) : []),
+        (relationships ??= facts.active ? await this.#information.relationships(request.subject.principalId, request.resource, request.action) : []),
     };
     for (const rule of this.#rules) {
       const match = await matches(rule.when, request, facts, lookups);

@@ -1,0 +1,146 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 56,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "8",
+    "minWords": 500,
+    "minimumCitations": 3,
+    "overview": "Research a change in your own community and write an explanatory report with at least three sources.",
+    "prompt": "Choose a change in your community from the last twenty years: a new park, a closed factory or store, a new bike lane, a renamed street, a new school. Write a research question about it (for example, why did it happen, and who did it affect?). Gather information from at least three sources, such as local news, city or school documents, and an interview with an adult who remembers. Write a report that introduces the question, explains what you found in two or three organized sections with facts, quotations and examples, and concludes with what you learned. Paraphrase in your own words, quote exactly when you quote, and list your sources at the end with author, title, date and where you found them. Note one source you decided not to trust, and why.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Explain a Local Change"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-explain-a-local-change",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "question",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Focused research question"
+      },
+      {
+        "id": "sources",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Credible, varied sources"
+      },
+      {
+        "id": "development",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Develops the topic with facts and quotations"
+      },
+      {
+        "id": "citation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Paraphrases and cites"
+      }
+    ],
+    "title": "Research report"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

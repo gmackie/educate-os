@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ed1974b50d96bb8e1bbab0c9060c469bd2c8d3adc29b6116890a2863eba0b73d",
+      "id": "educateos.io/grade-5-science-water-cycle",
+      "version": "1.0.0"
+    }
+  },
+  "id": "water-cycle",
+  "role": "assignment",
+  "title": "Explain the Water Cycle"
+}

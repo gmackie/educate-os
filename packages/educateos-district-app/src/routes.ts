@@ -4,11 +4,47 @@ import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
+// Home learning (ADR-0016)
+import {
+  AddLearnerInput,
+  CorrectionInput,
+  CreateFamilyInput,
+  NoticeAcceptance,
+  Pin,
+  QueueAddInput,
+  QueueChangeInput,
+  ResponseInput,
+  ShelfAddInput,
+  UpdateLearnerInput,
+  ActivityKey,
+  PackId,
+  DisplayName,
+  QueueEntryId,
+  PracticeSessionId,
+  ShelfItemId,
+  AdultInvitationId,
+  type Activity as HomeActivity,
+  type FamilyExport,
+  type FamilyView,
+  type HomeView,
+  type Learner,
+  type LibraryView,
+  type PracticeHome,
+  type PracticeView,
+  type ProgressView,
+  type QueueEntryView,
+  type ScoredResponse,
+  type SessionDetail,
+  type ShelfItem,
+  type TodayLearner,
+} from "@educateos/home-learning";
 // Devices (SCHO-261)
 import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
 // Operations (SCHO-263)
 import { KeyId } from "@educateos/fleet/ops";
 import { EnrollOpsKeyInput, GrantedOpsScopes, OpsAuditBody, OpsKeyBody } from "./ops.ts";
+// IT review (SCHO-376)
+import { AdminAuditLogQuery, DecisionLogQuery, DecisionPageBody, ScreeningLogBody, SignInSettingsBody } from "./admin-review.ts";
 import {
   AcademicTerm,
   ActivityDefinitionId,
@@ -24,6 +60,7 @@ import {
   ContentDigest,
   ContentItemId,
   CourseOffering,
+  District,
   DistrictId,
   Enrollment,
   EnrollmentId,
@@ -38,11 +75,13 @@ import {
   RubricId,
   School,
   SchoolId,
+  Subject,
   SubmissionId,
   SyncMode,
   TermId,
   TermState,
   WorkspaceId,
+  LearnerId,
 } from "@educateos/contracts";
 import { CourseWorkspace, PersonalWorkspace, PromotionLink, WorkspaceLifecycle, type TermRolloverPreview } from "@educateos/workspaces";
 import {
@@ -93,6 +132,7 @@ import {
   ModulePatch,
   NewPage,
   PagePatch,
+  ResourceReleaseRef,
   TemplateInput,
 } from "@educateos/curriculum";
 import {
@@ -113,9 +153,11 @@ import {
 } from "@educateos/discussions";
 // Quizzes (SCHO-191)
 import {
+  AccommodationInput,
   ItemGradeInput,
   NewQuiz,
   Quiz,
+  QuizAccommodations,
   QuizAnswer,
   QuizAttemptId,
   QuizId,
@@ -130,7 +172,7 @@ import {
   StudentQuizView,
 } from "@educateos/quizzes";
 import type { AcademicOperationName } from "@educateos/academics";
-import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, SchoolPatch, TermPatch } from "@educateos/academics";
+import { CoursePatch, DistrictRename, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, ProductAnalyticsChange, SchoolPatch, TermPatch } from "@educateos/academics";
 import { EvidenceContract } from "@educateos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@educateos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@educateos/ai-governance";
@@ -154,14 +196,21 @@ import {
   WeeklyNote,
 } from "./communication/model.ts";
 import type { GuardianDigest } from "./communication/digest.ts";
+// Student archive (SCHO-371): the manifest's type only, so this browser-safe module carries no exporter.
+import type { StudentArchiveManifest } from "@educateos/portability";
+import { ProductAnalyticsAdminBody, ProductAnalyticsClientBody } from "./product-analytics.ts";
+// From Google Classroom (SCHO-403)
+import { StudentClassroomGrades, TeacherClassroomGrades } from "./classroom-grades.ts";
 
 /**
  * Which part of EducateOS a route belongs to. Student routes answer only student principals,
  * teacher and admin routes only staff, and guardian routes only guardians; within a surface, every
  * decision is still the policy engine's. Onboarding routes answer a verified sign-in that may not
  * be anyone's principal yet, such as a guardian redeeming an invitation, and grant nothing.
+ * Family routes are a family adult's home-learning management, refused while a child session is
+ * on the browser; learner routes are a child's practice inside one (ADR-0016).
  */
-export type Surface = "me" | "student" | "teacher" | "admin" | "guardian" | "onboarding";
+export type Surface = "me" | "student" | "teacher" | "admin" | "guardian" | "onboarding" | "family" | "learner";
 
 /** One route of the district API. */
 export interface RouteSpec {
@@ -182,11 +231,28 @@ export interface RouteSpec {
   /** The success status. Defaults to 200. */
   readonly status?: 200 | 201;
   /**
+   * The route streams a file of this media type rather than answering JSON (SCHO-367). Its
+   * handler returns a {@link FileDownload}, its response is {@link FileDownload}, and the client
+   * reads it with `download`, not `call`.
+   */
+  readonly download?: "application/zip";
+  /**
    * The academic operation the route runs (SCHO-173). Its path parameters and body together are
    * the operation's input, its response is the operation's output, and the server runs it through
    * `invokeOperation` exactly as an agent's tool call runs it, with no handler of its own.
    */
   readonly operation?: AcademicOperationName;
+  /**
+   * The route starts or ends the browser's child session (ADR-0016). Its handler returns a
+   * {@link WithCookie}: the response body, and the `Set-Cookie` value the server sends with it.
+   */
+  readonly cookie?: "child-session";
+}
+
+/** What a {@link RouteSpec.cookie} route's handler returns. */
+export interface WithCookie<T> {
+  readonly body: T;
+  readonly setCookie: string;
 }
 
 /** A response type the domain package declares as an interface rather than a schema. */
@@ -194,8 +260,12 @@ const declared = <T>() => z.custom<T>((value) => typeof value === "object" && va
 
 // Shared shapes
 
-/** The file types a JSON client may upload as bytes. Text files are sent as `text` content instead. */
-export const UPLOAD_MEDIA_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
+/**
+ * The file types a JSON client may upload as bytes. Text files are sent as `text` content instead.
+ * The audio types are what browsers record (WebM or Ogg Opus, and MP4 on Safari) and the common
+ * files a student might upload instead (SCHO-323).
+ */
+export const UPLOAD_MEDIA_TYPES = ["application/pdf", "image/png", "image/jpeg", "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"] as const;
 /** An uploadable file type. */
 export type UploadMediaType = (typeof UPLOAD_MEDIA_TYPES)[number];
 
@@ -205,11 +275,23 @@ export type UploadMediaType = (typeof UPLOAD_MEDIA_TYPES)[number];
  */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-/** The bytes each uploadable type starts with, so a file is stored only if it is what it claims to be. */
-const UPLOAD_SIGNATURES: Record<UploadMediaType, readonly number[]> = {
-  "application/pdf": [0x25, 0x50, 0x44, 0x46, 0x2d], // %PDF-
-  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-  "image/jpeg": [0xff, 0xd8, 0xff],
+const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
+const at = (bytes: Uint8Array, offset: number, signature: readonly number[]) =>
+  bytes.length >= offset + signature.length && signature.every((byte, i) => bytes[offset + i] === byte);
+
+/** How each uploadable type's bytes begin, so a file is stored only if it is what it claims to be. */
+const UPLOAD_SIGNATURES: Record<UploadMediaType, (bytes: Uint8Array) => boolean> = {
+  "application/pdf": (b) => at(b, 0, ascii("%PDF-")),
+  "image/png": (b) => at(b, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  "image/jpeg": (b) => at(b, 0, [0xff, 0xd8, 0xff]),
+  // An EBML header, which every WebM file starts with.
+  "audio/webm": (b) => at(b, 0, [0x1a, 0x45, 0xdf, 0xa3]),
+  "audio/ogg": (b) => at(b, 0, ascii("OggS")),
+  // An ISO media file's `ftyp` box, after its four-byte size.
+  "audio/mp4": (b) => at(b, 4, ascii("ftyp")),
+  // An ID3 tag, or an MPEG audio frame's sync bits.
+  "audio/mpeg": (b) => at(b, 0, ascii("ID3")) || (b.length >= 2 && b[0] === 0xff && (b[1]! & 0xe0) === 0xe0),
+  "audio/wav": (b) => at(b, 0, ascii("RIFF")) && at(b, 8, ascii("WAVE")),
 };
 
 /**
@@ -229,7 +311,7 @@ export const UploadedFileContent = z.strictObject({
     ctx.addIssue({ code: "too_big", origin: "file", maximum: MAX_UPLOAD_BYTES, inclusive: true, path: ["base64"], message: "the file is too large" });
     return z.NEVER;
   }
-  if (!UPLOAD_SIGNATURES[mediaType].every((byte, i) => bytes[i] === byte)) {
+  if (!UPLOAD_SIGNATURES[mediaType](bytes)) {
     ctx.addIssue({ code: "custom", path: ["base64"], message: "the file's contents do not match its media type" });
     return z.NEVER;
   }
@@ -277,6 +359,8 @@ export const ActivityViewBody = z.strictObject({
   installation: ActivityInstallation,
   content: ActivityContent,
   evidenceContract: EvidenceContract,
+  /** Each resource's release title, in `content.resources` order; one the district cannot resolve is absent. */
+  resources: z.array(z.strictObject({ ...ResourceReleaseRef.shape, title: z.string() })),
 });
 /** An activity view. */
 export type ActivityViewBody = z.infer<typeof ActivityViewBody>;
@@ -316,6 +400,14 @@ export const MeBody = z.strictObject({
   roles: z.array(RoleAssignment.pick({ role: true, scope: true })),
   /** Active enrollments. */
   enrollments: z.array(Enrollment.pick({ offeringId: true, role: true })),
+  /**
+   * Present for a guardian where the installation offers home learning (ADR-0016): whether they have
+   * a family yet, and the child practicing on this browser, if a child session is open.
+   */
+  homeLearning: z.strictObject({
+    hasFamily: z.boolean(),
+    childSession: z.strictObject({ learnerId: LearnerId, displayName: z.string(), avatar: z.string() }).nullable(),
+  }).optional(),
 });
 /** The signed-in principal. */
 export type MeBody = z.infer<typeof MeBody>;
@@ -421,9 +513,11 @@ export const CiRunBody = z.strictObject({
 /** A CI run. */
 export type CiRunBody = z.infer<typeof CiRunBody>;
 
-/** District health for administrators: counts and states only, never names or content. */
+/** District health for administrators: counts and states only, never people's names or content. */
 export const DistrictHealthBody = z.strictObject({
   districtId: DistrictId,
+  /** The district's own name, which `admin.renameDistrict` changes (SCHO-344). */
+  districtName: District.shape.name,
   directory: z.strictObject({
     schools: z.int(),
     terms: z.int(),
@@ -597,11 +691,125 @@ export type CartridgePreviewBody = z.infer<typeof CartridgePreviewBody>;
 export const CartridgeExportBody = z.strictObject({
   fileName: z.string(),
   base64: z.string(),
-  /** Items a cartridge cannot carry, such as EducateOS activities, by module and item. */
-  losses: z.array(z.strictObject({ kind: z.enum(["activity", "quiz"]), module: z.string(), item: z.string() })),
+  /**
+   * Items a cartridge cannot carry, such as EducateOS activities, by module and item. Teacher-only
+   * notes (SCHO-331) are left out too: a cartridge has no teacher-only page, so an importer would
+   * show them to students.
+   */
+  losses: z.array(z.strictObject({ kind: z.enum(["activity", "quiz", "teacher-note"]), module: z.string(), item: z.string() })),
 });
 /** A cartridge export. */
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
+// District export (SCHO-364)
+
+/**
+ * The format tag in every district export's `manifest.json`. Version 2 (SCHO-367) adds the
+ * Content Studio, activities, rubric releases, course library, marketplace packs and weekly notes,
+ * and their counts; version 1 (SCHO-364) was answered as base64 inside JSON and is no longer made.
+ */
+export const DISTRICT_EXPORT_FORMAT = "educateos.district-export/v2";
+
+/**
+ * What a district export leaves out, and why. Fixed, so the manifest says the same thing every
+ * time and a reader never mistakes an absent file for an empty store.
+ */
+export const DISTRICT_EXPORT_EXCLUSIONS = [
+  "personal workspaces and their artifacts, which belong to their owners alone: each student takes them with the student archive (.educateos)",
+  "credentials and sign-in state: device tokens, phone pairing rooms, ops keys, guardian invitation tokens and pending identity links",
+  "the policy decision audit trail, the ops audit log and the Content Studio's review trail",
+  "AI usage ledger, funding allocations and Workshop user links",
+  "Assessment CI runs, which their store cannot list yet, and the framework catalog mirror, which is published catalog data",
+  "the course library's signed course packages themselves: each course's index entry and every class's installs are in course-library.json",
+  "notifications, calendar feeds, email preferences and the digest ledger",
+  "roster sync mirror and run history",
+  "student archive export mappings, which the district keeps to reconcile a later import",
+  "families' home learning (ADR-0016), which is each family's own: its adults export it themselves; and child-session tokens",
+  "the bytes of content held outside the district's storage: external links and registered providers (listed in notCopied)",
+] as const;
+
+const exportCount = z.int().nonnegative();
+
+/** The `manifest.json` of a district export. */
+export const DistrictExportManifest = z.strictObject({
+  format: z.literal(DISTRICT_EXPORT_FORMAT),
+  districtId: DistrictId,
+  districtName: z.string(),
+  exportedAt: z.iso.datetime(),
+  /** The administrator who exported it. */
+  exportedBy: PrincipalId,
+  /** How many records of each kind the archive holds. */
+  counts: z.strictObject({
+    schools: exportCount,
+    terms: exportCount,
+    courses: exportCount,
+    offerings: exportCount,
+    principals: exportCount,
+    enrollments: exportCount,
+    courseWorkspaces: exportCount,
+    artifacts: exportCount,
+    revisions: exportCount,
+    contentFiles: exportCount,
+    assignments: exportCount,
+    submissions: exportCount,
+    feedback: exportCount,
+    gradeVersions: exportCount,
+    guardianRelationships: exportCount,
+    configRevisions: exportCount,
+    offeringFiles: exportCount,
+    studioItems: exportCount,
+    studioReleases: exportCount,
+    activityDefinitions: exportCount,
+    activityInstallations: exportCount,
+    rubricReleases: exportCount,
+    libraryCourses: exportCount,
+    marketplacePacks: exportCount,
+    weeklyNotes: exportCount,
+  }),
+  /** Every file in the archive but this one, in path order. */
+  files: z.array(z.string()),
+  /** Content the records name but whose bytes the district does not hold, by digest. */
+  notCopied: z.array(z.strictObject({ digest: z.string(), backend: z.enum(["external", "registered"]), reference: z.string() })),
+  /** What is not in the archive. See {@link DISTRICT_EXPORT_EXCLUSIONS}. */
+  excluded: z.array(z.string()),
+});
+/** A district export's manifest. */
+export type DistrictExportManifest = z.infer<typeof DistrictExportManifest>;
+
+/**
+ * A file a {@link RouteSpec.download} route answers (SCHO-367): its name, for `Content-Disposition`
+ * (ASCII letters, digits, `.`, `_` and `-` only), and its bytes as a stream.
+ */
+export interface FileDownload {
+  fileName: string;
+  body: ReadableStream<Uint8Array>;
+}
+/** A streamed file, as a route's response type. Never parsed: the client reads the stream itself. */
+export const FileDownload = z.custom<FileDownload>((value) => typeof value === "object" && value !== null && "body" in value);
+// Student archive (SCHO-371)
+
+/** The media type of a `.educateos` student archive (`ARCHIVE_MEDIA_TYPE` in `@educateos/portability`). */
+export const STUDENT_ARCHIVE_MEDIA_TYPE = "application/vnd.educateos.student-archive+zip";
+
+/**
+ * A student's `.educateos` archive as the route answers it: the file, base64-encoded, its manifest,
+ * and what was left out because it held text shaped like a password, key or token, which the
+ * student can remove and export again.
+ */
+export const StudentArchiveBody = z.strictObject({
+  fileName: z.string(),
+  mediaType: z.literal(STUDENT_ARCHIVE_MEDIA_TYPE),
+  base64: z.string(),
+  /** The archive's `manifest.json`: its export ID, subject reference and items. */
+  manifest: declared<StudentArchiveManifest>(),
+  withheld: z.array(z.strictObject({
+    kind: z.enum(["artifact", "submission", "feedback", "resource"]),
+    label: z.string(),
+    found: z.array(z.string()),
+  })),
+});
+/** A student archive. */
+export type StudentArchiveBody = z.infer<typeof StudentArchiveBody>;
+
 // Guardians (ADR-0012, SCHO-188): shapes
 
 /** One of a guardian's children, through a relationship in force. */
@@ -829,6 +1037,11 @@ export const QuizResultsBody = QuizResults.extend({ names: QuizStudentsBody });
 /** Quiz results. */
 export type QuizResultsBody = z.infer<typeof QuizResultsBody>;
 
+/** A quiz's students' extended time (SCHO-383), with their names. */
+export const QuizAccommodationsBody = QuizAccommodations.extend({ names: QuizStudentsBody });
+/** Quiz accommodations. */
+export type QuizAccommodationsBody = z.infer<typeof QuizAccommodationsBody>;
+
 /** A student's attempt as staff grade it, with the student's name. */
 export const StaffAttemptBody = StaffAttemptView.extend({ studentName: z.string() });
 /** A staff attempt. */
@@ -925,6 +1138,143 @@ export type MarketplacePackTemplatesBody = z.infer<typeof MarketplacePackTemplat
 /** A listing bundle as downloaded from the marketplace. Only its shape is checked here; the district verifies it. */
 const MarketplaceBundleInput = z.record(z.string(), z.json());
 
+// Course library (SCHO-331). Plain schemas, so the browser bundle never carries the OCS verifier.
+
+/** An OCS course package ID, `<publisher domain>/<name>`, such as `educateos.io/grade-1-reading-foundations`. */
+export const CoursePackageId = z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+\/[a-z0-9][a-z0-9-]{0,99}$/, "expected <publisher domain>/<name>");
+/** A course package ID. */
+export type CoursePackageId = z.infer<typeof CoursePackageId>;
+
+/** A course package version, `MAJOR.MINOR.PATCH`. */
+export const CoursePackageVersion = z.string().regex(/^\d{1,9}\.\d{1,9}\.\d{1,9}$/, "expected MAJOR.MINOR.PATCH");
+
+/** A learning goal a course names: by CASE competency URI, with the code a teacher reads. */
+export const CourseStandardBody = z.strictObject({
+  frameworkKey: z.string(),
+  competencyUri: z.string(),
+  /** The goal's code, such as `RF.1.3`: the last part of its URI. */
+  code: z.string(),
+});
+/** A course standard. */
+export type CourseStandardBody = z.infer<typeof CourseStandardBody>;
+
+/** One unit of a library course: what installing it adds as one module. */
+export const LibraryUnitBody = z.strictObject({
+  /** The unit's place in the composed course. */
+  key: z.string(),
+  title: z.string(),
+  summary: z.string().optional(),
+  standards: z.array(CourseStandardBody),
+  activities: z.int().nonnegative(),
+  /** Student-visible Codex notes, installed as pages. */
+  pages: z.int().nonnegative(),
+  /** Teacher guides and answer keys, installed as teacher-only notes. */
+  teacherNotes: z.int().nonnegative(),
+  /** District-local resources, which a course from another district cannot carry. */
+  resources: z.int().nonnegative(),
+});
+/** A library course's unit. */
+export type LibraryUnitBody = z.infer<typeof LibraryUnitBody>;
+
+/** One course version in the district's course library, as imported from a signed bundle. */
+export const LibraryCourseBody = z.strictObject({
+  packageId: CoursePackageId,
+  version: CoursePackageVersion,
+  /** The package digest the publisher signed. */
+  digest: z.string(),
+  title: z.string(),
+  summary: z.string().optional(),
+  subject: Subject.optional(),
+  gradeBand: z.string().optional(),
+  language: z.string(),
+  /** The publisher domain, and whether the course came signed (false only for the district's own domains). */
+  publisher: z.strictObject({ domain: z.string(), signed: z.boolean() }),
+  standards: z.array(CourseStandardBody),
+  units: z.array(LibraryUnitBody),
+  /** Distinct activities the course installs. */
+  activities: z.int().nonnegative(),
+  imported: z.strictObject({ by: PrincipalId, at: z.string() }),
+});
+/** A library course version. */
+export type LibraryCourseBody = z.infer<typeof LibraryCourseBody>;
+
+/**
+ * A library course as a teacher browses it for one class: the latest version of each course, and
+ * whether it fits the class's subject and grade band.
+ */
+export const TeacherLibraryCourseBody = LibraryCourseBody.extend({
+  /** Whether the course's subject and grade band are the class's. */
+  matchesClass: z.boolean(),
+  /** What of this course the class already has, from an earlier install. */
+  installed: z.strictObject({ version: CoursePackageVersion, done: z.boolean() }).optional(),
+});
+/** A library course for a teacher. */
+export type TeacherLibraryCourseBody = z.infer<typeof TeacherLibraryCourseBody>;
+
+/** A course bundle (`educateos.ocs-bundle.v1`) as an administrator uploads it. Only its shape is checked here; the district verifies it. */
+const CourseBundleInput = z.record(z.string(), z.json());
+
+/** Which course version a teacher previews or installs in a class. */
+export const CourseInstallInput = z.strictObject({ packageId: CoursePackageId, version: CoursePackageVersion });
+
+/** One item of a unit, as installing it adds it. */
+export const CourseInstallItemBody = z.strictObject({
+  key: z.string(),
+  title: z.string(),
+  /** An activity (installed and assigned), a student page, a teacher-only note, or a district-local resource (not carried). */
+  kind: z.enum(["activity", "page", "teacher-note", "resource"]),
+  /** An activity's role in the unit. */
+  role: z.enum(["lesson", "assignment", "assessment"]).optional(),
+  /** An activity's template. */
+  template: z.string().optional(),
+  /** A teacher-only note's purpose. */
+  purpose: z.enum(["context", "answer-key"]).optional(),
+  /** Whether an earlier install already added it. */
+  done: z.boolean(),
+});
+/** An item of a course install. */
+export type CourseInstallItemBody = z.infer<typeof CourseInstallItemBody>;
+
+/**
+ * One unit of a course install. `new` is still to add; `exists` means the class already has a
+ * module with the unit's title, so the unit is skipped; `installing` was begun by an earlier
+ * request; `installed` is complete.
+ */
+export const CourseInstallUnitBody = z.strictObject({
+  key: z.string(),
+  title: z.string(),
+  summary: z.string().optional(),
+  status: z.enum(["new", "exists", "installing", "installed"]),
+  /** The class's module the unit is (or became). */
+  moduleId: CourseModuleId.optional(),
+  standards: z.array(CourseStandardBody),
+  items: z.array(CourseInstallItemBody),
+});
+/** A unit of a course install. */
+export type CourseInstallUnitBody = z.infer<typeof CourseInstallUnitBody>;
+
+/**
+ * What installing a course in a class does, or has done: its units with their items, which of the
+ * course's standards the district has approved, and whether it can go ahead. Installing only adds:
+ * it never edits or removes anything the class has.
+ */
+export const CourseInstallPlanBody = z.strictObject({
+  offeringId: OfferingId,
+  packageId: CoursePackageId,
+  version: CoursePackageVersion,
+  title: z.string(),
+  standards: z.array(CourseStandardBody.extend({ approved: z.boolean() })),
+  units: z.array(CourseInstallUnitBody),
+  /** Activities the class already holds a local definition of, from an earlier install, which are reused. */
+  reusedDefinitions: z.int().nonnegative(),
+  /** Why it cannot be installed yet, such as a standard the district has not approved. Empty when it can. */
+  problems: z.array(z.string()),
+  /** Whether every unit is installed or skipped. */
+  done: z.boolean(),
+});
+/** A course install plan or progress. */
+export type CourseInstallPlanBody = z.infer<typeof CourseInstallPlanBody>;
+
 /** Defines a route, keeping its literal types. */
 function route<const S extends RouteSpec>(spec: S): S {
   return spec;
@@ -937,6 +1287,12 @@ function route<const S extends RouteSpec>(spec: S): S {
 export const ROUTES = {
   // Me
   "me.get": route({ method: "GET", path: "/api/me", surface: "me", response: MeBody }),
+  /**
+   * Whether the caller's pages may send usage events, and where (SCHO-350): on only when the
+   * deployment names an analytics service and a district administrator turned it on. Read by
+   * `@educateos/shell` after sign-in; the public school manifest never carries it.
+   */
+  "me.productAnalytics": route({ method: "GET", path: "/api/me/product-analytics", surface: "me", response: ProductAnalyticsClientBody }),
 
   // Student: workspaces
   "student.listWorkspaces": route({ method: "GET", path: "/api/student/workspaces", surface: "student", response: z.array(WorkspaceViewBody) }),
@@ -1052,6 +1408,13 @@ export const ROUTES = {
     method: "GET", path: "/api/student/assignments/:assignmentId/grades", surface: "student",
     params: params({ assignmentId: AssignmentId }), response: z.array(OfficialGradeVersion),
   }),
+  /**
+   * The caller's own `.educateos` archive (SCHO-371): their personal workspaces, the course work of
+   * terms that are over, their submissions, the feedback shared with them and the resources their
+   * classes used, each item let in only by a policy decision on `export`, every one audited. Only
+   * ever the caller's: there is nothing to name another student by.
+   */
+  "student.exportArchive": route({ method: "GET", path: "/api/student/archive", surface: "student", response: StudentArchiveBody }),
 
   // Teacher: classes
   "teacher.listOfferings": route({ method: "GET", path: "/api/teacher/offerings", surface: "teacher", response: z.array(TeachingOfferingBody) }),
@@ -1101,6 +1464,28 @@ export const ROUTES = {
   "teacher.marketplacePacks": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/marketplace-packs", surface: "teacher",
     params: params({ offeringId: OfferingId }), response: z.array(MarketplacePackTemplatesBody),
+  }),
+  // Course library (SCHO-331)
+  "teacher.libraryCourses": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: z.array(TeacherLibraryCourseBody),
+  }),
+  "teacher.previewCourseInstall": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: CourseInstallInput, response: CourseInstallPlanBody,
+  }),
+  "teacher.installCourse": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-install", surface: "teacher",
+    params: params({ offeringId: OfferingId }),
+    body: CourseInstallInput.extend({
+      /**
+       * The most units to install in this request, for a client that shows progress unit by unit
+       * or a course too large for one request. Without it, every remaining unit. Call again until
+       * `done`; each call resumes where the last stopped.
+       */
+      maxUnits: z.int().min(1).max(50).optional(),
+    }),
+    response: CourseInstallPlanBody,
   }),
   "teacher.publishActivity": route({
     method: "POST", path: "/api/teacher/activity-definitions/:definitionId/publish", surface: "teacher",
@@ -1248,6 +1633,13 @@ export const ROUTES = {
   }),
   "admin.installMarketplacePack": route({
     method: "POST", path: "/api/admin/marketplace/packs", surface: "admin", body: MarketplaceBundleInput, response: MarketplacePackBody,
+  }),
+  // Course library (SCHO-331)
+  "admin.listLibraryCourses": route({
+    method: "GET", path: "/api/admin/course-library", surface: "admin", response: z.array(LibraryCourseBody),
+  }),
+  "admin.importCourseBundle": route({
+    method: "POST", path: "/api/admin/course-library", surface: "admin", body: CourseBundleInput, response: LibraryCourseBody,
   }),
   "admin.previewRoster": route({
     method: "POST", path: "/api/admin/roster/preview", surface: "admin", body: RosterFilesInput, response: declared<oneroster.OneRosterPreview>(),
@@ -1450,6 +1842,37 @@ export const ROUTES = {
     method: "POST", path: "/api/admin/principals/:principalId/district-admin/revoke", surface: "admin",
     params: params({ principalId: PrincipalId }), body: NoBody, response: AuthoringPrincipalBody,
   }),
+  /**
+   * Renames the district (SCHO-344): the name the LMS, the family and admin screens, the school
+   * manifest the phone app reads, and the calendar feed show. District administrators only; the
+   * policy decision is audited. Answers the district as it now stands.
+   */
+  "admin.renameDistrict": route({ method: "POST", path: "/api/admin/district", surface: "admin", body: DistrictRename, response: District }),
+  /**
+   * Product analytics as a district administrator sees it (SCHO-350): whether this deployment names
+   * an analytics service, whether it is on, and who last turned it on or off, when.
+   */
+  "admin.productAnalytics": route({ method: "GET", path: "/api/admin/district/product-analytics", surface: "admin", response: ProductAnalyticsAdminBody }),
+  /**
+   * Turns product analytics on or off (SCHO-350). District administrators only; the policy
+   * decision is audited. Turning it on where the deployment names no analytics service is a
+   * `conflict`; turning it off always works.
+   */
+  "admin.setProductAnalytics": route({
+    method: "POST", path: "/api/admin/district/product-analytics", surface: "admin", body: ProductAnalyticsChange, response: ProductAnalyticsAdminBody,
+  }),
+  /**
+   * The whole district as one streamed ZIP (SCHO-364, streamed since SCHO-367), for a district that
+   * keeps its own copy or leaves EducateOS: the directory, course workspaces, course artifacts and
+   * every revision a student submitted, with their held content, assignments, submissions, feedback
+   * and grades, each class's modules, discussions, quizzes, gradebook, announcements and weekly
+   * notes, guardian relationships, configuration revisions, the Content Studio, activities, rubric
+   * releases, the course library and marketplace packs, as JSON. Personal workspaces are not in it.
+   * District administrators only, as people; the policy decision (`admin.district.export`) is
+   * audited. The path moved from `/api/admin/district/export`, whose base64-in-JSON answer it
+   * replaces, so an old caller is told 404 rather than handed a ZIP it reads as JSON.
+   */
+  "admin.exportDistrict": route({ method: "GET", path: "/api/admin/district/export.zip", surface: "admin", download: "application/zip", response: FileDownload }),
   // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
   // policy engine with the guardian as subject, and built from the child's own view.
   "guardian.listChildren": route({ method: "GET", path: "/api/guardian/children", surface: "guardian", response: z.array(GuardianChildBody) }),
@@ -1470,6 +1893,136 @@ export const ROUTES = {
     method: "POST", path: "/api/onboarding/guardian-invitations/redeem", surface: "onboarding",
     body: z.strictObject({ token: z.string().min(1).max(100) }),
     response: z.strictObject({ outcome: GuardianInvitationRedemption.shape.outcome }),
+  }),
+  // Home learning (ADR-0016): a family adult manages their family and their children's practice.
+  // Every family route is refused while a child session is on the browser.
+  /** Whether this installation offers home learning, and how a newcomer joins: asked before they are anyone's principal. */
+  "onboarding.community": route({
+    method: "GET", path: "/api/onboarding/community", surface: "onboarding",
+    response: z.strictObject({ homeLearning: z.boolean(), signup: z.enum(["open", "approval", "invite-only"]).nullable() }),
+  }),
+  "onboarding.joinCommunity": route({
+    method: "POST", path: "/api/onboarding/community/join", surface: "onboarding",
+    body: z.strictObject({ displayName: DisplayName }),
+    response: z.strictObject({ outcome: z.enum(["joined", "awaiting-approval"]) }),
+  }),
+  "family.home": route({ method: "GET", path: "/api/family/home", surface: "family", response: declared<HomeView>() }),
+  "family.create": route({ method: "POST", path: "/api/family/create", surface: "family", status: 201, body: CreateFamilyInput, response: declared<FamilyView>() }),
+  "family.rename": route({ method: "POST", path: "/api/family/rename", surface: "family", body: z.strictObject({ name: DisplayName }), response: declared<FamilyView>() }),
+  "family.changePin": route({ method: "POST", path: "/api/family/pin", surface: "family", body: z.strictObject({ pin: Pin }), response: declared<FamilyView>() }),
+  "family.delete": route({ method: "POST", path: "/api/family/delete", surface: "family", body: z.strictObject({ confirm: z.literal("delete") }), response: z.strictObject({ deleted: z.literal(true) }) }),
+  "family.export": route({ method: "GET", path: "/api/family/export", surface: "family", response: declared<FamilyExport>() }),
+  "family.addLearner": route({ method: "POST", path: "/api/family/learners", surface: "family", status: 201, body: AddLearnerInput, response: declared<Learner>() }),
+  "family.updateLearner": route({
+    method: "POST", path: "/api/family/learners/:learnerId", surface: "family",
+    params: params({ learnerId: LearnerId }), body: UpdateLearnerInput, response: declared<Learner>(),
+  }),
+  "family.removeLearner": route({
+    method: "POST", path: "/api/family/learners/:learnerId/remove", surface: "family",
+    params: params({ learnerId: LearnerId }), body: NoBody, response: z.strictObject({ removed: z.literal(true) }),
+  }),
+  "family.library": route({ method: "GET", path: "/api/family/library", surface: "family", response: declared<LibraryView>() }),
+  "family.previewActivity": route({
+    method: "GET", path: "/api/family/library/:pack/:version/:activity", surface: "family",
+    params: params({ pack: PackId, version: z.string().regex(/^\d{1,3}\.\d{1,3}\.\d{1,3}$/), activity: ActivityKey }), response: declared<HomeActivity>(),
+  }),
+  "family.today": route({ method: "GET", path: "/api/family/today", surface: "family", response: declared<TodayLearner[]>() }),
+  "family.queueAdd": route({
+    method: "POST", path: "/api/family/learners/:learnerId/queue", surface: "family",
+    params: params({ learnerId: LearnerId }), body: QueueAddInput, response: declared<QueueEntryView[]>(),
+  }),
+  "family.queueChange": route({
+    method: "POST", path: "/api/family/learners/:learnerId/queue/:entryId", surface: "family",
+    params: params({ learnerId: LearnerId, entryId: QueueEntryId }), body: QueueChangeInput, response: declared<QueueEntryView[]>(),
+  }),
+  "family.queueRemove": route({
+    method: "POST", path: "/api/family/learners/:learnerId/queue/:entryId/remove", surface: "family",
+    params: params({ learnerId: LearnerId, entryId: QueueEntryId }), body: NoBody, response: declared<QueueEntryView[]>(),
+  }),
+  "family.progress": route({
+    method: "GET", path: "/api/family/learners/:learnerId/progress", surface: "family",
+    params: params({ learnerId: LearnerId }), response: declared<ProgressView>(),
+  }),
+  "family.session": route({
+    method: "GET", path: "/api/family/learners/:learnerId/sessions/:sessionId", surface: "family",
+    params: params({ learnerId: LearnerId, sessionId: PracticeSessionId }), response: declared<SessionDetail>(),
+  }),
+  "family.correct": route({
+    method: "POST", path: "/api/family/learners/:learnerId/sessions/:sessionId/corrections", surface: "family",
+    params: params({ learnerId: LearnerId, sessionId: PracticeSessionId }), body: CorrectionInput, response: declared<SessionDetail>(),
+  }),
+  "family.shelfAdd": route({ method: "POST", path: "/api/family/shelf", surface: "family", status: 201, body: ShelfAddInput, response: declared<ShelfItem>() }),
+  "family.shelfRemove": route({
+    method: "POST", path: "/api/family/shelf/:itemId/remove", surface: "family",
+    params: params({ itemId: ShelfItemId }), body: NoBody, response: z.strictObject({ removed: z.literal(true) }),
+  }),
+  /** Hands this browser to a child: sets the child-session cookie, after which only learner routes answer. */
+  "family.startChildSession": route({
+    method: "POST", path: "/api/family/learners/:learnerId/child-session", surface: "family", cookie: "child-session",
+    params: params({ learnerId: LearnerId }), body: NoBody, response: z.strictObject({ learnerId: LearnerId, displayName: z.string() }),
+  }),
+  /** Invites another grown-up: a single-use link, valid for a week, whose token is in its fragment. */
+  "family.inviteAdult": route({
+    method: "POST", path: "/api/family/adults/invitations", surface: "family", status: 201, body: NoBody,
+    response: z.strictObject({ id: z.string(), expiresAt: z.string(), link: z.url() }),
+  }),
+  "family.revokeInvitation": route({
+    method: "POST", path: "/api/family/adults/invitations/:invitationId/revoke", surface: "family",
+    params: params({ invitationId: AdultInvitationId }), body: NoBody, response: declared<FamilyView>(),
+  }),
+  /** Joins the family an invitation names, as a guardian with no family yet. */
+  "family.acceptInvitation": route({
+    method: "POST", path: "/api/family/join", surface: "family",
+    body: z.strictObject({ token: z.string().min(1).max(200), acceptNotice: NoticeAcceptance }), response: declared<FamilyView>(),
+  }),
+  /** Records that the caller accepted the current family notice. */
+  "family.acceptNotice": route({
+    method: "POST", path: "/api/family/notice/accept", surface: "family",
+    body: z.strictObject({ version: NoticeAcceptance }), response: declared<HomeView>(),
+  }),
+  /** Turns the practice screen's reading aloud on or off for the whole family. */
+  "family.readAloud": route({
+    method: "POST", path: "/api/family/read-aloud", surface: "family",
+    body: z.strictObject({ on: z.boolean() }), response: declared<FamilyView>(),
+  }),
+  /**
+   * Deletes the caller's account: they leave their family (or, as its last grown-up, delete it), and
+   * their sign-in is removed from the installation. Signing in again starts over as a newcomer.
+   */
+  "family.deleteAccount": route({
+    method: "POST", path: "/api/family/account/delete", surface: "family",
+    body: z.strictObject({ confirm: z.literal("delete") }), response: z.strictObject({ deleted: z.literal(true), familyDeleted: z.boolean() }),
+  }),
+  /** Removes a grown-up from the family: oneself (leaving) or another. Never the last one. */
+  "family.removeAdult": route({
+    method: "POST", path: "/api/family/adults/:principalId/remove", surface: "family",
+    params: params({ principalId: PrincipalId }), body: NoBody, response: declared<HomeView>(),
+  }),
+  /** Ends every child session of the family, from a device that isn't in one (a forgotten or locked PIN). */
+  "family.endChildSessions": route({ method: "POST", path: "/api/family/child-sessions/end", surface: "family", body: NoBody, response: z.strictObject({ ended: z.int() }) }),
+  // A child's practice, inside a child session.
+  "learner.session": route({
+    method: "GET", path: "/api/learner/session", surface: "learner",
+    response: z.discriminatedUnion("active", [
+      z.strictObject({ active: z.literal(false) }),
+      z.strictObject({ active: z.literal(true), learnerId: LearnerId, displayName: z.string(), avatar: z.string() }),
+    ]),
+  }),
+  "learner.home": route({ method: "GET", path: "/api/learner/home", surface: "learner", response: declared<PracticeHome>() }),
+  "learner.start": route({
+    method: "POST", path: "/api/learner/queue/:entryId/start", surface: "learner",
+    params: params({ entryId: QueueEntryId }), body: NoBody, response: declared<PracticeView>(),
+  }),
+  "learner.save": route({
+    method: "POST", path: "/api/learner/sessions/:sessionId/responses", surface: "learner",
+    params: params({ sessionId: PracticeSessionId }), body: ResponseInput, response: declared<{ response: ScoredResponse; completed: boolean }>(),
+  }),
+  /** Ends this browser's child session with the family PIN and clears its cookie. */
+  "learner.exit": route({ method: "POST", path: "/api/learner/exit", surface: "learner", cookie: "child-session", body: z.strictObject({ pin: z.string().max(16) }), response: z.strictObject({ ended: z.literal(true) }) }),
+  /** Community sign-ups awaiting an administrator (ADR-0016): approve or reject each as an identity request. */
+  "admin.familySignups": route({
+    method: "GET", path: "/api/admin/family-signups", surface: "admin",
+    response: z.array(z.strictObject({ requestId: IdentityRequestId, displayName: z.string(), signIn: z.strictObject({ issuer: z.string(), subject: z.string() }), requestedAt: z.string() })),
   }),
   "admin.guardianStudents": route({
     method: "GET", path: "/api/admin/guardians/students", surface: "admin",
@@ -1547,6 +2100,18 @@ export const ROUTES = {
   "student.gradeSummary": route({
     method: "GET", path: "/api/student/offerings/:offeringId/grade-summary", surface: "student",
     params: params({ offeringId: OfferingId }), response: StudentGradeSummary,
+  }),
+
+  // From Google Classroom (SCHO-403): grades read live from Classroom, never stored or written.
+  /** The student's own returned Classroom grades in a class; `not-connected` where there is no Classroom. */
+  "student.classroomGrades": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/classroom-grades", surface: "student",
+    params: params({ offeringId: OfferingId }), response: StudentClassroomGrades,
+  }),
+  /** The class's Classroom grades, for those who may read its gradebook; `not-connected` where there is no Classroom. */
+  "teacher.classroomGrades": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/classroom-grades", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: TeacherClassroomGrades,
   }),
 
   // Communication (SCHO-189). Kept in one block, apart from the routes above.
@@ -1783,6 +2348,15 @@ export const ROUTES = {
     method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/release", surface: "teacher",
     params: params({ offeringId: OfferingId, quizId: QuizId }), body: NoBody, response: ReleaseOutcome,
   }),
+  // Extended time (SCHO-383): restricted, so only the class's staff and district administrators.
+  "teacher.quizAccommodations": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/accommodations", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), response: QuizAccommodationsBody,
+  }),
+  "teacher.setQuizAccommodation": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/accommodations", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: AccommodationInput, response: QuizAccommodationsBody,
+  }),
   "teacher.quizAttempt": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/quiz-attempts/:attemptId", surface: "teacher",
     params: params({ offeringId: OfferingId, attemptId: QuizAttemptId }), response: StaffAttemptBody,
@@ -1828,6 +2402,11 @@ export const ROUTES = {
       channel: RequestChannel,
       /** The state of the term the resource belongs to, when it belongs to one. */
       termState: TermState.optional(),
+      /**
+       * A delegation the principal would act under, as a client's verified session carries it. The
+       * decision is bounded by it exactly as live, including its `delegation.*` refusals.
+       */
+      delegationId: DelegationId.optional(),
     }),
     response: z.strictObject({
       /** What the engine would decide. */
@@ -1840,6 +2419,20 @@ export const ROUTES = {
       grantId: z.string().optional(),
     }),
   }),
+  // IT review (SCHO-376): what a district technology director reads before signing off, each a
+  // district administrator's alone (`admin.district.audit-log`, `admin.district.sign-in`). Read-only.
+  /** The safety decision log: the policy engine's decisions, newest first, filtered. */
+  "admin.decisionLog": route({ method: "GET", path: "/api/admin/audit/decisions", surface: "admin", query: DecisionLogQuery, response: DecisionPageBody }),
+  /**
+   * The admin audit log: the changes administrators were allowed to make (an `admin.*` rule's
+   * allowed writes and exports), newest first. It records each authorization, so a change that then
+   * failed validation is listed too.
+   */
+  "admin.auditLog": route({ method: "GET", path: "/api/admin/audit/admin-actions", surface: "admin", query: AdminAuditLogQuery, response: DecisionPageBody }),
+  /** Hall Monitor's decisions on students' discussion posts, across the district's classes. */
+  "admin.screeningLog": route({ method: "GET", path: "/api/admin/audit/screening", surface: "admin", response: ScreeningLogBody }),
+  /** How the district signs people in, read-only. */
+  "admin.signInSettings": route({ method: "GET", path: "/api/admin/sign-in", surface: "admin", response: SignInSettingsBody }),
 } as const satisfies Record<string, RouteSpec>;
 
 /** The routes. */

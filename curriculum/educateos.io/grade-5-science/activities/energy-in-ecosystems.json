@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1184fcbb6d2593f3d25af3eed51a63962de6dc1509e56766d94d58d1c36b853a",
+      "id": "educateos.io/grade-5-science-energy-in-ecosystems",
+      "version": "1.0.0"
+    }
+  },
+  "id": "energy-in-ecosystems",
+  "role": "lesson",
+  "title": "Energy Moves Through an Ecosystem"
+}

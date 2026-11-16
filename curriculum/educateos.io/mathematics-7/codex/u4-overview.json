@@ -1,0 +1,7 @@
+{
+  "body": "Geometry helps us plan a room, build a garden or wrap a box.\n\nScale drawings: a map with scale 1 cm : 5 km means every centimeter on the map stands for 5 kilometers.\n\nCircles: the radius r goes from the center to the edge; the diameter d = 2r.\n- Circumference: C = πd (or 2πr)\n- Area: A = πr²\nWe use 3.14 for π.\n\nWorked example: a circle has radius 5 cm.\nC = 2 × 3.14 × 5 = 31.4 cm\nA = 3.14 × 5 × 5 = 78.5 cm²\n\nAngles: complementary angles add to 90°, supplementary angles add to 180°, and vertical angles (across from each other where two lines cross) are equal.\n\nSolids: volume of a prism = area of the base × height. Surface area is the total area of all the faces.\n\nIn this unit you will use scale, circles, angles, area and volume to solve real design problems.",
+  "id": "u4-overview",
+  "purpose": "context",
+  "title": "Measuring Our World",
+  "visibility": "students"
+}

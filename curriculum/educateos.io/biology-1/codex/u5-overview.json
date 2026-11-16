@@ -1,0 +1,7 @@
+{
+  "body": "In Unit 4 you saw that mutations create new alleles. In Unit 2 you saw how alleles are passed on. Put those together with a struggle to survive, and you get the most powerful idea in biology: evolution by natural selection.\n\nCharles Darwin and Alfred Russel Wallace described it in 1858. It needs four conditions:\n1. Variation: individuals in a population differ, and much of that difference comes from different alleles.\n2. Inheritance: offspring tend to resemble their parents.\n3. More offspring are born than can survive, so they compete for limited resources.\n4. Differential survival and reproduction: individuals with traits that suit the environment leave more offspring.\n\nOver generations, the helpful alleles become more common. The population evolves. Individuals do not evolve; populations do. And selection does not create the traits it needs: it can only act on the variation that is already there.\n\nEvidence that living things share common ancestors comes from many directions: the fossil record, homologous structures like the bones of a human arm, a bat wing and a whale flipper, embryos, and DNA itself, where more closely related species share more of their sequence.\n\nIn this unit you will run a predator-prey simulation, analyze finch beak data from a drought, and argue about where antibiotic resistance comes from.",
+  "id": "u5-overview",
+  "purpose": "context",
+  "title": "Variation, Selection, Time",
+  "visibility": "students"
+}

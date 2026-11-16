@@ -163,7 +163,17 @@ export interface WorkerDomain {
 export interface KvNamespace {
   id: string;
   title: string;
+  /** The jurisdiction it durably stores data in, as Cloudflare lists it; absent for one with none. */
+  jurisdiction?: string;
 }
+
+/**
+ * The Cloudflare data jurisdictions an install's storage can be kept in (ADR-0015). KV, R2 and D1
+ * take one at creation only, and it cannot be changed afterwards. EducateOS installs use `us`.
+ */
+export const DATA_JURISDICTIONS = ["us"] as const;
+/** A data jurisdiction. */
+export type DataJurisdiction = (typeof DATA_JURISDICTIONS)[number];
 
 /** An R2 bucket. */
 export interface R2Bucket {
@@ -174,6 +184,8 @@ export interface R2Bucket {
 export interface D1Database {
   uuid: string;
   name: string;
+  /** The jurisdiction it is restricted to, as Cloudflare lists it; absent for one with none. */
+  jurisdiction?: string;
 }
 
 /** The account's Zero Trust organization. */
@@ -194,13 +206,18 @@ export interface EmailDomainRule {
   email_domain: { domain: string };
 }
 
+/** An `include` rule admitting one user by their verified email. */
+export interface EmailRule {
+  email: { email: string };
+}
+
 /** An `include` rule matching every request, for a bypass policy. */
 export interface EveryoneRule {
   everyone: Record<string, never>;
 }
 
 /** An `include` rule the installer writes or reads back. */
-export type AccessRule = EmailDomainRule | EveryoneRule;
+export type AccessRule = EmailDomainRule | EmailRule | EveryoneRule;
 
 /** A reusable Access policy. */
 export interface AccessPolicy {
@@ -212,11 +229,12 @@ export interface AccessPolicy {
 }
 
 /**
- * What the installer writes to an Access policy: `allow` for the district's email domains, or
+ * What the installer writes to an Access policy: `allow` for the district's email domains and listed
+ * people, or
  * `bypass` for everyone on the paths that check their own credential (ADR-0014).
  */
 export type AccessPolicySpec =
-  | { name: string; decision: "allow"; include: EmailDomainRule[] }
+  | { name: string; decision: "allow"; include: (EmailDomainRule | EmailRule)[] }
   | { name: string; decision: "bypass"; include: EveryoneRule[] };
 
 /** A self-hosted Access application. */
@@ -312,11 +330,28 @@ export interface CloudflareApi {
   detachWorkerDomain(accountId: string, domainId: string): Promise<void>;
 
   listKvNamespaces(accountId: string): Promise<KvNamespace[]>;
-  createKvNamespace(accountId: string, title: string): Promise<KvNamespace>;
-  listR2Buckets(accountId: string): Promise<R2Bucket[]>;
-  createR2Bucket(accountId: string, name: string): Promise<R2Bucket>;
+  /** Creates a KV namespace, storing its data in `jurisdiction` when one is given. */
+  createKvNamespace(accountId: string, title: string, jurisdiction?: DataJurisdiction): Promise<KvNamespace>;
+  /** Deletes a KV namespace and every value in it. Uninstall only (SCHO-368). */
+  deleteKvNamespace(accountId: string, namespaceId: string): Promise<void>;
+  /**
+   * The account's R2 buckets in one jurisdiction: those with none (Cloudflare's `default`) when
+   * `jurisdiction` is undefined. R2 lists each jurisdiction separately.
+   */
+  listR2Buckets(accountId: string, jurisdiction?: DataJurisdiction): Promise<R2Bucket[]>;
+  /** Creates an R2 bucket, restricted to `jurisdiction` when one is given. */
+  createR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<R2Bucket>;
+  /**
+   * Deletes an empty R2 bucket in `jurisdiction`. Cloudflare refuses a bucket that still holds
+   * objects; the installer never empties one, because that would mean reading or deleting district
+   * objects. Uninstall only (SCHO-368).
+   */
+  deleteR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<void>;
   listD1Databases(accountId: string): Promise<D1Database[]>;
-  createD1Database(accountId: string, name: string): Promise<D1Database>;
+  /** Creates a D1 database, restricted to `jurisdiction` when one is given. */
+  createD1Database(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<D1Database>;
+  /** Deletes a D1 database and its data. Uninstall only (SCHO-368). */
+  deleteD1Database(accountId: string, databaseId: string): Promise<void>;
   /** Runs SQL against a D1 database. The installer uses it only for migrations and their ledger. */
   queryD1(accountId: string, databaseId: string, sql: string, params?: string[]): Promise<Record<string, unknown>[]>;
 
@@ -326,10 +361,16 @@ export interface CloudflareApi {
   listAccessPolicies(accountId: string): Promise<AccessPolicy[]>;
   createAccessPolicy(accountId: string, spec: AccessPolicySpec): Promise<AccessPolicy>;
   updateAccessPolicy(accountId: string, policyId: string, spec: AccessPolicySpec): Promise<AccessPolicy>;
+  /** Deletes a reusable Access policy no application uses any more. Uninstall only (SCHO-368). */
+  deleteAccessPolicy(accountId: string, policyId: string): Promise<void>;
   listAccessApplications(accountId: string): Promise<AccessApplication[]>;
   createAccessApplication(accountId: string, spec: AccessApplicationSpec): Promise<AccessApplication>;
   updateAccessApplication(accountId: string, appId: string, spec: AccessApplicationSpec): Promise<AccessApplication>;
+  /** Deletes an Access application, which ends its sessions. Uninstall only (SCHO-368). */
+  deleteAccessApplication(accountId: string, appId: string): Promise<void>;
 
   listAiGateways(accountId: string): Promise<AiGateway[]>;
   createAiGateway(accountId: string, gatewayId: string): Promise<AiGateway>;
+  /** Deletes an AI Gateway and its logs. Uninstall only (SCHO-368). */
+  deleteAiGateway(accountId: string, gatewayId: string): Promise<void>;
 }

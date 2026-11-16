@@ -1,0 +1,104 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "The equal sign means \"is the same as\". Decide if each equation is true or false, then add three numbers.",
+    "problems": [
+      {
+        "prompt": "Is 6 = 6 true or false?"
+      },
+      {
+        "prompt": "Is 7 = 8 - 1 true or false?"
+      },
+      {
+        "prompt": "Is 5 + 2 = 2 + 5 true or false? Tell why."
+      },
+      {
+        "prompt": "Is 4 + 1 = 5 + 2 true or false? Tell why."
+      },
+      {
+        "prompt": "Is 9 + 3 = 10 + 2 true or false?"
+      },
+      {
+        "prompt": "Add 4 + 6 + 3. Look for a ten first."
+      },
+      {
+        "prompt": "Kim picks 5 red flowers, 2 yellow flowers and 5 white flowers. How many flowers does she pick?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "True or False?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.D.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-true-or-false",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "equal",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell if an equation is true or false"
+      },
+      {
+        "id": "three",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can add three numbers"
+      }
+    ],
+    "title": "True or false"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

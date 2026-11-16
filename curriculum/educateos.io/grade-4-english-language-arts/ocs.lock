@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:d065858f8aa8a0d58b71acf05633987aa275d09c1d98f80e1ad42f709219a3c4",
+    "id": "educateos.io/grade-4-english-language-arts",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:55844cce9b30b71cc7b8a9819bddd9e37f9774bce8a9cd80d53d834a396d53d5",
+      "id": "educateos.io/english-9-reading-a-new-story",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reading-a-new-story",
+  "role": "assessment",
+  "title": "Reading a New Story"
+}

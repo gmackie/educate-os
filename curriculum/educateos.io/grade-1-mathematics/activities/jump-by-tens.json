@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:cc19a5f3865af362da86c2fba5ae0077c517238ae7f960b177a306826f0445ac",
+      "id": "educateos.io/grade-1-mathematics-jump-by-tens",
+      "version": "1.0.0"
+    }
+  },
+  "id": "jump-by-tens",
+  "role": "assignment",
+  "title": "Jump by Tens"
+}

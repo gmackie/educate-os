@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e18fc14e682953d79baa774afb1810e4e80faa6a4078fa0b448ad836793420d5",
+      "id": "educateos.io/world-history-7-life-between-the-rivers",
+      "version": "1.0.0"
+    }
+  },
+  "id": "life-between-the-rivers",
+  "role": "lesson",
+  "title": "Life Between the Rivers"
+}

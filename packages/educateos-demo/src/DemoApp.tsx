@@ -3,14 +3,17 @@ import { Loader } from "@cloudflare/kumo";
 import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { CleverSide } from "./clever/CleverSide.tsx";
 import { cleverSideOf } from "./clever/cleverSide.ts";
-import { ROSTER_SYNC_ROUTE, districtFromSearch, districtInfo, type DemoDistrict, type DistrictKey, type PersonaId } from "./districts/index.ts";
+import { ROSTER_SYNC_ROUTE, districtFromSearch, districtInfo, personaFromSearch, type DemoDistrict, type DistrictKey, type PersonaId } from "./districts/index.ts";
 import { DemoBanner } from "./DemoBanner.tsx";
 import { PersonaPicker } from "./PersonaPicker.tsx";
 import { PersonaWorkspace } from "./PersonaWorkspace.tsx";
 import type { PortalSignIn } from "./clever/Portal.tsx";
 import { CleverTour } from "./tour/CleverTour.tsx";
 import { CleverTourStore, jumpTo, showMe, type TourActions, type TourStepId } from "./tour/cleverTour.ts";
-import { presenterFromSearch, usePresenterKeys } from "./tour/presenter.ts";
+import { presenterFromSearch, storyPresenterKeys, usePresenterKeys, PRESENTER_KEYS } from "./tour/presenter.ts";
+import { StoryTour } from "./tour/StoryTour.tsx";
+import { revealWhenShown } from "./tour/reveal.ts";
+import { STORY_STEPS, storyDestination } from "./tour/storyTour.ts";
 
 // Cedar Valley's Clever portal brings the control plane's launch, jose and the Clever sign-in fake,
 // so it loads only when a visitor opens Cedar Valley, like the district itself.
@@ -22,6 +25,11 @@ const signsInThroughPortal = (key: DistrictKey) => key === "cedarvalley";
 
 /** Whether a district has the guided Clever tour (SCHO-279). */
 const hasCleverTour = (key: DistrictKey) => key === "cedarvalley";
+
+/** Whether a district has the K-12 story tour (SCHO-324). */
+const hasStoryTour = (key: DistrictKey) => key === "northfield";
+
+const STORY_KEYS = storyPresenterKeys(STORY_STEPS);
 
 /** A visit to the portal a screen, the tour or a presenter's key sent the visitor on, signed in to it as `persona`. */
 interface PortalVisit {
@@ -56,6 +64,16 @@ const showDistrictInUrl = (key: DistrictKey) => {
   window.history.replaceState(null, "", window.location.pathname + (query === "" ? "" : `?${query}`));
 };
 
+/** Drops `?persona=` from the page's query once the visitor is someone else, so a reload does not bring it back. */
+const showPersonaInUrl = (id: PersonaId | undefined) => {
+  const search = new URLSearchParams(window.location.search);
+  const asked = search.get("persona");
+  if (asked === null || asked === id) return;
+  search.delete("persona");
+  const query = search.toString();
+  window.history.replaceState(null, "", window.location.pathname + (query === "" ? "" : `?${query}`) + window.location.hash);
+};
+
 /**
  * The demo: one district booted in the page and shared by every persona, so what one does the
  * others see. Reset boots a fresh copy of it; switching district boots the other. Nothing is kept
@@ -68,12 +86,17 @@ export const DemoApp = () => {
   const [presenter] = useState(() => presenterFromSearch(window.location.search));
   const [generation, setGeneration] = useState(0);
   const [district, setDistrict] = useState<DistrictState>({ status: "booting" });
-  const [personaId, setPersonaId] = useState<PersonaId>();
+  // A link can open straight into a persona (`?persona=it-director`): in a district entered through
+  // its portal, by signing them in there, as a presenter's key does.
+  const [linked] = useState(() => personaFromSearch(window.location.search, districtKey));
+  const [personaId, setPersonaId] = useState<PersonaId | undefined>(signsInThroughPortal(districtKey) ? undefined : linked);
   const [done, setDone] = useState<ReadonlySet<string>>(new Set());
   // Each persona's portal sign-in, in a district entered through its portal, and the visit to the
   // portal a screen or the tour sent the visitor on, to sign someone in.
   const [signIns, setSignIns] = useState<Partial<Record<PersonaId, PortalSignIn>>>({});
-  const [portalVisit, setPortalVisit] = useState<PortalVisit>();
+  const [portalVisit, setPortalVisit] = useState<PortalVisit | undefined>(
+    linked !== undefined && signsInThroughPortal(districtKey) ? { persona: linked, launch: true, n: 0 } : undefined,
+  );
   const visits = useRef(0);
   const [tour, setTour] = useState(() => new CleverTourStore());
   const [tourOpen, setTourOpen] = useState(false);
@@ -81,19 +104,33 @@ export const DemoApp = () => {
   const [sideOpen, setSideOpen] = useState(false);
   // Counts the tour's requests to open the teacher's "Where grades land" panel.
   const [gradesRequest, setGradesRequest] = useState(0);
+  // The K-12 story tour: the step last opened, the steps seen, and whether its list is open.
+  const [storyAt, setStoryAt] = useState<number>();
+  const [storySeen, setStorySeen] = useState<ReadonlySet<number>>(new Set());
+  const [storyOpen, setStoryOpen] = useState(false);
+  // Stops waiting to scroll the last step's point of interest into view.
+  const stopRevealing = useRef<() => void>(() => {});
   const info = districtInfo(districtKey);
   const tourOn = hasCleverTour(districtKey);
+  const storyOn = hasStoryTour(districtKey);
 
   useEffect(() => {
     let live = true;
+    performance.mark("educateos:boot-start");
     districtInfo(districtKey).boot().then(
-      (booted) => live && setDistrict({ status: "ready", district: booted }),
+      (booted) => {
+        // How long the district took to boot and seed, for anyone checking the demo's start-up.
+        performance.measure("educateos:boot", "educateos:boot-start");
+        if (live) setDistrict({ status: "ready", district: booted });
+      },
       (error: unknown) => live && setDistrict({ status: "failed", error }),
     );
     return () => {
       live = false;
     };
   }, [districtKey, generation]);
+
+  useEffect(() => () => stopRevealing.current(), []);
 
   // The tour follows the district's own hooks: its syncs, the Clever side's changes and the
   // passback gate's events. The portal's and the apps' hooks are passed to them below.
@@ -113,6 +150,7 @@ export const DemoApp = () => {
   const persona = info.personas.find((p) => p.id === personaId);
   /** Sends the visitor to the portal, signed in to it as `id`. */
   const visitPortal = (id: PersonaId, { route, launch = false }: { route?: string; launch?: boolean } = {}) => {
+    showPersonaInUrl(id);
     setAppRoute();
     visits.current += 1;
     setPortalVisit({ persona: id, ...(route === undefined ? {} : { route }), launch, n: visits.current });
@@ -120,6 +158,7 @@ export const DemoApp = () => {
     window.scrollTo(0, 0);
   };
   const choose = (id: PersonaId | undefined, route?: string) => {
+    showPersonaInUrl(id);
     // Through the portal, someone not yet signed in goes to it, signed in to it as them, and their
     // app opens at `route` once the portal has signed them in.
     if (id !== undefined && signsInThroughPortal(districtKey) && signIns[id] === undefined) return visitPortal(id, route === undefined ? {} : { route });
@@ -142,6 +181,8 @@ export const DemoApp = () => {
     setDone(new Set());
     setDistrict({ status: "booting" });
     setTour(new CleverTourStore());
+    setStoryAt(undefined);
+    setStorySeen(new Set());
   };
   const reset = () => {
     startOver();
@@ -155,7 +196,7 @@ export const DemoApp = () => {
   };
   const markDone = (ids: readonly string[]) => setDone((previous) => new Set([...previous, ...ids]));
   const cleverSide = district.status === "ready" ? cleverSideOf(district.district) : undefined;
-  const admin = info.personas.find((p) => p.id === "admin")!;
+  const admin = info.personas.find((p) => p.kind === "admin")!;
   // As the administrator: straight there if the visitor is them, else through the portal's sign-in.
   // Opens a persona's app at `route`, signing them in through the portal first if they have no
   // session yet, as a click on the portal's EducateOS tile would.
@@ -184,11 +225,26 @@ export const DemoApp = () => {
       if (roster !== undefined && !roster.synced()) await roster.sync();
     },
   };
-  const presenting = presenter && tourOn;
+  /** Opens step `index` of the story tour: its persona's app, at its screen. */
+  const goToStory = async (index: number) => {
+    const step = STORY_STEPS[index];
+    if (step === undefined || district.status !== "ready") return;
+    const { persona: id, route, reveal } = await storyDestination(step, district.district);
+    setStoryAt(index);
+    setStorySeen((seen) => new Set([...seen, index]));
+    stopRevealing.current();
+    openApp(id, { route });
+    stopRevealing.current = reveal === undefined ? () => {} : revealWhenShown(reveal, route);
+  };
+  const presenting = presenter && (tourOn || storyOn);
   usePresenterKeys(presenting, (command) => {
     if (command.kind === "help") setHelpOpen((open) => !open);
-    else if (district.status === "ready") visitPortal(command.persona, { launch: true });
-  });
+    else if (district.status !== "ready") return;
+    else if (command.kind === "persona") visitPortal(command.persona, { launch: true });
+    else if (command.kind === "step") void goToStory(command.index);
+    else if (command.kind === "next") void goToStory(storyAt === undefined ? 0 : Math.min(storyAt + 1, STORY_STEPS.length - 1));
+    else void goToStory(Math.max((storyAt ?? 0) - 1, 0));
+  }, storyOn ? STORY_KEYS : PRESENTER_KEYS);
 
   return (
     <ThemeProvider source={THEME}>
@@ -209,6 +265,17 @@ export const DemoApp = () => {
             ready={district.status === "ready"}
             onShowMe={(step: TourStepId) => void showMe(step, tourActions)}
             {...(presenting ? { presenter: { onJump: (step: TourStepId) => void jumpTo(step, tourActions), onReset: reset, helpOpen, onHelpOpenChange: setHelpOpen } } : {})}
+          />
+        )}
+        {storyOn && (
+          <StoryTour
+            at={storyAt}
+            visited={storySeen}
+            open={storyOpen}
+            onOpenChange={setStoryOpen}
+            ready={district.status === "ready"}
+            onGo={(index) => void goToStory(index)}
+            {...(presenting ? { presenter: { keys: STORY_KEYS, helpOpen, onHelpOpenChange: setHelpOpen } } : {})}
           />
         )}
         <div className="flex flex-1 max-lg:flex-col">
@@ -253,6 +320,7 @@ export const DemoApp = () => {
                   gradesRequest={gradesRequest}
                   {...(tourOn ? { onResponse: (request: Request, status: number) => tour.responded(persona.id, request, status) } : {})}
                   onChoose={choose}
+                  onSignOut={() => choose(undefined)}
                 />
               </>
             )}
@@ -260,8 +328,8 @@ export const DemoApp = () => {
           {cleverSide !== undefined && (
             <CleverSide
               side={cleverSide}
-              admin={{ name: admin.name, current: personaId === "admin" }}
-              onOpenRosterSync={() => openApp("admin", { route: ROSTER_SYNC_ROUTE })}
+              admin={{ name: admin.name, current: personaId === admin.id }}
+              onOpenRosterSync={() => openApp(admin.id, { route: ROSTER_SYNC_ROUTE })}
               expansion={{ open: sideOpen, onOpenChange: setSideOpen }}
             />
           )}

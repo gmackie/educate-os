@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to each question. Tell or draw how to stay safe.",
+    "passage": "Weather Watchers know how to stay safe. They watch the sky, listen to the forecast and listen to grown-ups.",
+    "questions": [
+      {
+        "prompt": "You hear thunder. What do you do?"
+      },
+      {
+        "prompt": "It is very hot outside. Name one way to stay safe."
+      },
+      {
+        "prompt": "It is very cold outside. What should you cover?"
+      },
+      {
+        "prompt": "What does a weather forecaster do?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw yourself staying safe in one kind of weather."
+      }
+    ],
+    "sentenceFrames": [
+      "When I hear thunder, I ___.",
+      "On a hot day, I ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Weather Safety Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-weather-safety-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "storm",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell what to do in a storm"
+      },
+      {
+        "id": "hot-cold",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell how to stay safe when it is hot or cold"
+      }
+    ],
+    "title": "Weather safety"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

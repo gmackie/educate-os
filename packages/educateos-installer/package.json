@@ -5,7 +5,8 @@
   "description": "EducateOS district installer (roadmap R02): Cloudflare API port, account preflight, desired-state compilation of a root-signed release manifest, and an ownership-checked, resumable reconciler with rollback and fleet registration. A library plus a district-run Node CLI, not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./directory-artifacts": "./src/directory-artifacts.ts"
   },
   "scripts": {
     "start": "node src/cli.ts"

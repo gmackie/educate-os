@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { generateKeyPair, SignJWT } from "jose";
 import { z } from "zod";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { InMemoryToolApprovalStore, SchoolToolRunner, defineSchoolTool } from "@educateos/policy";
@@ -392,9 +393,8 @@ describe("external MCP integration", () => {
         })
       ).status,
     ).toBe(400);
-    expect(await (await w.post("x".repeat(65537), bearer)).json()).toMatchObject({
-      error: { code: -32700 },
-    });
+    // The SDK bounds the body before parsing anything.
+    expect((await w.post("x".repeat(65537), bearer)).status).toBe(413);
     expect(
       (
         await w.post(
@@ -446,5 +446,81 @@ describe("OAuth resource and browser profile", () => {
     const reissued = await w.token();
     w.snapshot.principals.find((p) => p.id === P.morgan.principalId)!.externalIdentities = [];
     await expect(w.tokens.authenticate(reissued)).rejects.toThrow();
+  });
+});
+
+describe("MCP 2026-07-28 through the official client (SCHO-174)", () => {
+  /** A real SDK client over the API, recording each exchange's request headers and raw JSON response. */
+  async function client(w: Awaited<ReturnType<typeof world>>, bearer: string, mode: "auto" | "legacy" = "auto") {
+    const exchanges: { headers: Headers; body: unknown; response: unknown; status: number }[] = [];
+    const transport = new StreamableHTTPClientTransport(new URL("https://school.example/mcp"), {
+      requestInit: { headers: { authorization: `Bearer ${bearer}` } },
+      fetch: async (url, init) => {
+        const request = new Request(url, init);
+        const body = request.method === "POST" ? await request.clone().json() : undefined;
+        const response = await w.api.fetch(request);
+        const text = await response.clone().text();
+        exchanges.push({ headers: request.headers, body, status: response.status, response: text ? JSON.parse(text) : undefined });
+        return response;
+      },
+    });
+    const sdk = new Client({ name: "conformance", version: "1" }, { versionNegotiation: { mode } });
+    await sdk.connect(transport);
+    return { sdk, exchanges };
+  }
+
+  it("negotiates 2026-07-28 with server/discover and lists with private, zero-TTL cache hints", async () => {
+    const w = await world();
+    const { sdk, exchanges } = await client(w, await w.token());
+    expect(sdk.getNegotiatedProtocolVersion()).toBe("2026-07-28");
+    expect(exchanges[0]!.body).toMatchObject({ method: "server/discover" });
+    expect(exchanges.some((e) => (e.body as { method?: string }).method === "initialize")).toBe(false);
+    const { tools } = await sdk.listTools();
+    expect(tools.map((t) => t.name)).toEqual(["class_read", "class_edit", "class_grade"]);
+    const listing = exchanges.at(-1)!;
+    expect(listing.headers.get("mcp-method")).toBe("tools/list");
+    expect(listing.response).toMatchObject({ result: { ttlMs: 0, cacheScope: "private" } });
+    const called = await sdk.callTool({ name: "class_read", arguments: {} });
+    expect(exchanges.at(-1)!.headers.get("mcp-name")).toBe("class_read");
+    expect(JSON.parse((called.content as { text: string }[])[0]!.text)).toMatchObject({ status: "ok", value: "class record" });
+    await sdk.close();
+  });
+
+  it("keeps 2025-11-25 as the legacy profile", async () => {
+    const w = await world();
+    const { sdk } = await client(w, await w.token(), "legacy");
+    expect(sdk.getNegotiatedProtocolVersion()).toBe("2025-11-25");
+    expect(JSON.parse(((await sdk.callTool({ name: "class_read", arguments: {} })).content as { text: string }[])[0]!.text)).toMatchObject({ status: "ok" });
+    await sdk.close();
+  });
+
+  it("refuses an Mcp-Name or Mcp-Method header that disagrees with the body", async () => {
+    const w = await world();
+    const bearer = await w.token();
+    const { sdk, exchanges } = await client(w, bearer);
+    await sdk.callTool({ name: "class_read", arguments: {} });
+    const recorded = exchanges.at(-1)!;
+    for (const [header, value] of [["mcp-name", "class_grade"], ["mcp-method", "tools/list"]] as const) {
+      const headers = new Headers(recorded.headers);
+      headers.set(header, value);
+      const response = await w.api.fetch(new Request("https://school.example/mcp", { method: "POST", headers, body: JSON.stringify(recorded.body) }));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ error: { code: expect.any(Number) } });
+    }
+    expect(w.handled).toHaveBeenCalledTimes(1);
+    await sdk.close();
+  });
+
+  it("re-authorizes every request: a listing obtained earlier never stands in for a revoked identity", async () => {
+    const w = await world();
+    const bearer = await w.token();
+    const { sdk, exchanges } = await client(w, bearer);
+    expect((await sdk.listTools()).tools).toHaveLength(3);
+    // The identity link is removed while the token is still unexpired.
+    w.snapshot.principals.find((p) => p.id === P.morgan.principalId)!.externalIdentities = [];
+    await expect(sdk.listTools()).rejects.toThrow();
+    expect(exchanges.at(-1)!.status).toBe(401);
+    await expect(sdk.callTool({ name: "class_read", arguments: {} })).rejects.toThrow();
+    expect(w.handled).not.toHaveBeenCalled();
   });
 });

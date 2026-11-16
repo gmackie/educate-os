@@ -3,6 +3,7 @@
 // OneRoster one. New for EducateOS.
 import type { z } from "zod";
 import type { OneRosterIssue } from "../oneroster/feed.ts";
+import { sourceRecordName } from "../oneroster/import.ts";
 import { ONEROSTER_FILES, ROW_SCHEMAS } from "../oneroster/spec.ts";
 import type { OneRosterFile } from "../oneroster/spec.ts";
 import { numberRows } from "../oneroster/sync.ts";
@@ -233,7 +234,11 @@ function batch(
       const previous = baselineRows("courses.csv").find((row) => row.sourcedId === sectionCourseSourcedId(record.id));
       rows["courses.csv"].push(cleverRows.sectionCourse(record, status, fallbackGrades([record]).length > 0 ? fallbackGrades([record]) : (previous?.grades ?? [])));
     }
-    rows["classes.csv"].push(cleverRows.section(record, status));
+    // A delta that leaves the course alone still names it, from the baseline.
+    const courseName = entries.courses.find((c) => c.record.id === record.course)?.record.name
+      ?? baselineRows("courses.csv").find((c) => c.sourcedId === record.course)?.title
+      ?? record.course_name;
+    rows["classes.csv"].push(cleverRows.section(record, status, courseName));
     const enrolled = cleverRows.enrollments(record, status);
     rows["enrollments.csv"].push(...enrolled);
     if (mode === "delta") {
@@ -266,12 +271,14 @@ function batch(
         return;
       }
       const sourcedId = typeof row["sourcedId"] === "string" ? row["sourcedId"] : typeof row["userSourcedId"] === "string" ? row["userSourcedId"] : undefined;
+      const source = sourceRecordName("clever", file, row);
       for (const issue of result.error.issues) {
         issues.push({
           severity: "error",
           file,
           row: index + 1,
           ...(sourcedId === undefined ? {} : { sourcedId }),
+          ...(source === undefined ? {} : { source }),
           column: String(issue.path[0]),
           message: issue.message,
         });

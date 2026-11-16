@@ -3,6 +3,7 @@ import { NORTHFIELD } from "@educateos/fixtures";
 import { describe, expect, it } from "vitest";
 import { oneroster } from "../src/index.ts";
 import { loadExport } from "./fixtures/load.ts";
+import { EXPORTED_NORTHFIELD } from "./fixtures/exported-northfield.ts";
 import { buildExport } from "./fixtures/northfield-export.ts";
 import type { Variant } from "./fixtures/northfield-export.ts";
 
@@ -92,7 +93,7 @@ describe("first import", () => {
   it("produces a directory equivalent to the hand-written Northfield fixture", async () => {
     const { next, preview } = await applied(EMPTY, exportOf("northfield"));
     expect(checkDirectoryIntegrity(next.snapshot)).toEqual([]);
-    expect(described(next.snapshot)).toEqual(described(NORTHFIELD));
+    expect(described(next.snapshot)).toEqual(described(EXPORTED_NORTHFIELD));
     expect(preview.changes.principals.added).toHaveLength(11);
     expect(preview.changes.enrollments.added).toHaveLength(17);
     expect(oneroster.hasChanges(preview.changes)).toBe(true);

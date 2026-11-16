@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 160,
+    "minimumCitations": 1,
+    "overview": "Read about the Maya, the Aztecs and the Inca, and compare how two of them adapted to where they lived.",
+    "prompt": "Read \"Three Civilizations, Three Environments.\" Choose two of the three civilizations. For each, describe its environment, one way its people adapted to that environment, and one achievement. Finish with one way the two were alike and one way they were different. Use at least one detail from the reading for each civilization.",
+    "resources": [
+      "three-civilizations"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Three Civilizations, Three Environments"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.4.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.8.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-three-civilizations",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Maya: In the tropical forests and lowlands of present-day southern Mexico, Guatemala and Belize, Maya city-states such as Tikal and Calakmul flourished during the Classic period, about 250 to 900 CE. The Maya built stone pyramids and palaces, and they developed the most complete writing system in the Americas, with hundreds of signs. Maya scholars used a number system with a symbol for zero and kept detailed calendars based on watching the sky. In the 800s and 900s, many of the great southern lowland cities were abandoned. Historians and scientists point to several causes, including long droughts, warfare between cities, and too much strain on the land. The Maya people did not disappear: Maya cities continued in the north, and millions of Maya people live in the region today.\n\nThe Aztecs (Mexica): The Mexica people founded their city, Tenochtitlan, about 1325 on an island in Lake Texcoco, in the Valley of Mexico. They built causeways to the shore and canals through the city. To grow food, they built chinampas: long garden plots made of layers of mud and plants piled up in the shallow lake, which produced several harvests a year. In 1428, the Mexica joined two other cities in the Triple Alliance and conquered much of central Mexico, demanding tribute such as cloth, cacao, feathers and food from conquered peoples. By 1519, Tenochtitlan may have held more than 200,000 people, larger than most cities in Europe at the time.\n\nThe Inca: High in the Andes Mountains of South America, the Inca built an empire from their capital, Cusco. From about 1438, under the ruler Pachacuti and those who came after him, it grew to stretch about 4,000 kilometers along the mountains, through parts of present-day Peru, Ecuador, Bolivia, Chile and Argentina. The Inca carved terraces into steep mountainsides to farm and built a road network of roughly 40,000 kilometers, with rope suspension bridges over gorges and storehouses along the way. Runners carried messages in relays. The Inca had no writing system as we know it, but they kept records on a quipu, a set of knotted, colored cords. Instead of taxes in money, subjects owed the state labor, called mit'a.\n\nAll three civilizations changed suddenly in the 1500s, when Spanish soldiers arrived. Hernan Cortes and his Indigenous allies conquered Tenochtitlan in 1521, and Francisco Pizarro began the conquest of the Inca in 1532. European diseases such as smallpox, to which the peoples of the Americas had no immunity, killed millions.",
+      "id": "three-civilizations",
+      "title": "Three Civilizations, Three Environments"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

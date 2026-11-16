@@ -1,3 +1,12 @@
+import {
+  ChildSession,
+  FamilyRecord,
+  HOME_LEARNING_CONFLICT,
+  PracticeSession,
+  type ActivityRef as HomeActivityRef,
+  type HomeLearningStore,
+  type PracticeSessionId,
+} from "@educateos/home-learning";
 import { GadgetAssessmentBinding, sameGadgetAssessmentPin, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 // Durable stores for one district (SCHO-171), published as their own entry point
 // (`@educateos/district-app/durable-stores`). Every `DistrictAppStores` member lives in one
@@ -29,6 +38,8 @@ import {
   type GuardianRelationshipId,
   type OfferingId,
   PrincipalId,
+  FamilyId,
+  type LearnerId,
 } from "@educateos/contracts";
 import { DurableObjectAcademicStore } from "@educateos/academics/durable-object-store";
 import { DurableObjectWorkspaceStore, legacyWorkspaceReplacements } from "@educateos/workspaces/durable-object-store";
@@ -109,7 +120,7 @@ import {
   type DiscussionStorage,
 } from "@educateos/discussions";
 // Quizzes (SCHO-191)
-import { QUIZ_CONFLICT, Quiz, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
+import { QUIZ_CONFLICT, Quiz, QuizAccommodation, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
 import { FundingAllocationRevision } from "./routes.ts";
 import { MAX_ROSTER_SYNC_RUNS, RosterSyncRecord } from "./stores.ts";
 // Devices (SCHO-261)
@@ -132,6 +143,11 @@ import { OpsPublicJwk, type OpsAuditRecord, type OpsKeyRecord, type OpsStore } f
 import { KeyId, OpsScope } from "@educateos/fleet/ops";
 // Marketplace (SCHO-209)
 import { InstalledPack, sameRelease, type MarketplacePackStore } from "./marketplace.ts";
+// Course library (SCHO-331)
+import { DurableObjectPackageLibrary } from "@educateos/ocs/durable-object-library";
+import { LibraryCourse, OfferingCourseInstalls, type CourseLibrary, type CourseLibraryStore, type LibraryPolicies } from "./course-library.ts";
+// Student archive (SCHO-371)
+import type { ExportMapping, ExportMappingStore } from "@educateos/portability";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -143,6 +159,7 @@ import {
   WeeklyNote,
   type AnnouncementId,
   type IsoWeek,
+  type NotificationId,
   type AnnouncementStore,
   type CalendarFeedStore,
   type CommunicationStores,
@@ -208,6 +225,8 @@ export const DISTRICT_TABLES = {
   quizzes: "educateos_quizzes",
   quizAttempts: "educateos_quiz_attempts",
   quizReleases: "educateos_quiz_releases",
+  // Quiz accommodations (SCHO-383)
+  quizAccommodations: "educateos_quiz_accommodations",
   // Devices (SCHO-261)
   devices: "educateos_devices",
   deviceRefreshTokens: "educateos_device_refresh_tokens",
@@ -220,8 +239,20 @@ export const DISTRICT_TABLES = {
   opsAudit: "educateos_ops_audit",
   // Marketplace (SCHO-209)
   marketplacePacks: "educateos_marketplace_packs",
+  // Course library (SCHO-331). The packages and exports themselves are in the OCS library's own
+  // tables (`OCS_LIBRARY_TABLE`, `OCS_EXPORT_TABLE` in `@educateos/ocs/durable-object-library`).
+  courseLibraryCourses: "educateos_course_library_courses",
+  courseInstalls: "educateos_course_installs",
   // Delegations (SCHO-175)
   delegations: "educateos_delegations",
+  // Student archive (SCHO-371)
+  exportMappings: "educateos_export_mappings",
+  // Home learning (ADR-0016)
+  families: "educateos_families",
+  familyAdults: "educateos_family_adults",
+  familyLearners: "educateos_family_learners",
+  practiceSessions: "educateos_practice_sessions",
+  childSessions: "educateos_child_sessions",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1202,10 +1233,210 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     ops: new DurableObjectOpsStore(storage),
     // Marketplace (SCHO-209)
     marketplacePacks: new DurableObjectMarketplacePackStore(storage),
+    // Course library (SCHO-331)
+    courseLibrary: new DurableObjectCourseLibraryStore(storage),
     // Delegations (SCHO-175)
     delegations: new DurableObjectDelegationStore(storage),
+    // Student archive (SCHO-371)
+    exportMappings: new DurableObjectExportMappingStore(storage),
+    // Home learning (ADR-0016)
+    homeLearning: new DurableObjectHomeLearningStore(storage),
   };
 }
+
+// Home learning (ADR-0016)
+
+/**
+ * A {@link HomeLearningStore} in a Durable Object's SQLite: each family as one row under its
+ * revision, with index rows naming the family of every adult and child (an adult's row is its
+ * primary key, so no adult can belong to two families), each practice session as its own row
+ * under its version, and each child session by its token's digest.
+ */
+export class DurableObjectHomeLearningStore implements HomeLearningStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.families} (id TEXT PRIMARY KEY, revision INTEGER NOT NULL, family_json TEXT NOT NULL)`,
+      `CREATE TABLE IF NOT EXISTS ${t.familyAdults} (principal_id TEXT PRIMARY KEY, family_id TEXT NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS ${t.familyAdults}_family ON ${t.familyAdults} (family_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.familyLearners} (learner_id TEXT PRIMARY KEY, family_id TEXT NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS ${t.familyLearners}_family ON ${t.familyLearners} (family_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.practiceSessions} (
+        id TEXT PRIMARY KEY, family_id TEXT NOT NULL, learner_id TEXT NOT NULL, ref_key TEXT NOT NULL,
+        completed INTEGER NOT NULL, started_at TEXT NOT NULL, version INTEGER NOT NULL, session_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.practiceSessions}_learner ON ${t.practiceSessions} (learner_id, started_at)`,
+      `CREATE INDEX IF NOT EXISTS ${t.practiceSessions}_open ON ${t.practiceSessions} (learner_id, ref_key, completed)`,
+      `CREATE INDEX IF NOT EXISTS ${t.practiceSessions}_family ON ${t.practiceSessions} (family_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.childSessions} (digest TEXT PRIMARY KEY, family_id TEXT NOT NULL, learner_id TEXT NOT NULL, session_json TEXT NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS ${t.childSessions}_family ON ${t.childSessions} (family_id)`,
+    ], []);
+  }
+
+  async loadFamily(id: FamilyId): Promise<FamilyRecord | undefined> {
+    return this.#tables.transaction((sql) => this.#family(sql, id));
+  }
+
+  async familyOfAdult(principalId: PrincipalId): Promise<FamilyId | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT family_id FROM ${DISTRICT_TABLES.familyAdults} WHERE principal_id = ?`, principalId).toArray();
+      return row === undefined ? undefined : FamilyId.parse(row.family_id);
+    });
+  }
+
+  async familyOfLearner(learnerId: LearnerId): Promise<FamilyId | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT family_id FROM ${DISTRICT_TABLES.familyLearners} WHERE learner_id = ?`, learnerId).toArray();
+      return row === undefined ? undefined : FamilyId.parse(row.family_id);
+    });
+  }
+
+  async commitFamily(next: FamilyRecord, expectedRevision: number | undefined): Promise<void> {
+    const family = FamilyRecord.parse(next);
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT revision FROM ${t.families} WHERE id = ?`, family.id).toArray();
+      const stored = row === undefined ? undefined : Number(row.revision);
+      if (stored !== expectedRevision || family.revision !== (expectedRevision ?? 0) + 1) throw new EducateOsError("conflict", HOME_LEARNING_CONFLICT);
+      for (const adult of family.adults) {
+        const [other] = sql.exec(`SELECT family_id FROM ${t.familyAdults} WHERE principal_id = ?`, adult.principalId).toArray();
+        if (other !== undefined && other.family_id !== family.id) throw new EducateOsError("conflict", "That adult already belongs to a family.");
+      }
+      sql.exec(
+        `INSERT INTO ${t.families} (id, revision, family_json) VALUES (?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET revision = excluded.revision, family_json = excluded.family_json`,
+        family.id, family.revision, JSON.stringify(family),
+      );
+      sql.exec(`DELETE FROM ${t.familyAdults} WHERE family_id = ?`, family.id);
+      for (const adult of family.adults) sql.exec(`INSERT INTO ${t.familyAdults} (principal_id, family_id) VALUES (?, ?)`, adult.principalId, family.id);
+      sql.exec(`DELETE FROM ${t.familyLearners} WHERE family_id = ?`, family.id);
+      for (const learner of family.learners) sql.exec(`INSERT INTO ${t.familyLearners} (learner_id, family_id) VALUES (?, ?)`, learner.id, family.id);
+    });
+  }
+
+  async deleteFamily(id: FamilyId): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      for (const table of [t.familyAdults, t.familyLearners, t.practiceSessions, t.childSessions]) sql.exec(`DELETE FROM ${table} WHERE family_id = ?`, id);
+      sql.exec(`DELETE FROM ${t.families} WHERE id = ?`, id);
+    });
+  }
+
+  async getSession(id: PracticeSessionId): Promise<PracticeSession | undefined> {
+    return this.#tables.transaction((sql) => this.#session(sql, id));
+  }
+
+  async saveSession(next: PracticeSession, expectedVersion: number | undefined): Promise<void> {
+    const session = PracticeSession.parse(next);
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT version FROM ${t.practiceSessions} WHERE id = ?`, session.id).toArray();
+      const stored = row === undefined ? undefined : Number(row.version);
+      if (stored !== expectedVersion || session.version !== (expectedVersion ?? 0) + 1) throw new EducateOsError("conflict", HOME_LEARNING_CONFLICT);
+      sql.exec(
+        `INSERT INTO ${t.practiceSessions} (id, family_id, learner_id, ref_key, completed, started_at, version, session_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET completed = excluded.completed, version = excluded.version, session_json = excluded.session_json`,
+        session.id, session.familyId, session.learnerId, refKey(session.ref), session.completedAt === undefined ? 0 : 1, session.startedAt, session.version, JSON.stringify(session),
+      );
+    });
+  }
+
+  async listSessions(learnerId: LearnerId, limit: number): Promise<PracticeSession[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ? ORDER BY started_at DESC, id DESC LIMIT ?`, learnerId, limit).toArray()
+        .map((row) => parseStored(PracticeSession, row.session_json, "a practice session"))
+    );
+  }
+
+  async openSession(learnerId: LearnerId, ref: HomeActivityRef): Promise<PracticeSession | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(
+        `SELECT session_json FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ? AND ref_key = ? AND completed = 0 ORDER BY started_at DESC LIMIT 1`,
+        learnerId, refKey(ref),
+      ).toArray();
+      return row === undefined ? undefined : parseStored(PracticeSession, row.session_json, "a practice session");
+    });
+  }
+
+  async deleteSessionsStartedBefore(before: string): Promise<number> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT COUNT(*) AS n FROM ${DISTRICT_TABLES.practiceSessions} WHERE started_at < ?`, before).toArray();
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.practiceSessions} WHERE started_at < ?`, before);
+      return Number(row?.n ?? 0);
+    });
+  }
+
+  async deleteChildSessions(endedBefore: string, startedBefore: string): Promise<number> {
+    return this.#tables.transaction((sql) => {
+      let deleted = 0;
+      for (const row of sql.exec(`SELECT digest, session_json FROM ${DISTRICT_TABLES.childSessions}`).toArray()) {
+        const child = parseStored(ChildSession, row.session_json, "a child session");
+        if ((child.endedAt !== undefined && child.endedAt < endedBefore) || child.startedAt < startedBefore) {
+          sql.exec(`DELETE FROM ${DISTRICT_TABLES.childSessions} WHERE digest = ?`, String(row.digest));
+          deleted += 1;
+        }
+      }
+      return deleted;
+    });
+  }
+
+  async familyIds(): Promise<FamilyId[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT id FROM ${DISTRICT_TABLES.families} ORDER BY id`).toArray().map((row) => FamilyId.parse(row.id))
+    );
+  }
+
+  async deleteSessionsOf(learnerId: LearnerId): Promise<void> {
+    this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ?`, learnerId);
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.childSessions} WHERE learner_id = ?`, learnerId);
+    });
+  }
+
+  async getChildSession(digest: string): Promise<ChildSession | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.childSessions} WHERE digest = ?`, digest).toArray();
+      return row === undefined ? undefined : parseStored(ChildSession, row.session_json, "a child session");
+    });
+  }
+
+  async putChildSession(session: ChildSession): Promise<void> {
+    const parsed = ChildSession.parse(session);
+    this.#tables.transaction((sql) => {
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.childSessions} (digest, family_id, learner_id, session_json) VALUES (?, ?, ?, ?)
+         ON CONFLICT (digest) DO UPDATE SET session_json = excluded.session_json`,
+        parsed.digest, parsed.familyId, parsed.learnerId, JSON.stringify(parsed),
+      );
+    });
+  }
+
+  async endChildSessionsOf(familyId: FamilyId, at: string, startedBy?: PrincipalId): Promise<number> {
+    return this.#tables.transaction((sql) => {
+      const open = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.childSessions} WHERE family_id = ?`, familyId).toArray()
+        .map((row) => parseStored(ChildSession, row.session_json, "a child session"))
+        .filter((child) => child.endedAt === undefined && (startedBy === undefined || child.startedBy === startedBy));
+      for (const child of open) {
+        sql.exec(`UPDATE ${DISTRICT_TABLES.childSessions} SET session_json = ? WHERE digest = ?`, JSON.stringify({ ...child, endedAt: at }), child.digest);
+      }
+      return open.length;
+    });
+  }
+
+  #family(sql: DistrictSqlStorage["sql"], id: string): FamilyRecord | undefined {
+    const [row] = sql.exec(`SELECT family_json FROM ${DISTRICT_TABLES.families} WHERE id = ?`, id).toArray();
+    return row === undefined ? undefined : parseStored(FamilyRecord, row.family_json, "a family");
+  }
+
+  #session(sql: DistrictSqlStorage["sql"], id: string): PracticeSession | undefined {
+    const [row] = sql.exec(`SELECT session_json FROM ${DISTRICT_TABLES.practiceSessions} WHERE id = ?`, id).toArray();
+    return row === undefined ? undefined : parseStored(PracticeSession, row.session_json, "a practice session");
+  }
+}
+
+const refKey = (ref: HomeActivityRef) => `${ref.pack}@${ref.version}/${ref.activity}`;
 
 // Gradebook (SCHO-187)
 
@@ -1417,6 +1648,13 @@ export class DurableObjectNotificationStore implements NotificationStore {
           JSON.stringify(n),
         ).toArray().length > 0
       )
+    );
+  }
+
+  async missing(ids: readonly NotificationId[]): Promise<NotificationId[]> {
+    // One primary-key lookup each: a row read for every ID stored, none for the rest.
+    return this.#tables.transaction((sql) =>
+      ids.filter((id) => sql.exec(`SELECT 1 FROM ${COMMUNICATION_TABLES.notifications} WHERE id = ?`, id).toArray().length === 0)
     );
   }
 
@@ -1678,7 +1916,9 @@ export class DurableObjectDiscussionStorage implements DiscussionStorage {
  * one row per quiz, one per attempt and one per release, so a student's autosave writes only their
  * attempt's row and no single value approaches SQLite's row limit. Rows are read in the order they
  * were first written (an upsert keeps its row). A commit checks the revision and applies its write
- * in one transaction.
+ * in one transaction. Students' accommodations (SCHO-383) are one row per quiz and student, in a
+ * table added after the others: it is created where it is missing, and a book stored before it
+ * simply has none. It never had a pre-rename twin, so it has no legacy plan.
  */
 export class DurableObjectQuizStorage implements QuizStorage {
   readonly #tables: Tables;
@@ -1692,6 +1932,9 @@ export class DurableObjectQuizStorage implements QuizStorage {
         offering_id TEXT NOT NULL, attempt_id TEXT NOT NULL, quiz_id TEXT NOT NULL, attempt_json TEXT NOT NULL, PRIMARY KEY (offering_id, attempt_id)
       )`,
       `CREATE TABLE IF NOT EXISTS ${t.quizReleases} (offering_id TEXT NOT NULL, position INTEGER NOT NULL, release_json TEXT NOT NULL, PRIMARY KEY (offering_id, position))`,
+      `CREATE TABLE IF NOT EXISTS ${t.quizAccommodations} (
+        offering_id TEXT NOT NULL, quiz_id TEXT NOT NULL, student_id TEXT NOT NULL, accommodation_json TEXT NOT NULL, PRIMARY KEY (offering_id, quiz_id, student_id)
+      )`,
     ], [
       { table: t.quizBooks, merge: { kind: "revision", key: ["offering_id"], revision: "revision" } },
       t.quizzes,
@@ -1709,6 +1952,7 @@ export class DurableObjectQuizStorage implements QuizStorage {
     const quizzes = write.quizzes.map((quiz) => Quiz.parse(quiz));
     const attempts = write.attempts.map((attempt) => QuizAttempt.parse(attempt));
     const releases = write.releases.map((release) => QuizRelease.parse(release));
+    const accommodations = (write.accommodations ?? []).map((accommodation) => QuizAccommodation.parse(accommodation));
     if ([...quizzes, ...attempts].some((record) => record.offeringId !== offeringId)) throw new Error("a quiz write names another offering");
     this.#tables.transaction((sql) => {
       const [head] = sql.exec(`SELECT revision FROM ${t.quizBooks} WHERE offering_id = ?`, offeringId).toArray();
@@ -1717,6 +1961,17 @@ export class DurableObjectQuizStorage implements QuizStorage {
         const [{ count }] = sql.exec(`SELECT COUNT(*) AS count FROM ${t.quizAttempts} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId).toArray() as [{ count: number }];
         if (Number(count) > 0) throw new EducateOsError("conflict", "A quiz students have started can't be deleted.");
         sql.exec(`DELETE FROM ${t.quizzes} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId);
+        sql.exec(`DELETE FROM ${t.quizAccommodations} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId);
+      }
+      for (const { quizId, studentId } of write.clearedAccommodations ?? []) {
+        sql.exec(`DELETE FROM ${t.quizAccommodations} WHERE offering_id = ? AND quiz_id = ? AND student_id = ?`, offeringId, quizId, studentId);
+      }
+      for (const accommodation of accommodations) {
+        sql.exec(
+          `INSERT INTO ${t.quizAccommodations} (offering_id, quiz_id, student_id, accommodation_json) VALUES (?, ?, ?, ?)
+           ON CONFLICT (offering_id, quiz_id, student_id) DO UPDATE SET accommodation_json = excluded.accommodation_json`,
+          offeringId, accommodation.quizId, accommodation.studentId, JSON.stringify(accommodation),
+        );
       }
       for (const quiz of quizzes) {
         sql.exec(
@@ -1759,6 +2014,8 @@ export class DurableObjectQuizStorage implements QuizStorage {
       attempts: sql.exec(`SELECT attempt_json FROM ${t.quizAttempts} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
         .map((row) => parseStored(QuizAttempt, row.attempt_json, what)),
       releases: releases.map((row) => parseStored(QuizRelease, row.release_json, what)),
+      accommodations: sql.exec(`SELECT accommodation_json FROM ${t.quizAccommodations} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
+        .map((row) => parseStored(QuizAccommodation, row.accommodation_json, what)),
     });
     if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
     return parsed.data;
@@ -2282,6 +2539,105 @@ export class DurableObjectDelegationStore implements DelegationStore {
           ON CONFLICT (id) DO UPDATE SET delegation_json = excluded.delegation_json`,
         parsed.id,
         JSON.stringify(parsed),
+      );
+    });
+  }
+}
+
+// Course library (SCHO-331)
+
+/**
+ * A {@link CourseLibraryStore} in a Durable Object's SQLite: the OCS package's immutable
+ * `DurableObjectPackageLibrary` over the same storage, one index row per imported course version,
+ * and one row per class holding its course installs, replaced under a revision check.
+ */
+export class DurableObjectCourseLibraryStore implements CourseLibraryStore {
+  readonly #storage: DistrictSqlStorage;
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#storage = storage;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.courseLibraryCourses} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, package_id TEXT NOT NULL, version TEXT NOT NULL, course_json TEXT NOT NULL, UNIQUE (package_id, version)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.courseInstalls} (offering_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, installs_json TEXT NOT NULL)`,
+    ], []);
+  }
+
+  library(policies: LibraryPolicies): CourseLibrary {
+    return new DurableObjectPackageLibrary(this.#storage, policies);
+  }
+
+  async listCourses(): Promise<LibraryCourse[]> {
+    return this.#tables.transaction((sql) => this.#courses(sql));
+  }
+
+  async addCourse(course: LibraryCourse): Promise<LibraryCourse> {
+    const parsed = LibraryCourse.parse(course);
+    return this.#tables.transaction((sql) => {
+      const existing = this.#courses(sql).find((c) => c.packageId === parsed.packageId && c.version === parsed.version);
+      if (existing !== undefined) return existing;
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.courseLibraryCourses} (package_id, version, course_json) VALUES (?, ?, ?)`,
+        parsed.packageId, parsed.version, JSON.stringify(parsed),
+      );
+      return parsed;
+    });
+  }
+
+  async loadInstalls(offeringId: string): Promise<OfferingCourseInstalls | undefined> {
+    return this.#tables.transaction((sql) => this.#installs(sql, offeringId));
+  }
+
+  async commitInstalls(installs: OfferingCourseInstalls, expectedRevision: number): Promise<void> {
+    const parsed = OfferingCourseInstalls.parse(installs);
+    this.#tables.transaction((sql) => {
+      if ((this.#installs(sql, parsed.offeringId)?.revision ?? 0) !== expectedRevision) {
+        throw new EducateOsError("conflict", "The class's course install changed while this request was in progress; try again.");
+      }
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.courseInstalls} (offering_id, revision, installs_json) VALUES (?, ?, ?)
+         ON CONFLICT (offering_id) DO UPDATE SET revision = excluded.revision, installs_json = excluded.installs_json`,
+        parsed.offeringId, parsed.revision, JSON.stringify(parsed),
+      );
+    });
+  }
+
+  #courses(sql: DistrictSqlStorage["sql"]): LibraryCourse[] {
+    return sql.exec(`SELECT course_json FROM ${DISTRICT_TABLES.courseLibraryCourses} ORDER BY seq`).toArray()
+      .map((row) => parseStored(LibraryCourse, row.course_json, `a row of ${DISTRICT_TABLES.courseLibraryCourses}`));
+  }
+
+  #installs(sql: DistrictSqlStorage["sql"], offeringId: string): OfferingCourseInstalls | undefined {
+    const [row] = sql.exec(`SELECT installs_json FROM ${DISTRICT_TABLES.courseInstalls} WHERE offering_id = ?`, offeringId).toArray();
+    return row === undefined ? undefined : parseStored(OfferingCourseInstalls, row.installs_json, `the course installs of ${offeringId}`);
+  }
+}
+
+// Student archive (SCHO-371)
+
+/**
+ * An {@link ExportMappingStore} in a Durable Object's SQLite: append-only, one row per student
+ * archive, holding how its export-local IDs map back to district IDs.
+ */
+export class DurableObjectExportMappingStore implements ExportMappingStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.exportMappings} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, export_id TEXT NOT NULL UNIQUE, principal_id TEXT NOT NULL,
+        exported_at TEXT NOT NULL, mapping_json TEXT NOT NULL
+      )`,
+    ], []);
+  }
+
+  async record(mapping: ExportMapping): Promise<void> {
+    this.#tables.transaction((sql) => {
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.exportMappings} (export_id, principal_id, exported_at, mapping_json) VALUES (?, ?, ?, ?)`,
+        mapping.exportId, mapping.principalId, mapping.exportedAt, JSON.stringify(mapping),
       );
     });
   }

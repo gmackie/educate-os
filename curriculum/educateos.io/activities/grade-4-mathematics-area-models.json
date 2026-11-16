@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Use place value and area models to multiply, and read multiplication as a comparison.",
+    "problems": [
+      {
+        "prompt": "Write 35 = 5 × 7 as a comparison sentence using the words \"times as many.\""
+      },
+      {
+        "prompt": "Use an area model to find 6 × 43. Break 43 into 40 and 3."
+      },
+      {
+        "prompt": "Use an area model to find 4 × 326."
+      },
+      {
+        "prompt": "Find 7 × 1,205 using partial products."
+      },
+      {
+        "prompt": "Use an area model with four parts to find 23 × 15."
+      },
+      {
+        "prompt": "Find 34 × 26 using an area model or partial products."
+      },
+      {
+        "prompt": "Explain how the four partial products in your model for 23 × 15 match the four parts of the rectangle."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Multiplying with Area Models"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NBT.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.OA.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-area-models",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

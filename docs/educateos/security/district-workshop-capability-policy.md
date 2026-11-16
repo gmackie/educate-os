@@ -82,6 +82,23 @@ Worker. Role/status revocation needs no deploy.
   for the same account takes precedence, and district-admin authority is still required. Use it
   only for connectors the deployment itself installs (its `gatekeepers`), never a generic MCP vendor.
 
+- Teacher connector grants (`teacherConnectors`, SCHO-393) are the one exception to
+  district-admin-only connecting. Each grant names a vendor and the resource types a teacher may
+  use for themself: `[{"vendorId": "google", "resourceUrlPatterns":
+  ["https://classroom.googleapis.com/courses/:courseId"]}]`. A principal qualifies only while
+  active, of kind `staff`, and holding a `teacher` or `co-teacher` role assignment in force.
+  - A teacher's `gatekeeper.connect` must name a non-empty subset of one grant's patterns. An
+    omitted list (meaning everything) or any extra type, Drive included, is refused. A reconnect
+    names the account's own granted types, so a teacher can renew an expired Classroom connection.
+    An account that records no granted types names none, and is refused for teachers.
+  - A teacher's `resource.acquire` must equal a granted pattern or match it as a `URLPattern`.
+    This is the only place the adapter interprets a pattern, so list only types whose gatekeeper
+    itself confines them to the teacher's own teaching. Google's Classroom Course is one: it
+    reaches only a course the connected account teaches, and only work created through that
+    connection.
+  - Everything else, including students and school administrators who teach nothing, falls
+    through to the district-administration rules above. Absent or empty, nothing changes.
+
 ### Northfield student demo
 
 The hosted demo keeps `capabilityPolicyBinding: true` and `REQUIRE_WORKSHOP_CAPABILITY_POLICY=true`.

@@ -1,0 +1,137 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Use a smart strategy for each problem. Show how you know.",
+    "problems": [
+      {
+        "prompt": "Make a ten to solve 9 + 5."
+      },
+      {
+        "prompt": "Use a double to solve 7 + 8."
+      },
+      {
+        "prompt": "Find the missing number: 5 + ? = 13."
+      },
+      {
+        "prompt": "Solve 16 - 9. Think: 9 + ? = 16."
+      },
+      {
+        "prompt": "Is 8 + 2 = 6 + 4 true or false? Tell why."
+      },
+      {
+        "prompt": "Add 3 + 7 + 4."
+      },
+      {
+        "prompt": "There are 11 children on the bus. Some get off. Now there are 4 children on the bus. How many children got off?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Strategies Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.B.4",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.D.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.D.8",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-strategies-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "strategy",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can use a strategy like making a ten or doubles"
+      },
+      {
+        "id": "missing",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can find a missing number"
+      },
+      {
+        "id": "equal",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell if an equation is true"
+      }
+    ],
+    "title": "Strategies"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

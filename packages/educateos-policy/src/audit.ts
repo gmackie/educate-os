@@ -47,12 +47,129 @@ export interface PolicyAuditSink {
   record(event: PolicyAuditEvent): Promise<void>;
 }
 
+/**
+ * The resource kinds whose decisions a retention schedule may delete (ADR-0016): a family's own home
+ * learning records, which the family can delete outright and which an installation keeps only for
+ * its retention period. Every other decision stays append-only.
+ */
+export const RETENTION_PURGEABLE_KINDS = ["family", "home-practice"] as const satisfies readonly ResourceKind[];
+
+/** A trail that can let decisions about a family's records age out (ADR-0016). */
+export interface PolicyAuditRetention {
+  /**
+   * Deletes every decision about a {@link RETENTION_PURGEABLE_KINDS} resource made before `before`
+   * (an ISO timestamp), and returns how many it deleted.
+   */
+  deleteFamilyDecisionsBefore(before: string): Promise<number>;
+}
+
+/** Whether a retention schedule may delete `event`. */
+export function isRetentionPurgeable(event: PolicyAuditEvent): boolean {
+  return event.resourceKind !== undefined && (RETENTION_PURGEABLE_KINDS as readonly string[]).includes(event.resourceKind);
+}
+
+/** One recorded event and its position in the trail. */
+export interface StoredPolicyAuditEvent {
+  /** The event's position: strictly increasing in append order. */
+  seq: number;
+  /** The event. */
+  event: PolicyAuditEvent;
+}
+
+/** The most events one {@link PolicyAuditReader.search} returns. */
+export const MAX_AUDIT_SEARCH_PAGE = 100;
+
+/**
+ * How many recorded events one {@link PolicyAuditReader.search} looks at, at most, before it
+ * returns what it found with a cursor to continue from. It bounds the cost of a narrow filter over
+ * a long trail.
+ */
+export const MAX_AUDIT_SEARCH_SCAN = 5_000;
+
+/**
+ * Which decisions to find, newest first (SCHO-376). Every listed field must match; an omitted one
+ * matches anything. It filters on identifiers and closed vocabulary only, as the trail holds.
+ */
+export const PolicyAuditQuery = z.strictObject({
+  /** Only events recorded before this position: the previous page's `nextBefore`. */
+  before: z.int().positive().optional(),
+  /** How many events to return. */
+  limit: z.int().min(1).max(MAX_AUDIT_SEARCH_PAGE),
+  /** The decisions to find. */
+  effects: z.array(PolicyAuditEvent.shape.effect).min(1).optional(),
+  /** The deciding rule's ID, or its prefix ending in `.`, such as `admin.`. */
+  rule: z.string().regex(/^[a-z][a-z0-9.-]*$/).max(128).optional(),
+  /** The subject. */
+  principalId: PrincipalId.optional(),
+  /** The requested actions. */
+  actions: z.array(Action).min(1).optional(),
+  /** The resource's kind. */
+  resourceKind: ResourceKind.optional(),
+});
+/** A policy audit query. */
+export type PolicyAuditQuery = z.infer<typeof PolicyAuditQuery>;
+
+/** One page of a {@link PolicyAuditReader.search}. */
+export interface PolicyAuditPage {
+  /** The matching events, newest first. */
+  entries: StoredPolicyAuditEvent[];
+  /**
+   * Where the next page starts (its query's `before`), or absent when the trail has nothing older.
+   * A page may hold fewer than `limit` entries, even none, and still have a next page: a search
+   * stops after {@link MAX_AUDIT_SEARCH_SCAN} events.
+   */
+  nextBefore?: number;
+}
+
+/** Reads the decision trail back, for a district administrator's audit screens (SCHO-376). */
+export interface PolicyAuditReader {
+  /** The newest events matching `query`, recorded before its `before`. */
+  search(query: PolicyAuditQuery): Promise<PolicyAuditPage>;
+}
+
+/** Whether `event` is one `query` asks for. */
+export function auditEventMatches(event: PolicyAuditEvent, query: PolicyAuditQuery): boolean {
+  if (query.effects !== undefined && !query.effects.includes(event.effect)) return false;
+  if (query.rule !== undefined && !(query.rule.endsWith(".") ? event.ruleId.startsWith(query.rule) : event.ruleId === query.rule)) return false;
+  if (query.principalId !== undefined && event.principalId !== query.principalId) return false;
+  if (query.actions !== undefined && (event.action === undefined || !query.actions.includes(event.action))) return false;
+  if (query.resourceKind !== undefined && event.resourceKind !== query.resourceKind) return false;
+  return true;
+}
+
+/**
+ * Searches `events` (the whole trail, oldest first, each at position index + 1) as a durable
+ * reader would: newest first, scanning at most {@link MAX_AUDIT_SEARCH_SCAN} events.
+ */
+export function searchAuditEvents(events: readonly PolicyAuditEvent[], query: PolicyAuditQuery): PolicyAuditPage {
+  const parsed = PolicyAuditQuery.parse(query);
+  const entries: StoredPolicyAuditEvent[] = [];
+  let seq = Math.min(parsed.before ?? events.length + 1, events.length + 1) - 1;
+  let scanned = 0;
+  for (; seq >= 1 && entries.length < parsed.limit && scanned < MAX_AUDIT_SEARCH_SCAN; seq--, scanned++) {
+    const event = events[seq - 1]!;
+    if (auditEventMatches(event, parsed)) entries.push({ seq, event: structuredClone(event) });
+  }
+  return seq >= 1 ? { entries, nextBefore: seq + 1 } : { entries };
+}
+
 /** A {@link PolicyAuditSink} that keeps events in memory, in order: for tests and local harnesses. */
-export class InMemoryPolicyAuditSink implements PolicyAuditSink {
+export class InMemoryPolicyAuditSink implements PolicyAuditSink, PolicyAuditReader, PolicyAuditRetention {
   /** The events recorded so far. */
   readonly events: PolicyAuditEvent[] = [];
 
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    const kept = this.events.filter((e) => !(isRetentionPurgeable(e) && e.decidedAt < before));
+    const deleted = this.events.length - kept.length;
+    this.events.splice(0, this.events.length, ...kept);
+    return deleted;
+  }
+
   async record(event: PolicyAuditEvent): Promise<void> {
     this.events.push(event);
+  }
+
+  async search(query: PolicyAuditQuery): Promise<PolicyAuditPage> {
+    return searchAuditEvents(this.events, query);
   }
 }

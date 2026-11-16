@@ -1,0 +1,65 @@
+{
+  "id": "ecology",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u6-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "quadrat-survey"
+    },
+    {
+      "kind": "activity",
+      "ref": "energy-food-web"
+    },
+    {
+      "kind": "activity",
+      "ref": "wolves-elk-willows"
+    },
+    {
+      "kind": "activity",
+      "ref": "ecology-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.IC.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "How organisms interact with each other and their environment: sampling populations, energy flow through food webs, cycles of matter, carrying capacity, and the evidence for a trophic cascade in Yellowstone.",
+  "title": "Unit 6: Ecology"
+}

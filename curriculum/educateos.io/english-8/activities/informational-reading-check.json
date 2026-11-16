@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:67b1b3d2383ce1fe82684770366c2acfd13770b52f1c64a7b191e9bc969e823c",
+      "id": "educateos.io/english-8-informational-reading-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "informational-reading-check",
+  "role": "assessment",
+  "title": "Informational Reading Check: Rain Gardens"
+}

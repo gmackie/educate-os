@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f301c9b31c4eeb58a4eee46996a4c2bb6b3f9cc32579e143be90043bf80ab398",
+      "id": "educateos.io/kindergarten-science-weather-watchers-weather-safety-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "weather-safety-check",
+  "role": "assessment",
+  "title": "Weather Safety Check"
+}

@@ -10,6 +10,7 @@ import { Problem } from "../Problem.tsx";
 import type { Assignment, CourseOutline, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { CartridgePanel } from "./CartridgePanel.tsx";
+import { CoursePanel } from "./CoursePanel.tsx";
 import { ModuleCard } from "./ModuleCard.tsx";
 
 interface ModulesData {
@@ -20,7 +21,8 @@ interface ModulesData {
 /**
  * A class's modules, in the order students meet them: the teacher adds modules, writes pages,
  * places the class's activities, and publishes each module when it is ready. Drafts stay with the
- * class's teachers.
+ * class's teachers. A course from the district's library (SCHO-331) or a Common Cartridge arrives
+ * as draft modules too.
  */
 export const ModulesPage = ({ teaching }: { teaching: TeachingOffering }) => {
   const offeringId = teaching.offering.id;
@@ -45,7 +47,7 @@ export const ModulesPage = ({ teaching }: { teaching: TeachingOffering }) => {
       {content.status === "loading" && data === undefined && <Loading label="Loading the modules…" />}
       {content.status === "error" && <Problem error={content.error} onRetry={content.reload} />}
       {data !== undefined && data.outline.modules.length === 0 && (
-        <Empty icon={<Stack size={32} aria-hidden />} title="No modules yet" description="Add a module, or import a Common Cartridge from another learning system." />
+        <Empty icon={<Stack size={32} aria-hidden />} title="No modules yet" description="Add a module, add a course from your district's course library, or import a Common Cartridge from another learning system." />
       )}
       {data !== undefined && data.outline.modules.length > 0 && (
         <ol aria-label="Modules" className="flex flex-col gap-4">
@@ -63,6 +65,7 @@ export const ModulesPage = ({ teaching }: { teaching: TeachingOffering }) => {
           ))}
         </ol>
       )}
+      <CoursePanel offeringId={offeringId} onInstalled={content.reload} />
       <CartridgePanel offeringId={offeringId} onImported={content.reload} />
     </div>
   );

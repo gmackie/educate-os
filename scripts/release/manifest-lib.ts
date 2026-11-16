@@ -234,6 +234,11 @@ export interface DeployablePackage {
    * built with (`wrangler deploy -c`), and the build that produces its own static assets.
    */
   component?: ReleaseComponent;
+  /**
+   * The district Worker in a release only ({@link readReleasePackages}): its own static assets are
+   * the district UIs, which build-release.ts builds and assembles rather than the Workshop frontend.
+   */
+  districtUi?: true;
 }
 
 /** One user-supplied value the deploy wizard collects before installing a gatekeeper or service. */
@@ -258,6 +263,14 @@ export interface DeployInput {
    * rotates. The wizard does not ask for it. Such as the district's `DEVICE_TOKEN_SECRET` (SCHO-261).
    */
   generated?: true;
+  /**
+   * The worker runs without it, so the wizard may leave it blank: an unset optional var is not
+   * written, and an unsupplied optional secret is not set (its `secret_text` binding stays in the
+   * manifest, and the renderer drops it when no value is given). Such as the MCP Server Portal's
+   * display name, or its `MCP_PORTAL_TOKEN`, which only the `token` auth mode reads. Never on a
+   * generated secret, which is never asked for anyway.
+   */
+  optional?: true;
 }
 
 /** The size of a {@link DeployInput.generated} secret: 32 random bytes, base64url-encoded. */
@@ -368,8 +381,8 @@ export interface WorkerBuild {
   /** The package's D1 migration files (see {@link readD1Migrations}). */
   d1Migrations?: CollectedD1Migration[];
   /**
-   * A release component's own static assets (the OSS admin's SPA), recorded as its one
-   * {@link COMPONENT_ASSET_VARIANT} variant. Without them, a worker that serves assets gets the
+   * A worker's own static assets (a release component's SPA, or the district Worker's UIs), recorded
+   * as its one {@link COMPONENT_ASSET_VARIANT} variant. Without them, a worker that serves assets gets the
    * Workshop frontend's variants (`assetVariants`).
    */
   ownAssets?: CollectedAssets;
@@ -440,15 +453,18 @@ const PREINSTALL = new Set(["gatekeeper-context", "gatekeeper-scheduler", "gatek
 //
 // Reason 2 turns on inputs, not on the vendor: google/github/slack take per-install
 // CLIENT_ID/CLIENT_SECRET, so two installs can front two different OAuth apps and must stay
-// multi-install. Independent of PREINSTALL in principle; the ambient three coincide with it today
-// only because every ambient gatekeeper we ship is also preinstalled.
+// multi-install. Likewise gatekeeper-mcp-portal: it was here under (2) while the portal came
+// from deployment vars no wizard could set, and left once its deploy-inputs.json made the portal
+// URL an input (SCHO-409), since two installs can now front two different portals.
+//
+// Independent of PREINSTALL in principle; the ambient three coincide with it today only because
+// every ambient gatekeeper we ship is also preinstalled.
 const SINGLETON = new Set([
   "gatekeeper-context",       // (1) ambient ContextLibrary
   "gatekeeper-scheduler",     // (1) ambient ScheduleSession
   "gatekeeper-websearch",     // (1) ambient WebSearchSession
   "gatekeeper-homeassistant", // (2) no inputs; users connect their own URL + token in-app
   "gatekeeper-mcp",           // (2) no inputs; users paste their own endpoints in-app
-  "gatekeeper-mcp-portal",    // (2) no inputs; the one portal comes from the deployment's vars
   "gatekeeper-educateos",      // (2) no inputs; the district's service binding is injected
 ]);
 
@@ -519,6 +535,29 @@ export function releaseAssetVariants(env: NodeJS.ProcessEnv): Readonly<Record<st
 export const DISTRICT_SERVICE_PACKAGE = "educateos-district-worker";
 
 /**
+ * Where the district Worker's static assets are, relative to its package: the three UIs as
+ * scripts/production/assemble-district-ui.ts lays them out (student at `/`, admin at `/admin/`,
+ * teacher at `/teach/`).
+ */
+export const DISTRICT_UI_DIR = "./dist/ui";
+
+/**
+ * The district Worker's own routes, which run before its assets: the API (the pairing relay's
+ * `/api/pair/*` among it), the liveness probe, the LTI Tool's endpoints (SCHO-177), the public school
+ * manifest (ADR-0014) and the pairing relay's `/connect-phone` page (SCHO-261).
+ */
+export const DISTRICT_WORKER_ROUTES: readonly string[] = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"];
+
+/**
+ * The district Worker's static assets: its UIs, as a single-page app the Worker runs before only on
+ * its own routes. Its wrangler.jsonc declares none; a ForgeGraph deployment's generated config adds
+ * them (scripts/production/production-config.ts), and a release adds them here (SCHO-318).
+ */
+export function districtUiAssets(): NonNullable<WranglerConfig["assets"]> {
+  return { directory: DISTRICT_UI_DIR, not_found_handling: "single-page-application", run_worker_first: [...DISTRICT_WORKER_ROUTES] };
+}
+
+/**
  * How a deployment serves a district's one origin (ADR-0014), carried on the router's manifest
  * entry. An installer that installs the district service as well:
  *  - adds `binding` to the router (a service binding to the district Worker, `DISTRICT`), whose
@@ -569,7 +608,10 @@ export const RELEASE_COMPONENTS: Readonly<Record<string, ReleaseComponent>> = {
   [ADMIN_PACKAGE]: { configFile: "wrangler.release.jsonc", assetsBuildFilter: "@educateos/admin" },
 };
 
-/** The one asset variant of a release component that serves its own assets (see `ownAssets`). */
+/**
+ * The one asset variant of a worker that serves its own assets (see `ownAssets`): a release
+ * component's SPA, or the district Worker's UIs.
+ */
 export const COMPONENT_ASSET_VARIANT = "spa";
 
 /**
@@ -586,6 +628,20 @@ export function readReleaseComponents(packagesDir: string): DeployablePackage[] 
     }
     return { name, dir, config: parse(readFileSync(path, "utf8")) as WranglerConfig, component };
   });
+}
+
+/**
+ * Every package a release carries, sorted by name: the deployable packages and the
+ * {@link RELEASE_COMPONENTS}, with the district Worker given its UIs as its own assets
+ * ({@link districtUiAssets}). Without them an installed district would serve its API and no pages.
+ */
+export function readReleasePackages(packagesDir: string): DeployablePackage[] {
+  const packages = readDeployablePackages(packagesDir).map((pkg): DeployablePackage => {
+    if (pkg.name !== DISTRICT_SERVICE_PACKAGE) return pkg;
+    if (pkg.config.assets) throw new Error(`${pkg.name}/wrangler.jsonc declares assets; the release owns them`);
+    return { ...pkg, config: { ...pkg.config, assets: districtUiAssets() }, districtUi: true };
+  });
+  return [...packages, ...readReleaseComponents(packagesDir)].toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 /** True when a deployable package is an optional backend service (see `SERVICE_PACKAGES`). */
@@ -888,6 +944,9 @@ export function buildWorkerEntry(
     if (input.generated !== undefined && (input.generated !== true || input.kind !== "secret")) {
       throw new Error(`${pkgName}: deploy input ${input.name} is marked generated, which only a secret can be`);
     }
+    if (input.optional !== undefined && (input.optional !== true || input.generated === true || input.kind === "workerName")) {
+      throw new Error(`${pkgName}: deploy input ${input.name} is marked optional, which only a var or an asked-for secret can be`);
+    }
     if (input.kind === "secret") {
       bindings.push({ type: "secret_text", name: input.name, text: `$SECRET(${input.name})` });
     }
@@ -943,7 +1002,8 @@ export function assetR2Key(cfHash: string): string {
  *    every worker entry that has an assetsConfig and no `ownAssets` (today: just the router), with
  *    the variant's build env from ASSET_VARIANTS. Every variant in ASSET_VARIANTS that the router's
  *    districtOrigin names must be present.
- *  - a worker's `ownAssets` (a release component's SPA) become its one COMPONENT_ASSET_VARIANT.
+ *  - a worker's `ownAssets` (a release component's SPA, the district Worker's UIs) become its one
+ *    COMPONENT_ASSET_VARIANT. The district Worker must have them if it serves assets at all.
  */
 export function generateManifest({
   releaseId, commit, createdAt, wranglerVersion, workers, assetVariants, profile = "generic",
@@ -973,6 +1033,8 @@ export function generateManifest({
       entry.assetsConfig.variants[COMPONENT_ASSET_VARIANT] = { manifest: w.ownAssets.manifest, buildEnv: {} };
       for (const [hash, blob] of w.ownAssets.blobs) assets[hash] = { size: blob.size, r2Key: assetR2Key(hash) };
       withOwnAssets.add(w.pkgName);
+    } else if (w.pkgName === DISTRICT_SERVICE_PACKAGE && entry.assetsConfig) {
+      throw new Error(`${w.pkgName} serves assets but has no UI build; it would serve the Workshop's`);
     }
     if (entry.shortName !== undefined) {
       const owner = shortNameOwner.get(entry.shortName);

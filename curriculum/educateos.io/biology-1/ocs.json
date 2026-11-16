@@ -1,0 +1,100 @@
+{
+  "gradeBand": "9-12",
+  "id": "educateos.io/biology-1",
+  "language": "en",
+  "modules": [],
+  "outline": [
+    {
+      "kind": "unit",
+      "unit": "cells-and-transport"
+    },
+    {
+      "kind": "unit",
+      "unit": "heredity"
+    },
+    {
+      "kind": "unit",
+      "unit": "cell-energy"
+    },
+    {
+      "kind": "unit",
+      "unit": "dna-and-proteins"
+    },
+    {
+      "kind": "unit",
+      "unit": "evolution"
+    },
+    {
+      "kind": "unit",
+      "unit": "ecology"
+    }
+  ],
+  "overrides": [],
+  "specVersion": "1.1",
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.IC.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.CP.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.CP.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.ID.B.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.ID.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.IC.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "subject": "science",
+  "summary": "A semester of high school biology built around investigation: cells and transport, heredity, cell energy, DNA and proteins, evolution by natural selection, and ecology. Six units, each with a student overview, a teacher guide with a five-day plan, a hands-on lab or simulation, assignments that analyze real-world data and argue from evidence, an assessment with a rubric and an answer key. Science has no built-in standards framework, so activities align honestly to the CCSS literacy standards for science and technical subjects and, where students analyze data, to high school statistics.",
+  "title": "Biology I",
+  "version": "1.0.0"
+}

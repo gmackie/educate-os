@@ -1,10 +1,11 @@
 import { createContext, use, useEffect, useRef, type ReactNode } from "react";
 import { Loader, Text } from "@cloudflare/kumo";
-import { DistrictApiError, unlinkedSignInOf, type DistrictApiClient } from "@educateos/api-client";
-import { SchoolShell, navigationFor, shellRoleOf, type NavGroup, type NavIcon, type SchoolManifest, type ShellFeatures } from "@educateos/shell";
-import { AdminClientProvider } from "./app/AdminClientContext.tsx";
+import { DistrictApiError, unlinkedSignInOf } from "@educateos/api-client";
+import { SchoolShell, documentTitle, navigationFor, useRouteTitle, shellRoleOf, type NavGroup, type NavIcon, type SchoolManifest, type ShellFeatures } from "@educateos/shell";
+import { AdminClientProvider, type AdminClient } from "./app/AdminClientContext.tsx";
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./app/Announcer.tsx";
+import { APP_NAME } from "./app/consoleTitle.ts";
 import { NotAddedYet } from "./app/NotAddedYet.tsx";
 import { NotAnAdministrator } from "./app/NotAnAdministrator.tsx";
 import { SCREENS, useHashRoute, useSchoolRoute, type ScreenPath } from "./app/useHashRoute.ts";
@@ -21,9 +22,13 @@ import { TermRolloverPage } from "./rollover/TermRolloverPage.tsx";
 import { RosterPage } from "./roster/RosterPage.tsx";
 import { RosterSyncPage } from "./roster/RosterSyncPage.tsx";
 import { LearningStandardsPage } from "./standards/LearningStandardsPage.tsx";
+import { CourseLibraryPage } from "./courses/CourseLibraryPage.tsx";
 import { SchoolPage } from "./schools/SchoolPage.tsx";
 import { AiUsagePage } from "./usage/AiUsagePage.tsx";
 import { OperationsPage } from "./operations/OperationsPage.tsx";
+import { AdminAuditLogPage } from "./audit/AdminAuditLogPage.tsx";
+import { SafetyDecisionsPage } from "./audit/SafetyDecisionsPage.tsx";
+import { SignInPage } from "./signin/SignInPage.tsx";
 
 const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigState }) => {
   switch (path) {
@@ -35,11 +40,15 @@ const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigStat
     case "guardians": return <GuardiansPage />;
     case "modules": return <ModulesPage state={config} />;
     case "learning-standards": return <LearningStandardsPage />;
+    case "course-library": return <CourseLibraryPage />;
     case "policies": return <PoliciesPage state={config} />;
     case "ai-usage": return <AiUsagePage state={config} />;
     case "ai-budgets": return <AiBudgetsPage />;
     case "term-rollover": return <TermRolloverPage />;
     case "operations": return <OperationsPage />;
+    case "safety-decisions": return <SafetyDecisionsPage />;
+    case "audit-log": return <AdminAuditLogPage />;
+    case "sign-in": return <SignInPage />;
   }
 };
 
@@ -71,8 +80,8 @@ const ShellContext = createContext<DistrictShell | undefined>(undefined);
 
 const SCREEN_ICONS: Record<ScreenPath, NavIcon> = {
   dashboard: "dashboard", roster: "roster", "roster-sync": "roster", classes: "classes", "classes-people": "roster", guardians: "guardians", modules: "studio",
-  "learning-standards": "grades", policies: "policies", "ai-usage": "usage", "ai-budgets": "budgets", "term-rollover": "rollover",
-  operations: "policies",
+  "learning-standards": "grades", "course-library": "studio", policies: "policies", "ai-usage": "usage", "ai-budgets": "budgets", "term-rollover": "rollover",
+  operations: "policies", "safety-decisions": "policies", "audit-log": "policies", "sign-in": "policies",
 };
 
 /**
@@ -110,16 +119,22 @@ const Console = () => {
   const first = useRef(true);
   const gate = accessGate(config);
   const announce = useAnnounce();
+  // Each screen names itself in the document title; a school's page refines it with the school's name.
+  const screenLabel = SCREENS.find((screen) => screen.path === path)!.label;
+  useRouteTitle(documentTitle(schoolId === undefined ? screenLabel : "School", APP_NAME), `${path}/${schoolId ?? ""}`);
 
   // Moving between screens moves focus to the new screen, as a page load would, so keyboard and
   // screen-reader users start at its top. Not on first load, where focus belongs to the browser.
+  // The last screen's announcement, such as an export downloading, is about that screen: clear it,
+  // so it is not still in the live region on the next one.
   useEffect(() => {
     if (first.current) {
       first.current = false;
       return;
     }
+    announce("");
     (main.current ?? document.getElementById("main"))?.focus();
-  }, [path, schoolId]);
+  }, [path, schoolId, announce]);
 
   if (shell !== undefined) return <ShellConsole shell={shell} gate={gate} path={path} schoolId={schoolId} config={config} />;
 
@@ -191,7 +206,7 @@ const ShellConsole = ({ shell, gate, path, schoolId, config }: { shell: District
 
 /** The district admin console, reading from `client`. */
 export const AdminApp = ({ client, shell }: {
-  client: DistrictApiClient;
+  client: AdminClient;
   /**
    * The district origin around the console (SCHO-260): frames it in the shared SchoolShell. A host
    * that embeds it omits this and keeps its own frame.

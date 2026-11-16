@@ -1,0 +1,45 @@
+{
+  "id": "theme-in-short-fiction",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u2-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "tracing-a-theme"
+    },
+    {
+      "kind": "activity",
+      "ref": "lighthouse-theme"
+    },
+    {
+      "kind": "activity",
+      "ref": "theme-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Trace how a theme develops through what characters want and do, how conflict changes them, and the images that repeat, then write a literary analysis.",
+  "title": "Theme in Short Fiction"
+}

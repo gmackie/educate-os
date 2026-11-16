@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:53145289b73141c10929ff8333fd92d197bb1358a8e05b6e3897e9cc9deb7d8d",
+      "id": "educateos.io/grade-1-reading-foundations-animal-homes",
+      "version": "1.0.0"
+    }
+  },
+  "id": "animal-homes",
+  "role": "assignment",
+  "title": "Animal Homes"
+}

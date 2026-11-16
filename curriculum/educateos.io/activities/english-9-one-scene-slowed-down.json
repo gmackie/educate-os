@@ -1,0 +1,160 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 4,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "9-12",
+    "minWords": 300,
+    "minimumCitations": 0,
+    "overview": "Practice the core skill of narrative writing: write one important moment from your life as a vivid, slowed-down scene.",
+    "prompt": "Choose one important moment from your life: a moment that lasted only a few minutes but mattered. Write it as a single scene, in the first person, as if a camera were following you. Stay inside the moment rather than summarizing. Include at least one line of dialogue, details from at least two senses besides sight, and one place where you deliberately slow time down. Do not explain what the moment meant yet; let the details show it.",
+    "resources": [
+      "narrative-craft-notes"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "One Scene, Slowed Down"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.B",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.D",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-one-scene-slowed-down",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "A personal essay is a true story told by the person who lived it, shaped so that a reader understands what it meant. These techniques help.\n\nStart inside a moment. Begin with a specific scene, not a summary of your life. \"I was nine and standing on a milk crate\" pulls a reader in faster than \"I have always helped my family.\"\n\nShow, then reflect. Let the reader see and hear the scene first: actions, dialogue, sensory details. Then step back and reflect on what it meant. The best essays move between the two.\n\nSlow down the important moment. Pacing is a choice. Spend one sentence on five years and five paragraphs on five minutes, if those five minutes are the threshold.\n\nUse telling details. One precise detail (a name tag, a pen on a chain, a shaking hand) does more than a paragraph of adjectives.\n\nLet dialogue do work. Use dialogue sparingly, for lines that reveal character or turn the story. Punctuate it correctly and start a new paragraph for each new speaker.\n\nFind the turn. Most personal essays have a moment where the writer's understanding changes. In Unit 2 we called it a threshold.\n\nEnd with reflection, not a moral. Avoid \"and that taught me to always...\" Instead, show where the experience has left you and how you see things differently today. Often the ending echoes the beginning, changed.\n\nRevise in passes. Read once for structure (does every scene build toward the turn?), once for detail (where can I be more specific?), and once aloud for sound and correctness.",
+      "id": "narrative-craft-notes",
+      "title": "Narrative Craft Notes"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Stays inside one moment and orients the reader to who, where and what is at stake.",
+        "id": "scene",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Stays in the scene"
+      },
+      {
+        "description": "Uses dialogue and deliberate pacing to develop the moment.",
+        "id": "technique",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Dialogue and pacing"
+      },
+      {
+        "description": "Uses precise words and details from more than one sense.",
+        "id": "detail",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sensory and precise language"
+      },
+      {
+        "description": "Punctuates dialogue correctly and uses standard English conventions.",
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Conventions"
+      }
+    ],
+    "title": "Scene writing"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.1"
+}

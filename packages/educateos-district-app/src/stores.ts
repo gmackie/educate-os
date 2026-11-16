@@ -1,3 +1,4 @@
+import { InMemoryHomeLearningStore, type HomeLearningStore } from "@educateos/home-learning";
 import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 import {
   EducateOsError,
@@ -7,7 +8,7 @@ import {
   type DistrictDirectorySnapshot,
 } from "@educateos/contracts";
 import { InMemoryAcademicStore, type AcademicStore } from "@educateos/academics";
-import type { PolicyAuditEvent, PolicyAuditSink } from "@educateos/policy";
+import { isRetentionPurgeable, searchAuditEvents, type PolicyAuditEvent, type PolicyAuditPage, type PolicyAuditQuery, type PolicyAuditReader, type PolicyAuditRetention, type PolicyAuditSink } from "@educateos/policy";
 import { InMemoryWorkspaceStore, type WorkspaceStore } from "@educateos/workspaces";
 import {
   BackendArtifactStore,
@@ -49,6 +50,10 @@ import { InMemoryPairRoomStore, type PairRoomStore } from "./pairing.ts";
 import { InMemoryOpsStore, type OpsStore } from "./ops.ts";
 // Marketplace (SCHO-209)
 import { InMemoryMarketplacePackStore, type MarketplacePackStore } from "./marketplace.ts";
+// Course library (SCHO-331)
+import { InMemoryCourseLibraryStore, type CourseLibraryStore } from "./course-library.ts";
+// Student archive (SCHO-371)
+import { InMemoryExportMappingStore, type ExportMappingStore } from "@educateos/portability";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -214,11 +219,22 @@ export class InMemoryWorkshopUserLinkStore implements WorkshopUserLinkStore {
 }
 
 /** A {@link PolicyAuditSink} that keeps events in memory, for tests and the local harness. */
-export class InMemoryPolicyAuditLog implements PolicyAuditSink {
+export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReader, PolicyAuditRetention {
   readonly #events: PolicyAuditEvent[] = [];
+
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    const kept = this.#events.filter((e) => !(isRetentionPurgeable(e) && e.decidedAt < before));
+    const deleted = this.#events.length - kept.length;
+    this.#events.splice(0, this.#events.length, ...kept);
+    return deleted;
+  }
 
   async record(event: PolicyAuditEvent): Promise<void> {
     this.#events.push(structuredClone(event));
+  }
+
+  async search(query: PolicyAuditQuery): Promise<PolicyAuditPage> {
+    return searchAuditEvents(this.#events, query);
   }
 
   /** Every recorded event, oldest first. */
@@ -271,8 +287,11 @@ export interface DistrictAppStores {
   fundingAllocations: FundingAllocationStore;
   /** Administrator-confirmed Workshop user links (F04), which the AI call guard resolves through. */
   workshopUserLinks: WorkshopUserLinkStore;
-  /** The policy decision audit trail (A02). Every decision every service makes lands here. */
-  audit: PolicyAuditSink;
+  /**
+   * The policy decision audit trail (A02). Every decision every service makes lands here, and the
+   * admin console's audit screens search it (SCHO-376).
+   */
+  audit: PolicyAuditSink & PolicyAuditReader & PolicyAuditRetention;
   // Guardians (ADR-0012, SCHO-188)
   /** Guardian relationships and their change history. */
   guardianRelationships: GuardianRelationshipStore;
@@ -305,9 +324,18 @@ export interface DistrictAppStores {
   // Marketplace (SCHO-209)
   /** Curriculum packs installed from signed marketplace listings. */
   marketplacePacks: MarketplacePackStore;
+  // Course library (SCHO-331)
+  /** The district's course library of imported OCS courses, and each class's course installs. */
+  courseLibrary: CourseLibraryStore;
   // Delegations (SCHO-175)
   /** Staff members' delegations to registered clients, which bound every request a client makes for them. */
   delegations: DelegationStore;
+  // Student archive (SCHO-371)
+  /** How each student archive's export-local IDs map back to district IDs; kept here, never in the archive. */
+  exportMappings: ExportMappingStore;
+  // Home learning (ADR-0016)
+  /** Families, their children's practice and the child sessions of a community installation. */
+  homeLearning: HomeLearningStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -353,7 +381,13 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     ops: new InMemoryOpsStore(),
     // Marketplace (SCHO-209)
     marketplacePacks: new InMemoryMarketplacePackStore(),
+    // Course library (SCHO-331)
+    courseLibrary: new InMemoryCourseLibraryStore(),
     // Delegations (SCHO-175)
     delegations: new InMemoryDelegationStore(),
+    // Student archive (SCHO-371)
+    exportMappings: new InMemoryExportMappingStore(),
+    // Home learning (ADR-0016)
+    homeLearning: new InMemoryHomeLearningStore(),
   };
 }

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brief for district IT · EducateOS</title>
+<meta name="description" content="A one-page brief on the EducateOS founding pilot for district IT: architecture, what the install asks of your Cloudflare account, integration status, cost and data ownership.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+  // Print in light mode whatever the reader's theme, so the PDF has dark text on white.
+  addEventListener("beforeprint", () => { document.documentElement.dataset.mode = "light"; });
+  addEventListener("afterprint", () => { document.documentElement.dataset.mode = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; });
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/brief.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+<main id="main" class="brief">
+  <!-- One-page leave-behind (SCHO-405). Statuses follow docs/educateos/maturity.md. The PDF beside
+       this page is printed from it by node sites/educateos-io/build.mjs --pdf. -->
+  <section class="tight">
+    <div class="wrap sheet">
+      <div class="brief-top">
+        <div>
+          <span class="print-logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>EducateOS</span>
+          <div class="eyebrow">Founding pilot brief · For district IT and technology directors</div>
+        </div>
+        <div class="meta">November 2026<br>educateos.io/pilot · hello@educateos.io</div>
+      </div>
+
+      <h1>Runs in your Cloudflare account, under a token you create and can delete.</h1>
+      <p class="lede">EducateOS is an open-source (Apache-2.0) learning platform with AI built in. You install it in your district's own Cloudflare account with one command; educateos.io is optional and never in the data path. The founding pilot: one school, teachers first, about ten weeks, in three to five Texas and Michigan districts.</p>
+
+      <div class="cols">
+        <div class="box">
+          <h2>The problem it solves for you</h2>
+          <ul>
+            <li>Every new vendor is another copy of student data outside your control.</li>
+            <li>Staff are using unreviewed AI tools, with no logs, no screening and no spending limit.</li>
+            <li>You need to be able to read what runs, cap what it costs, and remove it cleanly.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h2>What EducateOS is</h2>
+          <p>Workers in your account: the district app (courses, rosters, grades, families) in a SQLite Durable Object, and an AI workspace where each agent and gadget is sandboxed. Gatekeepers are the only way an agent reaches an outside service. Every model call passes an AI call guard: district policy, Hall Monitor screening, spending caps. Cloudflare Access sits in front, with your identity provider.</p>
+        </div>
+        <div class="box">
+          <h2>What the pilot asks of you</h2>
+          <ul>
+            <li>A Cloudflare account the district owns, on Workers Paid (from $5 a month), with R2 and a domain as an active zone.</li>
+            <li>Cloudflare Zero Trust with your identity provider (Google, Entra ID, Clever, or SAML/OIDC) as a login method.</li>
+            <li>An API token with the 13 permissions the install guide lists, created by you and deleted after.</li>
+            <li>A few hours before kickoff, then <code>npx launch-educate-os</code> with us on a call (Node.js 22.12+).</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h2>What you get</h2>
+          <ul>
+            <li>A guided install, free, and a technical contact who fixes or tracks every issue.</li>
+            <li>The evaluation packet: permission record, security questionnaire, DPA template, accessibility report.</li>
+            <li>The stop switch: change the Access policy in your account and access ends. It does not need us.</li>
+            <li>At the end: keep it, export everything as open JSON, or uninstall.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="evidence-title">Where it stands, labeled honestly</h2>
+      <div class="table-scroll">
+      <table class="evidence">
+        <thead><tr><th>What</th><th>Evidence today</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Installer</td><td>Installed end to end into the project's own Cloudflare account with exactly these permissions. No district has run it yet.</td><td><span class="status dev">In development</span></td></tr>
+          <tr><td>AI call guard and Hall Monitor</td><td>Guard deployed on the demo districts from source. Budgets and screening not yet run for a district.</td><td><span class="status dev">In development</span></td></tr>
+          <tr><td>LTI 1.3 and LTI Advantage (Canvas, Moodle)</td><td>Passed live runs against current Canvas and Moodle 4.5. No 1EdTech certification is claimed.</td><td><span class="status supported" data-status="summary.lti">Supported</span></td></tr>
+          <tr><td>Clever sign-in through Access</td><td>Sign-in and roster sync are harness-tested against fakes of Clever. No live Clever sign-in yet.</td><td><span class="status unit" data-status="summary.clever">Harness-tested</span></td></tr>
+          <tr><td>OneRoster 1.2 (CSV and REST)</td><td>Preview before apply, quarantine, deactivation instead of deletion. ClassLink: fakes only.</td><td><span class="status unit" data-status="summary.oneroster">Unit-tested</span></td></tr>
+          <tr><td>Google Classroom</td><td>Coursework and a teacher-approved grade ran live on one course.</td><td><span class="status unit" data-status="summary.google-classroom">Unit-tested</span></td></tr>
+          <tr><td>District export and uninstall</td><td>Export tested against a seeded district, uninstall against a simulated Cloudflare account. Neither run live yet.</td><td><span class="status unit">Harness-tested</span></td></tr>
+          <tr><td>Accessibility report (WCAG 2.1 AA)</td><td>40 criteria supported, 2 partially, none unsupported. Screen-reader testing not done yet.</td><td><span class="status validating">Partially conforms</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="cols">
+        <div class="box">
+          <h2>Cost</h2>
+          <p>No license fee. Cloudflare bills you directly; our projection at list prices is about <span data-cost="500.usage">$8.09</span> a month at 500 students and <span data-cost="2500.usage">$37.29</span> at 2,500, Workers Paid base included. Access seats are separate: up to 50 people fit Zero Trust Free, enough for a teachers-first pilot. AI usage is billed by your model provider, up to the cap you set.</p>
+        </div>
+        <div class="box">
+          <h2>Who holds student data</h2>
+          <p>Student records live in your account, under your credentials. Gmacko Ventures LLC holds no standing credentials for your account and does not receive student records. Signed releases, verified against keys you pin, are in development. Until a DPA is signed the pilot uses synthetic or staff-only data, and no real roster is connected. Designed to support FERPA, COPPA and state obligations; no compliance or certification claim is made.</p>
+        </div>
+      </div>
+
+      <div class="next">
+        <p><b class="strong">Next step.</b> Email <a href="mailto:hello@educateos.io?subject=EducateOS%20IT%20walkthrough">hello@educateos.io</a> for a 20-minute IT walkthrough. Tell us your identity provider, roster source and LMS, and we'll tell you honestly how ready EducateOS is for each. Evaluation packet: <a href="/it/">educateos.io/it</a>. Full terms: <a href="/pilot/">educateos.io/pilot</a>.</p>
+      </div>
+
+      <p class="fine">Statuses from the project's maturity record, November 2026. In development: built and tested, not yet run for a district. Harness-tested: run end to end against synthetic districts or a simulated service. Unit-tested: tested against fakes of the vendor's service. Validating against live sandbox: a run against the vendor's live sandbox is under way. Supported: passed live runs against the real service, not a certification. Partially conforms: the conformance report's own finding. This brief is not a contract. EducateOS is developed by Gmacko Ventures LLC on the open-source Cloudflare OS and is not affiliated with or endorsed by Cloudflare, Inc.</p>
+
+      <div class="actions screen-only">
+        <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20founding%20pilot" data-glass-event="contact_requested" data-glass-prop-location="brief_it">Email hello@educateos.io</a>
+        <a class="btn" href="/pilot/brief/it/educateos-brief-it.pdf">Download the PDF</a>
+        <a class="btn" href="/pilot/">The founding pilot</a>
+      </div>
+      <p class="others screen-only">Briefs for each audience: <a href="/pilot/brief/superintendents/">superintendents and boards</a> · <a href="/pilot/brief/principals/">principals</a> · <a href="/pilot/brief/teachers/">teachers</a> · <a href="/pilot/brief/it/">district IT</a></p>
+    </div>
+  </section>
+</main>
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->
+</body>
+</html>

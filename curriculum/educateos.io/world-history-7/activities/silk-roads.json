@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:68c6c56742c0080ef37c90c5d946f6a5433fcd0789c83ce06a05b72acfcef341",
+      "id": "educateos.io/world-history-7-silk-roads",
+      "version": "1.0.0"
+    }
+  },
+  "id": "silk-roads",
+  "role": "assignment",
+  "title": "Ideas on the Move"
+}

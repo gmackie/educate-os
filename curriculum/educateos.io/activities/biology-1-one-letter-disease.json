@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "9-12",
+    "minWords": 500,
+    "minimumCitations": 1,
+    "overview": "Write an informative essay that explains how a single changed base in DNA leads to sickle cell disease.",
+    "prompt": "Explain how one changed base in the DNA of a single gene leads to sickle cell disease. Organize your essay by level: the DNA, the mRNA, the protein, the red blood cell, the whole body. Then explain how the allele is inherited, using what you learned in Unit 2, and why it is more common in some parts of the world than others. Use precise vocabulary and cite the reading at least twice.",
+    "resources": [
+      "sickle-cell"
+    ],
+    "subject": "science",
+    "template": "writing-task",
+    "title": "From One Letter to a Disease"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-one-letter-disease",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Each of your red blood cells carries about 270 million molecules of hemoglobin, the protein that picks up oxygen in your lungs and releases it in your tissues. Adult hemoglobin is built from four protein chains: two alpha chains and two beta chains. The beta chain, 146 amino acids long, is coded by a gene called HBB.\n\nIn 1949, the chemist Linus Pauling and his colleagues showed that the hemoglobin of people with sickle cell disease behaves differently from typical hemoglobin when placed in an electric field. It was the first time a disease had been traced to a difference in a single molecule. Within a decade, researchers found the exact difference: one amino acid out of 146.\n\nThe change starts with one base. In the sixth codon of the HBB gene, the typical sequence GAG becomes GTG. The mRNA codon becomes GUG instead of GAG, and the ribosome places valine where glutamic acid should be. Glutamic acid is charged and attracts water; valine is not and does not. That small change creates a sticky patch on the outside of the hemoglobin molecule.\n\nWhen oxygen levels are low, as they are in small blood vessels, sickle hemoglobin molecules stick to one another and form long, stiff fibers. The fibers stretch the red blood cell into a curved, crescent shape like the blade of a sickle. Sickled cells are rigid. They jam in narrow vessels, blocking blood flow and causing sudden, severe pain and damage to organs. They also break down after about 10 to 20 days instead of the usual 120, so the body cannot replace them fast enough, which causes anemia.\n\nThe sickle allele is recessive for the disease. A person with two copies has sickle cell disease. A person with one copy has sickle cell trait: they make both kinds of hemoglobin, and they are usually healthy.\n\nWhy is a harmful allele so common in some places? Sickle cell trait offers partial protection against severe malaria, a disease caused by a parasite that lives inside red blood cells. Where malaria has been common for many generations, including large parts of Africa and parts of the Middle East, India and the Mediterranean, carriers were more likely to survive childhood and have children of their own. As a result, the allele became common in those populations and among their descendants around the world.\n\nTreatment has changed a great deal. Medicines can reduce pain crises, and a bone marrow transplant from a matched donor can cure the disease. In 2023, U.S. regulators approved the first gene therapies for sickle cell disease, including one that uses the gene-editing tool CRISPR on a patient's own blood stem cells.",
+      "id": "sickle-cell",
+      "title": "Sickle Cell: One Letter, Many Lives"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Explains the mutation, the amino acid change and its effects on hemoglobin, cells and the body correctly.",
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Scientific accuracy"
+      },
+      {
+        "description": "Moves logically from DNA to mRNA to protein to cell to body to population, with clear transitions.",
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Organization by level"
+      },
+      {
+        "description": "Explains the recessive inheritance of the disease and the malaria connection accurately.",
+        "id": "inheritance",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Inheritance and selection"
+      },
+      {
+        "description": "Cites the reading accurately and uses domain-specific terms precisely.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence and vocabulary"
+      }
+    ],
+    "title": "Informative explanation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

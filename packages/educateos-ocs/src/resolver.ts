@@ -1,6 +1,6 @@
 import { OcsError, type VersionRequirement } from "./errors.ts";
 import { formatJson, type OcsFiles, type OcsPackage, packageDigest, readPackage } from "./package.ts";
-import { OCS_SPEC_VERSION, OcsLock, type OcsLockedPackage, type OcsManifest, type OcsPackageId, type Sha256Digest } from "./schema.ts";
+import { OCS_PORTABLE_SPEC_VERSION, OCS_SPEC_VERSION, OcsLock, type OcsLockedPackage, type OcsManifest, type OcsPackageId, type Sha256Digest } from "./schema.ts";
 import { compareVersions, satisfies, SemVer } from "./semver.ts";
 
 /** One published package version as a source holds it. */
@@ -163,9 +163,12 @@ export async function resolveCourse(root: OcsPackage, source: PackageSource, opt
       .map((module) => ({ name: module.name, package: module.package, version: selected.get(module.package)! }))
       .toSorted((a, b) => (a.name < b.name ? -1 : 1)),
   });
+  // A lock that records a 1.1 package is itself 1.1, so a 1.0 reader refuses it rather than
+  // composing activities it cannot read.
+  const uses11 = [root, ...packages.values()].some((pkg) => pkg.manifest.specVersion === OCS_PORTABLE_SPEC_VERSION);
   const lock = OcsLock.parse({
     lockVersion: 1,
-    specVersion: OCS_SPEC_VERSION,
+    specVersion: uses11 ? OCS_PORTABLE_SPEC_VERSION : OCS_SPEC_VERSION,
     root: entryOf(root),
     packages: [...packages.keys()].toSorted().map((id) => entryOf(packages.get(id)!)),
   } satisfies OcsLock);

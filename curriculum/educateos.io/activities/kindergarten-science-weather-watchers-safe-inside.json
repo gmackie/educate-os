@@ -1,0 +1,83 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw where you would go to be safe. Show what you would do there.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "lookPrompt": "Boom! You hear thunder while you are playing outside.",
+    "overview": "Draw where you would go when you hear thunder. Tell how you stay safe.",
+    "sentenceFrames": [
+      "I go ___.",
+      "I stay safe by ___."
+    ],
+    "subject": "science",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Safe Inside"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-safe-inside",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "safe",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I showed a safe place"
+      },
+      {
+        "id": "tell",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told what to do"
+      }
+    ],
+    "title": "Safe inside"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

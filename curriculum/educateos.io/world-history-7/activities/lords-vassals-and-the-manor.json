@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a213cf22ec073884232a5f8e8d3874b6235a16413541eaea2edcb89ebb40c508",
+      "id": "educateos.io/world-history-7-lords-vassals-and-the-manor",
+      "version": "1.0.0"
+    }
+  },
+  "id": "lords-vassals-and-the-manor",
+  "role": "lesson",
+  "title": "Lords, Vassals and the Manor"
+}

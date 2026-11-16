@@ -1,0 +1,185 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 2,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "9-12",
+    "minWords": 350,
+    "minimumCitations": 2,
+    "overview": "Synthesize what you have learned about documents that answer the Declaration, in one class period.",
+    "prompt": "Lincoln spoke of \"the unfinished work\" left to the living. Using at least two of the documents from this unit (the Declaration of Sentiments, Douglass's speech and the Gettysburg Address), write an essay that explains how each writer uses the words of the Declaration of Independence to argue that the nation's work is unfinished. For each document, quote the text and analyze one rhetorical choice. End by explaining one important difference in the writers' purposes or audiences.",
+    "resources": [
+      "declaration-of-independence-excerpt",
+      "declaration-of-sentiments-excerpt",
+      "douglass-fourth-of-july-excerpt",
+      "gettysburg-address"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Unfinished Work"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.9.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-unfinished-work",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Thomas Jefferson and the Second Continental Congress, the Declaration of Independence, July 4, 1776. Excerpt. Public domain.",
+      "body": "We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness.",
+      "id": "declaration-of-independence-excerpt",
+      "title": "From the Declaration of Independence (1776)"
+    },
+    {
+      "attribution": "Elizabeth Cady Stanton and the Seneca Falls Convention, the Declaration of Sentiments, July 1848. Excerpts. Public domain.",
+      "body": "We hold these truths to be self-evident: that all men and women are created equal; that they are endowed by their Creator with certain inalienable rights; that among these are life, liberty, and the pursuit of happiness.\n\nThe history of mankind is a history of repeated injuries and usurpations on the part of man toward woman, having in direct object the establishment of an absolute tyranny over her.",
+      "id": "declaration-of-sentiments-excerpt",
+      "title": "From the Declaration of Sentiments (1848)"
+    },
+    {
+      "attribution": "Frederick Douglass, speech to the Rochester Ladies' Anti-Slavery Society, Rochester, New York, July 5, 1852. Excerpts. Public domain.",
+      "body": "The rich inheritance of justice, liberty, prosperity and independence, bequeathed by your fathers, is shared by you, not by me.\n\nWhat, to the American slave, is your 4th of July? I answer: a day that reveals to him, more than all other days in the year, the gross injustice and cruelty to which he is the constant victim.\n\nFrom near the end of the speech:\nI do not despair of this country.",
+      "id": "douglass-fourth-of-july-excerpt",
+      "title": "From \"What to the Slave Is the Fourth of July?\" (1852)"
+    },
+    {
+      "attribution": "Abraham Lincoln, address at the dedication of the Soldiers' National Cemetery, Gettysburg, Pennsylvania, November 19, 1863. The text of the Bliss copy. Public domain.",
+      "body": "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.\n\nNow we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.\n\nBut, in a larger sense, we can not dedicate - we can not consecrate - we can not hallow - this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us - that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion - that we here highly resolve that these dead shall not have died in vain - that this nation, under God, shall have a new birth of freedom - and that government of the people, by the people, for the people, shall not perish from the earth.",
+      "id": "gettysburg-address",
+      "title": "The Gettysburg Address (1863)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a clear controlling idea that connects the documents.",
+        "id": "idea",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Controlling idea"
+      },
+      {
+        "description": "Analyzes one rhetorical choice in each document and its effect.",
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis of rhetoric"
+      },
+      {
+        "description": "Quotes each document accurately and explains the quotation.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Textual evidence"
+      },
+      {
+        "description": "Explains a meaningful difference in purpose or audience.",
+        "id": "difference",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Comparison"
+      }
+    ],
+    "title": "Synthesis essay"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

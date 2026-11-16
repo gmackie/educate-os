@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:8c8480394f5d076945d2b4ef769ad4da24f6a790dc9e1de714b901938fddb486",
+    "id": "educateos.io/world-history-7",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

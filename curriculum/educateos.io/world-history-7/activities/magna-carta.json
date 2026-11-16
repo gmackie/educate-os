@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:314d5b0172a118676a2cbb1d0f00e2de8b9ad4019bbbd7b7f772172707b9b80f",
+      "id": "educateos.io/world-history-7-magna-carta",
+      "version": "1.0.0"
+    }
+  },
+  "id": "magna-carta",
+  "role": "assignment",
+  "title": "Magna Carta, 1215"
+}

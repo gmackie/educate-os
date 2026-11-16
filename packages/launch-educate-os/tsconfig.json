@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // A Node program: the installer library's web-standard surface plus Node's typings.
+    "types": ["node"],
+    // The sources run under Node's type stripping in tests and are bundled for npm, so specifiers
+    // name the file on disk and only erasable TypeScript syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__", "scripts"],
+  "exclude": ["dist", "node_modules"]
+}

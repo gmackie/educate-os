@@ -28,6 +28,9 @@ async function client(principal: string, role: "build" | "use" = "build") {
       if (action) await user.assertWorkshopCapability({ action, workspaceId: "workspace-id" });
     },
     getGadgetRecord: () => ({ type: "gadget", id: 1 }),
+    // A "use" collaborator's getGadget() verifies them for that one gadget first; the policy
+    // check under test comes after.
+    authorizeGadget: async () => true,
     getSharingManager: async () => ({ createShareLink: sideEffect }),
     getGadgetUiBundle: sideEffect,
     getGadgetFacet: sideEffect,
@@ -41,8 +44,8 @@ describe("policy checks at retained Workshop RPC boundaries", () => {
   it("denies direct student publication, invitations and agent execution before side effects", async () => {
     const { api, requests, sideEffect } = await client("student");
     await expect(api.createGadget("student gadget")).rejects.toThrow("No grant");
-    await expect(api.addCollaborator("teacher", "build", "role=teacher")).rejects.toThrow("No grant");
-    await expect(api.createShareLink("build")).rejects.toThrow("No grant");
+    await expect(api.addCollaborator("teacher", "workspace", "role=teacher")).rejects.toThrow("No grant");
+    await expect(api.createShareLink("workspace")).rejects.toThrow("No grant");
     await expect(api.newShareLinkKey("link")).rejects.toThrow("No grant");
     await expect(api.updateBlueprint("blueprint", { title: "private" })).rejects.toThrow("No grant");
     await expect(api.retryBlueprintPublish("blueprint")).rejects.toThrow("No grant");
@@ -78,9 +81,9 @@ describe("policy checks at retained Workshop RPC boundaries", () => {
 
   it("allows teacher sharing and refuses the same session after grant revocation", async () => {
     const { api, sideEffect, revoke } = await client("teacher");
-    await expect(api.createShareLink("build")).resolves.toEqual({ key: "key", linkId: "link" });
+    await expect(api.createShareLink("workspace")).resolves.toEqual({ key: "key", linkId: "link" });
     revoke();
-    await expect(api.createShareLink("build")).rejects.toThrow("No grant");
+    await expect(api.createShareLink("workspace")).rejects.toThrow("No grant");
     expect(sideEffect).toHaveBeenCalledTimes(1);
     api[Symbol.dispose]();
   });
@@ -102,7 +105,7 @@ it("refuses direct retained RPC when required school policy binding is missing",
   delete live.WORKSHOP_CAPABILITY_POLICY;
   try {
     await expect(api.createGadget("student")).rejects.toThrow("Required Workshop capability policy");
-    await expect(api.createShareLink("build")).rejects.toThrow("Required Workshop capability policy");
+    await expect(api.createShareLink("workspace")).rejects.toThrow("Required Workshop capability policy");
     await expect(api.newChat("prompt", null)).rejects.toThrow("Required Workshop capability policy");
     expect(sideEffect).not.toHaveBeenCalled();
   } finally {

@@ -4,6 +4,7 @@ import { assignHash, readHash, subscribeToHash } from "@gadgets/ui/hash-location
 /** A Teacher Studio screen and the identifiers it shows. */
 export type Route =
   | { screen: "classes" }
+  | { screen: "setup"; offeringId: string }
   | { screen: "roster"; offeringId: string }
   | { screen: "modules"; offeringId: string }
   | { screen: "resources"; offeringId: string }
@@ -23,6 +24,7 @@ export type Route =
 
 /** The sections of a class, in navigation order. */
 export const CLASS_SECTIONS = [
+  { screen: "setup", label: "Classroom setup" },
   { screen: "roster", label: "Roster" },
   { screen: "modules", label: "Modules" },
   { screen: "resources", label: "Resources" },
@@ -42,6 +44,7 @@ export const routeHref = (route: Route): string => {
   switch (route.screen) {
     case "classes":
       return "#/";
+    case "setup":
     case "roster":
     case "modules":
     case "resources":
@@ -73,7 +76,7 @@ export const parseRoute = (hash: string): Route => {
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
-  if (section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements" || section === "discussions") return { screen: section, offeringId };
+  if (section === "setup" || section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements" || section === "discussions") return { screen: section, offeringId };
   // Quizzes (SCHO-191).
   if (section === "quizzes") {
     if (id === undefined) return { screen: "quizzes", offeringId };
@@ -89,6 +92,29 @@ export const parseRoute = (hash: string): Route => {
   return { screen: "roster", offeringId };
 };
 
+
+const SCREEN_NAMES: Record<Exclude<Route["screen"], "classes">, string> = {
+  setup: "Classroom setup",
+  roster: "Roster",
+  modules: "Modules",
+  resources: "Resources",
+  resource: "Resource",
+  create: "Create activity",
+  submissions: "Submissions",
+  review: "Student work",
+  gradebook: "Gradebook",
+  announcements: "Announcements",
+  discussions: "Discussions",
+  quizzes: "Quizzes",
+  quiz: "Quiz",
+  "quiz-results": "Quiz results",
+};
+
+/**
+ * What a route is called before its screen has loaded what it shows: the document title while it
+ * loads or fails. The screen's heading then names it fully, with its class (WCAG 2.4.2).
+ */
+export const routeName = (route: Route): string => (route.screen === "classes" ? "My classes" : SCREEN_NAMES[route.screen]);
 
 /** The current route, kept in the URL hash so the back button and bookmarks work. */
 export const useRoute = (): Route => parseRoute(useSyncExternalStore(subscribeToHash, readHash));

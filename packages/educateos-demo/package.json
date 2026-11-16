@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "preview": "vite preview",
-    "mobile-district": "node src/mobile-dev-district.ts"
+    "mobile-district": "node src/mobile-dev-district.ts",
+    "a11y": "node scripts/a11y-audit.ts",
+    "a11y:site": "node scripts/site-a11y-audit.ts"
   },
   "dependencies": {
     "@cloudflare/kumo": "^2.14.0",
@@ -27,6 +29,7 @@
     "@educateos/provider-fakes": "workspace:*",
     "@educateos/student-ui": "workspace:*",
     "@educateos/teacher-ui": "workspace:*",
+    "@gadgets/bundled-blueprints": "workspace:*",
     "@gadgets/ui": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.39",
@@ -43,7 +46,9 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^5.2.0",
+    "axe-core": "4.14.0",
     "jsdom": "^26.1.0",
+    "playwright": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

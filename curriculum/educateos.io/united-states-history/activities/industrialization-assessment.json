@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c30abbdeda76992a39aa8d2b15cd339c1d4f1dd70d11fba6353f4d0ee53054d2",
+      "id": "educateos.io/united-states-history-industrialization-assessment",
+      "version": "1.0.0"
+    }
+  },
+  "id": "industrialization-assessment",
+  "role": "assessment",
+  "title": "Did Industrialization Expand Opportunity?"
+}

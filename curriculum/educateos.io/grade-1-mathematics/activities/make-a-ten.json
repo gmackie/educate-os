@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:745089767bc257f5f70c17abdafcbdf2eec74bce019223fc1cc010b6a8156624",
+      "id": "educateos.io/grade-1-mathematics-make-a-ten",
+      "version": "1.0.0"
+    }
+  },
+  "id": "make-a-ten",
+  "role": "lesson",
+  "title": "Make a Ten"
+}

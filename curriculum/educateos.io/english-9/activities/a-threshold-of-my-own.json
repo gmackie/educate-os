@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a433bf344b7b637bb3602bef03dad75718b768d841e2afb609366a75f2fce04e",
+      "id": "educateos.io/english-9-a-threshold-of-my-own",
+      "version": "1.0.1"
+    }
+  },
+  "id": "a-threshold-of-my-own",
+  "role": "assessment",
+  "title": "A Threshold of My Own"
+}

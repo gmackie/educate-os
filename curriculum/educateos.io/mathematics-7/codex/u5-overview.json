@@ -1,0 +1,7 @@
+{
+  "body": "Probability is a number from 0 to 1 that tells how likely an event is.\n- 0 means impossible, 1 means certain, and 1/2 means equally likely to happen or not.\n\nTheoretical probability = number of favorable outcomes ÷ number of equally likely outcomes.\n\nWorked example: a bag holds 3 red and 5 blue marbles. You pick one without looking.\nP(red) = 3/8 = 0.375, and P(blue) = 5/8.\nThe two add to 1, because every marble is red or blue.\n\nExperimental probability comes from doing the experiment: if you pick, replace and repeat 40 times and get red 14 times, the experimental probability is 14/40 = 0.35. With more trials, it tends to get closer to the theoretical probability.\n\nA compound event combines two or more events, like flipping a coin and rolling a number cube. List the sample space with an organized list, a table or a tree diagram to count the outcomes.",
+  "id": "u5-overview",
+  "purpose": "context",
+  "title": "How Likely Is It?",
+  "visibility": "students"
+}

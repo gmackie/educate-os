@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d04bb118a19dc05ee3047b55cffe50e8432020e4dd06e88eae0a6ef0f1d530bf",
+      "id": "educateos.io/english-8-reading-a-poem-closely",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reading-a-poem-closely",
+  "role": "lesson",
+  "title": "Reading a Poem Closely"
+}

@@ -95,6 +95,12 @@ export const ResourceKind = z.enum([
    * district-level and `district-internal`.
    */
   "marketplace-pack",
+  /**
+   * A course package version in the district's course library (SCHO-331): an OCS course an
+   * administrator imported from a signed bundle, which teachers install into their classes.
+   * District-level and `district-internal`.
+   */
+  "course-package",
   "capability-config",
   "ai-budget",
   "audit-event",
@@ -109,6 +115,18 @@ export const ResourceKind = z.enum([
    * it expires (RFC 0002 §6): `restricted`, at the ceiling's scope, owned by its grantor.
    */
   "delegation",
+  /**
+   * A family's home-learning record (ADR-0016): its adults, its children's profiles, their practice
+   * queues and settings. `personal-private`, unowned, at the district scope, and reachable only
+   * through a `family-adult` relationship to that family.
+   */
+  "family",
+  /**
+   * One child's home practice in a family (ADR-0016): the sessions they worked, the responses and
+   * observations saved in them, and the progress derived from those. `personal-private`, at the
+   * district scope, named by the child's learner ID and reachable only by the family's adults.
+   */
+  "home-practice",
 ]);
 /** A resource kind. */
 export type ResourceKind = z.infer<typeof ResourceKind>;
@@ -129,8 +147,12 @@ export const Classification = z.enum([
 /** A classification. */
 export type Classification = z.infer<typeof Classification>;
 
-/** The surface a request arrived through. Every surface is authorized identically (roadmap §6.3). */
-export const RequestChannel = z.enum(["http", "mcp-tool", "agent", "system"]);
+/**
+ * The surface a request arrived through. Every surface is authorized identically (roadmap §6.3).
+ * `lti-service` is a registered third-party LTI tool calling EducateOS's LTI Platform services
+ * (NRPS, AGS, Deep Linking) with a service token (SCHO-179): never a person acting directly.
+ */
+export const RequestChannel = z.enum(["http", "mcp-tool", "agent", "system", "lti-service"]);
 /** A request channel. */
 export type RequestChannel = z.infer<typeof RequestChannel>;
 

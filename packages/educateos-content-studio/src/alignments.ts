@@ -13,7 +13,7 @@ export interface AlignmentSource {
  * is an item of the framework release the district approved, so a release can never be aligned
  * to a proposed, retired or unselected framework.
  */
-export function catalogAlignmentSource(mirror: CatalogMirror): AlignmentSource {
+export function catalogAlignmentSource(mirror: Pick<CatalogMirror, "approvedRelease">): AlignmentSource {
   return {
     async resolve(frameworkKey, competencyUri) {
       let release;

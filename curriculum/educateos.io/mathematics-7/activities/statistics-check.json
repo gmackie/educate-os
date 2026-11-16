@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a4a4bc3b4910761246a620fcda80ba2ea0baee2aeeab5893b9601caae28b6f1e",
+      "id": "educateos.io/mathematics-7-statistics-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "statistics-check",
+  "role": "assessment",
+  "title": "Statistics Check"
+}

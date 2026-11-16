@@ -67,6 +67,8 @@ export interface CallResult<T> {
   status: number;
   body: T;
   correlationId: string;
+  /** The response's `Set-Cookie`, if any. */
+  setCookie?: string | null;
 }
 
 /** A booted district with its IdP and a typed caller that checks every response against its schema. */
@@ -103,7 +105,17 @@ export async function bootDistrict(
     // Operations (SCHO-263)
     | "release" | "opsAnalytics"
     // Marketplace (SCHO-209)
-    | "marketplaceTrust">> & { standards?: readonly string[] } = {},
+    | "marketplaceTrust"
+    // Course library (SCHO-331)
+    | "courseLibraryTrust"
+    // Product analytics (SCHO-350)
+    | "productAnalytics"
+    // IT review (SCHO-376)
+    | "signIn"
+    // From Google Classroom (SCHO-403)
+    | "classroomGrades" | "onClassroomGradesUnavailable"
+    // Home learning (ADR-0016)
+    | "homeLearning">> & { standards?: readonly string[] } = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);
@@ -161,7 +173,7 @@ export async function bootDistrict(
     } else {
       expect(EducateOsErrorBody.parse(body).correlationId).toBe(correlationId);
     }
-    return { status: response.status, body, correlationId };
+    return { status: response.status, body, correlationId, setCookie: response.headers.get("set-cookie") };
   };
 
   const ok = async <N extends RouteName>(token: string, name: N, input?: RouteInput<N>): Promise<RouteResponse<N>> => {

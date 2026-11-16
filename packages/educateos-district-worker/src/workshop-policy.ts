@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PrincipalId, OfferingId, type ResourceRef } from "@educateos/contracts";
+import { PrincipalId, OfferingId, roleAssignmentInForce, type ResourceRef } from "@educateos/contracts";
 import type { DistrictApp } from "@educateos/district-app";
 
 const identifier = z.string().min(1).max(256);
@@ -36,6 +36,18 @@ export const WorkshopPolicySettings = z.strictObject({
     }),
     z.strictObject({ vendorId: identifier, access: z.literal("all") }),
   ])),
+  /**
+   * Connector resource types a teacher may connect and use for themself, without district
+   * administration (SCHO-393). List only types whose gatekeeper confines them to the connecting
+   * person's own teaching, such as Google's "Classroom Course" (a course they teach, and only work
+   * created through that connection). A teacher's connect must name a non-empty subset of one
+   * grant's patterns, and an acquire must match one of them. Absent or empty: connecting stays a
+   * district-administration power.
+   */
+  teacherConnectors: z.array(z.strictObject({
+    vendorId: identifier,
+    resourceUrlPatterns: z.array(z.string().min(1).max(2048)).min(1),
+  })).optional(),
   /**
    * Which active kinds may perform which workspace actions. Absent or empty denies them all, so
    * every Gadget, agent turn and share is refused (SCHO-309). Executing grants are only safe because
@@ -93,6 +105,11 @@ export async function authorizeWorkshopCapability(
     const granted = (settings.workspaceActions ?? []).some((g) => g.kind === principal.kind && g.actions.includes(action));
     return granted ? { outcome: "allow" as const } : denied;
   }
+  if ((request.action === "gatekeeper.connect" || request.action === "resource.acquire") &&
+    teacherMayUseConnector(settings, request, principal.kind === "staff" &&
+      snapshot.roleAssignments.some((r) => r.principalId === principal.id && (r.role === "teacher" || r.role === "co-teacher") && roleAssignmentInForce(r, new Date())))) {
+    return { outcome: "allow" as const };
+  }
   const subject = { principalId: principal.id, districtId: app.districtId };
   const districtScope = { level: "district", districtId: app.districtId } as const;
   let action: "create" | "update";
@@ -142,4 +159,32 @@ export async function authorizeWorkshopCapability(
     channel: "http", ...(termState === undefined ? {} : { termState }),
   } });
   return result.decision.effect === "allow" ? { outcome: "allow" as const } : denied;
+}
+
+/**
+ * Whether a teacher's connect or acquire stays inside a `teacherConnectors` grant (SCHO-393). A
+ * connect must name its resource types (omitted means "everything"), all within one grant; an
+ * acquire names a resource of a granted type, or the type itself when creating one. Anything else
+ * falls through to the district-administration rules.
+ */
+function teacherMayUseConnector(
+  settings: WorkshopPolicySettings,
+  request: { action: "gatekeeper.connect"; vendorId: string; resourceUrlPatterns?: string[] | undefined } | { action: "resource.acquire"; vendorId: string; resource: string },
+  isTeacher: boolean,
+): boolean {
+  if (!isTeacher) return false;
+  const grant = settings.teacherConnectors?.find((g) => g.vendorId === request.vendorId);
+  if (grant === undefined) return false;
+  if (request.action === "gatekeeper.connect") {
+    const requested = request.resourceUrlPatterns ?? [];
+    return requested.length > 0 && requested.every((p) => grant.resourceUrlPatterns.includes(p));
+  }
+  return grant.resourceUrlPatterns.some((pattern) => {
+    if (request.resource === pattern) return true;
+    try {
+      return new URLPattern(pattern).test(request.resource);
+    } catch {
+      return false;
+    }
+  });
 }

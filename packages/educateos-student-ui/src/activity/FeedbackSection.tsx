@@ -3,6 +3,8 @@ import { Badge, Table, Text } from "@cloudflare/kumo";
 import type { DistrictApiClient } from "@educateos/api-client";
 import { useQuery } from "../api.tsx";
 import { ErrorState } from "../ErrorState.tsx";
+import { FriendlyScore } from "../FriendlyScore.tsx";
+import type { GradeDisplay } from "../gradeBand.ts";
 import { criterionLabel, formatDateTime, receiptCode } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import type { Feedback, FeedbackComment } from "../model.ts";
@@ -11,13 +13,16 @@ import type { Feedback, FeedbackComment } from "../model.ts";
  * Released feedback as its student was given it: the teacher's comments, each with the passage of
  * the work it is about where `passages` has it, and criterion scores. A guardian's family view
  * shows the same record (ADR-0012), worded for a reader who is not the student, and never with a
- * passage: that would show them the child's own work.
+ * passage: that would show them the child's own work. A young learner sees each criterion's score as
+ * stars instead of points.
  */
-export const FeedbackBody = ({ feedback, reader = "student", passages }: {
+export const FeedbackBody = ({ feedback, reader = "student", passages, display = "standard" }: {
   feedback: Feedback;
   reader?: "student" | "guardian";
   /** The passage each anchored comment is about, by comment ID. */
   passages?: ReadonlyMap<string, string>;
+  /** How the student's class reads grades. A guardian's view is always `standard`. */
+  display?: GradeDisplay;
 }) => {
   const criteriaId = useId();
   return (
@@ -51,7 +56,21 @@ export const FeedbackBody = ({ feedback, reader = "student", passages }: {
           </ul>
         </div>
       )}
-      {feedback.scores.length === 0 ? null : (
+      {feedback.scores.length === 0 ? null : display === "young" && reader === "student" ? (
+        <div className="flex flex-col gap-2">
+          <Text variant="heading" as="h3">
+            How you did
+          </Text>
+          <ul className="flex flex-col gap-2">
+            {feedback.scores.map((score) => (
+              <li key={score.criterionId} className="flex flex-col gap-1">
+                <span className="text-lg">{criterionLabel(score.criterionId)}</span>
+                {score.maxPoints === undefined ? null : <FriendlyScore points={score.points} maxPoints={score.maxPoints} size={24} />}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
         <div className="flex flex-col gap-2">
           <Text variant="heading" as="h3">
             <span id={criteriaId}>Criterion results</span>
@@ -111,9 +130,10 @@ const passagesOf = async (api: DistrictApiClient, comments: readonly FeedbackCom
  * The student's official grade on the assignment, their submissions with receipt codes, and the
  * feedback on the latest one once the teacher has released it. The district returns only teacher
  * feedback that has been shared with the student; suggested scores and teacher-only notes never
- * reach this screen.
+ * reach this screen. A young learner sees the grade as stars and kind words, and when they handed
+ * their work in rather than its attempts and receipt codes.
  */
-export const FeedbackSection = ({ assignmentId, refreshKey }: { assignmentId: string; refreshKey: string }) => {
+export const FeedbackSection = ({ assignmentId, refreshKey, display = "standard" }: { assignmentId: string; refreshKey: string; display?: GradeDisplay }) => {
   const [state, reload] = useQuery(`feedback:${assignmentId}:${refreshKey}`, async (api) => {
     const params = { params: { assignmentId } };
     const [all, released, grades] = await Promise.all([
@@ -133,9 +153,15 @@ export const FeedbackSection = ({ assignmentId, refreshKey }: { assignmentId: st
   if (state.status === "error") return <ErrorState error={state.error} title="We couldn't load your feedback" onRetry={reload} />;
   const { submissions, feedback, passages, grade } = state.data;
 
+  const young = display === "young";
   return (
     <div className="flex flex-col gap-4">
-      {grade === undefined ? null : (
+      {grade === undefined ? null : young ? (
+        <p className="text-xl">
+          <span className="sr-only">Your teacher says: </span>
+          <FriendlyScore points={grade.score.points} maxPoints={grade.score.maxPoints} size={36} />
+        </p>
+      ) : (
         <Text>
           <span className="font-semibold">{`Official grade: ${grade.score.points} out of ${grade.score.maxPoints}`}</span>
           <span className="text-kumo-subtle">
@@ -145,10 +171,15 @@ export const FeedbackSection = ({ assignmentId, refreshKey }: { assignmentId: st
         </Text>
       )}
       {submissions.length === 0 ? (
-        grade === undefined ? <Text variant="secondary">Submit your work to get feedback.</Text> : null
+        grade === undefined ? <Text variant="secondary">{young ? "Hand in your work and your teacher will tell you how you did." : "Submit your work to get feedback."}</Text> : null
       ) : (
         <>
-          <div className="flex flex-col gap-1">
+          {young ? (
+            <Text>
+              {"You handed this in "}
+              <time dateTime={submissions[0]!.submittedAt}>{formatDateTime(submissions[0]!.submittedAt)}</time>.
+            </Text>
+          ) : <div className="flex flex-col gap-1">
             <Text variant="heading" as="h3">
               Your submissions
             </Text>
@@ -162,11 +193,11 @@ export const FeedbackSection = ({ assignmentId, refreshKey }: { assignmentId: st
                 </li>
               ))}
             </ul>
-          </div>
+          </div>}
           {feedback === undefined ? (
-            <Text>No feedback yet. You'll see it here when your teacher shares it.</Text>
+            <Text>{young ? "Your teacher hasn't said anything yet." : "No feedback yet. You'll see it here when your teacher shares it."}</Text>
           ) : (
-            <FeedbackBody feedback={feedback} passages={passages} />
+            <FeedbackBody feedback={feedback} passages={passages} display={display} />
           )}
         </>
       )}

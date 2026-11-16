@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ddde5151887d0d95d9d683c00940af95ad6dc0da2f2b72c511c315b773102bef",
+      "id": "educateos.io/grade-1-reading-foundations-digraph-picture-sort",
+      "version": "1.0.0"
+    }
+  },
+  "id": "digraph-picture-sort",
+  "role": "assignment",
+  "title": "Digraph Picture Sort"
+}

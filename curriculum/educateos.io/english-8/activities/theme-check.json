@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6a2cbf932aa0ac836eef7e197c2a0046d27e0ff68e33ef49259b0fd788708e13",
+      "id": "educateos.io/english-8-theme-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "theme-check",
+  "role": "assessment",
+  "title": "Theme Check: \"The Paper Cranes\""
+}

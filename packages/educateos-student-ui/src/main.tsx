@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Empty } from "@cloudflare/kumo";
 import { createDistrictApiClient, createPairingClient, type DistrictApiClientOptions } from "@educateos/api-client";
 import { ThemeProvider } from "@gadgets/ui/theme";
-import { educateosThemeMode, useSchoolManifest } from "@educateos/shell";
+import { educateosThemeMode, productAnalyticsSourceFrom, useProductAnalytics, useSchoolManifest } from "@educateos/shell";
 import { StudentApp } from "./App.tsx";
 import { behindAccess, takeSignIn } from "./signIn.ts";
 import "./styles.css";
@@ -22,7 +22,16 @@ const features = { aiHelp: import.meta.env.VITE_EDUCATEOS_AI_HELP === "true" };
  * able to pair phones (SCHO-260).
  */
 const OnTheDistrictOrigin = ({ connection }: { connection: DistrictApiClientOptions }) => {
-  const [clients] = useState(() => ({ client: createDistrictApiClient(connection), pairing: createPairingClient(connection) }));
+  const [clients] = useState(() => {
+    const client = createDistrictApiClient(connection);
+    return {
+      client,
+      pairing: createPairingClient(connection),
+      analytics: productAnalyticsSourceFrom({ productAnalytics: () => client.call("me.productAnalytics"), me: () => client.call("me.get") }),
+    };
+  });
+  // Product analytics (SCHO-350): off unless the district turned it on, and student-safe when on.
+  useProductAnalytics(clients.analytics, "lms");
   const { manifest } = useSchoolManifest();
   const shell = useMemo(() => ({ school: manifest }), [manifest]);
   return <StudentApp client={clients.client} pairing={clients.pairing} shell={shell} features={features} />;

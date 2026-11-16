@@ -3,7 +3,7 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { BIO, P } from "../district.ts";
-import { assessmentWrites, checkpointWrites, checkpointPolicy, completions, district } from "./worker.ts";
+import { approvedDigests, assessmentWrites, checkpointWrites, checkpointPolicy, completions, district } from "./worker.ts";
 
 const hooks = () => env.TEST_HOOKS.getByName("hooks");
 
@@ -63,6 +63,10 @@ describe("the EducateOS gatekeeper Worker", () => {
 
     expect(await hooks().apply(accountObjectId, edit.actions[0]!.id)).toBeNull();
     expect(district.artifacts.get("art_amara-lab")!.text).toBe("from the Workshop");
+    // The approval carried the digest of the change as queued, which the person reviewed.
+    const applied = [...(await district.approvals.list())].findLast((a) => a.tool === "edit_artifact" && a.state === "applied");
+    expect(approvedDigests.at(-1)).toBe(applied!.digest);
+    expect(applied!.digest).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("applies a teacher's agent grade only once the teacher approves it", async () => {

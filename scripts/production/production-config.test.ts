@@ -16,7 +16,8 @@ import {
   demoDistrictConfigName, demoDistrictWorkerName, generateProductionConfigs, productionBuildEnv, productionPackageNames,
   productionWorkerName, renderProductionConfig, type DemoDistrictDeployment, type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
-import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST } from "./demo-districts.ts";
+import { COMMUNITY_DEPLOYMENTS } from "./communities.ts";
+import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST, DEMO_PRODUCT_ANALYTICS, EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 const PACKAGES = readDeployablePackages(PACKAGES_DIR);
@@ -116,6 +117,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
     CF_AI_GATEWAY: "default",
     CF_AI_GATEWAY_ACCOUNT_ID: SCHOOLOS_GMAC_IO.accountId,
     CF_AI_GATEWAY_PROVIDERS: "cloudflare",
+    CF_AI_GATEWAY_QUICK_MODEL: "@cf/zai-org/glm-5.3-flash",
   });
 });
 
@@ -190,8 +192,12 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   });
   // Discussion screening reaches the guard's Hall Monitor by the same binding, signing as it does
   // (SCHO-308).
+  // It is Northfield's demo district, so it may seed the showcase (SCHO-326), and its course
+  // library imports the educateos.io reference courses (SCHO-331), and it may count visits (SCHO-350).
   assert.deepEqual(district.vars, {
-    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
+    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", DEMO_SHOWCASE: "northfield", COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST, LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
+    // The analytics service an administrator may turn on (SCHO-350); off until one does.
+    PRODUCT_ANALYTICS: DEMO_PRODUCT_ANALYTICS,
   });
   assert.deepEqual(district.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
@@ -366,6 +372,12 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
       AI_DEMO_URL: AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
       MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
+      // The educateos.io publisher key its course library imports under (SCHO-331).
+      COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
+      // The showcase it may seed (SCHO-326).
+      DEMO_SHOWCASE: "northfield",
+      // The analytics service an administrator may turn on (SCHO-350); off until one does.
+      PRODUCT_ANALYTICS: DEMO_PRODUCT_ANALYTICS,
     });
     // The district's assets, with /ai run through the Worker for its "AI isn't enabled" page.
     assert.deepEqual(config.assets, { ...district.assets, run_worker_first: [
@@ -479,7 +491,10 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
   assert.deepEqual(district.vars, {
     HALL_MONITOR_ISSUER: "educateos",
     HALL_MONITOR_AUDIENCE: "hall-monitor",
+    DEMO_SHOWCASE: "northfield",
+    COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
+    PRODUCT_ANALYTICS: DEMO_PRODUCT_ANALYTICS,
     // Phones sign in at the district's /connect-phone with Google (SCHO-283).
     SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, signIn: [{ id: "google", label: "Google" }], features: { ai: true } }),
   });
@@ -525,6 +540,12 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
       AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
       MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
+      // The educateos.io publisher key its course library imports under (SCHO-331).
+      COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
+      // The showcase it may seed (SCHO-326).
+      DEMO_SHOWCASE: "northfield",
+      // The analytics service an administrator may turn on (SCHO-350); off until one does.
+      PRODUCT_ANALYTICS: DEMO_PRODUCT_ANALYTICS,
     });
     const { assets: _a, vars: _v, ...rest } = config;
     const { assets: _b, vars: _w, ...restBefore } = before;
@@ -575,4 +596,26 @@ test("the principal bindings reach the district's resolver by its pinned name, o
     ...withoutDistrict, principalBinding: "migration",
     gatekeepers: withoutDistrict.gatekeepers.filter((name) => name !== EDUCATEOS_GATEKEEPER_PACKAGE),
   }), /principal bindings need the instance's district Worker/);
+});
+
+test("the course library pin is the committed educateos.io publisher key, public halves only (SCHO-331)", () => {
+  const publisher = JSON.parse(readFileSync(join(import.meta.dirname, "../../curriculum/educateos.io/publisher.json"), "utf8"));
+  assert.deepEqual(JSON.parse(EDUCATEOS_COURSE_LIBRARY_TRUST), { localDomains: [], publishers: [publisher] });
+  for (const key of publisher.keys) assert.deepEqual(Object.keys(key).toSorted(), ["keyId", "publicKey"]);
+});
+
+// Community installations (ADR-0016): district Workers that hold real families' data.
+test("deploys each community as its own district Worker with no demo, marketplace or analytics vars", () => {
+  const communities = buildDemoDistrictConfigs({ districts: [...DEMO_DISTRICT_DEPLOYMENTS, ...COMMUNITY_DEPLOYMENTS], packages: PACKAGES, instance: SCHOOLOS_GMAC_IO });
+  // As for the demo districts: a changed name would start the community's Durable Object empty.
+  const deployed: Record<string, string> = { safranek: "educateos-safranek-district" };
+  for (const { slug, hostname } of COMMUNITY_DEPLOYMENTS) {
+    const config = communities.get(slug)!;
+    assert.equal(config.name, deployed[slug], `${slug} would deploy as a new Worker, with an empty Durable Object`);
+    assert.deepEqual(config.routes, [{ pattern: hostname, custom_domain: true }]);
+    assert.equal((config.vars as Record<string, unknown>).DATA_JURISDICTION, "us", `${slug} keeps families' data in the US`);
+    for (const name of ["DEMO_SHOWCASE", "PRODUCT_ANALYTICS", "MARKETPLACE_TRUST", "COURSE_LIBRARY_TRUST"]) {
+      assert.equal((config.vars as Record<string, unknown> | undefined)?.[name], undefined, `${slug} sets ${name}`);
+    }
+  }
 });

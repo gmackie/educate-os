@@ -16,6 +16,9 @@
       "name": "SEND_EMAIL"
     }
   ],
+  "vars": {
+    "DATA_JURISDICTIONS_SUPPORTED": "us"
+  },
   "triggers": {
     "crons": [
       "7 * * * *",

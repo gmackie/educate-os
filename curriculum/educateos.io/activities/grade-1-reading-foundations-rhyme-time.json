@@ -1,0 +1,47 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to a poem and find the words that rhyme.",
+    "passage": "Who Sat Where?\nThe cat sat on a big red mat.\nThe dog sat on a log.\nThe bee sat in a tall green tree.\nAnd I sat with my frog!",
+    "questions": [
+      {
+        "prompt": "What word rhymes with cat?"
+      },
+      {
+        "prompt": "What word rhymes with bee?"
+      },
+      {
+        "prompt": "Say a new word that rhymes with dog."
+      },
+      {
+        "prompt": "Which words in the poem tell you what color things are?"
+      }
+    ],
+    "sentenceFrames": [
+      "___ rhymes with ___.",
+      "The color words are ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Rhyme Time"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-rhyme-time",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

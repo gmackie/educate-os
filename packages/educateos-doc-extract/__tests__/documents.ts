@@ -1,6 +1,6 @@
 // Builders for synthetic test documents. They write whatever they are told, so hostile documents
 // can be built as easily as ordinary ones.
-import { writeZip } from "@educateos/portability";
+import { writeZip } from "@educateos/zip";
 
 const encoder = new TextEncoder();
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
@@ -69,4 +69,15 @@ export function pageTree(count: number, content: number): PdfObject[] {
 export async function onePagePdf(content: string, options: { compress?: boolean; trailer?: string } = {}): Promise<Uint8Array> {
   const stream = options.compress === true ? await flate(content) : content;
   return pdf([...pageTree(1, 4), { dictionary: options.compress === true ? "<< /Filter /FlateDecode >>" : "<< >>", stream }], options.trailer);
+}
+
+/** A PowerPoint with independently named slide parts and a chosen presentation order. */
+export async function pptx(texts: string[], order = texts.map((_, index) => index)): Promise<Uint8Array> {
+  const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
+  return writeZip([
+    { path: "ppt/presentation.xml", bytes: encoder.encode(`<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldIdLst>${order.map(i => `<p:sldId id="${256+i}" r:id="slide${i}"/>`).join("")}</p:sldIdLst></p:presentation>`) },
+    { path: "ppt/_rels/presentation.xml.rels", bytes: encoder.encode(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${texts.map((_, i) => `<Relationship Id="slide${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i}.xml"/>`).join("")}</Relationships>`) },
+    ...texts.map((text, i) => ({ path: `ppt/slides/slide${i}.xml`, bytes: encoder.encode(`<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>${escape(text)}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`) })),
+    { path: "ppt/notesSlides/notesSlide1.xml", bytes: encoder.encode("PRIVATE SPEAKER NOTES") },
+  ]);
 }

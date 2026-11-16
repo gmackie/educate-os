@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4d4526d1b559d1384f47ba3c7af3121ce08574d1e132b895c65c3e1a613ff886",
+      "id": "educateos.io/english-8-tracing-a-theme",
+      "version": "1.0.0"
+    }
+  },
+  "id": "tracing-a-theme",
+  "role": "lesson",
+  "title": "Tracing a Theme"
+}

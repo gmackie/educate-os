@@ -9,6 +9,7 @@ import { PageHeading } from "../PageHeading.tsx";
 import { Problem } from "../Problem.tsx";
 import type { Gradebook, GradeMarker, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
+import { ClassroomGrades } from "./ClassroomGrades.tsx";
 import { CsvExport } from "./CsvExport.tsx";
 import { GradebookGrid, type CellTarget } from "./GradebookGrid.tsx";
 import { MarkerDialog } from "./MarkerDialog.tsx";
@@ -89,6 +90,7 @@ export const GradebookPage = ({ teaching }: { teaching: TeachingOffering }) => {
           )}
         </>
       )}
+      <ClassroomGrades offeringId={offeringId} classLabel={classLabel(teaching)} />
       <MarkerDialog
         target={editing}
         saving={marking.status === "saving"}

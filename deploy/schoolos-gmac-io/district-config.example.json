@@ -36,5 +36,6 @@
       }
     ]
   },
-  "authority": "local"
+  "authority": "local",
+  "demo": { "showcase": "northfield" }
 }

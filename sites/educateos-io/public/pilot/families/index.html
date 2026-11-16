@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pilot family letter · EducateOS</title>
+<meta name="description" content="A printable letter, in English and Spanish, that a founding pilot school sends families: what the EducateOS pilot is, what data is used and where it lives, how AI requests are screened, and how to ask questions or opt out.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+  /* The letter (SCHO-399). Editable source: docs/educateos/pilot/family-letter.md and family-letter.es.md. */
+  .letter { padding: 32px; margin-top: 24px; }
+  .letter h3 { font-size: 1.08rem; margin-top: 26px; }
+  .letter p, .letter li { line-height: 1.6; }
+  .letter ul { padding-left: 20px; display: grid; gap: 8px; }
+  .blank { font-weight: 600; color: var(--text-color-kumo-strong); background: var(--color-kumo-tint); border-radius: 4px; padding: 0 3px; }
+  .optional { margin-top: 22px; padding: 16px 18px; border: 1px dashed var(--color-kumo-line); border-radius: var(--eo-radius); }
+  .optional .tag { display: inline-block; font-size: .74rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-subtle); margin-bottom: 4px; }
+  .review-note { margin-top: 18px; padding: 12px 16px; border-radius: var(--eo-radius); background: var(--color-kumo-warning-tint); color: light-dark(#78350f, #fde68a); font-size: .92rem; }
+  .jump { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+  .sign { margin-top: 26px; }
+  @media (max-width: 560px) { .letter { padding: 20px; } }
+  @media print {
+    @page { margin: 16mm; }
+    .jump, .lead-notes, .page-hero .lede, .page-hero .eyebrow, .page-hero h1 { display: none !important; }
+    .wrap { max-width: none !important; padding: 0 !important; }
+    .letter { border: 0; padding: 0; margin: 0; font-size: 11pt; }
+    #english h2, #espanol h2, .review-note { display: none !important; }
+    .letter p, .letter li { line-height: 1.45; }
+    .letter ul { list-style: disc; }
+    .sign { break-inside: avoid; }
+    .letter h3 { break-after: avoid; }
+    .optional { break-inside: avoid; }
+    #espanol { break-before: page; }
+    .blank { background: none; padding: 0; }
+    a { color: inherit; }
+  }
+</style>
+<script>
+  // Print in light mode whatever the reader's theme, so the letter is dark text on white.
+  addEventListener("beforeprint", () => { document.documentElement.dataset.mode = "light"; });
+  addEventListener("afterprint", () => { document.documentElement.dataset.mode = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; });
+</script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+  <section class="hero page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow"><a href="/pilot/">Founding pilot</a> · For pilot schools</div>
+      <h1>Family letter template</h1>
+      <p class="lede">A letter a pilot school sends home before the pilot starts, in English and in Spanish. Fill in the bracketed fields, keep or delete the optional paragraph on student AI, and print it or paste it into your school's messaging tool.</p>
+      <div class="jump">
+        <a class="btn" href="#english">English letter</a>
+        <a class="btn" href="#espanol" hreflang="es">Carta en español</a>
+        <a class="btn" href="javascript:print()">Print or save as PDF</a>
+      </div>
+      <div class="note-box lead-notes">
+        <b>Before you send it.</b> Replace every <span class="blank">[bracketed field]</span>. Keep the dashed paragraph only when students will use EducateOS AI; if student use starts later, send the letter again with it first. Make sure the contact you name can answer families' questions. Every statement about EducateOS here is checked against the project's own design documents. If you add one, check it the same way, and don't add words like "compliant" or "certified". The editable copies are <code>docs/educateos/pilot/family-letter.md</code> and <code>family-letter.es.md</code> in the <a href="https://github.com/gmackie/educate-os/tree/main/docs/educateos/pilot">open-source repository</a>.
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="english" style="padding-top:8px">
+    <div class="wrap doc">
+      <h2>English letter</h2>
+      <article class="card letter" aria-label="Family letter in English">
+        <p><span class="blank">[Date]</span></p>
+        <p>Dear families of <span class="blank">[School]</span>,</p>
+        <p>This <span class="blank">[term/semester]</span>, <span class="blank">[School]</span> is one of a small number of schools taking part in a pilot of <b>EducateOS</b>, a set of classroom tools that includes artificial intelligence (AI). The pilot runs from <b><span class="blank">[start date]</span></b> to <b><span class="blank">[end date]</span></b>, about ten weeks, with a few teachers: <span class="blank">[teacher names or "a few of our teachers"]</span>. We want to tell you what that means for your child and how to ask us anything about it.</p>
+
+        <h3>What the pilot is</h3>
+        <p>EducateOS is open-source software. <span class="blank">[District]</span> installs and runs it in <span class="blank">[District]</span>'s own Cloudflare account (Cloudflare is the cloud provider it runs on). It is developed by Gmacko Ventures LLC, which does not receive student information from it. During the pilot, a few teachers will try its AI tools for their own work, such as planning lessons, drafting materials and building small classroom activities, and tell us whether they help.</p>
+
+        <h3>In this first phase, students do not use AI</h3>
+        <p>In the first phase of the pilot, <b>only teachers and staff use the AI tools. Students do not use EducateOS AI at all</b>, and student AI is switched off. Your child's classes continue as usual.</p>
+
+        <h3>What information is used, and where it is kept</h3>
+        <ul>
+          <li><b>Until <span class="blank">[District]</span> signs a data processing agreement, no real student information goes into EducateOS.</b> Teachers use it with made-up (synthetic) examples, or with their own teaching materials. A data processing agreement is a contract that sets out how student information may be used and protected. <span class="blank">[Status of the agreement, for example "We have not signed one yet; we will write to you before that changes."]</span></li>
+          <li><b>The district holds the information, not the company.</b> Everything EducateOS stores is kept in <span class="blank">[District]</span>'s own Cloudflare account, which the district controls. EducateOS sets up new installations so that stored records stay in Cloudflare's United States jurisdiction.</li>
+          <li><b>No advertising, no selling of information, no profiling.</b> EducateOS contains no advertising. Gmacko Ventures LLC does not sell student information and has none to sell. EducateOS's settings prohibit automated social-emotional profiling of students, and no school setting can turn it on.</li>
+          <li><b>AI models.</b> <span class="blank">[District]</span> chooses which AI models EducateOS uses, either Cloudflare's own AI service in the district's account or another provider under the district's own agreement. <span class="blank">[Name the model provider(s) the district has chosen.]</span> Cloudflare states that it does not use what is sent to its AI service to train models.</li>
+        </ul>
+
+        <h3>How AI requests are checked</h3>
+        <p>Before an AI model sees a message, EducateOS sends it to a safety check called <b>Hall Monitor</b>, which also runs in the district's own account. A message that isn't appropriate for school is stopped before it reaches the AI. If a message suggests someone may need help, the AI does not answer it and instead shows a short message pointing to a trusted adult. EducateOS records the check's decision, not the words of the message. No safety check is perfect, and these checks have not yet been used with real students, which is one reason the pilot starts with teachers.</p>
+
+        <div class="optional">
+          <span class="tag">Optional paragraph: student AI. Include only when students will use EducateOS AI.</span>
+          <p><b>Starting <span class="blank">[date]</span>, some students may use AI tools.</b> From <span class="blank">[date]</span>, students in <span class="blank">[classes or grade levels]</span> may use EducateOS AI tutors that give hints rather than answers, in <span class="blank">[subjects]</span>. For students, every message <i>and</i> every AI reply is checked before it is shown, and if the check isn't working, the AI doesn't answer. AI use has a spending limit per student, and the district can switch student AI off at any time. Your child's teacher may be able to read your child's conversations with an AI tutor used in class, and we tell students to assume so. Families don't see AI conversations through EducateOS. The AI can't get help for a child, so we teach students to tell a trusted adult if anything worries them. We will share the classroom guidelines your child will learn: be honest about using AI, check what it says, never share personal information with it, and ask a teacher when unsure. <b>You can opt your child out of student AI</b> (see below). Students who opt out will do the same work without AI, and it will not affect their grades.</p>
+        </div>
+
+        <h3>Your questions and choices</h3>
+        <ul>
+          <li><b>Ask anything.</b> Contact <span class="blank">[Pilot lead name]</span>, <span class="blank">[role]</span>, at <span class="blank">[email]</span> or <span class="blank">[phone]</span>. You can also ask <span class="blank">[principal name]</span> at <span class="blank">[contact]</span>.</li>
+          <li><b>See what is held.</b> You can ask us what information about your child, if any, is in EducateOS. The district's administrators can export what EducateOS holds and tell you.</li>
+          <li><b>Opt out of student AI.</b> Tell <span class="blank">[Pilot lead name]</span> by <span class="blank">[date or "at any time"]</span>. EducateOS has no per-student opt-out switch yet. Instead, a student can use the AI tools only after the school connects that student's account to them, so we will simply not connect your child's account. <span class="blank">[In the first phase no student accounts are connected.]</span></li>
+          <li><b>Learn more.</b> EducateOS publishes how it handles student information at <a href="/student-privacy/">educateos.io/student-privacy/</a> and the student guidelines we will use at <a href="/pilot/students/">educateos.io/pilot/students/</a>.</li>
+        </ul>
+
+        <p>Thank you. We will tell you what we learn from the pilot.</p>
+        <p class="sign">Sincerely,<br><span class="blank">[Name]</span><br><span class="blank">[Title]</span>, <span class="blank">[School]</span><br><span class="blank">[Contact]</span></p>
+      </article>
+    </div>
+  </section>
+
+  <!--
+    Spanish translation pending review by a native speaker (SCHO-399).
+    This translation was made from the English letter above and has not yet been reviewed by a
+    native Spanish speaker. Have it reviewed before families receive it, and keep it in step with
+    docs/educateos/pilot/family-letter.es.md.
+  -->
+  <section class="tight" id="espanol" lang="es" style="padding-top:8px">
+    <div class="wrap doc">
+      <h2>Carta en español</h2>
+      <p class="review-note" lang="en"><b>Translation pending review by a native speaker.</b> Have a native Spanish speaker, ideally from your school community, review this letter before you send it. <span lang="es">Traducción pendiente de revisión por un hablante nativo.</span></p>
+      <article class="card letter" aria-label="Carta para las familias en español">
+        <p><span class="blank">[Fecha]</span></p>
+        <p>Estimadas familias de <span class="blank">[Escuela]</span>:</p>
+        <p>Este <span class="blank">[semestre/período]</span>, <span class="blank">[Escuela]</span> es una de las pocas escuelas que participan en un programa piloto de <b>EducateOS</b>, un conjunto de herramientas para el salón de clases que incluye inteligencia artificial (IA). El piloto va del <b><span class="blank">[fecha de inicio]</span></b> al <b><span class="blank">[fecha de fin]</span></b>, unas diez semanas, con algunos maestros: <span class="blank">[nombres de los maestros o "algunos de nuestros maestros"]</span>. Queremos explicarles qué significa esto para su hijo o hija y cómo pueden hacernos cualquier pregunta.</p>
+
+        <h3>Qué es el piloto</h3>
+        <p>EducateOS es software de código abierto. <span class="blank">[Distrito]</span> lo instala y lo administra en su propia cuenta de Cloudflare (Cloudflare es el servicio en la nube donde funciona). Lo desarrolla Gmacko Ventures LLC, una empresa que no recibe información de los estudiantes a través de él. Durante el piloto, algunos maestros probarán las herramientas de IA en su propio trabajo, por ejemplo para planear clases, preparar materiales o crear pequeñas actividades, y nos dirán si les son útiles.</p>
+
+        <h3>En esta primera etapa, los estudiantes no usan IA</h3>
+        <p>En la primera etapa del piloto, <b>solo los maestros y el personal usan las herramientas de IA. Los estudiantes no usan la IA de EducateOS para nada</b>, y la IA para estudiantes está desactivada. Las clases de su hijo o hija siguen como siempre.</p>
+
+        <h3>Qué información se usa y dónde se guarda</h3>
+        <ul>
+          <li><b>Mientras <span class="blank">[Distrito]</span> no firme un acuerdo de procesamiento de datos, no se ingresa información real de estudiantes en EducateOS.</b> Los maestros lo usan con ejemplos inventados (ficticios) o con sus propios materiales de enseñanza. Un acuerdo de procesamiento de datos es un contrato que establece cómo se puede usar y proteger la información de los estudiantes. <span class="blank">[Situación del acuerdo, por ejemplo: "Todavía no lo hemos firmado; les escribiremos antes de que eso cambie."]</span></li>
+          <li><b>La información la guarda el distrito, no la empresa.</b> Todo lo que EducateOS guarda está en la propia cuenta de Cloudflare de <span class="blank">[Distrito]</span>, que el distrito controla. EducateOS configura las instalaciones nuevas para que los registros guardados permanezcan en la jurisdicción de Cloudflare en los Estados Unidos.</li>
+          <li><b>Sin publicidad, sin venta de información y sin perfiles.</b> EducateOS no tiene publicidad. Gmacko Ventures LLC no vende información de los estudiantes y no tiene ninguna que vender. La configuración de EducateOS prohíbe crear perfiles socioemocionales automáticos de los estudiantes, y ninguna configuración de la escuela puede activarlos.</li>
+          <li><b>Modelos de IA.</b> <span class="blank">[Distrito]</span> elige qué modelos de IA usa EducateOS: el servicio de IA de Cloudflare en la cuenta del distrito, u otro proveedor bajo un acuerdo propio del distrito. <span class="blank">[Indique el proveedor o los proveedores que eligió el distrito.]</span> Cloudflare declara que no usa lo que se envía a su servicio de IA para entrenar modelos.</li>
+        </ul>
+
+        <h3>Cómo se revisan las solicitudes a la IA</h3>
+        <p>Antes de que un modelo de IA vea un mensaje, EducateOS lo envía a una revisión de seguridad llamada <b>Hall Monitor</b>, que también funciona en la propia cuenta del distrito. Un mensaje que no es apropiado para la escuela se detiene antes de llegar a la IA. Si un mensaje indica que alguien podría necesitar ayuda, la IA no lo contesta y, en su lugar, muestra un mensaje breve que invita a hablar con un adulto de confianza. EducateOS registra la decisión de la revisión, no las palabras del mensaje. Ninguna revisión de seguridad es perfecta, y estas revisiones todavía no se han usado con estudiantes reales; por eso, entre otras razones, el piloto empieza con los maestros.</p>
+
+        <div class="optional">
+          <span class="tag">Párrafo opcional: IA para estudiantes. Inclúyalo solo si los estudiantes van a usar la IA de EducateOS.</span>
+          <p><b>A partir del <span class="blank">[fecha]</span>, algunos estudiantes podrán usar herramientas de IA.</b> Desde el <span class="blank">[fecha]</span>, los estudiantes de <span class="blank">[clases o grados]</span> podrán usar tutores de IA de EducateOS que dan pistas en lugar de respuestas, en <span class="blank">[materias]</span>. Para los estudiantes, se revisa cada mensaje <i>y</i> cada respuesta de la IA antes de mostrarla, y si la revisión no está funcionando, la IA no contesta. El uso de la IA tiene un límite de gasto por estudiante, y el distrito puede desactivar la IA para estudiantes en cualquier momento. Es posible que el maestro de su hijo o hija pueda leer sus conversaciones con un tutor de IA que se use en clase, y les decimos a los estudiantes que cuenten con ello. Las familias no ven las conversaciones con la IA a través de EducateOS. La IA no puede pedir ayuda por un niño, así que enseñamos a los estudiantes a hablar con un adulto de confianza si algo les preocupa. Les compartiremos las reglas que su hijo o hija aprenderá en clase: decir con honestidad cuándo usó la IA, revisar lo que dice, nunca darle información personal y preguntar al maestro si tiene dudas. <b>Ustedes pueden pedir que su hijo o hija no use la IA para estudiantes</b> (vea abajo). Quienes no la usen harán el mismo trabajo sin IA, y eso no afectará sus calificaciones.</p>
+        </div>
+
+        <h3>Sus preguntas y opciones</h3>
+        <ul>
+          <li><b>Pregunten lo que quieran.</b> Comuníquense con <span class="blank">[nombre del responsable del piloto]</span>, <span class="blank">[cargo]</span>, en <span class="blank">[correo electrónico]</span> o al <span class="blank">[teléfono]</span>. También pueden preguntar a <span class="blank">[nombre del director o directora]</span> en <span class="blank">[contacto]</span>.</li>
+          <li><b>Saber qué información se guarda.</b> Pueden preguntarnos qué información de su hijo o hija hay en EducateOS, si es que hay alguna. Los administradores del distrito pueden exportar lo que EducateOS guarda y decírselo.</li>
+          <li><b>No participar en la IA para estudiantes.</b> Avísenle a <span class="blank">[nombre del responsable del piloto]</span> antes del <span class="blank">[fecha o "en cualquier momento"]</span>. EducateOS todavía no tiene una opción para excluir a un estudiante en particular. En cambio, un estudiante solo puede usar las herramientas de IA después de que la escuela conecte su cuenta a ellas, así que simplemente no conectaremos la cuenta de su hijo o hija. <span class="blank">[En la primera etapa no se conecta ninguna cuenta de estudiante.]</span></li>
+          <li><b>Más información.</b> EducateOS publica cómo maneja la información de los estudiantes en <a href="/student-privacy/" hreflang="en">educateos.io/student-privacy/</a> (en inglés) y las reglas para estudiantes que usaremos en <a href="/pilot/students/" hreflang="en">educateos.io/pilot/students/</a> (en inglés).</li>
+        </ul>
+
+        <p>Gracias. Les contaremos lo que aprendamos del piloto.</p>
+        <p class="sign">Atentamente,<br><span class="blank">[Nombre]</span><br><span class="blank">[Cargo]</span>, <span class="blank">[Escuela]</span><br><span class="blank">[Contacto]</span></p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

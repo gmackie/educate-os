@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:a8a3d02de960c907b605d442dd71f6a3b2e3fbb65ead525e379401db66f461b0",
+    "id": "educateos.io/kindergarten-science-weather-watchers",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

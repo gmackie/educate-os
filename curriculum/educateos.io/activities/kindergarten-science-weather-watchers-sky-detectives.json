@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a short text about the sky. Tell what weather watchers look for.",
+    "passage": "Weather watchers look up at the sky. They look for the sun. They look for clouds. Some clouds are white and puffy. Some clouds are gray and dark. Gray clouds can bring rain. Weather watchers look at the trees, too. If the leaves are moving, it is windy!",
+    "questions": [
+      {
+        "prompt": "What do weather watchers look at?"
+      },
+      {
+        "prompt": "What can gray clouds bring?"
+      },
+      {
+        "prompt": "How can the trees tell you it is windy?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a sky with white, puffy clouds."
+      }
+    ],
+    "sentenceFrames": [
+      "Weather watchers look at ___.",
+      "Gray clouds can bring ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Sky Detectives"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-sky-detectives",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

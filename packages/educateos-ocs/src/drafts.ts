@@ -3,10 +3,11 @@ import { LocalId } from "@educateos/curriculum";
 import { LanguageTag, RightsMode } from "@educateos/registry";
 import { z } from "zod";
 import { type ComposedCourse, composeCourse } from "./composer.ts";
-import { formatJson, LOCK_PATH, MANIFEST_PATH, type OcsFiles, readPackage } from "./package.ts";
+import { formatJson, LOCK_PATH, MANIFEST_PATH, type OcsFiles, readPackage, requiredSpecVersion } from "./package.ts";
 import { type PackageSource, resolveCourse, serializeLock } from "./resolver.ts";
 import {
   OCS_SPEC_VERSION,
+  OcsActivity,
   type OcsLock,
   type OcsManifest,
   type OcsOverride,
@@ -219,9 +220,23 @@ export interface CoursePreview {
   changes: ModuleChange[];
 }
 
+/** The draft's activities that parse, so the manifest can declare the format version they need. */
+function draftActivities(content: OcsFiles): OcsActivity[] {
+  return Object.entries(content).flatMap(([path, text]) => {
+    if (!path.startsWith("activities/")) return [];
+    try {
+      const parsed = OcsActivity.safeParse(JSON.parse(text));
+      return parsed.success ? [parsed.data] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
+// A draft that gains a portable activity is published as 1.1 (RFC 0001 §14); one without stays 1.0.
 const draftFiles = (draft: CourseDraft, manifest: OcsManifest = draft.manifest): Record<string, string> => ({
   ...draft.content,
-  [MANIFEST_PATH]: formatJson(manifest),
+  [MANIFEST_PATH]: formatJson({ ...manifest, specVersion: requiredSpecVersion(draftActivities(draft.content), manifest.specVersion) }),
 });
 
 function moduleChanges(before: OcsLock | undefined, after: OcsLock): ModuleChange[] {
@@ -298,6 +313,6 @@ export async function publish(draft: CourseDraft, source: PackageSource, options
     digest: resolution.root.digest,
     lock,
     course,
-    draft: { manifest, content: draft.content, lock, published: { version, digest: resolution.root.digest } },
+    draft: { manifest: resolution.root.manifest, content: draft.content, lock, published: { version, digest: resolution.root.digest } },
   };
 }

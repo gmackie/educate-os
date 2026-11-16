@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d766abc2b65e96c35a015ff4758435c43e3127d731240fdf0c9ca007e70e3a36",
+      "id": "educateos.io/grade-4-mathematics-fraction-models",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fraction-models",
+  "role": "lesson",
+  "title": "Modeling Equivalent Fractions"
+}

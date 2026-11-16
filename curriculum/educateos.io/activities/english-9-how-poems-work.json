@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Use the poetry toolkit to read two short poems closely: Frost's \"Nothing Gold Can Stay\" and Dickinson's \"'Hope' is the thing with feathers.\"",
+    "problems": [
+      {
+        "prompt": "\"Nothing Gold Can Stay\" opens with a paradox: \"Nature's first green is gold.\" What does the line mean literally, and what larger idea does it suggest?"
+      },
+      {
+        "prompt": "Label the rhyme scheme of \"Nothing Gold Can Stay.\" How do the short rhyming lines fit what the poem is about?"
+      },
+      {
+        "prompt": "Line 6 says \"So Eden sank to grief.\" What is the allusion, and how does it change the scale of the poem?"
+      },
+      {
+        "prompt": "Compare the verbs \"subsides\" (line 5) and \"sank\" (line 6). They have similar denotations. How are their connotations different, and why does the difference matter?"
+      },
+      {
+        "prompt": "In Dickinson's poem, hope is \"the thing with feathers.\" List every way the poem develops this extended metaphor."
+      },
+      {
+        "prompt": "What does each stanza of the Dickinson poem add? Pay special attention to the final two lines."
+      },
+      {
+        "prompt": "Write a theme statement for each poem as a complete sentence, and name the line that best supports each."
+      }
+    ],
+    "resources": [
+      "poetry-toolkit",
+      "nothing-gold-can-stay",
+      "hope-is-the-thing-with-feathers"
+    ],
+    "showWork": false,
+    "subject": "english-language-arts",
+    "template": "problem-set",
+    "title": "How Poems Work"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.9-10.5.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.9-10.5.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-how-poems-work",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Poems say a great deal in a small space. These tools help you see how.\n\nFigurative language\n- Metaphor: speaks of one thing as if it were another. \"Hope is the thing with feathers.\"\n- Extended metaphor: a metaphor carried through several lines or a whole poem.\n- Simile: a comparison using like or as.\n- Personification: gives human qualities to something not human. \"Nature's first green\" belongs to \"Her.\"\n- Paradox: a statement that seems to contradict itself but holds a truth. \"Nature's first green is gold.\"\n- Allusion: a reference to a well-known story, person or text. \"So Eden sank to grief.\"\n\nSound and structure\n- Rhyme scheme: the pattern of end rhymes, labeled with letters (aabb, abaab).\n- Couplet: two lines that rhyme and belong together.\n- Stanza: a group of lines, like a paragraph in prose.\n- Meter: the pattern of stressed and unstressed syllables.\n- Enjambment: a sentence that runs past the end of a line. End-stopped lines pause at the line's end.\n- Tone: the speaker's attitude. Tone can shift within a poem; look for words like \"but,\" \"yet\" and \"then.\"\n- Speaker: the voice in the poem. The speaker is not automatically the poet.\n\nConnotation\nA word's denotation is its dictionary meaning. Its connotation is the feeling it carries. \"Subsides\" and \"sinks\" both mean \"goes down,\" but \"sank\" carries a heavier sense of loss.\n\nReading a poem in four passes\n1. Read it aloud for sound.\n2. Read it for what literally happens.\n3. Mark the figurative language and the shifts.\n4. Ask: what does the poem suggest about life, and how do its choices make me feel that?",
+      "id": "poetry-toolkit",
+      "title": "A Poetry Toolkit"
+    },
+    {
+      "attribution": "Robert Frost, \"Nothing Gold Can Stay,\" from New Hampshire (1923). Public domain.",
+      "body": "Nature's first green is gold,\nHer hardest hue to hold.\nHer early leaf's a flower;\nBut only so an hour.\nThen leaf subsides to leaf.\nSo Eden sank to grief,\nSo dawn goes down to day.\nNothing gold can stay.",
+      "id": "nothing-gold-can-stay",
+      "title": "Nothing Gold Can Stay"
+    },
+    {
+      "attribution": "Emily Dickinson, written about 1861, first published 1891. Public domain. Dashes and capitals follow the poet's manuscript.",
+      "body": "\"Hope\" is the thing with feathers -\nThat perches in the soul -\nAnd sings the tune without the words -\nAnd never stops - at all -\n\nAnd sweetest - in the Gale - is heard -\nAnd sore must be the storm -\nThat could abash the little Bird\nThat kept so many warm -\n\nI've heard it in the chillest land -\nAnd on the strangest Sea -\nYet - never - in Extremity,\nIt asked a crumb - of me.",
+      "id": "hope-is-the-thing-with-feathers",
+      "title": "\"Hope\" is the thing with feathers"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies devices accurately and explains their meaning in context.",
+        "id": "figurative",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Figurative language"
+      },
+      {
+        "description": "Explains how specific word choices shape tone and meaning.",
+        "id": "connotation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Word choice and connotation"
+      },
+      {
+        "description": "States a theme for each poem supported by a specific line.",
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Theme"
+      }
+    ],
+    "title": "Poetry close reading"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

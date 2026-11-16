@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3904ed1840a03c3fd44808085f82fea18f9aee3be2a9c74e6d84c9e5c21a6ee8",
+      "id": "educateos.io/grade-5-science-space-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "space-check",
+  "role": "assessment",
+  "title": "Earth and Space Check: Explain It to a Second Grader"
+}

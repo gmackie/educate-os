@@ -5,7 +5,7 @@ import { StrictMode, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { createDistrictApiClient } from "@educateos/api-client";
 import { ThemeProvider } from "@gadgets/ui/theme";
-import { educateosThemeMode, useSchoolManifest } from "@educateos/shell";
+import { educateosThemeMode, productAnalyticsSourceFrom, useProductAnalytics, useSchoolManifest } from "@educateos/shell";
 import { App } from "./App.tsx";
 import { DistrictApiProvider } from "./DistrictApi.tsx";
 import "./styles.css";
@@ -22,12 +22,15 @@ if (fromLink !== null) {
 const token = sessionStorage.getItem(TOKEN_KEY) ?? undefined;
 
 const client = createDistrictApiClient({ baseUrl: window.location.origin, ...(token === undefined ? {} : { token }) });
+// Product analytics (SCHO-350): asked through the same client, so it signs in as every call does.
+const analytics = productAnalyticsSourceFrom({ productAnalytics: () => client.call("me.productAnalytics"), me: () => client.call("me.get") });
 
 /**
  * Teacher Studio on its district's own origin (/teach/): framed in the shared SchoolShell and
  * branded from the school's manifest, which arrives after the first paint (SCHO-260).
  */
 const OnTheDistrictOrigin = () => {
+  useProductAnalytics(analytics, "teach");
   const { manifest } = useSchoolManifest();
   const shell = useMemo(() => ({ school: manifest }), [manifest]);
   return <App shell={shell} />;

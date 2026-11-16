@@ -9,6 +9,37 @@ import { POLICY_ORDERINGS, type ConfigurationRevision, type PolicySettings } fro
 import type { ConfigurationPlan, DiffEntry } from "../app/useDistrictConfig.ts";
 import type { DesiredStateView } from "../configDocument.ts";
 
+// IT review (SCHO-376)
+type DecisionQuery = { before?: string; outcome?: "all" | "refused" | "held" | "allowed"; rule?: string; resourceKind?: string };
+
+/** The fake district's decision trail, oldest first: every fifth a refusal, every seventh an administrator's change. */
+const DECISIONS = Array.from({ length: 60 }, (_, i) => {
+  const seq = i + 1;
+  const at = new Date(Date.UTC(2026, 10, 1, 8, seq)).toISOString();
+  if (seq % 5 === 0) {
+    return { seq, decidedAt: at, correlationId: `req-${seq}`, principalId: "prn_fk-student-301", principalName: "Jonah Pike", action: "read", resourceKind: "official-grade", channel: "http", effect: "deny", reason: "owner-only", ruleId: "default.deny" };
+  }
+  if (seq % 7 === 0) {
+    return { seq, decidedAt: at, correlationId: `req-${seq}`, principalId: "prn_fk-admin", principalName: "Avery Admin", action: "update", resourceKind: "principal", resourceId: "prn_fk-student-302", channel: "http", effect: "allow", ruleId: "admin.district.directory" };
+  }
+  return { seq, decidedAt: at, correlationId: `req-${seq}`, principalId: "prn_fk-teacher-1", principalName: "Sam Rivera", action: "read", resourceKind: "submission", channel: "http", effect: "allow", ruleId: "course.instructor.review" };
+});
+
+const OUTCOME_EFFECT = { refused: "deny", held: "require-approval", allowed: "allow" } as const;
+
+/** A page of `trail` as the district answers it: newest first, 25 at a time. */
+function decisionPage(trail: typeof DECISIONS, query: DecisionQuery = {}) {
+  const before = query.before === undefined ? Infinity : Number(query.before);
+  const matching = trail
+    .filter((d) => d.seq < before)
+    .filter((d) => query.outcome === undefined || query.outcome === "all" || d.effect === OUTCOME_EFFECT[query.outcome])
+    .filter((d) => query.resourceKind === undefined || d.resourceKind === query.resourceKind)
+    .filter((d) => query.rule === undefined || (query.rule.endsWith(".") ? d.ruleId.startsWith(query.rule) : d.ruleId === query.rule))
+    .toReversed();
+  const entries = matching.slice(0, 25);
+  return { entries, ...(matching.length > 25 ? { nextBefore: String(entries.at(-1)!.seq) } : {}) };
+}
+
 /** A synthetic class. */
 export interface FakeClass {
   offeringId: string;
@@ -256,7 +287,7 @@ function initialSyncRuns(): SyncRun[] {
 }
 
 /** What a sync of the fake roster reads: one student moved class, one left, one is held for review. */
-function syncPreview(issues: { severity: "error" | "warning"; file?: string; row?: number; column?: string; sourcedId?: string; message: string }[]) {
+function syncPreview(issues: { severity: "error" | "warning"; file?: string; row?: number; column?: string; sourcedId?: string; source?: string; message: string }[]) {
   return { ...rosterPreview(), canApply: !issues.some((issue) => issue.severity === "error"), issues };
 }
 
@@ -329,9 +360,11 @@ export interface FakeDistrictOptions {
   /**
    * The roster sync: a Clever sync that runs (the default), one whose next run the feed rejects or
    * whose next run is held for a large removal, a OneRoster connection this deployment cannot run,
-   * or a status the district cannot read.
+   * a roster imported from OneRoster CSV files, which never syncs, or a status the district cannot read.
    */
-  rosterSync?: "runnable" | "feed-rejected" | "removal-held" | "not-runnable" | "unreadable";
+  rosterSync?: "runnable" | "feed-rejected" | "removal-held" | "not-runnable" | "csv-import" | "unreadable";
+  /** Whether the deployment names an analytics service, so product analytics can be turned on (SCHO-350). Defaults to true. */
+  productAnalyticsConfigured?: boolean;
 }
 
 /** The sign-in an `unlinked` caller signed in with. */
@@ -526,15 +559,33 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     { id: "opa_1", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "health", result: "ok", at: "2026-10-28T11:00:00.000Z" },
     { id: "opa_2", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "directory.action", target: "prn_fk-student-301/suspend", result: "applied", at: "2026-10-28T11:05:00.000Z" },
   ];
-  const syncRuns = options.rosterSync === "not-runnable" ? [] : initialSyncRuns();
+  const syncRuns = options.rosterSync === "not-runnable" || options.rosterSync === "csv-import" ? [] : initialSyncRuns();
   let approvedRemoval: string | undefined;
   const HELD_FINGERPRINT = "a".repeat(64);
+  const libraryCourses: { packageId: string; version: string }[] = [];
+  let districtName = "Fake Unified";
+  const productAnalyticsConfigured = options.productAnalyticsConfigured ?? true;
+  let productAnalytics: { enabled: boolean; changedAt: string | null; changedBy: string | null } = { enabled: false, changedAt: null, changedBy: null };
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
     "me.get": () => ({ principalId: "prn_fk-admin", districtId: "dst_fake", kind: "staff", displayName: "Avery Admin", roles: [], enrollments: [] }) as never,
+    "admin.productAnalytics": () => ({ configured: productAnalyticsConfigured, ...productAnalytics }) as never,
+    "admin.setProductAnalytics": (input: Record<string, unknown>) => {
+      const { enabled } = input.body as { enabled: boolean };
+      if (enabled && !productAnalyticsConfigured) {
+        throw new DistrictApiError(409, { code: "conflict", message: "This deployment names no analytics service, so product analytics cannot be turned on.", correlationId: "req-analytics" });
+      }
+      if (productAnalytics.enabled !== enabled) productAnalytics = { enabled, changedAt: "2026-11-07T12:00:00.000Z", changedBy: "prn_fk-admin" };
+      return { configured: productAnalyticsConfigured, ...productAnalytics } as never;
+    },
+    "admin.renameDistrict": (input: Record<string, unknown>) => {
+      districtName = String((input.body as { name: string }).name).trim();
+      return { id: "dst_fake" as never, name: districtName, timeZone: "America/Chicago", trustedIssuers: [ISSUER] };
+    },
     "admin.health": () => ({
       districtId: "dst_fake",
+      districtName,
       directory: { schools: 2, terms: 1, offerings: CLASSES.length, students: 91, staff: 5, activeEnrollments: 96 },
       work: { workspaces: 12, artifacts: 30, submissions: 8, installedActivities: 4 },
       content: { awaitingReview: 3, releases: 2 },
@@ -631,6 +682,9 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       if (options.rosterSync === "not-runnable") {
         return { provider: "oneroster-api", runnable: false, reason: "this deployment has no roster source for oneroster-api", runs: [] } as never;
       }
+      if (options.rosterSync === "csv-import") {
+        return { provider: "oneroster-csv", runnable: false, reason: "the roster has no identity mapping", runs: [] } as never;
+      }
       const latest = syncRuns.at(-1);
       const lastSuccess = syncRuns.findLast((run) => run.outcome === "succeeded");
       const failures = syncRuns.length - 1 - syncRuns.findLastIndex((run) => run.outcome === "succeeded");
@@ -686,7 +740,11 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       syncRuns.push(run);
       return {
         ran: true, run, grantsRevoked: 1,
-        preview: syncPreview([{ severity: "warning", file: "users.csv", row: 12, column: "grades", sourcedId: "u-312", message: "The grade \"13\" is not a grade level; it was left out." }]),
+        preview: syncPreview([
+          { severity: "warning", file: "users.csv", row: 12, column: "grades", sourcedId: "u-312", message: "The grade \"13\" is not a grade level; it was left out." },
+          // A source with records of its own names them, as Clever's does.
+          ...(mode === "delta" ? [{ severity: "warning" as const, file: "users.csv", row: 3, column: "sourcedId", sourcedId: "c-77", source: "Clever user c-77", message: "is a guardian, parent or relative; EducateOS does not import them" }] : []),
+        ]),
       } as never;
     },
     "admin.approveRosterRemoval": (input) => {
@@ -717,6 +775,24 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     "admin.listStandards": () => standards as never,
     "admin.approveStandards": (input) => Object.assign(standardsFor(input), { status: "approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:00:00.000Z" } }) as never,
     "admin.withdrawStandards": (input) => Object.assign(standardsFor(input), { status: "not-approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:05:00.000Z" } }) as never,
+    // Course library (SCHO-331): bundles are "verified" by their format field alone.
+    "admin.listLibraryCourses": () => libraryCourses as never,
+    "admin.importCourseBundle": (input) => {
+      const bundle = input.body as { format?: string; course?: { id: string; version: string } };
+      if (bundle.format !== "educateos.ocs-bundle.v1" || bundle.course === undefined) {
+        throw new DistrictApiError(400, { code: "validation-failed", message: "The bundle is not an OCS course bundle." });
+      }
+      const existing = libraryCourses.find((c) => c.packageId === bundle.course!.id && c.version === bundle.course!.version);
+      if (existing !== undefined) return existing as never;
+      const course = {
+        packageId: bundle.course.id, version: bundle.course.version, digest: `sha256:${"b".repeat(64)}`, title: "Grade 1 Reading Foundations",
+        subject: "english-language-arts", gradeBand: "1", language: "en", publisher: { domain: "educateos.io", signed: true }, standards: [],
+        units: ["Short Vowel Sounds", "Stories We Love"].map((title, i) => ({ key: `u${i}`, title, standards: [], activities: 3, pages: 1, teacherNotes: 2, resources: 0 })),
+        activities: 6, imported: { by: "prn_fk-admin", at: "2026-11-04T12:00:00.000Z" },
+      };
+      libraryCourses.push(course);
+      return course as never;
+    },
     // Operations (SCHO-263): the enrolled admin keys and the district's ops log, kept in memory.
     "admin.opsKeys": () => ({ keys: opsKeys }) as never,
     "admin.enrollOpsKey": (input) => {
@@ -744,6 +820,24 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       return key as never;
     },
     "admin.opsAudit": () => ({ entries: opsAudit }) as never,
+    // IT review (SCHO-376): a decision trail of 60 decisions, paged 25 at a time, newest first.
+    "admin.decisionLog": (input) => decisionPage(DECISIONS, input.query as DecisionQuery | undefined) as never,
+    "admin.auditLog": (input) => decisionPage(DECISIONS.filter((d) => d.effect === "allow" && d.ruleId.startsWith("admin.") && d.action !== "read" && d.action !== "list"), input.query as DecisionQuery | undefined) as never,
+    "admin.screeningLog": () => ({
+      screening: "hall-monitor",
+      entries: [
+        { at: "2026-11-02T10:05:00.000Z", offeringId: "off_fk-eng9-b", offeringName: "English 9 · Section B", decision: "refused", reasonCodes: ["moderation.harassment"], authorId: "prn_fk-student-301", authorName: "Jonah Pike" },
+        { at: "2026-11-02T09:00:00.000Z", offeringId: "off_fk-eng9-b", offeringName: "English 9 · Section B", decision: "hold", reasonCodes: ["moderation.self-harm"], authorId: "prn_fk-student-302", authorName: "Lena Ortiz", postStatus: "pending" },
+      ],
+      truncated: false,
+    }) as never,
+    "admin.signInSettings": () => ({
+      provider: "cloudflare-access",
+      issuers: [{ issuer: "https://fake.cloudflareaccess.com", activePeople: 96, inactivePeople: 3 }],
+      activeWithoutSignIn: 2,
+      pendingLinks: 1,
+      deployment: { verifier: "cloudflare-access", teamDomain: "https://fake.cloudflareaccess.com", applications: 2 },
+    }) as never,
     // A route that names students. The aggregate screens must never call it.
     "teacher.roster": () => STUDENT_NAMES.map((displayName) => ({ displayName })) as never,
   };

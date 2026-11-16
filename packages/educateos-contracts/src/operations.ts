@@ -123,7 +123,8 @@ export function assertOperationDescriptor(name: string, fields: OperationDescrip
 /**
  * The operation channel a request on `channel` arrives through. An HTTP request is `rest`: the
  * district's screens call its HTTP API too, so `ui` cannot be told apart from `rest` yet. MCP tool
- * and agent calls are both `mcp-agent`, and a `system` call is a trusted `internal-job`.
+ * and agent calls are both `mcp-agent`, a `system` call is a trusted `internal-job`, and a
+ * registered LTI tool's service call is `lti-service`.
  */
 export function operationChannelFor(channel: RequestChannel): OperationChannel {
   switch (channel) {
@@ -134,5 +135,7 @@ export function operationChannelFor(channel: RequestChannel): OperationChannel {
       return "mcp-agent";
     case "system":
       return "internal-job";
+    case "lti-service":
+      return "lti-service";
   }
 }

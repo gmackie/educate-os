@@ -53,10 +53,10 @@ describe("the safety reserve recommendation", () => {
   it("counts the students a funded generative pool can serve, by the ledger's own rules", () => {
     const { source } = harness();
     // With the personal pool, every student is AI-enabled.
-    expect(aiPopulation(source.snapshot, northfieldPools(), [])).toStrictEqual({ activeTeachers: 4, aiEnabledStudents: 5 });
+    expect(aiPopulation(source.snapshot, northfieldPools(), [])).toStrictEqual({ activeTeachers: 10, aiEnabledStudents: 22 });
     // Without it, only students in a class a course pool covers: Biology and the high school.
     const coursesOnly = northfieldPools({ "fpl_nf-personal": { monthlyAllocationUsdNano: "0" } });
-    expect(aiPopulation(source.snapshot, coursesOnly, [])).toStrictEqual({ activeTeachers: 4, aiEnabledStudents: 3 });
+    expect(aiPopulation(source.snapshot, coursesOnly, [])).toStrictEqual({ activeTeachers: 10, aiEnabledStudents: 4 });
   });
 });
 
@@ -87,7 +87,7 @@ describe("the funding report", () => {
       threshold: "none",
     });
     expect(report.safety).toMatchObject({
-      population: { activeTeachers: 4, aiEnabledStudents: 5 },
+      population: { activeTeachers: 10, aiEnabledStudents: 22 },
       recommendedMinimumUsdNano: "5000000000",
       belowRecommended: true,
     });

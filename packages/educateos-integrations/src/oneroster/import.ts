@@ -124,6 +124,40 @@ const PLACES: Readonly<Record<OneRosterFormat, Readonly<Record<OneRosterFile, st
 };
 
 /**
+ * What one record of each row-model file is in a source with records of its own, which issues name
+ * in place of the file and row: a Clever user, section or term. Enrollments are a section's roster
+ * and roles a user's, so their issues name the section and user, or the user.
+ */
+const SOURCE_RECORDS: Readonly<Partial<Record<OneRosterFormat, (file: OneRosterFile, row: Record<string, unknown>) => string | undefined>>> = {
+  clever: (file, row) => {
+    const id = (key: string) => (typeof row[key] === "string" ? (row[key] as string) : undefined);
+    switch (file) {
+      case "orgs.csv":
+        return `Clever ${row["type"] === "district" ? "district" : "school"} ${id("sourcedId")}`;
+      case "academicSessions.csv":
+        return `Clever term ${id("sourcedId")}`;
+      case "courses.csv":
+        return `Clever course ${id("sourcedId")}`;
+      case "classes.csv":
+        return `Clever section ${id("sourcedId")}`;
+      case "users.csv":
+        return `Clever user ${id("sourcedId")}`;
+      case "roles.csv":
+        return `Clever user ${id("userSourcedId")}, role ${id("role")}`;
+      case "enrollments.csv":
+        return `Clever section ${id("classSourcedId")}, user ${id("userSourcedId")}`;
+    }
+  },
+};
+
+/**
+ * Which record of its source a row of a row-model file is, in the source's own terms ("Clever user
+ * 26c0…"), or undefined for a feed whose records are the rows themselves (CSV, OneRoster REST).
+ */
+export const sourceRecordName = (format: OneRosterFormat | undefined, file: OneRosterFile, row: Record<string, unknown>): string | undefined =>
+  SOURCE_RECORDS[format ?? "csv"]?.(file, row);
+
+/**
  * How an import changes one kind of record. Nothing is ever removed: a record the feed no longer
  * lists is either `deactivated` (principals and enrollments) or `retained` unchanged.
  */
@@ -355,14 +389,18 @@ async function createContext(input: OneRosterFeedImportInput): Promise<ImportCon
       await Promise.all(feedIds[kind].map(async (s) => [s, await derivedId(districtId, kind, s)] as const)),
     );
   }));
-  const rowSources = new Map<string, string>();
+  // Each row's record, as an issue in it names it: its sourcedId (a role's is its user's), and in
+  // a source with records of its own, which of them it is.
+  const sourceRecord = SOURCE_RECORDS[input.format ?? "csv"];
+  const rowSources = new Map<string, { sourcedId?: string; source?: string }>();
   for (const file of Object.keys(feed) as OneRosterFile[]) {
-    for (const row of feed[file]) if ("sourcedId" in row) rowSources.set(`${file}:${row.row}`, row.sourcedId);
+    for (const row of feed[file] as Record<string, unknown>[]) {
+      const sourcedId = typeof row["sourcedId"] === "string" ? row["sourcedId"] : typeof row["userSourcedId"] === "string" ? row["userSourcedId"] : undefined;
+      const source = sourceRecord?.(file, row);
+      rowSources.set(`${file}:${String(row["row"])}`, { ...(sourcedId === undefined ? {} : { sourcedId }), ...(source === undefined ? {} : { source }) });
+    }
   }
-  const located = (file: OneRosterFile, row: number) => {
-    const sourcedId = rowSources.get(`${file}:${row}`);
-    return { file, row, ...(sourcedId === undefined ? {} : { sourcedId }) };
-  };
+  const located = (file: OneRosterFile, row: number) => ({ file, row, ...rowSources.get(`${file}:${row}`) });
   const currentIds: Record<ImportedKind, Set<string>> = {
     schools: new Set(current.schools.map((r) => r.id)),
     terms: new Set(current.terms.map((r) => r.id)),

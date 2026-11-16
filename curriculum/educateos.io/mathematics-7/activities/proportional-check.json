@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:570a2bfd1dcfc9643969727ee0a6de39bce3a4b26e34be338bcbc2b7f24cb91c",
+      "id": "educateos.io/mathematics-7-proportional-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "proportional-check",
+  "role": "assessment",
+  "title": "Proportional or Not? Unit Check"
+}

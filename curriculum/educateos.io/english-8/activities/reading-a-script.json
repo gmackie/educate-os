@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:63f557e24202ee2122556403e2695aef8fbcd68bc567f43f17e4615f5020bfe3",
+      "id": "educateos.io/english-8-reading-a-script",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reading-a-script",
+  "role": "lesson",
+  "title": "Reading a Script"
+}

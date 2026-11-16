@@ -1,0 +1,143 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "Did Magna Carta protect everyone in England in 1215? Make a claim about whom it protected and from what, and support it with at least two pieces of evidence from the clauses and their introduction.",
+    "contextualizationQuestions": [
+      "What had King John done that made the barons rebel?",
+      "In 1215, most people in England were serfs. How does that fact change what the words \"no free man\" meant?"
+    ],
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "minimumEvidence": 2,
+    "overview": "Analyze three clauses of Magna Carta and decide whom the charter protected.",
+    "resources": [
+      "magna-carta-1215"
+    ],
+    "sources": [
+      "magna-carta-1215"
+    ],
+    "sourcingQuestions": [
+      "Who wrote the demands in Magna Carta, who agreed to them, and when?",
+      "Why might King John agree to a charter he did not want? What happened to it a few months later?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Magna Carta, 1215"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-magna-carta",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "The clauses are translated and adapted into modern English for EducateOS from the Latin text of Magna Carta (1215), which is in the public domain. The introduction and note were written for EducateOS.",
+      "body": "In 1215, many of England's barons rebelled against King John. He had lost wars and lands in France, demanded heavy payments to fund new wars, and punished nobles without trial. In June 1215, at Runnymede, a meadow beside the River Thames, the king agreed to a charter of promises the barons had drawn up, written in Latin. It was later called Magna Carta, \"the Great Charter.\" Within a few months, the pope declared it invalid at John's request and war broke out again. After John died in 1216, the charter was reissued in changed forms in 1216, 1217 and 1225.\n\nClause 12: No scutage or aid [special payments to the king] shall be imposed in our kingdom except by the common counsel of our kingdom, except to ransom our person, to make our eldest son a knight, and to marry our eldest daughter once; and for these only a reasonable aid shall be taken.\n\nClause 39: No free man shall be arrested or imprisoned, or have his property taken, or be outlawed or exiled, or in any way ruined, nor will we go against him or send others against him, except by the lawful judgment of his equals or by the law of the land.\n\nClause 40: To no one will we sell, to no one will we refuse or delay, right or justice.\n\nNote: In 1215, \"free men\" did not include serfs, who were a large share of England's people.",
+      "id": "magna-carta-1215",
+      "title": "Magna Carta, 1215 (selected clauses)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Context"
+      },
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

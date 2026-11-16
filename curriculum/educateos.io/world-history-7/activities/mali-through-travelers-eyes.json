@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2e68166224e8b8a3201a187673274d578ed1d9aca22e10ad610a70ab352fb5e7",
+      "id": "educateos.io/world-history-7-mali-through-travelers-eyes",
+      "version": "1.0.0"
+    }
+  },
+  "id": "mali-through-travelers-eyes",
+  "role": "assignment",
+  "title": "Mali Through Travelers' Eyes"
+}

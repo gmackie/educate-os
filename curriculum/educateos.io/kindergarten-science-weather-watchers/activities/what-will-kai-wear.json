@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:712ea816dccfb289b42dd5e6be544c306740d8b893d8798ce9abdfbbecdf5696",
+      "id": "educateos.io/kindergarten-science-weather-watchers-what-will-kai-wear",
+      "version": "1.0.0"
+    }
+  },
+  "id": "what-will-kai-wear",
+  "role": "lesson",
+  "title": "What Will Kai Wear?"
+}

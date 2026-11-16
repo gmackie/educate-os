@@ -7,6 +7,7 @@ import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import type { CalendarEvent } from "../model.ts";
 import { activityPath, coursePath } from "../router.tsx";
 import { addDays, byDay, dateOfKey, dayKey, startOfWeek } from "./calendarDays.ts";
+import { PageHeading } from "../PageHeading.tsx";
 
 type View = "week" | "agenda";
 
@@ -52,7 +53,7 @@ export const CalendarPage = ({ today = new Date() }: { today?: Date }) => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Text variant="heading" size="lg" as="h1">Calendar</Text>
+        <PageHeading>Calendar</PageHeading>
         <div role="group" aria-label="Calendar view" className="flex gap-2">
           <Button variant={view === "week" ? "primary" : "secondary"} aria-pressed={view === "week"} onClick={() => setView("week")}>Week</Button>
           <Button variant={view === "agenda" ? "primary" : "secondary"} aria-pressed={view === "agenda"} onClick={() => setView("agenda")}>Agenda</Button>

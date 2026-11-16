@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:aa4cb97a5a2276334000a7deed2befd464bf98c24e06cebffa4cc6f278366d93",
+    "id": "educateos.io/grade-5-science",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

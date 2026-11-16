@@ -1,0 +1,65 @@
+{
+  "id": "four-seasons",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u6-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "the-four-seasons"
+    },
+    {
+      "kind": "activity",
+      "ref": "my-favorite-season"
+    },
+    {
+      "kind": "activity",
+      "ref": "fall-week-winter-week"
+    },
+    {
+      "kind": "activity",
+      "ref": "seasons-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Notice how the weather changes over the year, compare weather charts from two seasons, and tell which season we like best and why.",
+  "title": "Four Seasons"
+}

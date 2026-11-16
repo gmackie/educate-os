@@ -1,0 +1,44 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Split the pieces of a model into smaller equal pieces to find equivalent fractions.",
+    "problems": [
+      {
+        "prompt": "Draw a strip and shade 1/2 of it. Now split each part into 3 equal parts. How many parts are there now? How many are shaded? Write the equivalent fraction."
+      },
+      {
+        "prompt": "Draw a rectangle split into 4 equal parts and shade 3 of them. Then split each part in half. What fraction of the rectangle is shaded now?"
+      },
+      {
+        "prompt": "Fill in the blank: 2/3 = ?/12. What number did you multiply the numerator and the denominator by?"
+      },
+      {
+        "prompt": "Explain why 1/4 = 3/12. Use the idea that the pieces get smaller but there are more of them."
+      },
+      {
+        "prompt": "Is 2/6 equivalent to 1/3? Show how you know with a model or with multiplication."
+      },
+      {
+        "prompt": "Find the missing number: 5/? = 10/12."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Modeling Equivalent Fractions"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-fraction-models",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

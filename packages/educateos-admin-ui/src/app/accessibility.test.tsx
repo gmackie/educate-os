@@ -30,6 +30,8 @@ describe("structure and labels", () => {
     expect(screen.getByRole("heading", { level: 1, name: "EducateOS district admin" })).toBeTruthy();
     expect(await screen.findByRole("heading", { level: 2, name: label === "Term rollover" ? "Term rollover preview" : label })).toBeTruthy();
     expect(within(screen.getByRole("list", { name: "Admin" })).getByRole("link", { name: label }).getAttribute("aria-current")).toBe("page");
+    // Each screen names itself in the document title, and no two share one (WCAG 2.4.2).
+    expect(document.title).toBe(`${label} · EducateOS district admin`);
     // Let the screen's loads settle before checking its controls.
     await waitFor(() => expect(screen.queryByText(/^Loading /)).toBeNull());
     for (const role of CONTROL_ROLES) {

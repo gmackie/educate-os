@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Founding pilot · EducateOS</title>
+<meta name="description" content="The EducateOS founding pilot for public school districts in Texas and Michigan: one school, a few champion teachers and about ten weeks. Free software and a guided install, teacher-facing AI first, written success criteria, and synthetic or staff-only data until a DPA is signed.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+  /* The editable source is docs/educateos/pilot/program.md (SCHO-366); keep the two in step. */
+  .pilot h2 { font-size: 1.35rem; }
+  .pilot .spec td:first-child { width: 26%; }
+  .pilot .spec td:last-child { white-space: normal; width: auto; }
+  .pilot .checklist { list-style: none; padding: 0; display: grid; gap: 8px; }
+  .pilot .checklist li { display: flex; gap: 10px; align-items: baseline; }
+  .pilot .checklist li::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--color-kumo-line); transform: translateY(2px); }
+  .pilot .weeks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+  .pilot .weeks .card { padding: 18px; }
+  .pilot .weeks b { display: block; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-brand); }
+  .pilot .weeks h3 { margin-top: 6px; font-size: 1.02rem; }
+  .pilot .weeks ul { padding-left: 18px; margin: 8px 0 0; display: grid; gap: 4px; font-size: .9rem; }
+  @media (max-width: 900px) { .pilot .weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .pilot .weeks { grid-template-columns: minmax(0, 1fr); } }
+  @media print {
+    @page { margin: 14mm; }
+    .subnav, .skip-link { display: none !important; }
+    .table-scroll { overflow: visible; }
+    .pilot .spec td:last-child { white-space: normal; width: auto; }
+    .wrap { max-width: none !important; }
+    .spec { font-size: 9.5pt; border-radius: 0; }
+    .spec tr, .card, .checklist li { break-inside: avoid; }
+    .spec thead { display: table-header-group; }
+    .pilot h2 { break-after: avoid; margin-top: 18px; }
+    .pilot .weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    a { color: inherit; }
+    .status { border: 1px solid currentColor; }
+  }
+</style>
+<script>
+  // Print in light mode whatever the reader's theme, so the PDF has dark text on white.
+  addEventListener("beforeprint", () => { document.documentElement.dataset.mode = "light"; });
+  addEventListener("afterprint", () => { document.documentElement.dataset.mode = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; });
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="wordmark">EducateOS</span>
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+<main id="main" class="pilot">
+  <section class="hero page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow">For district leaders and IT · Founding pilot</div>
+      <h1>The founding pilot</h1>
+      <p class="lede">We are looking for three to five public school districts in Texas and Michigan to run EducateOS with us: one school, a few champion teachers and about ten weeks, starting with AI for teachers. The software is free, we install it with your IT team in your own Cloudflare account, and we agree in writing at kickoff what success looks like.</p>
+      <p class="updated">Program summary, November 2026. This page summarizes the program; it is not a contract. The signed pilot agreement and the data processing agreement govern. The editable source is <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/pilot/program.md"><code>docs/educateos/pilot/program.md</code></a>.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20founding%20pilot" data-glass-event="contact_requested" data-glass-prop-location="pilot_hero">Email hello@educateos.io</a><a class="btn" href="javascript:print()">Print or save as PDF</a></div>
+      <nav class="subnav" aria-label="Sections">
+        <a href="#who">Who it's for</a>
+        <a href="#terms">What you get and give</a>
+        <a href="#timeline">Timeline</a>
+        <a href="#roles">Roles</a>
+        <a href="#readiness">Readiness checklist</a>
+        <a href="#data">The data rule</a>
+        <a href="#success">Success criteria</a>
+        <a href="#support">Support</a>
+        <a href="#briefs">Briefs to share</a>
+        <a href="#end">At the end</a>
+        <a href="#apply">How to apply</a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="tight" id="who">
+    <div class="wrap doc">
+      <h2>Who it's for</h2>
+      <ul>
+        <li><b class="strong">Public school districts in Texas and Michigan.</b> Three to five districts in this first round.</li>
+        <li><b class="strong">One school in each district,</b> with a school lead who wants to try it and a few champion teachers (we suggest three to six) who will use it each week.</li>
+        <li><b class="strong">An IT team willing to install it in the district's own Cloudflare account,</b> with our help on a call.</li>
+        <li><b class="strong">Teacher-facing AI first.</b> Teachers use agents and gadgets to plan and build classroom materials. Student-facing AI stays off in the pilot.</li>
+      </ul>
+      <div class="note-box"><b>Where EducateOS is today.</b> EducateOS is early. It runs today on synthetic demo districts, and no real students use it yet. No district has run the installer in its own account yet, so the founding pilot districts will be the first. Every capability on this site carries the status its evidence supports, from the project's <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/maturity.md">maturity record</a>. We make no compliance or certification claims.</div>
+    </div>
+  </section>
+
+  <section class="band tight" id="terms">
+    <div class="wrap">
+      <h2>What the district gets, and what it gives</h2>
+      <div class="grid2">
+        <div class="card" style="padding:22px">
+          <h3>The district gets</h3>
+          <ul class="checks">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">The software, free.</b> EducateOS is open source under Apache-2.0, with no per-seat fee to us.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">A guided install and pilot support at no charge.</b> We run the installer with your IT team on a call, in your account, under a token you create and delete.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Training for the champion teachers</b> in week 1, and a 20-minute check-in each week after.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Written success criteria</b> agreed at kickoff, and a written end-of-pilot review against them.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">A seat on the founding advisory councils</b> as we form them, for an educator, an IT lead or both. See <a href="/advisory/">the advisory councils</a>.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">A direct say in what gets built next.</b> Issues you raise go into the project's tracker, and we tell you what happened to each one.</span></li>
+          </ul>
+        </div>
+        <div class="card" style="padding:22px">
+          <h3>The district gives</h3>
+          <ul class="checks">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Its own Cloudflare bill, paid directly to Cloudflare.</b> Workers Paid starts at $5 a month plus small usage, and up to 50 people signing in fits Zero Trust Free. AI model usage is billed by the model provider, up to the cap the district sets. Nothing passes through us. See <a href="/pricing/#pilot">the cost to run</a>.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Staff time.</b> A few hours of IT time before kickoff, about an hour of training for each champion teacher, regular use in their own planning, and the weekly 20-minute check-in.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Honest feedback.</b> A short baseline survey and exit survey for the champion teachers, and the issues you run into, as you run into them.</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">A reference at the end, if the district is willing.</b> It is never a condition of the pilot, and we never name a district publicly without its written approval.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="note-box"><b>After the pilot.</b> The software stays free and open source. The optional services from educateos.io, such as the guided install after the pilot and managed updates, will be priced later; pilot districts will hear the prices before anything is charged.</div>
+    </div>
+  </section>
+
+  <section class="tight" id="timeline">
+    <div class="wrap">
+      <h2>The ten weeks</h2>
+      <div class="weeks">
+        <div class="card">
+          <b>Before kickoff</b>
+          <h3>Readiness and install</h3>
+          <ul>
+            <li>A 20-minute IT walkthrough</li>
+            <li>The readiness checklist below</li>
+            <li>The pilot agreement signed; the DPA's status agreed</li>
+            <li>Guided install on a call, then verification</li>
+          </ul>
+        </div>
+        <div class="card">
+          <b>Week 1</b>
+          <h3>Kickoff and teacher training</h3>
+          <ul>
+            <li>Kickoff with every role</li>
+            <li>Success criteria written and agreed</li>
+            <li>Training for the champion teachers</li>
+            <li>Baseline survey</li>
+          </ul>
+        </div>
+        <div class="card">
+          <b>Weeks 2 to 9</b>
+          <h3>Classroom use</h3>
+          <ul>
+            <li>Teachers use it in their own planning</li>
+            <li>A 20-minute check-in each week</li>
+            <li>An issue log kept by both sides</li>
+            <li>A mid-point review in week 5</li>
+          </ul>
+        </div>
+        <div class="card">
+          <b>Week 10</b>
+          <h3>Review</h3>
+          <ul>
+            <li>Exit survey</li>
+            <li>Review against the success criteria</li>
+            <li>The district decides: keep, export or uninstall</li>
+          </ul>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:14px">The readiness weeks depend most on your domain and identity provider: with them already on Cloudflare, the install itself takes under an hour. School calendars move the dates; we agree them at kickoff.</p>
+    </div>
+  </section>
+
+  <section class="band tight" id="roles">
+    <div class="wrap">
+      <h2>Roles</h2>
+      <div class="table-scroll">
+      <table class="spec">
+        <thead><tr><th>Role</th><th>What they do in the pilot</th></tr></thead>
+        <tbody>
+          <tr><td>District sponsor</td><td>A district leader who owns the pilot: signs the pilot agreement, agrees the success criteria, and makes the call at the end.</td></tr>
+          <tr><td>IT lead</td><td>Owns the district's Cloudflare account, runs the install with us, controls who can sign in, and attends the kickoff and the end-of-pilot review.</td></tr>
+          <tr><td>School lead</td><td>A principal or instructional lead at the pilot school who picks the champion teachers, protects their time and joins the check-ins when needed.</td></tr>
+          <tr><td>Champion teachers</td><td>Use EducateOS in their own planning each week, come to the check-ins, raise issues and answer the two surveys.</td></tr>
+          <tr><td>EducateOS pilot lead</td><td>Your main contact: runs the kickoff, check-ins and reviews, keeps the issue log and answers <a href="mailto:hello@educateos.io">hello@educateos.io</a>.</td></tr>
+          <tr><td>EducateOS technical contact</td><td>Runs the guided install with your IT lead and fixes or tracks every technical issue you raise.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="muted" style="margin-top:12px">We name the people in each EducateOS role in the pilot agreement.</p>
+    </div>
+  </section>
+
+  <section class="tight" id="readiness">
+    <div class="wrap">
+      <h2>Readiness checklist</h2>
+      <div class="grid2">
+        <div class="card" style="padding:22px">
+          <h3>For IT</h3>
+          <ul class="checklist">
+            <li><span><b class="strong">A Cloudflare account the district owns,</b> with a payment method, and an administrator who can create an API token in it.</span></li>
+            <li><span><b class="strong">Workers Paid</b> on that account (from $5 a month), with R2 turned on.</span></li>
+            <li><span><b class="strong">A domain as an active zone</b> in the account, with no DNS records yet at the hostname you'll use (for example <code>educateos.yourdistrict.org</code>).</span></li>
+            <li><span><b class="strong">Cloudflare Zero Trust with a team,</b> and the district's identity provider (Google Workspace, Microsoft Entra ID, Clever or another SAML or OIDC provider) added as a login method.</span></li>
+            <li><span><b class="strong">Who may sign in:</b> the staff email domain or the champion teachers' addresses, and one to twenty administrators. Zero Trust Free admits 50 people, which covers a teachers-first pilot.</span></li>
+            <li><span><b class="strong">A machine with Node.js 22.12 or later</b> to run <code>npx launch-educate-os</code>.</span></li>
+            <li><span><b class="strong">AI model access:</b> which provider the pilot uses, who holds that account, and the monthly AI cap. Before any teacher signs in, we confirm with you in writing which AI controls (screening and spending caps) are in place in your install.</span></li>
+            <li><span><b class="strong">Your roster source,</b> if any (Clever, ClassLink, OneRoster, Google Classroom or none). A teachers-first pilot does not need rostering, and no real roster is connected before a DPA is signed.</span></li>
+            <li><span><b class="strong">Your LMS,</b> if any (for example Canvas, Moodle, Schoology or Google Classroom). We'll tell you honestly how ready EducateOS is for it; see <a href="/integrations/">integrations</a>.</span></li>
+          </ul>
+          <p class="muted" style="margin-top:12px">The full list, with the 13 API token permissions and what the installer's preflight checks, is in the <a href="/it/install/">district install guide</a>.</p>
+        </div>
+        <div class="card" style="padding:22px">
+          <h3>For the school</h3>
+          <ul class="checklist">
+            <li><span><b class="strong">A school lead</b> who can give the champion teachers time for training and check-ins.</span></li>
+            <li><span><b class="strong">A few champion teachers</b> who plan lessons each week and want to try AI in that work.</span></li>
+            <li><span><b class="strong">An hour in week 1</b> for training, and a fixed 20-minute slot each week for the check-in.</span></li>
+            <li><span><b class="strong">One or two problems worth solving,</b> such as building practice materials, differentiating a lesson or drafting quizzes, to anchor the success criteria.</span></li>
+            <li><span><b class="strong">Agreement on the data rule</b> below, shared with every champion teacher before they sign in.</span></li>
+            <li><span><b class="strong">The baseline survey</b> answered in week 1, before teachers start using EducateOS.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="data">
+    <div class="wrap doc">
+      <h2>The data rule</h2>
+      <p><b class="strong">Until the district signs a data processing agreement, the pilot uses synthetic data or staff-only data.</b> Staff-only means teachers' own accounts and their own teaching materials. Nobody enters students' names, records, grades or work, and no real roster is connected.</p>
+      <ul>
+        <li>EducateOS runs in the district's own Cloudflare account. Gmacko Ventures LLC, which develops it, does not receive student records.</li>
+        <li>The <a href="/student-privacy/dpa/">DPA template</a> is a draft pending counsel review. If your state uses a standard student data privacy agreement, send it to us.</li>
+        <li>Student-facing AI stays off throughout the pilot.</li>
+        <li>Your IT lead can stop all access at any time by changing the EducateOS Access policy in your account. It doesn't need us.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="tight" id="success">
+    <div class="wrap doc">
+      <h2>Success criteria</h2>
+      <p>At kickoff the district sponsor, the school lead and we write down three to five measurable criteria, with a target for each and how it will be measured. We review against them at week 5 and week 10. Examples for teacher-facing AI:</p>
+      <ul>
+        <li>Teacher time saved per week, self-reported in the check-ins and surveys.</li>
+        <li>The number of champion teachers active each week.</li>
+        <li>Classroom materials (assignments, quizzes, gadgets) created with EducateOS and used with students.</li>
+        <li>Teacher satisfaction in the exit survey.</li>
+        <li>Zero unresolved safety escalations at the end of the pilot.</li>
+      </ul>
+      <p>Some of these numbers come from your own account (sign-ins in Cloudflare Access, AI usage), and some only from teachers. The <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/pilot/success-criteria.md">success criteria worksheet</a> says which is which.</p>
+    </div>
+  </section>
+
+  <section class="band tight" id="support">
+    <div class="wrap doc">
+      <h2>Support</h2>
+      <ul>
+        <li><b class="strong">Email <a href="mailto:hello@educateos.io">hello@educateos.io</a></b> with "Pilot" and your district's name in the subject. Our support target during the pilot is a reply within one business day.</li>
+        <li><b class="strong">The weekly 20-minute check-in</b> covers what worked, what didn't and the issue log.</li>
+        <li><b class="strong">Safety or data concerns come first.</b> Put "Safety" in the subject. If something looks wrong, your IT lead can stop access in your account straight away and then write to us.</li>
+        <li>The support target is a pilot commitment, not a service-level agreement. The pilot agreement says what we commit to.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="tight" id="briefs">
+    <div class="wrap">
+      <h2>Briefs to share</h2>
+      <p class="muted">One printable page for each person who has a say, with the pilot's terms, the honest status of each part, the cost and who holds student data. Each is a web page and a PDF.</p>
+      <div class="grid2">
+        <div class="card feat"><h3><a href="/pilot/brief/superintendents/">Superintendents and school boards</a></h3><p>Why say yes to AI for teachers, and how the district keeps its records. <a href="/pilot/brief/superintendents/educateos-brief-superintendents.pdf">PDF</a></p></div>
+        <div class="card feat"><h3><a href="/pilot/brief/principals/">Principals</a></h3><p>What the pilot asks of one school and its champion teachers, and what they get. <a href="/pilot/brief/principals/educateos-brief-principals.pdf">PDF</a></p></div>
+        <div class="card feat"><h3><a href="/pilot/brief/teachers/">Teachers</a></h3><p>What a champion teacher does each week, what they get and the data rule. <a href="/pilot/brief/teachers/educateos-brief-teachers.pdf">PDF</a></p></div>
+        <div class="card feat"><h3><a href="/pilot/brief/it/">District IT</a></h3><p>The architecture, what the install asks of your Cloudflare account, and integration status. <a href="/pilot/brief/it/educateos-brief-it.pdf">PDF</a></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="kit">
+    <div class="wrap">
+      <h2>The pilot kit</h2>
+      <p class="muted">Printable materials for the school. Each one has an editable source in the repository.</p>
+      <div class="grid3">
+        <div class="card feat"><h3><a href="/pilot/teachers/">Teacher quickstart</a></h3><p>Sign in, classes, assignments, timed quizzes with extended time, the gradebook, the AI tools and getting help. One task per printed page.</p></div>
+        <div class="card feat"><h3><a href="/pilot/teachers/training/">Kickoff training</a></h3><p>A 60-minute session for champion teachers, with hands-on tasks in the demo district and facilitator notes.</p></div>
+        <div class="card feat"><h3><a href="/pilot/families/">Family letter</a></h3><p>A letter announcing the pilot, in English and Spanish, with fields for your school to fill in.</p></div>
+        <div class="card feat"><h3><a href="/pilot/students/">Student AI guidelines</a></h3><p>Plain-language rules for K&ndash;2, 3&ndash;5, 6&ndash;8 and 9&ndash;12, each printable as a classroom poster.</p></div>
+        <div class="card feat"><h3><a href="/pilot/staff-ai-guidance/">Staff AI guidance</a></h3><p>What staff can use AI for, what never goes into it, reviewing output and what to do when a request is flagged.</p></div>
+        <div class="card feat"><h3><a href="https://github.com/gmackie/educate-os/tree/main/docs/educateos/pilot">Playbook and worksheets</a></h3><p>The kickoff agenda, weekly check-in, success-criteria worksheet and teacher surveys.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="end">
+    <div class="wrap">
+      <h2>What happens at the end</h2>
+      <div class="grid3">
+        <div class="card feat"><h3>Keep it</h3><p>EducateOS keeps running in your account, under your control. The software stays free. A district moving on to students needs a signed DPA first, and seat-free student sign-in is still planned.</p></div>
+        <div class="card feat"><h3>Export</h3><p>A district administrator downloads the district's records as one ZIP of open JSON records and files, and each student can download their own archive. Teachers' Workshop gadgets and agents are not in either export yet. Tested against a seeded district, not yet run in a live one.</p><span class="status validating">Harness-tested</span></div>
+        <div class="card feat"><h3>Uninstall</h3><p>Export first, then <code>npx launch-educate-os uninstall</code> (in the installer's next release) shows exactly what it will delete in your account: only what the installer made for your install, never anything else that shares its name. It deletes nothing until you type your install's ID, and reports anything it can't remove, such as a storage bucket that still holds files. Deregistering from educateos.io is a separate step. Tested against a simulated Cloudflare account, not yet run on a live one; the <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/runbooks/district-offboarding.md">offboarding runbook</a> has the steps, and we help on a call if you want us to.</p><span class="status validating">Harness-tested</span></div>
+      </div>
+      <p class="muted" style="margin-top:14px">Whatever the district decides, we write up the end-of-pilot review against the success criteria and send it to the district sponsor.</p>
+    </div>
+  </section>
+
+  <section class="band tight" id="apply">
+    <div class="wrap doc">
+      <h2>How to apply</h2>
+      <ol>
+        <li>Email <a href="mailto:hello@educateos.io?subject=EducateOS%20founding%20pilot">hello@educateos.io</a> to book a 20-minute IT walkthrough. Tell us your district, the school you have in mind, your identity provider, your roster source and your LMS.</li>
+        <li>We reply within one business day and tell you honestly how ready EducateOS is for your systems.</li>
+        <li>If it fits, we send the pilot agreement and the DPA template, and agree a kickoff date.</li>
+      </ol>
+      <p class="muted">Professional details only, please: no student information in email.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
+        <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20founding%20pilot" data-glass-event="contact_requested" data-glass-prop-location="pilot_apply">Email hello@educateos.io</a>
+        <a class="btn" href="/it/">IT evaluation packet</a>
+        <a class="btn" href="/educateos-district-overview.pdf">District overview (PDF)</a>
+      </div>
+    </div>
+  </section>
+</main>
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/" aria-current="page">Founding pilot</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->
+</body>
+</html>

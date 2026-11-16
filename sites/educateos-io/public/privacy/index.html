@@ -27,35 +27,40 @@
   <div class="wrap">
     <a class="logo" href="/" aria-label="EducateOS home">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
-      EducateOS
+      <span class="wordmark">EducateOS</span>
     </a>
     <nav class="links" aria-label="Primary">
-      <a href="/#platform">Platform</a>
+      <a href="/tour/">Product tour</a>
       <a href="/integrations/">Integrations</a>
       <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
       <a href="/developers/">Developers</a>
     </nav>
     <div class="right">
-      <a class="btn hide-sm" href="/demo/">Try the demo</a>
-      <a class="btn primary" href="/interest/">Share your interest</a>
+      <a class="btn hide-sm" href="/demo/" data-glass-event="cta_clicked" data-glass-prop-location="header_demo">Try the demo</a>
+      <a class="btn primary" href="/interest/" data-glass-event="cta_clicked" data-glass-prop-location="header_interest">Share your interest</a>
       <details class="menu">
         <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
           <a href="/#platform">Platform</a>
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
           <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
           <a href="/developers/">Developers</a>
           <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
           <a href="/students/">For students</a>
           <a href="/parents/">For families</a>
           <a href="/teachers/">For teachers</a>
           <a href="/leaders/">For school leaders</a>
+          <a href="/it/">For district IT</a>
           <a href="/schools/">Schools</a>
           <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
         </nav>
@@ -71,7 +76,7 @@
       <div class="eyebrow">Privacy Policy</div>
       <h1>Privacy Policy</h1>
       <p>For the optional interest and feedback forms, read the <a href="/interest/#privacy-notice">intake privacy and retention notice</a>. <a href="/unsubscribe/">Opt out of updates with only your email address</a>.</p>
-      <p class="updated">Last updated: October 26, 2026</p>
+      <p class="updated">Last updated: November 12, 2026</p>
       <p>This policy explains what Gmacko Ventures LLC ("we", "us") collects through educateos.io, www.educateos.io, educateos.dev and www.educateos.dev, and the services we offer there. It is short because we collect very little.</p>
     </div>
   </section>
@@ -83,7 +88,7 @@
 
       <h2 id="collect">What we collect</h2>
       <h3>Visiting this website</h3>
-      <p>Apart from the operator console described next, the site is a set of static pages. It sets no cookies for visitors and runs no advertising or tracking scripts. Today it loads no analytics. If we add Cloudflare Web Analytics, which is cookieless and doesn't track individual visitors, we'll update this policy first. The site is hosted on Cloudflare, which processes request information such as IP addresses and browser details to deliver and protect it, as described in <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>.</p>
+      <p>Apart from the operator console described next, the site is a set of static pages. It sets no cookies for visitors and runs no advertising scripts. Approved marketing pages send usage analytics to our own Dataflare service, which runs in our Cloudflare account and is served from educateos.io/_glass. It records which pages are viewed and for how long, clicks on links and buttons (with their short visible text, never anything typed into the page), steps such as starting a sign-up, page load performance, script errors, and campaign (utm_) tags. It stores nothing on your device and does not identify you: visits are counted with an anonymous identifier that changes every day, page titles, other query parameters and full referring addresses are dropped (only the referring site is kept), and IP addresses are not stored. It honors Do Not Track and Global Privacy Control. Session replay is disabled. Demo, intake, operator, district and student pages are excluded. We keep these analytics for up to 13 months. The site is hosted on Cloudflare, which processes request information such as IP addresses and browser details to deliver and protect it, as described in <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>.</p>
       <h3>Signing in to the operator console</h3>
       <p>People who install or manage EducateOS through educateos.io ("operators") sign in at educateos.io/app with Cloudflare Access, using a one-time code sent to their email address or their GitHub account. When an operator signs in, Access sets sign-in cookies on educateos.io and on its own sign-in page; visitors who never sign in get none. If an operator chooses GitHub, GitHub tells Access their email address. We keep the email address Access verified, the user ID Access assigns, and when the operator first signed in and was last seen signed in, so we can show each operator their own installations. Cloudflare also records each sign-in (the email address, IP address, country and time) in our Cloudflare account's Access logs. We never receive a password.</p>
       <h3>Emailing us</h3>
@@ -151,12 +156,15 @@
       <div>
         <h4>Product</h4>
         <ul>
+          <li><a href="/tour/">Product tour</a></li>
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
           <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
           <li><a href="/mcp/">MCP</a></li>
           <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
         </ul>
       </div>
       <div>
@@ -166,14 +174,19 @@
           <li><a href="/parents/">Families</a></li>
           <li><a href="/teachers/">Teachers</a></li>
           <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/it/">District IT</a></li>
           <li><a href="/developers/">Developers</a></li>
           <li><a href="/schools/">Schools and co-ops</a></li>
+          <li><a href="/pilot/">Founding pilot</a></li>
         </ul>
       </div>
       <div>
         <h4>Trust</h4>
         <ul>
           <li><a href="/security/">Security</a></li>
+          <li><a href="/security/disclosure/">Report a vulnerability</a></li>
+          <li><a href="/security/incident-response/">Incident response</a></li>
+          <li><a href="/it/">IT evaluation packet</a></li>
           <li><a href="/student-privacy/">Student privacy</a></li>
           <li><a href="/privacy/" aria-current="page">Privacy Policy</a></li>
           <li><a href="/student-privacy/dpa/">DPA template</a></li>
@@ -184,6 +197,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="mailto:security@educateos.io">Security: security@educateos.io</a></li>
           <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>
@@ -191,10 +205,11 @@
     <div class="legal">
       <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
       <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
-      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
     </div>
   </div>
 </footer>
 <!-- /site:footer -->
+<!-- site:analytics --><script defer src="/assets/dataflare.js" data-enabled="true"></script><script defer src="/assets/journey.js"></script><!-- /site:analytics -->
 </body>
 </html>

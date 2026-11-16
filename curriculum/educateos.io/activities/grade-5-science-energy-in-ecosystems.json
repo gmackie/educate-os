@@ -1,0 +1,54 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "5",
+    "overview": "Read about how energy and matter move through an ecosystem, then answer the questions.",
+    "passage": "Energy Moves Through an Ecosystem\n\nWhere does the energy in your lunch come from? Follow it back far enough, and you always reach the sun.\n\nPlants and algae are producers. They capture the sun's energy and use it to make sugar from water and carbon dioxide, a gas in the air. You might think a tree gets its mass from the soil, but most of the material in a giant oak came from the air and water. The soil gives plants only small amounts of minerals.\n\nAnimals cannot make their own food, so they are consumers. A deer is an herbivore: it eats plants. An owl is a carnivore: it eats other animals. A bear is an omnivore: it eats berries, roots, fish and insects.\n\nWhen plants and animals die, decomposers go to work. Mushrooms and other fungi, bacteria and earthworms break down the dead matter. They return minerals to the soil, where plants can use them again. Without decomposers, dead leaves and logs would pile up, and plants would run out of minerals.\n\nScientists draw food chains with arrows: grass → rabbit → fox. The arrow means \"is eaten by,\" and it shows which way energy and matter move. In a real ecosystem, many food chains connect into a food web. If one part of the web changes, every part connected to it can change too.",
+    "questions": [
+      {
+        "prompt": "Where does the energy in all food start?"
+      },
+      {
+        "prompt": "Where does most of the material that makes up a plant's body come from? Quote the text."
+      },
+      {
+        "prompt": "What is a decomposer, and why does an ecosystem need decomposers?"
+      },
+      {
+        "prompt": "In the food chain grass → rabbit → fox, what does each arrow mean?"
+      },
+      {
+        "prompt": "Sort these living things: deer, owl, bear, mushroom. Label each one herbivore, carnivore, omnivore or decomposer."
+      },
+      {
+        "prompt": "Suppose all the foxes in a field disappeared. What would probably happen to the rabbits, and then to the grass? Explain each step."
+      }
+    ],
+    "sentenceFrames": [
+      "The energy starts with ___.",
+      "A decomposer ___. Ecosystems need them because ___.",
+      "If the foxes disappeared, ___ because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Energy Moves Through an Ecosystem"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-energy-in-ecosystems",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

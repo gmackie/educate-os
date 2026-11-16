@@ -3,7 +3,7 @@
 // recorded as observations before their data is returned, and every write becomes a change a
 // person must approve in the Workshop.
 import type { EducateOsErrorBody, VerifiedPrincipal } from "@educateos/contracts";
-import type { ToolDecisionOutcome } from "@educateos/policy";
+import type { PinnedToolTarget, ToolDecisionOutcome } from "@educateos/policy";
 import type { SchoolToolService } from "./district.ts";
 
 /** A read the agent is about to receive, for the Workshop's activity log. */
@@ -22,6 +22,16 @@ export interface SchoolChange extends SchoolRead {
   approvalId: string;
   /** Whether the requester confirms it or someone with authority over the resource approves it. */
   needs: "approval" | "confirmation";
+  /**
+   * The record the district pinned the change to, and its version when the tool reports one. The
+   * person reviews it; the change runs only against it. Absent on a change queued before pinning.
+   */
+  target?: { kind: string; id?: string; version?: string };
+  /**
+   * The district's digest of the change as queued: the tool, input, subject and target. Approving
+   * sends it back, so the district runs only the change the person reviewed.
+   */
+  digest?: string;
 }
 
 /** What a session runs against. The Worker supplies these from its account and approval queue. */
@@ -84,12 +94,29 @@ export class SchoolToolsSessionCore {
         if (outcome.approvalId === undefined || outcome.needs === undefined) {
           return { status: "error", code: "unavailable", message: "This school's changes cannot be approved here.", correlationId: outcome.correlationId };
         }
-        await this.#host.submit({ tool: name, args, correlationId: outcome.correlationId, approvalId: outcome.approvalId, needs: outcome.needs });
+        await this.#host.submit({
+          tool: name,
+          args,
+          correlationId: outcome.correlationId,
+          approvalId: outcome.approvalId,
+          needs: outcome.needs,
+          ...(outcome.target === undefined ? {} : { target: pinnedTarget(outcome.target) }),
+          ...(outcome.digest === undefined ? {} : { digest: outcome.digest }),
+        });
         return { status: "awaiting-decision", correlationId: outcome.correlationId };
       case "error":
         return { status: "error", ...outcome.error };
     }
   }
+}
+
+/** What a person reviews of a pinned target: its kind, ID and version, never its scope's internals. */
+function pinnedTarget(target: PinnedToolTarget): NonNullable<SchoolChange["target"]> {
+  return {
+    kind: target.resource.kind,
+    ...(target.resource.id === undefined ? {} : { id: target.resource.id }),
+    ...(target.version === undefined ? {} : { version: target.version }),
+  };
 }
 
 /**

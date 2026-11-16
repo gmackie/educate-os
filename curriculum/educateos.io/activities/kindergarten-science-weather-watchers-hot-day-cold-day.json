@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Sort clothes into hot day things and cold day things. Then count each group.",
+    "passage": "Some clothes are for hot days. Some clothes are for cold days. Here are six things: mittens 🧤, shorts 🩳, a scarf 🧣, sandals 🩴, a warm coat 🧥 and a sun hat 👒.",
+    "questions": [
+      {
+        "prompt": "Mittens: are they for a hot day or a cold day?"
+      },
+      {
+        "prompt": "Sandals: are they for a hot day or a cold day?"
+      },
+      {
+        "prompt": "Name all the cold day things."
+      },
+      {
+        "prompt": "How many hot day things are there? Count them."
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw one more thing to wear on a cold day."
+      }
+    ],
+    "sentenceFrames": [
+      "Mittens are for a ___ day.",
+      "There are ___ hot day things."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Hot Day or Cold Day?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-hot-day-cold-day",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sort",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I sorted the clothes"
+      },
+      {
+        "id": "count",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I counted each group"
+      }
+    ],
+    "title": "Hot day or cold day"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

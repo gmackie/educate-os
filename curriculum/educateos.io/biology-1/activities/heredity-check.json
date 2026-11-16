@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b7e77e34ababb3dc49442575e975a1746c2174a6d7ffccd7e4b1902065d2bf2b",
+      "id": "educateos.io/biology-1-heredity-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "heredity-check",
+  "role": "assessment",
+  "title": "Heredity Check"
+}

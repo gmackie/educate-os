@@ -3,8 +3,10 @@ import { Alert, Image, Text, View } from 'react-native';
 import { FileText, MessageSquareText } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
-import { Markdown } from '../ui/Markdown';
-import { imageType } from '../media.ts';
+import { Markdown, openExternal } from '../ui/Markdown';
+import { imageType, mediaKind } from '../media.ts';
+import { Base64Audio } from '../ui/Audio';
+import { safeLink } from '../modules.ts';
 import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
 import { AssignmentSettings } from './Teaching';
 import { usePalette } from '../ui/theme-context';
@@ -99,7 +101,7 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
       client.teacherFeedback(submissionId),
       Promise.all(artifacts.map((a) => client.teacherSubmittedContent(submissionId, a.artifactId)
         .then((item) => ({ ...item, type: a.type }))
-        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string; base64?: string } })))),
+        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string; base64?: string; url?: string } })))),
     ]);
     return { feedback, content };
   });
@@ -148,15 +150,7 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
               <Text style={{ fontSize: 14, color: palette.primary, fontWeight: '800' }}>
                 {item.title || 'Submitted ' + item.type}
               </Text>
-              {item.content.kind === 'text' && typeof item.content.text === 'string' ?
-                <Text selectable style={{ fontSize: 15, color: palette.ink, lineHeight: 24 }}>{item.content.text}</Text> :
-                item.content.kind === 'bytes' && item.content.base64 && imageType(item.content.base64) ?
-                  <Image accessibilityLabel={'Submitted ' + item.type} resizeMode="contain"
-                    source={{ uri: 'data:' + imageType(item.content.base64) + ';base64,' + item.content.base64 }}
-                    style={{ width: '100%', height: 320, borderRadius: 12, backgroundColor: palette.background }}/> :
-                <Text style={{ color: palette.muted, lineHeight: 20 }}>
-                  Open this file on a computer to see it.
-                </Text>}
+              <SubmittedContent content={item.content} label={(item.title || 'Submitted ' + item.type) + ' by ' + studentName}/>
             </View>)}
         </Card>
       </Section>
@@ -211,6 +205,28 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
       </Section>
     </>}</QueryState>
   </Page>;
+}
+
+/**
+ * One submitted piece of work: text as written, a picture drawn (only if its bytes are a PNG or
+ * JPEG), a recording played in the app (an `.m4a`, MP3 or WAV), a link opened in the browser, and
+ * anything else (a PDF, a WebM recording) on a computer.
+ */
+function SubmittedContent({ content, label }: { content: { kind: string; text?: string; base64?: string; url?: string }; label: string }) {
+  const palette = usePalette();
+  if (content.kind === 'text' && typeof content.text === 'string') {
+    return <Text selectable style={{ fontSize: 15, color: palette.ink, lineHeight: 24 }}>{content.text}</Text>;
+  }
+  const kind = content.kind === 'bytes' && content.base64 ? mediaKind(content.base64) : null;
+  if (kind === 'image') {
+    return <Image accessibilityLabel={label} resizeMode="contain"
+      source={{ uri: 'data:' + imageType(content.base64!) + ';base64,' + content.base64 }}
+      style={{ width: '100%', height: 320, borderRadius: 12, backgroundColor: palette.background }}/>;
+  }
+  if (kind === 'audio') return <Base64Audio base64={content.base64!} label={label}/>;
+  const link = content.kind === 'external' && content.url ? safeLink(content.url) : null;
+  if (link) return <Button label={'Open ' + new URL(link).host} variant="outline" onPress={() => openExternal(link)}/>;
+  return <Text style={{ color: palette.muted, lineHeight: 20 }}>Open this file on a computer to see it.</Text>;
 }
 
 /** The Review tab: recent assignments across a teacher's classes, with work waiting to be seen. */

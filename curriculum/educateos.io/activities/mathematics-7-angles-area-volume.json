@@ -1,0 +1,140 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Use angle relationships to find unknown angles, then find area, surface area and volume, and describe cross sections.",
+    "problems": [
+      {
+        "prompt": "Two angles are complementary. One measures 28°. What does the other measure?"
+      },
+      {
+        "prompt": "Two angles are supplementary. One measures 3x and the other measures x + 20. Write and solve an equation for x, then find both angles."
+      },
+      {
+        "prompt": "Two straight lines cross. One of the four angles measures 115°. Find the other three angles and name each relationship you used."
+      },
+      {
+        "prompt": "A garden is an L shape made of a 10 m by 4 m rectangle joined to a 6 m by 3 m rectangle. What is its area?"
+      },
+      {
+        "prompt": "A box is a rectangular prism 8 inches long, 5 inches wide and 3 inches tall. Find its volume and its surface area."
+      },
+      {
+        "prompt": "A tent is a triangular prism. The triangle has a base of 6 feet and a height of 4 feet, and the tent is 10 feet long. Find its volume."
+      },
+      {
+        "prompt": "Describe the shape you get when you slice a right rectangular prism parallel to its base, and when you slice a right rectangular pyramid parallel to its base."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Angles, Area and Volume"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.B.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-angles-area-volume",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct solutions"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Names relationships and formulas"
+      },
+      {
+        "id": "units",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels units"
+      }
+    ],
+    "title": "Angles, area and volume"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -15,12 +15,13 @@
 //   district's policy engine.
 import { z } from "zod";
 import { ERROR_STATUS } from "@educateos/academics";
-import { EducateOsError, type ActivityId, type Caller, type DistrictId } from "@educateos/contracts";
+import { EducateOsError, type ActivityId, type Caller, type DistrictId, type OfferingId } from "@educateos/contracts";
 import type { DistrictApp, DistrictAppStores, RequestVerifier } from "@educateos/district-app";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { recordPendingIdentityLink } from "@educateos/identity-links";
 import {
   AgsClient,
+  ClassroomGradeSink,
   createLtiHandler,
   DynamicRegistration,
   GradePassback,
@@ -29,6 +30,8 @@ import {
   LtiServiceClient,
   NrpsClient,
   PlatformJwksCache,
+  type ClassroomProvider,
+  type GradeSink,
   type ResolvedLaunch,
   type ToolKeySet,
 } from "@educateos/lti";
@@ -40,11 +43,14 @@ import {
   LtiAdminService,
   LtiAdvantageService,
   OfficialGradeApprovals,
+  authorizeDeepLinking,
+  ClassroomGradeAdminService,
   policySelectActivities,
   recordLaunchServices,
   type ActivityCatalog,
 } from "@educateos/lti-district";
 import { DurableObjectRecordTable, type LtiSqlStorage } from "@educateos/lti-district/durable-object";
+import { LTI_PLATFORM_PREFIX, NO_PLATFORM, startDistrictLtiPlatform, type DistrictLtiPlatform, type LtiAdminRoute } from "./lti-platform.ts";
 
 /** The name platforms show for the tool when it registers itself. */
 export const LTI_TOOL_NAME = "EducateOS";
@@ -66,6 +72,22 @@ export interface DistrictLtiOptions {
    * may register, be trusted or launch under one (SCHO-306).
    */
   reservedIssuers: readonly string[];
+  /**
+   * Whether the district also runs the LTI Platform (SCHO-179), from `LTI_PLATFORM`. Off, its
+   * `/lti/platform/` paths are 404 and its administrators' routes do not exist.
+   */
+  platform?: boolean;
+  /**
+   * The district's Google Classroom connection, when it has one (SCHO-428): approved grades of an
+   * offering routed to its Classroom course are published there, and administrators get the
+   * `classroom/*` routes. Absent, those routes do not exist and a Classroom route cannot publish.
+   */
+  classroom?: {
+    /** Writes to Classroom as each course's owner. */
+    provider: ClassroomProvider;
+    /** The Classroom course an offering was imported from, if its roster is Classroom. */
+    courseOf: (offeringId: OfferingId) => Promise<string | undefined>;
+  };
 }
 
 /** The district's LTI Tool and its administrators' surface. */
@@ -74,6 +96,8 @@ export interface DistrictLti {
   serveTool(request: Request): Promise<Response | undefined>;
   /** Serves `/api/lti/*` for an Access-verified district principal. */
   serveAdmin(request: Request): Promise<Response>;
+  /** The district's LTI Platform (SCHO-179), or `undefined` when `LTI_PLATFORM` leaves it off. */
+  readonly platform: DistrictLtiPlatform | undefined;
 }
 
 /** The prefix of the administrators' LTI surface. */
@@ -89,6 +113,8 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
   const lti = createLtiDistrictStores(new DurableObjectRecordTable(options.storage), {
     targets: directoryRegistrationTargets({ districtId, directory, activities, reservedIssuers: options.reservedIssuers }),
   });
+
+  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, authorizer: app.engine, stores: lti, directory, jsonBody, origin: toolOrigin, fetch }) : undefined;
 
   // The broker and the service client read keys synchronously; each request first loads the
   // stored set (an imported copy is cached until the stored key IDs change), so a rotation made
@@ -120,6 +146,18 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     fetch,
   });
   const approvals = new OfficialGradeApprovals({ districtId, columns: lti.gradeColumns, assessments: stores.assessment });
+  const sinks: GradeSink[] = [new LtiAgsGradeSink({ services, registrations: lti.registrations })];
+  if (options.classroom !== undefined) sinks.push(new ClassroomGradeSink(options.classroom.provider));
+  const classroomAdmin = options.classroom === undefined ? undefined : new ClassroomGradeAdminService({
+    districtId,
+    authorizer: app.engine,
+    directory,
+    provider: options.classroom.provider,
+    courseOf: options.classroom.courseOf,
+    gradeRoutes: lti.gradeRoutes,
+    gradeColumns: lti.gradeColumns,
+    assessments: stores.assessment,
+  });
   const admin = new LtiAdminService({
     districtId,
     authorizer: app.engine,
@@ -148,7 +186,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
       routes: lti.gradeRoutes,
       approvals,
       ledger: lti.passbackLedger,
-      sinks: [new LtiAgsGradeSink({ services, registrations: lti.registrations })],
+      sinks,
     }),
     approvals,
     toolKeys: lti.toolKeys,
@@ -163,6 +201,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
       return htmlPage(await launchPage(launch));
     },
     onDeepLinkingRequest: async (launch, session) => {
+      await authorizeDeepLinking({ authorizer: app.engine }, await directory(), launch);
       await recordLaunchServices(lti.contextServices, launch);
       return htmlPage(await pickerPage(launch, session));
     },
@@ -201,8 +240,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     ].join("");
   }
 
-  type AdminRoute = (caller: Caller, request: Request, params: Record<string, string>) => Promise<unknown>;
-  const adminRoutes: { method: "GET" | "POST"; path: string; run: AdminRoute }[] = [
+  const adminRoutes: LtiAdminRoute[] = [
     { method: "POST", path: "invitations", run: (caller) => admin.inviteRegistration(caller) },
     {
       method: "GET", path: "registrations", run: async (caller) => ({
@@ -210,6 +248,10 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
         pending: await admin.listPendingRegistrations(caller),
       }),
     },
+    { method: "POST", path: "registrations/course-links", run: async (caller, request) => {
+      await admin.addCourseLink(caller, await jsonBody(request));
+      return { connected: true };
+    } },
     { method: "POST", path: "pending/:id/approve", run: async (caller, request, { id }) => admin.approveRegistration(caller, id, await jsonBody(request)) },
     {
       method: "POST", path: "pending/:id/reject", run: async (caller, _request, { id }) => {
@@ -230,8 +272,13 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     { method: "POST", path: "line-items", run: async (caller, request) => advantage.createLineItem(caller, await jsonBody(request)) },
     { method: "POST", path: "roster", run: async (caller, request) => advantage.readRoster(caller, await jsonBody(request)) },
     { method: "POST", path: "passback", run: async (caller, request) => advantage.publishGrade(caller, await jsonBody(request)) },
+    ...classroomAdmin === undefined ? [] : [
+      { method: "POST", path: "classroom/grade-routes", run: async (caller, request) => classroomAdmin.routeGradesToClassroom(caller, await jsonBody(request)) },
+      { method: "POST", path: "classroom/columns", run: async (caller, request) => classroomAdmin.classroomColumn(caller, await jsonBody(request)) },
+    ] satisfies LtiAdminRoute[],
     { method: "GET", path: "tool-keys", run: async (caller) => ({ kids: await advantage.toolKeyIds(caller) }) },
     { method: "POST", path: "tool-keys/rotate", run: (caller) => advantage.rotateToolKeys(caller) },
+    ...platform?.adminRoutes ?? [],
   ];
 
   async function callerOf(request: Request): Promise<Caller> {
@@ -242,8 +289,19 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
   }
 
   return {
+    platform,
+
     async serveTool(request) {
-      if (!new URL(request.url).pathname.startsWith("/lti/")) return undefined;
+      const { pathname } = new URL(request.url);
+      if (!pathname.startsWith("/lti/")) return undefined;
+      if (pathname.startsWith(LTI_PLATFORM_PREFIX)) {
+        try {
+          if (platform === undefined) throw NO_PLATFORM();
+          return (await platform.serve(request)) ?? errorResponse(new EducateOsError("not-found", "No such LTI Platform endpoint."));
+        } catch (error) {
+          return errorResponse(error);
+        }
+      }
       try {
         await loadKeys();
       } catch (error) {
@@ -263,7 +321,8 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
         // elsewhere cannot use an administrator's Access session to rotate keys or reject a platform.
         if (request.method === "POST" && !isJson(request)) throw new EducateOsError("validation-failed", "Send the request as application/json.");
         const caller = await callerOf(request);
-        return Response.json(await matched.route.run(caller, request, matched.params), { headers: { "cache-control": "no-store" } });
+        const result = await matched.route.run(caller, request, matched.params);
+        return result instanceof Response ? result : Response.json(result, { headers: { "cache-control": "no-store" } });
       } catch (error) {
         return errorResponse(error);
       }

@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "5",
+    "minWords": 150,
+    "minimumCitations": 1,
+    "overview": "Use test results to choose the best lunch cooler for the school, and explain your choice.",
+    "prompt": "Read \"Cooler Test Results.\" Which cooler should the school buy? State your choice in your first sentence. Then check each cooler against every criterion and constraint: how long it kept the milk cold, its cost, and its mass. One mass is given in grams, so convert it to kilograms to compare. Explain why you rejected the other two coolers, using numbers from the test results. End with a conclusion, and suggest one improvement the makers of your chosen cooler could test next.",
+    "resources": [
+      "cooler-test-results"
+    ],
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Design Check: Which Cooler Should We Buy?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.MD.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-cooler-choice",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Our school wants to buy lunch coolers for field trips. A cooler must keep milk cold (below 4 °C) for at least 5 hours, from when we pack lunch to when we eat. Each cooler can cost no more than $40, and a student must be able to carry it, so it must have a mass of 2 kilograms or less when empty.\n\nThe fifth grade tested three coolers. Each one held the same 6 cartons of milk and the same ice pack, and stayed in the same sunny room.\n\nCOOLER A: The Lunch Locker\n- Cost: $35\n- Empty mass: 1.8 kilograms\n- Kept the milk below 4 °C for: 6 hours\n- Notes: soft sides, shoulder strap\n\nCOOLER B: The Arctic Box\n- Cost: $55\n- Empty mass: 2,500 grams\n- Kept the milk below 4 °C for: 9 hours\n- Notes: hard sides, two handles\n\nCOOLER C: The Snack Pack\n- Cost: $20\n- Empty mass: 900 grams\n- Kept the milk below 4 °C for: 3 hours\n- Notes: thin sides, zipper broke during the test",
+      "id": "cooler-test-results",
+      "title": "Cooler Test Results"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "opinion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear choice"
+      },
+      {
+        "id": "criteria",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Checks every criterion and constraint"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses data from the test results, with units"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Linking words and a conclusion"
+      }
+    ],
+    "title": "Design choice"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

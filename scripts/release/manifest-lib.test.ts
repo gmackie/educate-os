@@ -14,8 +14,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectAssets, collectModules, stableStringify } from "./hash-lib.ts";
 import {
-  ADMIN_PACKAGE, ASSET_VARIANTS, releaseAssetVariants, COMPONENT_ASSET_VARIANT, DISTRICT_ORIGIN, generateManifest, readD1Migrations,
-  readDeployablePackages, readDeployInputs, readReleaseComponents, releaseShortName, type WorkerBuild,
+  ADMIN_PACKAGE, ASSET_VARIANTS, releaseAssetVariants, COMPONENT_ASSET_VARIANT, DISTRICT_ORIGIN, DISTRICT_SERVICE_PACKAGE,
+  DISTRICT_WORKER_ROUTES, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs, readReleasePackages,
+  releaseShortName, type WorkerBuild,
 } from "./manifest-lib.ts";
 
 const RELEASE = dirname(fileURLToPath(import.meta.url));
@@ -28,10 +29,11 @@ const PLACEHOLDER_RE =
     /^\$(ACCOUNT_ID|PUBLIC_BASE_URL|KV_[A-Z0-9_]+_ID|R2_[A-Z0-9_]+_NAME|D1_[A-Z0-9_]+_ID|WORKER_NAME\([a-z0-9-]+\)|SECRET\([A-Z0-9_]+\))/;
 
 // Release components (the OSS admin) as build-release.ts assembles them: from their config template,
-// with their real D1 migrations and a fixture standing in for their own SPA build.
+// with their real D1 migrations and a fixture standing in for their own SPA build. The district
+// Worker's UIs are a fixture too.
 function readTestWorkerBuilds(): WorkerBuild[] {
   const packages = join(ROOT, "packages");
-  return [...readDeployablePackages(packages), ...readReleaseComponents(packages)].map((pkg) => {
+  return readReleasePackages(packages).map((pkg) => {
     const bundleDir = join(TESTDATA, "fixture-bundles", pkg.name);
     assert.ok(existsSync(bundleDir),
         `missing fixture bundle for new deployable package: add scripts/release/testdata/` +
@@ -45,7 +47,7 @@ function readTestWorkerBuilds(): WorkerBuild[] {
       modules,
       deployInputs: readDeployInputs(pkg.dir),
       ...(d1Migrations.length > 0 ? { d1Migrations } : {}),
-      ...(pkg.component ? { ownAssets: collectAssets(join(TESTDATA, "fixture-assets", pkg.name)) } : {}),
+      ...(pkg.component || pkg.districtUi ? { ownAssets: collectAssets(join(TESTDATA, "fixture-assets", pkg.name)) } : {}),
     };
   });
 }
@@ -206,11 +208,25 @@ test("worker entries carry the deploy contract", () => {
     }
   }
 
-  // The MCP connectors are install-once for SINGLETON's second reason: they take no inputs, so a
-  // second install could not differ from the first — it would only mint a second vendor id.
+  // The MCP Server connector is install-once for SINGLETON's second reason: it takes no inputs, so
+  // a second install could not differ from the first — it would only mint a second vendor id.
   assert.equal(workers["gatekeeper-mcp"].singleton, true);
-  assert.equal(workers["gatekeeper-mcp-portal"].singleton, true);
   assert.equal(workers["gatekeeper-homeassistant"].singleton, true);
+
+  // The MCP Server Portal takes its portal as deploy inputs (SCHO-409): the URL is asked for, the
+  // rest may be left blank, and the token is a secret. Two installs can front two portals, so it
+  // is no longer install-once.
+  const portal = workers["gatekeeper-mcp-portal"];
+  assert.equal(portal.singleton, undefined);
+  assert.deepEqual(portal.inputs?.map((input) => [input.name, input.kind, input.optional ?? false]), [
+    ["MCP_PORTAL_URL", "var", false],
+    ["MCP_PORTAL_NAME", "var", true],
+    ["MCP_PORTAL_AUTH", "var", true],
+    ["MCP_PORTAL_TOKEN", "secret", true],
+    ["MCP_PORTAL_TRUST_ANNOTATIONS", "var", true],
+    ["MCP_PORTAL_HIDDEN_SERVER_IDS", "var", true],
+  ]);
+  assert.deepEqual(portal.bindings, [{ type: "secret_text", name: "MCP_PORTAL_TOKEN", text: "$SECRET(MCP_PORTAL_TOKEN)" }]);
 
   // The EducateOS gatekeeper takes no OAuth credentials: the district verifies its own sign-in,
   // through a service binding the district deployment injects, so the release declares none.
@@ -321,7 +337,7 @@ test("generateManifest rejects gatekeepers whose folded shortNames collide", () 
 
 test("per-package deploy-inputs.json files are well-formed when present", () => {
   const KINDS = new Set(["secret", "var", "workerName"]);
-  for (const pkg of [...readDeployablePackages(join(ROOT, "packages")), ...readReleaseComponents(join(ROOT, "packages"))]) {
+  for (const pkg of readReleasePackages(join(ROOT, "packages"))) {
     const inputs = readDeployInputs(pkg.dir);
     if (inputs === undefined) continue;
     assert.ok(Array.isArray(inputs), `${pkg.name}/deploy-inputs.json must be an array`);
@@ -332,11 +348,15 @@ test("per-package deploy-inputs.json files are well-formed when present", () => 
       assert.equal(typeof input.label, "string", `${pkg.name}: input.label`);
       for (const key of Object.keys(input)) {
         assert.ok(["name", "kind", "label", "help", "consoleUrl", "setupSteps",
-          "redirectUriTemplate", "generated"].includes(key), `${pkg.name}: unknown input key ${key}`);
+          "redirectUriTemplate", "generated", "optional"].includes(key), `${pkg.name}: unknown input key ${key}`);
       }
       if (input.generated !== undefined) {
         assert.equal(input.generated, true, `${pkg.name}: generated must be true`);
         assert.equal(input.kind, "secret", `${pkg.name}: only a secret can be generated`);
+      }
+      if (input.optional !== undefined) {
+        assert.equal(input.optional, true, `${pkg.name}: optional must be true`);
+        assert.notEqual(input.kind, "workerName", `${pkg.name}: a workerName can't be optional`);
       }
       if (input.setupSteps !== undefined) {
         assert.ok(Array.isArray(input.setupSteps) &&
@@ -389,8 +409,9 @@ test("the district service declares no D1 or R2, sends email through Email Servi
   assert.equal(district.d1Migrations, undefined);
   assert.ok(!district.bindings.some((b) => b.type === "d1" || b.type === "r2_bucket"));
   // SCHO-189: its email leaves through Email Service in the installing account, and its
-  // notification and digest jobs run on Cron Triggers.
-  assert.deepEqual(district.bindings.filter((b) => b.type !== "secret_text"), [{ type: "send_email", name: "SEND_EMAIL" }]);
+  // notification and digest jobs run on Cron Triggers. Its UIs are its assets (SCHO-318).
+  assert.deepEqual(district.bindings.filter((b) => b.type !== "secret_text"),
+      [{ type: "send_email", name: "SEND_EMAIL" }, { type: "assets", name: "ASSETS" }]);
   assert.deepEqual(district.crons, ["7 * * * *", "0 14 * * SUN"]);
   assert.deepEqual(district.migrations, [{ tag: "v1", new_sqlite_classes: ["DistrictObject"] }]);
   assert.deepEqual(district.inputs?.map((input) => [input.name, input.kind]),
@@ -504,7 +525,7 @@ test("the asset variants are the declared ones, and the one-origin variant is re
   assert.throws(() => generate({ access: assets, "access-ai": assets, other: assets }), /unknown asset variant other/);
 });
 
-test("a router config that binds DISTRICT itself, or a generated input that is not a secret, fails the build", () => {
+test("a router config that binds DISTRICT itself, or a generated or optional input of the wrong kind, fails the build", () => {
   const builds = readTestWorkerBuilds();
   const withDistrict = builds.map((w) => w.pkgName !== "router" ? w : {
     ...w, config: { ...w.config, services: [...w.config.services ?? [], { binding: "DISTRICT", service: "educateos-district-worker" }] },
@@ -514,6 +535,13 @@ test("a router config that binds DISTRICT itself, or a generated input that is n
     ...w, deployInputs: [{ name: "X", kind: "var" as const, label: "X", generated: true as const }],
   });
   assert.throws(() => buildTestManifest(generatedVar), /X is marked generated, which only a secret can be/);
+  for (const input of [
+    { name: "X", kind: "secret" as const, label: "X", generated: true as const, optional: true as const },
+    { name: "X", kind: "workerName" as const, label: "X", optional: true as const },
+  ]) {
+    const optional = builds.map((w) => w.pkgName !== "gatekeeper-mcp-portal" ? w : { ...w, deployInputs: [input] });
+    assert.throws(() => buildTestManifest(optional), /X is marked optional, which only a var or an asked-for secret can be/);
+  }
 });
 
 // SCHO-263: the OSS admin ships in every release as a component built from its config template,
@@ -554,6 +582,26 @@ test("the OSS admin is a release component with its own SPA, its D1 migrations a
   for (const { hash } of Object.values(spa.manifest)) assert.ok(manifest.assets[hash], `asset blob ${hash} missing`);
   // The local development config's example values never reach a release.
   assert.doesNotMatch(JSON.stringify(admin), /northfield|local-development|educateos-admin-local|0{8}-0{4}/);
+});
+
+// SCHO-318: an installed district serves its student, admin and teacher UIs, as its ForgeGraph
+// deployments do, so the release carries them as the district Worker's own assets.
+test("the district Worker carries its UIs as its own assets, run first only on its own routes", () => {
+  const manifest = buildTestManifest();
+  const district = manifest.workers[DISTRICT_SERVICE_PACKAGE]!;
+  assert.deepEqual(Object.keys(district.assetsConfig?.variants ?? {}), [COMPONENT_ASSET_VARIANT]);
+  assert.deepEqual(district.assetsConfig?.run_worker_first, DISTRICT_WORKER_ROUTES);
+  assert.equal(district.assetsConfig?.not_found_handling, "single-page-application");
+  const ui = district.assetsConfig!.variants[COMPONENT_ASSET_VARIANT]!;
+  assert.deepEqual(Object.keys(ui.manifest).toSorted(), ["/admin/index.html", "/index.html", "/teach/index.html"]);
+  for (const { hash } of Object.values(ui.manifest)) assert.ok(manifest.assets[hash], `asset blob ${hash} missing`);
+  // Its wrangler.jsonc declares none: the ForgeGraph generator and the release each add them.
+  assert.equal(readDeployablePackages(join(ROOT, "packages")).find((pkg) => pkg.name === DISTRICT_SERVICE_PACKAGE)!.config.assets, undefined);
+  // Without its UI build it would get the Workshop frontend's variants, which is refused.
+  const builds = readTestWorkerBuilds();
+  const { ownAssets: _ownAssets, ...withoutUi } = builds.find((w) => w.pkgName === DISTRICT_SERVICE_PACKAGE)!;
+  assert.throws(() => buildTestManifest([...builds.filter((w) => w.pkgName !== DISTRICT_SERVICE_PACKAGE), withoutUi]),
+      /serves assets but has no UI build/);
 });
 
 test("the OSS admin may take only generated secrets, and its own assets need an assets config", () => {

@@ -125,7 +125,8 @@ export async function publishStarterMaterial(input: {
   const { artifacts, assessment, caller, title, content } = input;
   await assessment.getAssignment(caller, input.assignmentId);
   const personal = await input.workspaces.ensurePersonalWorkspace(caller);
-  const type = content.kind === "external" ? "external-ref" : content.kind === "bytes" && content.mediaType.startsWith("image/") ? "image" : "document";
+  const media = content.kind === "bytes" ? content.mediaType.split("/")[0] : undefined;
+  const type = content.kind === "external" ? "external-ref" : media === "image" ? "image" : media === "audio" ? "audio" : "document";
   const { artifact, head } = await artifacts.createArtifact(caller, { workspaceId: personal.id, type, title, content, aiAssistance: { level: "none" } });
   const { content: _stored, ...material }: StarterMaterial = await assessment.publishStarterMaterial(caller, input.assignmentId, {
     artifactId: artifact.id,

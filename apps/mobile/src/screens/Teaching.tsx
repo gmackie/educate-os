@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
-import { CheckCircle2, FileText, Megaphone, MessagesSquare, NotebookPen, PenLine } from 'lucide-react-native';
+import { CheckCircle2, ExternalLink, FileText, KeyRound, Megaphone, MessagesSquare, NotebookPen, PenLine } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail, Gradebook, QuizQuestion, QuizResponse, StaffAttempt } from '../types';
 import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
 import { usePalette } from '../ui/theme-context';
-import { Markdown } from '../ui/Markdown';
+import { Markdown, openExternal } from '../ui/Markdown';
+import { moduleRows, provenance } from '../modules.ts';
 import { localInput, parseLocal } from '../dates.ts';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title, useStyles } from '../ui/Primitives';
 
@@ -94,12 +95,31 @@ export function TeacherClassHub({ client, offeringId, navigate }: { client: Dist
         onPress={() => navigate({ type: 'discussion', offeringId, topicId: topic.id })}/>)}</Card>
     </Section>}
 
-    {data.outline && data.outline.pages.length > 0 && <Section title="Module pages">
-      <Card>{data.outline.modules.flatMap((m) => m.items.flatMap((item) => {
-        const page = item.kind === 'page' ? data.outline!.pages.find((p) => p.id === item.pageId) : undefined;
-        return page ? [<Item key={item.id} title={page.title} detail={m.title + (m.published ? '' : ' · Draft')}
-          leading={<FileText size={19} color={palette.primary}/>} onPress={() => navigate({ type: 'page', offeringId, pageId: page.id })}/>] : [];
-      }))}</Card>
+    {data.outline && data.outline.modules.length > 0 && <Section title="Modules">
+      <View style={{ gap: 12 }}>{data.outline.modules.map((m) => {
+        // Activities are under Assignments; here are the module's pages, links and teacher-only notes.
+        const rows = moduleRows(m, data.outline!.pages, 'teacher').filter((row) => row.kind !== 'activity');
+        const from = provenance(m.source);
+        return <Card key={m.id}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Text accessibilityRole="header" style={{ color: palette.ink, fontWeight: '800', fontSize: 16, flex: 1 }}>{m.title}</Text>
+            {!m.published && <Chip label="Draft" tone="neutral"/>}
+          </View>
+          {from && <Text style={{ color: palette.muted, fontSize: 12, marginBottom: 4 }}>{from}</Text>}
+          {rows.length === 0 && <Text style={{ color: palette.muted, paddingVertical: 8 }}>Only activities in this module.</Text>}
+          {rows.map((row) => row.kind === 'link'
+            ? <Item key={row.id} title={row.title} detail="Link" leading={<ExternalLink size={19} color={palette.primary}/>}
+              onPress={row.url ? () => openExternal(row.url!) : undefined}/>
+            : row.kind === 'teacher-note'
+              ? <Item key={row.id} title={row.page.title} detail={'Teacher only · ' + row.label}
+                leading={<KeyRound size={19} color={palette.amber}/>} trailing={<Chip label={row.label} tone="amber"/>}
+                onPress={() => navigate({ type: 'page', offeringId, pageId: row.page.id })}/>
+              : row.kind === 'page'
+                ? <Item key={row.id} title={row.page.title} detail="Page" leading={<FileText size={19} color={palette.primary}/>}
+                  onPress={() => navigate({ type: 'page', offeringId, pageId: row.page.id })}/>
+                : null)}
+        </Card>;
+      })}</View>
     </Section>}
   </>}</QueryState>;
 }

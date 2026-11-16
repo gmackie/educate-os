@@ -1,0 +1,47 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Graph the number of floating disks against time for each condition, and find the ET50: the time when half the disks were floating. Explain why the disks float, using the photosynthesis equation. How does light intensity affect the rate of photosynthesis, and what does the dark cup tell you?",
+    "dataColumns": [
+      {
+        "name": "Condition"
+      },
+      {
+        "name": "Distance from lamp",
+        "unit": "cm"
+      },
+      {
+        "name": "Time",
+        "unit": "min"
+      },
+      {
+        "name": "Disks floating (of 10)"
+      }
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Punch 10 disks from a spinach leaf for each condition, avoiding large veins. Put them in a syringe with bicarbonate solution, cover the tip, and pull back the plunger to draw the air out of the leaf until the disks sink. Pour the disks and solution into a clear cup. Place one cup 10 cm from the lamp, one 30 cm away, and one in the dark as a control. Every minute, count how many disks are floating. Describe each step you followed, what you kept the same in every cup, and anything you changed.",
+    "overview": "Measure the rate of photosynthesis by timing how quickly sunken spinach leaf disks float to the surface under a lamp.",
+    "question": "How does light intensity, controlled by the distance between a lamp and the leaf disks, affect the rate of photosynthesis?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Floating Leaf Disks"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-floating-leaf-disks",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

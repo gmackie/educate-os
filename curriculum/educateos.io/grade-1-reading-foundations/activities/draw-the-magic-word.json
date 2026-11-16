@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:903ce30a1aa0647ba24ec7e985c335a362f41df8e134e88a7e8a772ce6d47ab1",
+      "id": "educateos.io/grade-1-reading-foundations-draw-the-magic-word",
+      "version": "1.0.0"
+    }
+  },
+  "id": "draw-the-magic-word",
+  "role": "assignment",
+  "title": "Draw the Magic Word"
+}

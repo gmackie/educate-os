@@ -1,0 +1,65 @@
+{
+  "id": "earth-and-space",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "our-star-and-the-sky"
+    },
+    {
+      "kind": "activity",
+      "ref": "shadow-tracker"
+    },
+    {
+      "kind": "activity",
+      "ref": "space-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.MD.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.G.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Explain why the sun looks brighter than other stars, how Earth's spin causes day and night and changing shadows, how Earth's orbit changes the stars we see, and which way gravity pulls.",
+  "title": "Earth and Space"
+}

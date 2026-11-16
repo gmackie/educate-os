@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/dom";
+import { screen, waitFor, within } from "@testing-library/dom";
 import { fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 
@@ -9,6 +9,8 @@ describe("a school's page", () => {
     const district = fakeDistrict();
     renderConsole(district.client, "schools/sch_fk-high");
     expect(await screen.findByRole("heading", { name: "Fake High School" })).toBeTruthy();
+    // The school names the document title, so its page is told apart from every other (WCAG 2.4.2).
+    await waitFor(() => expect(document.title).toBe("Fake High School · EducateOS district admin"));
     expect(screen.getByText("Grades 9-12")).toBeTruthy();
 
     const terms = screen.getByRole("table", { name: "Terms with classes at this school" });
@@ -43,5 +45,6 @@ describe("a school's page", () => {
   it("says so for a school the district does not have", async () => {
     renderConsole(fakeDistrict().client, "schools/sch_nowhere");
     expect(await screen.findByText("There's no such school")).toBeTruthy();
+    expect(document.title).toBe("School · EducateOS district admin");
   });
 });

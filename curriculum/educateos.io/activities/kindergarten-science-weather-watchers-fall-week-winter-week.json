@@ -1,0 +1,96 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to two weeks of our weather chart. Count the days and tell how the weather changed.",
+    "passage": "Here are two weeks from a weather chart. In a fall week, there were 3 sunny days, 1 rainy day and 1 cloudy day. In a winter week, there were 1 sunny day, 1 cloudy day and 3 snowy days.",
+    "questions": [
+      {
+        "prompt": "How many sunny days were in the fall week?"
+      },
+      {
+        "prompt": "How many snowy days were in the winter week?"
+      },
+      {
+        "prompt": "Which week had more sunny days?"
+      },
+      {
+        "prompt": "How did the weather change from fall to winter?"
+      }
+    ],
+    "sentenceFrames": [
+      "The fall week had ___ sunny days.",
+      "In winter, the weather was ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Fall Week, Winter Week"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.C.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-fall-week-winter-week",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "count",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I counted the days"
+      },
+      {
+        "id": "change",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told how the weather changed"
+      }
+    ],
+    "title": "Fall week, winter week"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

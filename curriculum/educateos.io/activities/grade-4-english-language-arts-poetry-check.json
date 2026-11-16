@@ -1,0 +1,168 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Read a new poem on your own and show what you know about poems and figurative language.",
+    "passage": "The Old Oak in Winter\n\nThe old oak stands at the edge of the field,\na stubborn soldier with a cracked bark shield.\nThe wind pushes hard, the snow piles deep,\nbut the old oak never falls asleep.\n\nIts branches are arms held up to the sky,\nwaving to geese as they hurry by.\nIt wears a white scarf of frost and ice,\nand the squirrels say thank you, once or twice.\n\nWhen spring comes back like a friend at the door,\nthe oak will be green and alive once more.\nIt has stood through a hundred winters, you see.\nBeing patient is part of being a tree.",
+    "questions": [
+      {
+        "prompt": "How many stanzas does this poem have? Describe its rhyme pattern."
+      },
+      {
+        "prompt": "In the first stanza, the oak is called \"a stubborn soldier with a cracked bark shield.\" Is this a simile or a metaphor? What does it tell you about the oak?"
+      },
+      {
+        "prompt": "What does stubborn mean in this poem? Which other line helps you know?"
+      },
+      {
+        "prompt": "Find an example of personification in the second stanza and explain it."
+      },
+      {
+        "prompt": "Find the simile in the third stanza. What two things are compared, and why does the comparison fit?"
+      },
+      {
+        "prompt": "What is the theme of the poem? Use the last two lines to support your answer."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Poetry Check: \"The Old Oak in Winter\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-poetry-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Describes the poem's structure"
+      },
+      {
+        "id": "figurative",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies and explains figurative language"
+      },
+      {
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains word meanings in context"
+      },
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States the theme with support"
+      }
+    ],
+    "title": "Reading poetry"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

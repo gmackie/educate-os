@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:111153bd440c8a1fa9c1b1c59c7794bd36c60b4ea6695c64ca6ed3d86fbd9948",
+      "id": "educateos.io/grade-1-mathematics-draw-it-with-tens",
+      "version": "1.0.0"
+    }
+  },
+  "id": "draw-it-with-tens",
+  "role": "assignment",
+  "title": "Draw It With Tens"
+}

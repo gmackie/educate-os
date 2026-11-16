@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4d8867d5b117afbd631894f9aaf4585165d89416e6a8c5e69141d726cee83660",
+      "id": "educateos.io/grade-4-english-language-arts-pick-a-class-pet",
+      "version": "1.0.0"
+    }
+  },
+  "id": "pick-a-class-pet",
+  "role": "assessment",
+  "title": "Which Class Pet Should Room 12 Choose?"
+}

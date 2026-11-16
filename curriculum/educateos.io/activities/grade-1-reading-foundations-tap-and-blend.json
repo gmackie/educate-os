@@ -1,0 +1,44 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Tap one finger for each sound, then blend the sounds into a word.",
+    "passage": "Every word is made of sounds. Tap one finger for each sound you hear. Then slide the sounds together to say the word. Listen: /m/ /a/ /t/. Mat! Now it is your turn.",
+    "questions": [
+      {
+        "prompt": "Tap the sounds: /s/ /i/ /t/. Blend them. Say the word."
+      },
+      {
+        "prompt": "Tap the sounds: /b/ /u/ /s/. Blend them. Say the word."
+      },
+      {
+        "prompt": "Say the word hen. Tap each sound. How many sounds did you tap?"
+      },
+      {
+        "prompt": "Say the word fox. What sound do you hear in the middle?"
+      }
+    ],
+    "sentenceFrames": [
+      "The word is ___.",
+      "I tapped ___ sounds.",
+      "The middle sound is ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Tap and Blend"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-tap-and-blend",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

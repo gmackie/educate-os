@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d7d5b8b420452a6516d0bae90dc15511dbcd0060742cd4f1bd147c4bd5421384",
+      "id": "educateos.io/grade-1-mathematics-build-new-shapes",
+      "version": "1.0.0"
+    }
+  },
+  "id": "build-new-shapes",
+  "role": "assignment",
+  "title": "Build New Shapes"
+}

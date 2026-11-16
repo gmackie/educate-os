@@ -475,13 +475,25 @@ html {
 
    Matched on the popup Kumo puts inside, not on `[role="presentation"]` alone, which dialogs also
    use for their backdrop and viewport — raising those would bury a dialog under its own backdrop. */
-[data-base-ui-portal] > [role="presentation"]:has(> .kumo-popover-popup) {
+[data-base-ui-portal] > [role="presentation"]:has(> .kumo-popover-popup),
+[data-base-ui-portal] > [role="presentation"]:has(> .kumo-tooltip-popup [data-share-link-gadgets]) {
   z-index: 1100;
 }
 
 /* Keep global notifications above dialogs, which use z-indexes up to 1200. */
 [role="region"][aria-label="Notifications"] {
   z-index: 2000;
+}
+
+/* Lift the toasts above the chat composer when they would cover it, which a persistent toast does
+   to its Send button (SCHO-411). The composer measures the clearance (useToastClearance.ts). */
+[role="region"][aria-label="Notifications"] {
+  bottom: max(1rem, var(--toast-clearance, 0px));
+}
+@media (min-width: 640px) {
+  [role="region"][aria-label="Notifications"] {
+    bottom: max(2rem, var(--toast-clearance, 0px));
+  }
 }
 
 /* Toast slide-in animation */

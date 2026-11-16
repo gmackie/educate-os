@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6bb11b806b4529c46e5b8461a98fc3a0e85b7e7c65df69eed4b3909ef165f6a1",
+      "id": "educateos.io/biology-1-cell-energy-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "cell-energy-check",
+  "role": "assessment",
+  "title": "Cell Energy Check"
+}

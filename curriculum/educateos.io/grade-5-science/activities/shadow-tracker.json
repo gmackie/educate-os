@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:378c5b98e636f0768bbb09ce3985d6db4a5c4cc036947996b8f80c08d505e25c",
+      "id": "educateos.io/grade-5-science-shadow-tracker",
+      "version": "1.0.0"
+    }
+  },
+  "id": "shadow-tracker",
+  "role": "assignment",
+  "title": "Shadow Tracker"
+}

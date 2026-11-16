@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f34e1db72ca4bdbcff378d86f8425e88d360a46544075d72c881999ee2480888",
+      "id": "educateos.io/kindergarten-science-weather-watchers-our-rain-cup",
+      "version": "1.0.0"
+    }
+  },
+  "id": "our-rain-cup",
+  "role": "assignment",
+  "title": "Our Rain Cup"
+}

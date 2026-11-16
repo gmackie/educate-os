@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 import {test} from "node:test";
+import {LISTENING_PATHS} from "./listening/core.mjs";
 import {INTAKE_PATHS} from "./intake/core.mjs";
 import {DYNAMIC_PATHS} from "../../packages/educateos-control-plane/src/app.ts";
 
@@ -22,7 +23,7 @@ test("the Worker and its Durable Object class keep the names their data lives un
 });
 
 test("the paths that reach the Worker first are the ones the control plane routes", () => {
-  assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS, ...INTAKE_PATHS]);
+  assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS, ...INTAKE_PATHS, ...LISTENING_PATHS]);
 });
 
 test("the guided install reads releases from educateos.io's release bucket and pins its release keys", async () => {
@@ -54,6 +55,7 @@ test("the isolated intake security and fake-Workers binding suites pass", async 
   execFileSync(process.execPath, ["--experimental-strip-types", "--test",
     fileURLToPath(new URL("intake/intake.test.mjs", import.meta.url)),
     fileURLToPath(new URL("intake/runtime.test.mjs", import.meta.url)),
+    fileURLToPath(new URL("listening/listening.test.mjs", import.meta.url)),
   ], {timeout: 60_000, stdio: "pipe"});
 });
 
@@ -64,4 +66,30 @@ test("the console has moved to the hosted admin, and the admin's export entrypoi
   // The admin binds this entrypoint by name; without the export its service binding is refused.
   const worker = readFileSync(new URL("worker.ts", import.meta.url), "utf8");
   assert.match(worker, /export \{ ControlPlaneExporter \} from "\.\.\/\.\.\/packages\/educateos-control-plane\/src\/worker\.ts";/);
+});
+
+/** The `_headers` file's rules: each path pattern with the header lines under it. */
+const headerRules = () => {
+  const rules = new Map();
+  let current;
+  for (const line of readFileSync(new URL("public/_headers", import.meta.url), "utf8").split("\n")) {
+    if (line.trim() === "" || line.startsWith("#")) continue;
+    if (!/^\s/.test(line)) rules.set(line.trim(), current = []);
+    else current.push(line.trim());
+  }
+  return rules;
+};
+
+test("the demo's page is kept from the edge's rewriting, and its assets are left to be compressed", () => {
+  const rules = headerRules();
+  // The Web Analytics beacon would be injected into the page's HTML (SCHO-224).
+  for (const page of ["/demo", "/demo/", "/demo/index.html"]) {
+    assert.ok(rules.get(page)?.some((h) => /^Cache-Control:.*no-transform/.test(h)), `${page} keeps no-transform`);
+  }
+  // no-transform also stops compression, and the demo's script is megabytes before it (SCHO-321).
+  const demoAssets = [...rules].filter(([pattern]) => pattern === "/*" || pattern.startsWith("/demo/*") || pattern.startsWith("/demo/assets"));
+  assert.ok(demoAssets.length > 0);
+  for (const [pattern, headers] of demoAssets) {
+    assert.ok(!headers.some((h) => h.includes("no-transform")), `${pattern} would stop the demo's assets being compressed`);
+  }
 });

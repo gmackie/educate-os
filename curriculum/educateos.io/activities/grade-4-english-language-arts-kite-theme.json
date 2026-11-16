@@ -1,0 +1,126 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "4",
+    "minWords": 80,
+    "minimumCitations": 1,
+    "overview": "Name a theme of the story and explain it with details from the text.",
+    "prompt": "What is a theme of \"The Kite That Would Not Fly\"? State the theme in one sentence, then use two details from the story to explain how the author shows it.",
+    "resources": [
+      "kite-story"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "The Theme of \"The Kite That Would Not Fly\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-kite-theme",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Lila had built her kite from newspaper and two thin sticks. At the park, she ran as fast as she could, but the kite spun and crashed into the grass. She tried again. Crash. A third time. Crash.\n\n\"It's broken,\" she said, and lifted it over the trash can.\n\nHer grandfather caught her arm. \"A broken kite and a kite that isn't finished are not the same thing,\" he said. He held it up to the wind. \"See how it twists? The tail is too short to keep it steady.\"\n\nLila ran home and found her old blue dress, the one with the torn hem. She cut three long ribbons and tied them to the tail.\n\nBack at the park, the kite lifted, wobbled, and then climbed, higher than any kite in the sky. Lila laughed so hard she almost let go of the string.",
+      "id": "kite-story",
+      "title": "The Kite That Would Not Fly"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States a theme"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses details from the text"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling and punctuation"
+      }
+    ],
+    "title": "Theme response"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

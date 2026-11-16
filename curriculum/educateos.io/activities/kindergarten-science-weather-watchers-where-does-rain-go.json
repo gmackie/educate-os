@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a short text about rain. Tell where rain comes from and where it goes.",
+    "passage": "Rain falls from the clouds. Some rain soaks into the ground. Plants drink it with their roots. Some rain runs down the street and makes puddles. When the sun comes out, it warms the puddles. Little by little, the water goes up into the air. The puddle gets smaller and smaller until it is gone!",
+    "questions": [
+      {
+        "prompt": "Where does rain come from?"
+      },
+      {
+        "prompt": "How do plants drink the rain?"
+      },
+      {
+        "prompt": "What happens to a puddle when the sun comes out?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw rain falling on a plant."
+      }
+    ],
+    "sentenceFrames": [
+      "Rain comes from ___.",
+      "The puddle gets ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Where Does Rain Go?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-where-does-rain-go",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

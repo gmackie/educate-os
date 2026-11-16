@@ -1,0 +1,23 @@
+{
+  "name": "@educateos/home-learning",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS home learning (ADR-0016): parent-managed K-2 practice in a community installation. Families, their children's learner profiles and practice queues, reviewed reading and number-sense content packs with deterministic items, child sessions an adult starts and ends with a PIN, idempotent practice responses, and progress derived from that evidence. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./content": "./src/content/index.ts",
+    "./scoring": "./src/scoring.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/academics": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

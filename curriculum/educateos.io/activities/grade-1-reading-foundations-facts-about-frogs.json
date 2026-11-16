@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to a true text. Tell what it is mostly about and one fact.",
+    "passage": "Frogs are animals that live near water. A frog starts life as a tiny egg. The egg hatches into a tadpole. A tadpole has a tail and swims like a fish. Then it grows legs and loses its tail. Now it is a frog! Frogs use their long, sticky tongues to catch bugs.",
+    "questions": [
+      {
+        "prompt": "What is this text mostly about?"
+      },
+      {
+        "prompt": "What does a frog egg hatch into?"
+      },
+      {
+        "prompt": "How does a frog catch bugs?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a tadpole."
+      }
+    ],
+    "sentenceFrames": [
+      "This text is mostly about ___.",
+      "One fact is ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Facts About Frogs"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-facts-about-frogs",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

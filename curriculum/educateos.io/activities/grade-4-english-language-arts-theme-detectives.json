@@ -1,0 +1,55 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Read a short story together. Track the problem, how the character changes, and the lesson it teaches.",
+    "passage": "The Snow Fort\n\nRavi wanted to build the tallest snow fort on Birch Street, and he wanted to build it alone. When his little sister Mina came out with her red shovel, he waved her away. \"You'll just knock it down,\" he said.\n\nAll morning Ravi rolled snow and stacked it. Every time a wall got as high as his waist, it slumped and slid apart. His mittens were soaked and his nose was numb.\n\nMina sat on the steps and watched. \"The snow is too fluffy,\" she said. \"You have to pack it, like a snowball. I can pack. I'm good at packing.\"\n\nRavi almost said no again. Then he looked at the pile of mush that used to be his wall. \"Fine,\" he sighed. \"Show me.\"\n\nMina scooped snow into her bucket and stomped it down hard. When she flipped the bucket, out came a perfect block. Ravi stacked the blocks while Mina made more. By lunchtime, the fort was taller than both of them.\n\n\"It's the tallest fort on Birch Street,\" Ravi said. Then he grinned at his sister. \"Our fort.\"",
+    "questions": [
+      {
+        "prompt": "What problem does Ravi face in the story?"
+      },
+      {
+        "prompt": "How does Ravi treat Mina at the beginning? Use a detail from the story."
+      },
+      {
+        "prompt": "What makes Ravi change his mind about Mina's help?"
+      },
+      {
+        "prompt": "How is Ravi different at the end of the story? What word or line shows the change?"
+      },
+      {
+        "prompt": "Write a theme of the story in one complete sentence. Remember: a theme is a lesson, not a topic."
+      },
+      {
+        "prompt": "Which detail from the story best supports your theme? Explain why."
+      }
+    ],
+    "sentenceFrames": [
+      "At the beginning, Ravi ___.",
+      "Ravi changes when ___.",
+      "A theme of the story is ___.",
+      "The detail ___ shows this because ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Theme Detectives"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-theme-detectives",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

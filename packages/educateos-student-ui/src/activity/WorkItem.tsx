@@ -14,7 +14,7 @@ import { DatasetGrid } from "./DatasetGrid.tsx";
 import { FileWork } from "./FileWork.tsx";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { UploadField } from "./UploadField.tsx";
-import { editableValue, type WorkMode } from "./workMode.ts";
+import { editableValue, isCaptured, type CapturedWorkMode, type WorkMode } from "./workMode.ts";
 
 /** What a work item needs from its activity. */
 export interface WorkItemProps {
@@ -28,14 +28,19 @@ export interface WorkItemProps {
   saved: ArtifactView | undefined;
   /** A finished class: the work is shown, not edited. */
   readOnly: boolean;
+  /**
+   * The young-learner presentation: the step's page already shows its title and prompt, so the
+   * work item shows only the work, with large controls.
+   */
+  young?: boolean;
   /** The course workspace's ID, opening it on the student's first save. */
   ensureWorkspace: () => Promise<string>;
   onSaved: (view: ArtifactView) => void;
 }
 
-type EditorProps = Omit<WorkItemProps, "saved" | "mode"> & { mode: Exclude<WorkMode, { input: "file" }>; saved: ArtifactView | undefined; savedValue: string };
+type EditorProps = Omit<WorkItemProps, "saved" | "mode"> & { mode: Exclude<WorkMode, CapturedWorkMode>; saved: ArtifactView | undefined; savedValue: string };
 
-const WorkEditor = ({ step, mode, title, draftKey, saved, savedValue: initialSaved, readOnly, ensureWorkspace, onSaved }: EditorProps) => {
+const WorkEditor = ({ step, mode, title, draftKey, saved, savedValue: initialSaved, readOnly, young = false, ensureWorkspace, onSaved }: EditorProps) => {
   const api = useApi();
   const announce = useAnnounce();
   const fieldId = useId();
@@ -122,7 +127,7 @@ const WorkEditor = ({ step, mode, title, draftKey, saved, savedValue: initialSav
 
       <div className="flex flex-wrap items-center gap-2">
         {readOnly ? null : (
-          <Button variant="primary" icon={<FloppyDiskIcon aria-hidden />} loading={saving} disabled={!dirty || saving} onClick={() => void save()}>
+          <Button variant="primary" size={young ? "lg" : "base"} className={young ? "min-h-14 px-6 text-lg" : undefined} icon={<FloppyDiskIcon aria-hidden />} loading={saving} disabled={!dirty || saving} onClick={() => void save()}>
             Save
           </Button>
         )}
@@ -149,12 +154,12 @@ const WorkEditor = ({ step, mode, title, draftKey, saved, savedValue: initialSav
  * opens; after that the editor keeps its own copy, so saving never reloads the editor or moves focus.
  */
 export const WorkItem = (props: WorkItemProps) => {
-  const { step, mode, saved } = props;
+  const { step, mode, saved, young = false } = props;
   const [initial] = useState(saved);
   const [read, reload] = useQuery(`work:${initial?.head.id ?? `new:${props.draftKey}`}`, async (api) =>
     initial === undefined ? undefined : api.call("student.getArtifact", { params: { artifactId: initial.artifact.id } }));
 
-  const heading = (
+  const heading = young ? null : (
     <Text variant="heading" as="h3">
       {step.title}
     </Text>
@@ -166,11 +171,11 @@ export const WorkItem = (props: WorkItemProps) => {
   return (
     <div className="flex flex-col gap-3">
       {heading}
-      <Text variant="secondary">{step.prompt}</Text>
+      {young ? null : <Text variant="secondary">{step.prompt}</Text>}
       {mode.input === "unsupported" ? (
         <Text>Hand this in the way your teacher asked. This kind of file can't be added here yet.</Text>
-      ) : mode.input === "file" ? (
-        <FileWork {...props} mode={mode} saved={read.data} />
+      ) : isCaptured(mode) ? (
+        <FileWork {...props} mode={mode} saved={read.data} large={young} />
       ) : savedValue === undefined ? (
         // A file saved some other way: shown as it is, since it isn't text this editor can change.
         <ArtifactViewer read={read.data!} />

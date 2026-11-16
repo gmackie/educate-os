@@ -1,0 +1,53 @@
+{
+  "id": "poems-and-figurative-language",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "poem-toolkit"
+    },
+    {
+      "kind": "activity",
+      "ref": "poem-or-story"
+    },
+    {
+      "kind": "activity",
+      "ref": "what-the-poet-means"
+    },
+    {
+      "kind": "activity",
+      "ref": "poetry-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read poems for their structure, figurative language and theme, and compare a poem with prose about the same moment.",
+  "title": "Poems and Figurative Language"
+}

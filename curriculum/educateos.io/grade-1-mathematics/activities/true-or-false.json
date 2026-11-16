@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:91c3d6822b300a8215cb4a27993afc9cdf18d85c9d8c9412c88d12b3c1c22aa1",
+      "id": "educateos.io/grade-1-mathematics-true-or-false",
+      "version": "1.0.0"
+    }
+  },
+  "id": "true-or-false",
+  "role": "assignment",
+  "title": "True or False?"
+}

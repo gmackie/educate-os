@@ -1,15 +1,18 @@
 import { EducateOsError } from "@educateos/contracts";
+import { type ActivityExportSource, type PublishedActivityExport, readActivityExport } from "./activity-export.ts";
 import { type OcsFiles, readPackage } from "./package.ts";
 import type { PackageSource, PublishedPackage } from "./resolver.ts";
 import type { OcsPackageId } from "./schema.ts";
 
 /**
- * An in-memory {@link PackageSource} that also accepts publications: the reference behavior for
- * the district course library, and what tests use. A published version is immutable: publishing
- * the same version again succeeds only with identical content.
+ * An in-memory {@link PackageSource} and {@link ActivityExportSource} that also accepts
+ * publications: the reference behavior for the district course library, and what tests use. A
+ * published version, of a package or an export, is immutable: publishing the same version again
+ * succeeds only with identical content.
  */
-export class InMemoryPackageLibrary implements PackageSource {
+export class InMemoryPackageLibrary implements PackageSource, ActivityExportSource {
   readonly #packages = new Map<OcsPackageId, Map<string, PublishedPackage>>();
+  readonly #exports = new Map<string, Map<string, PublishedActivityExport>>();
 
   /**
    * Adds a package version after reading and checking it.
@@ -38,5 +41,33 @@ export class InMemoryPackageLibrary implements PackageSource {
   async getPackage(id: OcsPackageId, version: string): Promise<PublishedPackage | undefined> {
     const found = this.#packages.get(id)?.get(version);
     return found === undefined ? undefined : { files: { ...found.files }, digest: found.digest };
+  }
+
+  /**
+   * Adds an activity export version (OCS 1.1) after reading and checking it.
+   *
+   * @throws OcsError `invalid-export` for an invalid file, and EducateOsError `conflict` if the
+   *   version was already published with different content.
+   */
+  async publishExport(text: string): Promise<PublishedActivityExport> {
+    const { export: exported, digest } = await readActivityExport(text);
+    const versions = this.#exports.get(exported.id) ?? new Map<string, PublishedActivityExport>();
+    const existing = versions.get(exported.version);
+    if (existing !== undefined) {
+      if (existing.digest === digest) return { ...existing };
+      throw new EducateOsError("conflict", `${exported.id} ${exported.version} is already published with different content; publish a new version instead`);
+    }
+    versions.set(exported.version, { text, digest });
+    this.#exports.set(exported.id, versions);
+    return { text, digest };
+  }
+
+  async listExportVersions(id: string): Promise<readonly string[]> {
+    return [...(this.#exports.get(id)?.keys() ?? [])];
+  }
+
+  async getExport(id: string, version: string): Promise<PublishedActivityExport | undefined> {
+    const found = this.#exports.get(id)?.get(version);
+    return found === undefined ? undefined : { ...found };
   }
 }

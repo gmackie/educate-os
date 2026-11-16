@@ -1,0 +1,49 @@
+{
+  "id": "shapes-and-equal-shares",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u6-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "what-makes-a-shape"
+    },
+    {
+      "kind": "activity",
+      "ref": "build-new-shapes"
+    },
+    {
+      "kind": "activity",
+      "ref": "halves-and-fourths"
+    },
+    {
+      "kind": "activity",
+      "ref": "shapes-and-shares-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u6-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Name shapes by their defining attributes, put shapes together to make new shapes, and split circles and rectangles into halves and fourths.",
+  "title": "Shapes and Equal Shares"
+}

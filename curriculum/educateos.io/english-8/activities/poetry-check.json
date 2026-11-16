@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f574546f2fb620c754858ac6d80d37505f2b0fa02169d184d2a0655585596c12",
+      "id": "educateos.io/english-8-poetry-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "poetry-check",
+  "role": "assessment",
+  "title": "Poetry Check: \"Inheritance\""
+}

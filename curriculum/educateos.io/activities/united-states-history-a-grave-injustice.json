@@ -1,0 +1,173 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "Why did the United States government incarcerate about 120,000 people of Japanese ancestry, and why did it later call that decision a grave injustice? Use both sources, and compare this case with the treatment of dissenters during the First World War.",
+    "contextualizationQuestions": [
+      "What happened in December 1941, and what attitudes toward Asian Americans on the West Coast existed before the war?",
+      "How had American ideas about civil rights changed between 1942 and 1988?"
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 2,
+    "overview": "Compare the 1942 order that led to the incarceration of Japanese Americans with Congress's 1988 judgment of it.",
+    "sources": [
+      "executive-order-9066",
+      "civil-liberties-act-1988"
+    ],
+    "sourcingQuestions": [
+      "Executive Order 9066 never names any ethnic group. Why might it have been written that way, and what does that reveal about its purpose?",
+      "The 1988 findings were written 46 years later, after a commission reviewed government records. What could Congress know in 1988 that the public did not know in 1942?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "A Grave Injustice"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.5.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.11.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.14.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-a-grave-injustice",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Franklin D. Roosevelt, Executive Order 9066, February 19, 1942. Public domain (U.S. government work).",
+      "body": "\"Whereas the successful prosecution of the war requires every possible protection against espionage and against sabotage to national-defense material, national-defense premises, and national-defense utilities ...\"\n\nThe order went on to authorize the Secretary of War and military commanders to prescribe military areas \"from which any or all persons may be excluded.\"\n\nAbout the source: The order never names any group. Under it, the army removed about 120,000 people of Japanese ancestry from the West Coast, roughly two-thirds of them United States citizens, and held most of them in camps for the rest of the war. In Korematsu v. United States (1944) the Supreme Court upheld the exclusion.",
+      "id": "executive-order-9066",
+      "title": "Executive Order 9066 (1942), excerpt"
+    },
+    {
+      "attribution": "Civil Liberties Act of 1988, Public Law 100-383, Section 2(a), signed August 10, 1988. Public domain (U.S. government work).",
+      "body": "\"The Congress recognizes that, as described by the Commission on Wartime Relocation and Internment of Civilians, a grave injustice was done to both citizens and permanent resident aliens of Japanese ancestry by the evacuation, relocation, and internment of civilians during World War II.\"\n\n\"... these actions were carried out without adequate security reasons and without any acts of espionage or sabotage documented by the Commission, and were motivated largely by racial prejudice, wartime hysteria, and a failure of political leadership.\"\n\nAbout the source: The act apologized on behalf of the nation and paid $20,000 to each surviving person who had been interned. It followed the report of a federal commission, published in 1983, that reviewed wartime government records.",
+      "id": "civil-liberties-act-1988",
+      "title": "Civil Liberties Act of 1988, findings, excerpt"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

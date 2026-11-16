@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5c47e76f5788255df1678b8f8c684f7d8679c758fee68d382760c5f960556109",
+      "id": "educateos.io/grade-1-reading-foundations-my-rhyme-picture",
+      "version": "1.0.0"
+    }
+  },
+  "id": "my-rhyme-picture",
+  "role": "assignment",
+  "title": "My Rhyme Picture"
+}

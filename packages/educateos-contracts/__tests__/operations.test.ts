@@ -42,5 +42,6 @@ describe("operation descriptors", () => {
     expect(operationChannelFor("mcp-tool")).toBe("mcp-agent");
     expect(operationChannelFor("agent")).toBe("mcp-agent");
     expect(operationChannelFor("system")).toBe("internal-job");
+    expect(operationChannelFor("lti-service")).toBe("lti-service");
   });
 });

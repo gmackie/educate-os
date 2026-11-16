@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a4213cd3edea2368d33d02606ac6169f115dc934644683492c04dfd43d2dd95d",
+      "id": "educateos.io/grade-1-reading-foundations-tap-and-blend",
+      "version": "1.0.0"
+    }
+  },
+  "id": "tap-and-blend",
+  "role": "lesson",
+  "title": "Tap and Blend"
+}

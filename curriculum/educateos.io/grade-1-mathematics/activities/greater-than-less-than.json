@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:dcbe4ca621988710a47c1db25fc7b1d7004485bec14466d53a0aab6136da3f71",
+      "id": "educateos.io/grade-1-mathematics-greater-than-less-than",
+      "version": "1.0.0"
+    }
+  },
+  "id": "greater-than-less-than",
+  "role": "assignment",
+  "title": "Greater Than, Less Than"
+}

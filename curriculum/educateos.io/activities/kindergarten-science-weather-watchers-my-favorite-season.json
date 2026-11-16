@@ -1,0 +1,83 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw yourself outside in your favorite season. Show the weather.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "lookPrompt": "Think about fall, winter, spring and summer. Which season do you like best?",
+    "overview": "Draw yourself outside in your favorite season. Tell why you like it.",
+    "sentenceFrames": [
+      "My favorite season is ___.",
+      "I like it because ___."
+    ],
+    "subject": "science",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "My Favorite Season"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-my-favorite-season",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "opinion",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told my favorite season"
+      },
+      {
+        "id": "reason",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told why, using the weather"
+      }
+    ],
+    "title": "My favorite season"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,159 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Make a scatter plot of balloon circumference after 20 minutes against water temperature, and describe the relationship you see. Is it linear? Explain your results using cellular respiration and fermentation, and suggest why the yeast at the highest temperature behaved as it did. What gas filled the balloons, and how do you know?",
+    "dataColumns": [
+      {
+        "name": "Water temperature",
+        "unit": "degrees C"
+      },
+      {
+        "name": "Time",
+        "unit": "min"
+      },
+      {
+        "name": "Balloon circumference",
+        "unit": "cm"
+      }
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Plan an investigation with four bottles, each with the same amounts of yeast, sugar and water, placed in water baths at four different temperatures. Stretch a balloon over each bottle's mouth and measure the balloon's circumference with string and a ruler every 5 minutes for 20 minutes. Write your hypothesis first. Then describe your procedure step by step, identify your independent and dependent variables, and list everything you will hold constant.",
+    "overview": "Measure how temperature affects the rate at which yeast releases carbon dioxide as it breaks down sugar.",
+    "question": "How does temperature affect the rate at which yeast cells produce carbon dioxide from sugar?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Yeast at Work"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.ID.B.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/biology-1-yeast-at-work",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Makes a testable prediction about temperature and gas production, with a reason based on cell processes.",
+        "id": "hypothesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Hypothesis"
+      },
+      {
+        "description": "Describes a repeatable procedure with clear independent and dependent variables and the constants held.",
+        "id": "method",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Controlled method"
+      },
+      {
+        "description": "Records measurements with units and makes an accurate, labeled scatter plot.",
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Data and graph"
+      },
+      {
+        "description": "Describes the relationship in the data and explains it with respiration, fermentation and enzymes.",
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis uses evidence"
+      }
+    ],
+    "title": "Lab report"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

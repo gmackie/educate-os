@@ -1,0 +1,119 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw a food web for the pond with at least six living things. Draw an arrow from each living thing to the one that eats it. Label each one producer, consumer or decomposer.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "lookPrompt": "Picture a pond in summer. Algae and cattails grow in the water. Tadpoles and minnows swim among the plants, dragonflies hunt mosquitoes, a heron wades at the edge, and bacteria live in the mud.",
+    "overview": "Draw a food web for a pond, then explain how energy moves through it.",
+    "sentenceFrames": [
+      "The energy starts with the ___.",
+      "The ___ is eaten by the ___.",
+      "If the ___ disappeared, ___ would change because ___."
+    ],
+    "subject": "science",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Draw a Pond Food Web"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.5.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.5.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-pond-food-web",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Arrows show who eats whom"
+      },
+      {
+        "id": "roles",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels producers, consumers and decomposers"
+      },
+      {
+        "id": "explanation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains one path of energy aloud"
+      }
+    ],
+    "title": "Food web model"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

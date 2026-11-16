@@ -9,7 +9,11 @@ import type { PrincipalId } from "@educateos/contracts";
 import { DistrictObject as DeployedDistrictObject } from "../src/district-object.ts";
 import type { SendEmailBinding } from "../src/mail.ts";
 import { fakeHallMonitor } from "@educateos/ai-guard/src/fake-hall-monitor.ts";
-import { LMS_ISSUER } from "./fixtures.ts";
+import { DEMO_DISTRICTS } from "@educateos/fixtures";
+import { LMS_ISSUER, PLATFORM_TOOL_JWKS_URL } from "./fixtures.ts";
+import { demoDistrictConfig } from "../scripts/demo-district-config.ts";
+import { DEMO_MARKETPLACE_TRUST } from "../../../scripts/production/demo-districts.ts";
+import { DEMO_ACCESS_ISSUER } from "@educateos/harness/demo-district";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 /** Synthetic upstream release service. Its fixtures persist across district object restarts. */
@@ -109,6 +113,11 @@ export class DistrictObject extends DeployedDistrictObject {
     return createLocalJWKSet({ keys: [JSON.parse(this.env.TEST_ACCESS_PUBLIC_JWK) as JWK] });
   }
 
+  /** The synthetic MCP authorization server's key (SCHO-174), in place of its JWKS URL. */
+  protected override mcpIssuerKeys(): JWTVerifyGetKey {
+    return createLocalJWKSet({ keys: [JSON.parse(this.env.TEST_MCP_ISSUER_PUBLIC_JWK) as JWK] });
+  }
+
   /**
    * A synthetic LMS (SCHO-177): its OpenID configuration, a registration endpoint that assigns a
    * client and deployment, and the JWKS of the key the tests sign launches with.
@@ -127,7 +136,7 @@ export class DistrictObject extends DeployedDistrictObject {
     if (request.url === `${LMS_ISSUER}/api/lti/registrations` && request.method === "POST") {
       return Response.json({ client_id: "lms-client-1", "https://purl.imsglobal.org/spec/lti-tool-configuration": { deployment_id: "lms-deploy-1" } });
     }
-    if (request.url === `${LMS_ISSUER}/api/lti/security/jwks`) return Response.json({ keys: [JSON.parse(this.env.TEST_PLATFORM_PUBLIC_JWK) as JWK] });
+    if (request.url === `${LMS_ISSUER}/api/lti/security/jwks` || request.url === PLATFORM_TOOL_JWKS_URL) return Response.json({ keys: [JSON.parse(this.env.TEST_PLATFORM_PUBLIC_JWK) as JWK] });
     return new Response("not found", { status: 404 });
   }
 
@@ -138,6 +147,13 @@ export class DistrictObject extends DeployedDistrictObject {
       status: 200,
       headers: { "content-type": "text/html; charset=utf-8" },
     });
+  }
+
+  /** What an LTI Platform access token lets its tool do now (SCHO-179): its tool and scopes, or `undefined`. */
+  async verifyLtiServiceToken(token: string): Promise<{ toolId: string; scopes: readonly string[] } | undefined> {
+    const request = new Request("https://district.example/", { headers: { authorization: `Bearer ${token}` } });
+    const grant = await (await this.districtLti())?.platform?.verifyServiceRequest(request);
+    return grant === undefined ? undefined : { toolId: grant.tool.id, scopes: grant.scopes };
   }
 
   /**
@@ -152,5 +168,27 @@ export class DistrictObject extends DeployedDistrictObject {
     await catalog.install(release, actor);
     await catalog.approve("ccss-ela", release.version, actor);
     return { frameworkKey: "ccss-ela", competencyUri: release.content.nodes![0]!.uri };
+  }
+}
+
+/** Riverbend's DISTRICT_CONFIG, as its demo Worker is given it (SCHO-326). */
+const RIVERBEND_CONFIG = JSON.stringify(demoDistrictConfig(DEMO_DISTRICTS.find((d) => d.slug === "riverbend")!, { adminSubject: "00000000-0000-4000-8000-000000000001" }));
+
+/**
+ * Riverbend as its own demo Worker deploys it (SCHO-326): the same object, with riverbend's
+ * DISTRICT_CONFIG as demo-district-config.ts makes it and the demo districts' marketplace pin, so the
+ * demo operator's seed routes can be driven against a real SQLite object.
+ */
+export class RiverbendDistrictObject extends DistrictObject {
+  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+    super(ctx, { ...env, CF_ACCESS_ISS: DEMO_ACCESS_ISSUER, DISTRICT_CONFIG: RIVERBEND_CONFIG, MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST });
+  }
+}
+
+/** Riverbend with no `DEMO_OPERATOR_TOKEN` secret: the operator routes are off. */
+export class RiverbendWithoutTokenDistrictObject extends DistrictObject {
+  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+    const { DEMO_OPERATOR_TOKEN: _, ...rest } = env;
+    super(ctx, { ...rest, DISTRICT_CONFIG: RIVERBEND_CONFIG, MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST });
   }
 }

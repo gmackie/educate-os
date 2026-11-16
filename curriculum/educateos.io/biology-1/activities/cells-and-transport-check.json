@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:fbf97abb72edc2571d0a8d2642ebed65463427ac5ee0565d31f7349e1d1b6967",
+      "id": "educateos.io/biology-1-cells-and-transport-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "cells-and-transport-check",
+  "role": "assessment",
+  "title": "Cells and Transport Check"
+}

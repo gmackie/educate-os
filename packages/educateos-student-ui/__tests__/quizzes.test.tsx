@@ -159,6 +159,23 @@ describe("class quizzes", () => {
     expect(screen.queryByRole("timer")).toBeNull();
   });
 
+  it("shows the student their own extended time, and counts down to their extended deadline (SCHO-383)", async () => {
+    await renderApp(withQuiz({ quiz: { extendedTime: 1.5 }, minutes: 22.5 }).district, `/courses/${ENGLISH}/quizzes/${QUIZ}`);
+    expect(await screen.findByText("4 questions · 11 points · 22.5 minutes per attempt (your extended time: 1.5×) · 0 of 2 attempts used")).toBeTruthy();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    expect((await screen.findByRole("timer", { name: "Time left" })).textContent).toBe("22:30");
+  });
+
+  it("shows a student with no time limit when the quiz closes, not a countdown (SCHO-383)", async () => {
+    await renderApp(withQuiz({ quiz: { extendedTime: "unlimited" }, deadline: "2026-10-30T21:00:00.000Z" }).district, `/courses/${ENGLISH}/quizzes/${QUIZ}`);
+    expect(await screen.findByText("4 questions · 11 points · No time limit for you (extended time) · 0 of 2 attempts used")).toBeTruthy();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/^No time limit\. Closes/);
+    expect(screen.queryByRole("timer")).toBeNull();
+  });
+
   it("shows the released score on the quiz's own page (SCHO-222)", async () => {
     const submitted = { id: ATTEMPT, number: 1, status: "submitted", startedAt: SERVER_NOW, submittedAt: SERVER_NOW };
     await renderApp(withQuiz({ quiz: { attempts: [submitted], releasedScore: { points: 9, maxPoints: 11 } } }).district, `/courses/${ENGLISH}/quizzes/${QUIZ}`);

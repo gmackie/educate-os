@@ -17,7 +17,14 @@ Dependencies are locked with pnpm. Verified app links, signing and physical-devi
   family Family · Calendar · Inbox · Me. AI is hidden when the school's manifest says it has none
 - Light and dark themes (system or user choice), passed to the AI workspace WebView; school accent from the manifest
 - Legacy two-address schools and the SCHO-256 Workshop pairing still work, and saved schools migrate to one origin
-- Student class/grade summary, activity details, submission receipts and written response creation
+- Student class/grade summary, activity details and submission receipts
+- Activity steps as the web keeps them (SCHO-342): each step's work (writing, a drawing or photo,
+  a voice recording) saved on its own, and one submission only once every step is saved; sentence
+  frames, resources and student notes; K-2 classes get one step a screen, large type, "Read to me"
+  (`expo-speech`) and "I'm done!". Recordings use `expo-audio` (m4a uploaded as `audio/mp4`,
+  listen back before saving, two-minute cap); drawings are a `react-native-svg` pad exported as PNG
+- Module links (https only), and for teachers teacher-only notes and answer keys and installed-course provenance
+- Teachers play submitted recordings and see submitted pictures in review
 - Teacher roster, assignments, submission feedback, recorded grading and release controls
 - Guardian-linked children, classes, released grade summaries and announcements
 - Secure WebView for the full Workshop/Gadget UI, bridge, and external gatekeeper OAuth sessions
@@ -36,9 +43,14 @@ Run these commands from the repository root:
     pnpm exec expo start --dev-client
 
 Native cookies and universal links require an Expo development build, not plain Expo Go.
+`expo-audio`, `expo-speech`, `expo-file-system` and `expo-asset` (SCHO-342) are native modules,
+and recording adds the microphone permission (`NSMicrophoneUsageDescription`, `RECORD_AUDIO`):
+an existing development client must be rebuilt (`pnpm exec expo run:ios`, or an EAS
+`development` / `development-simulator` build) before this JavaScript runs on it.
 The committed pnpm-lock.yaml pins the isolated mobile dependency tree.
 Expo patch versions are pinned below today's releases to respect the 24-hour dependency-age policy;
-`expo.install.exclude` records these three deliberate pins.
+`expo.install.exclude` records these deliberate pins; `expo-file-system` and `expo-asset` are pinned
+to the versions `expo` itself resolves, so the app has one copy of each native module.
 
 ## Try it in the Simulator with real data
 

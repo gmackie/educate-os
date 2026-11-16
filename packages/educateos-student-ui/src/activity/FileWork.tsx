@@ -6,23 +6,27 @@ import { useAnnounce } from "../AppContext.tsx";
 import { formatDateTime } from "../labels.ts";
 import type { ActivityStep, ArtifactRead, ArtifactView } from "../model.ts";
 import { ArtifactViewer } from "../viewers/ArtifactViewer.tsx";
+import { AudioRecorder } from "./AudioRecorder.tsx";
+import { DrawingPad } from "./DrawingPad.tsx";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { UploadField } from "./UploadField.tsx";
-import type { PickedFile } from "./uploadFormats.ts";
-import type { WorkMode } from "./workMode.ts";
+import { formatList, type PickedFile } from "./uploadFormats.ts";
+import type { CapturedWorkMode } from "./workMode.ts";
 
 /**
- * A step whose work is a file. Choosing a file saves it at once as the work's next version, so
- * there is never an unsaved file that a submission would leave out; if the save fails, the file is
- * kept on screen to try again.
+ * A step whose work is a file, a drawing or a recording. Choosing a file, or finishing a drawing or
+ * recording, saves it at once as the work's next version, so there is never unsaved work that a
+ * submission would leave out; if the save fails, the work is kept on screen to try again.
  */
-export const FileWork = ({ step, mode, title, saved, readOnly, ensureWorkspace, onSaved }: {
+export const FileWork = ({ step, mode, title, saved, readOnly, large = false, ensureWorkspace, onSaved }: {
   step: ActivityStep;
-  mode: Extract<WorkMode, { input: "file" }>;
+  mode: CapturedWorkMode;
   title: string;
   /** The work's latest saved version, when there is one. */
   saved: ArtifactRead | undefined;
   readOnly: boolean;
+  /** The young-learner size. */
+  large?: boolean;
   ensureWorkspace: () => Promise<string>;
   onSaved: (view: ArtifactView) => void;
 }) => {
@@ -46,7 +50,7 @@ export const FileWork = ({ step, mode, title, saved, readOnly, ensureWorkspace, 
         : await api.call("student.saveRevision", { params: { artifactId: current.artifact.id }, body: { content } });
       setCurrent({ artifact: view.artifact, revision: view.head, content: file.kind === "text" ? { kind: "text", text: file.text } : { kind: "bytes", base64: file.base64 } });
       onSaved(view);
-      announce(`${file.name} saved for ${step.title}.`);
+      announce(mode.input === "file" ? `${file.name} saved for ${step.title}.` : `${file.name} is saved.`);
     } catch (error) {
       setFailed({ file, message: messageFor(error) });
       announce(`${file.name} was not saved.`);
@@ -58,10 +62,27 @@ export const FileWork = ({ step, mode, title, saved, readOnly, ensureWorkspace, 
   return (
     <div className="flex flex-col gap-3">
       {current === undefined ? <Text variant="secondary">Nothing uploaded yet.</Text> : <ArtifactViewer read={current} />}
-      {readOnly ? null : (
+      {readOnly ? null : mode.input === "file" ? (
         <div className="flex flex-col gap-1">
           <UploadField id={fieldId} formats={mode.formats} disabled={saving} onPicked={(file) => void save(file)} />
           {current === undefined ? null : <Text variant="secondary" size="sm">Choosing another file saves it as a new version. Earlier versions stay in History.</Text>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {current === undefined ? null : (
+            <Text variant="secondary" size="sm">
+              {mode.input === "picture" ? "Saving a new drawing or photo keeps this one in History." : "Saving a new recording keeps this one in History."}
+            </Text>
+          )}
+          {/* Keyed by the saved version, so a saved drawing or recording leaves a fresh pad behind. */}
+          {mode.input === "picture" ? (
+            <>
+              <DrawingPad key={current?.revision.id ?? "new"} stepTitle={step.title} disabled={saving} onDrawn={(file) => void save(file)} />
+              <UploadField id={fieldId} label={`Or add a photo (${formatList(mode.formats)})`} formats={mode.formats} disabled={saving} onPicked={(file) => void save(file)} />
+            </>
+          ) : (
+            <AudioRecorder key={current?.revision.id ?? "new"} stepTitle={step.title} formats={mode.formats} disabled={saving} large={large} onRecorded={(file) => void save(file)} />
+          )}
         </div>
       )}
 

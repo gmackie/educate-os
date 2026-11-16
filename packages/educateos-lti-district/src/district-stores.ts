@@ -1,4 +1,4 @@
-import { DeepLinkSession, LoginState, RegistrationInvitation, type Clock } from "@educateos/lti";
+import { DeepLinkSession, LoginState, PlatformDeepLinkFlow, PlatformLaunchTicket, RegistrationInvitation, type Clock } from "@educateos/lti";
 import {
   LTI_COLLECTIONS,
   TableContextServicesStore,
@@ -11,7 +11,12 @@ import {
   type RegistrationTargets,
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
-import { TableToolKeyStore } from "./tool-keys.ts";
+import { TablePlatformAgsStore, TablePlatformScoreApprovalStore } from "./platform-ags.ts";
+import { PLATFORM_DEEP_LINKING_COLLECTIONS, TablePlatformResourceLinkStore } from "./platform-deep-linking.ts";
+import { PLATFORM_LAUNCH_COLLECTIONS, TablePlatformSubjectStore } from "./platform-launch.ts";
+import { TablePlatformServiceTokenStore } from "./platform-service-tokens.ts";
+import { TablePlatformToolStore } from "./platform-tools.ts";
+import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore } from "./tool-keys.ts";
 import type { RecordTable } from "./table.ts";
 
 /** Every store one district's LTI integration needs, over its one record table. */
@@ -31,6 +36,24 @@ export interface LtiDistrictStores {
   readonly rosterSources: TableRosterSourceStore;
   /** The tool's signing keys, rotated by an administrator. */
   readonly toolKeys: TableToolKeyStore;
+  /** The LTI Platform's signing keys (SCHO-179), which sign launches to third-party tools. */
+  readonly platformKeys: TableToolKeyStore;
+  /** The LTI Platform's registered tools and their deployments (SCHO-179). */
+  readonly platformTools: TablePlatformToolStore;
+  /** The LTI Platform's single-use launch tickets (SCHO-179), each a launch's `lti_message_hint`. */
+  readonly platformLaunchTickets: TableSingleUseStore<PlatformLaunchTicket>;
+  /** Each person's opaque subject for each of the LTI Platform's tools (SCHO-179). */
+  readonly platformSubjects: TablePlatformSubjectStore;
+  /** The LTI Platform's used client assertions and issued service access tokens (SCHO-179). */
+  readonly platformServiceTokens: TablePlatformServiceTokenStore;
+  /** The LTI Platform's AGS line items, official results and score timestamps (SCHO-179). */
+  readonly platformAgs: TablePlatformAgsStore;
+  /** AGS scores waiting for a teacher's approval (SCHO-179, IF-06). */
+  readonly platformScoreApprovals: TablePlatformScoreApprovalStore;
+  /** The LTI Platform's single-use deep linking flows (SCHO-179), each keyed by its return URL's ID. */
+  readonly platformDeepLinkFlows: TableSingleUseStore<PlatformDeepLinkFlow>;
+  /** The resource links teachers added by deep linking, and the response nonces used (SCHO-179). */
+  readonly platformResourceLinks: TablePlatformResourceLinkStore;
 }
 
 /**
@@ -52,5 +75,14 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     gradeColumns: new TableGradeColumnStore(table),
     rosterSources: new TableRosterSourceStore(table),
     toolKeys: new TableToolKeyStore(table, now),
+    platformKeys: new TableToolKeyStore(table, now, PLATFORM_KEYS_COLLECTION),
+    platformTools: new TablePlatformToolStore(table),
+    platformLaunchTickets: new TableSingleUseStore(table, PLATFORM_LAUNCH_COLLECTIONS.tickets, PlatformLaunchTicket, now),
+    platformSubjects: new TablePlatformSubjectStore(table),
+    platformServiceTokens: new TablePlatformServiceTokenStore(table, now),
+    platformAgs: new TablePlatformAgsStore(table, now),
+    platformScoreApprovals: new TablePlatformScoreApprovalStore(table),
+    platformDeepLinkFlows: new TableSingleUseStore(table, PLATFORM_DEEP_LINKING_COLLECTIONS.flows, PlatformDeepLinkFlow, now),
+    platformResourceLinks: new TablePlatformResourceLinkStore(table, now),
   };
 }

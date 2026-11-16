@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:10d99461ee92925bc273924c07ec15bd07b4b8a8e7b4dd6d776dd4093cb25c50",
+      "id": "educateos.io/grade-1-mathematics-shapes-and-shares-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "shapes-and-shares-check",
+  "role": "assessment",
+  "title": "Shapes and Shares Check"
+}

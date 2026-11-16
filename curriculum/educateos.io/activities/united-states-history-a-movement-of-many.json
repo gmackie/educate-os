@@ -1,0 +1,150 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "9-12",
+    "minWords": 600,
+    "minimumCitations": 2,
+    "overview": "Research one grassroots campaign for civil rights and write an informative report on its goals, participants, strategies and results.",
+    "prompt": "Choose one grassroots campaign for civil rights from 1945 to 1970, for example the Montgomery bus boycott, the Greensboro sit-ins, the Freedom Rides, the Birmingham campaign, Freedom Summer, the Selma to Montgomery marches, the Mendez v. Westminster school case, or the Delano grape strike. Research it in at least two authoritative sources. Write an informative report that explains its goals, the organizers and ordinary people who took part, their strategy, the opposition they faced, and the results. End by explaining how the campaign's significance is understood today and whether that has changed over time.",
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "A Movement of Many"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.3.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-a-movement-of-many",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Introduces the campaign clearly and organizes goals, people, strategy, opposition and results in a logical order.",
+        "id": "focus",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Focus and organization"
+      },
+      {
+        "description": "Draws on at least two authoritative sources, cited accurately, and integrates their information rather than copying it.",
+        "id": "research",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Research and sources"
+      },
+      {
+        "description": "Explains the campaign with specific, accurate people, places, dates and events, including ordinary participants.",
+        "id": "content",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical content"
+      },
+      {
+        "description": "Explains how the campaign's significance is understood today and how that understanding has changed.",
+        "id": "significance",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Significance"
+      }
+    ],
+    "title": "Research report"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,61 @@
+{
+  "id": "the-silk-roads",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u2-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "mapping-the-silk-roads"
+    },
+    {
+      "kind": "activity",
+      "ref": "silk-roads"
+    },
+    {
+      "kind": "activity",
+      "ref": "paper-money"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.2.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.5.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.10.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.2.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "How a web of trade routes linking China, Central Asia, India, Persia and the Mediterranean carried goods, beliefs, technologies and diseases.",
+  "title": "The Silk Roads"
+}

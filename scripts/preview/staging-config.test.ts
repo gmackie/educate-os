@@ -20,6 +20,7 @@ import {
   gatekeeperBindingName,
   previewPullRequestNumber,
   resolveAccess,
+  resolveAdminConfigSeed,
   resolveAiGateway,
   resolveGatekeeperSecrets,
   resolvePreviewAiGuard,
@@ -52,6 +53,7 @@ const SECRETS = backendSecrets({
   admins: [ADMIN],
   access: ACCESS,
   aiGateway: resolveAiGateway(AI_GATEWAY),
+  adminConfigSeed: {},
 });
 const GITHUB_OAUTH = { githubClientId: "Iv1.preview0000000f", githubClientSecret: "9".repeat(40) };
 const GATEKEEPER_SECRETS = resolveGatekeeperSecrets(GITHUB_OAUTH);
@@ -563,4 +565,19 @@ test("PREVIEW_AI_GUARD=false leaves the guard out and the backend unguarded", ()
   assert.equal(resolvePreviewAiGuard("0"), false);
   assert.equal(resolvePreviewAiGuard("FALSE"), false);
   assert.throws(() => resolvePreviewAiGuard("off"), /PREVIEW_AI_GUARD must be/);
+});
+
+test("resolveAdminConfigSeed uploads a JSON object as ADMIN_CONFIG_SEED, and refuses anything else", () => {
+  assert.deepEqual(resolveAdminConfigSeed({ seed: undefined }), {});
+  assert.deepEqual(resolveAdminConfigSeed({ seed: " " }), {});
+  const seed = '{"modelSettings": {"@cf/zai-org/glm-5.2": {"reasoning": "high"}}}';
+  assert.deepEqual(resolveAdminConfigSeed({ seed }), { ADMIN_CONFIG_SEED: seed });
+  assert.throws(() => resolveAdminConfigSeed({ seed: "{" }), /not JSON/);
+  for (const bad of ["[]", "null", "3"]) {
+    assert.throws(() => resolveAdminConfigSeed({ seed: bad }), /not a JSON object/, bad);
+  }
+  const secrets = backendSecrets({
+    admins: [ADMIN], access: ACCESS, aiGateway: {}, adminConfigSeed: resolveAdminConfigSeed({ seed }),
+  });
+  assert.equal(secrets.ADMIN_CONFIG_SEED, seed);
 });

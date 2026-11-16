@@ -15,8 +15,19 @@ export * from "./communication/index.ts";
 export * from "./gadget-assessment.ts";
 // Devices (SCHO-261)
 export * from "./devices.ts";
+export * from "./product-analytics.ts";
 // Pairing (SCHO-261)
 export * from "./pairing.ts";
 // Operations (SCHO-263)
 export * from "./ops.ts";
 export * from "./ops-analytics.ts";
+// Course library (SCHO-331)
+export * from "./course-library.ts";
+// District export (SCHO-364)
+export * from "./district-export.ts";
+// IT review (SCHO-376)
+export * from "./admin-review.ts";
+// From Google Classroom (SCHO-403)
+export * from "./classroom-grades.ts";
+// Harbor grade return to Classroom (SCHO-428)
+export * from "./classroom-course.ts";

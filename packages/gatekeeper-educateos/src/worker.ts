@@ -206,6 +206,7 @@ const CHANGE_KIND: ActionKind = { tag: "school-change", label: "Change school re
 const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: AssessmentChange; checkpoint: AssessmentCheckpointChange }>({
   checkpoint: {
     kind: { tag: "assessment-checkpoint", label: "Submit current Gadget" },
+    autoApprovable: false,
     delivery: "await-decision",
     describe: (change) => ({
       title: "Submit current Gadget",
@@ -233,6 +234,7 @@ const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: As
   },
   assessment: {
     kind: { tag: "assessment-submission", label: "Submit assessment evidence" },
+    autoApprovable: false,
     delivery: "await-decision",
     describe: (change) => ({ title: "Submit assessment evidence", description: `Assignment ${change.assignmentId}\n${change.revisions.map((revision) => `${revision.artifactId} @ ${revision.revisionId}`).join("\n")}`, implementsRevert: false }),
     apply: async (change, host) => {
@@ -247,11 +249,13 @@ const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: As
   },
   change: {
     kind: CHANGE_KIND,
+    autoApprovable: false,
     delivery: "await-decision",
     // The district's own queue runs a change at most once, so a retried apply is harmless.
     describe: (change) => describeChange(change),
     apply: async (change, host) => {
-      const result = decisionResult(await host.district().approveChange(await host.decider(), change.approvalId));
+      // The digest the person reviewed goes back, so an altered change is declined rather than run.
+      const result = decisionResult(await host.district().approveChange(await host.decider(), change.approvalId, change.digest === undefined ? {} : { digest: change.digest }));
       if (result.kind === "refused") throw new ActionApplyError(result.message);
       if (result.kind === "retry") throw new Error(result.message);
     },

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6fb826bd0d47eba4320c3fe323063397fc32501ccd039dd93ef156c98338ae3d",
+      "id": "educateos.io/kindergarten-science-weather-watchers-my-favorite-season",
+      "version": "1.0.0"
+    }
+  },
+  "id": "my-favorite-season",
+  "role": "assignment",
+  "title": "My Favorite Season"
+}

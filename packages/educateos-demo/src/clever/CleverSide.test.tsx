@@ -30,6 +30,7 @@ afterEach(() => {
 describe("the Clever side panel", () => {
   it("starts collapsed to its toggle, and opens beside the app", async () => {
     const district = await bootCedarValley();
+    const warn = vi.spyOn(console, "warn");
     const { panel } = await render(district);
     const toggle = getByRole(panel, "button", { name: "Clever side" });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
@@ -37,6 +38,9 @@ describe("the Clever side panel", () => {
     await expand(panel);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(getByRole(panel, "region", { name: "Change the district in Clever (simulated)" }).id).toBe(toggle.getAttribute("aria-controls"));
+    // Kumo warns of deprecated props in the visitor's console.
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("sends the visitor to the first sync before anything can change", async () => {

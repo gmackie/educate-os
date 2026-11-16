@@ -1,0 +1,7 @@
+{
+  "body": "Big multiplication problems are just small ones put together.\n\nTo find 6 × 43, break 43 into tens and ones:\n6 × 40 = 240\n6 × 3 = 18\n240 + 18 = 258\n\nAn area model shows each part as a rectangle, and the parts are called partial products.\n\nDivision works in parts too. To share 96 among 4, share 80, then share 16: 20 + 4 = 24.\n\nSometimes there is a remainder, and you have to think about what it means. If 75 students ride in vans that hold 8, you need 10 vans, not 9, so nobody is left behind!",
+  "id": "u4-overview",
+  "purpose": "context",
+  "title": "Big Numbers, Smart Strategies",
+  "visibility": "students"
+}

@@ -1,0 +1,180 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Show what you know about lines, angles, shapes and symmetry.",
+    "problems": [
+      {
+        "prompt": "Draw and label a ray, a line segment and a pair of perpendicular lines."
+      },
+      {
+        "prompt": "Classify each angle as acute, right or obtuse: 30 degrees, 90 degrees, 150 degrees."
+      },
+      {
+        "prompt": "Use a protractor to draw an angle of 70 degrees. Take a photo of your angle."
+      },
+      {
+        "prompt": "A straight angle is split into two angles. One measures 112 degrees. What does the other measure? Write an equation."
+      },
+      {
+        "prompt": "How many degrees is an angle that turns through 1/8 of a circle?"
+      },
+      {
+        "prompt": "I have 4 sides, two pairs of parallel sides and four right angles, but my sides are not all the same length. What shape am I?"
+      },
+      {
+        "prompt": "How many lines of symmetry does each have: a regular hexagon, the letter M, the letter Z?"
+      },
+      {
+        "prompt": "A triangle has a 90-degree angle. What kind of triangle is it? Could it also have an obtuse angle? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Geometry Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.G.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.G.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.G.A.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.C.7",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-geometry-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "precision",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels units and uses symbols correctly"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Angles and geometry"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

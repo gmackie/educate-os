@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a560c351f9174e706813c729955ed05d4f7ec1d37bc049cd59c61b789af0c3b8",
+      "id": "educateos.io/english-8-evaluate-an-argument",
+      "version": "1.0.0"
+    }
+  },
+  "id": "evaluate-an-argument",
+  "role": "assessment",
+  "title": "Evaluate an Argument"
+}

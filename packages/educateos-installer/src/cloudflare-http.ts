@@ -12,6 +12,7 @@ import type {
   AccessRule,
   CloudflareApi,
   CustomHostname,
+  DataJurisdiction,
   DnsRecordSpec,
   FallbackOrigin,
   WorkerDomain,
@@ -69,13 +70,17 @@ const SchedulesWire = z.object({ schedules: z.array(z.object({ cron: z.string() 
 const VersionSummary = z.object({ id: z.string(), metadata: z.object({ created_on: z.string() }) });
 const VersionDetail = z.object({ resources: z.object({ bindings: z.array(BindingWire).default([]) }) });
 const DomainWire = z.object({ id: z.string(), hostname: z.string(), service: z.string(), zone_id: z.string() });
-const KvWire = z.object({ id: z.string(), title: z.string() });
+// A jurisdiction is listed for KV namespaces and D1 databases that have one (ADR-0015).
+const withJurisdiction = <T extends { jurisdiction?: string | null }>({ jurisdiction, ...rest }: T) =>
+  (jurisdiction ? { ...rest, jurisdiction } : rest);
+const KvWire = z.object({ id: z.string(), title: z.string(), jurisdiction: z.string().nullish() }).transform(withJurisdiction);
 const R2List = z.object({ buckets: z.array(z.object({ name: z.string() })).default([]) });
-const D1Wire = z.object({ uuid: z.string(), name: z.string() });
+const D1Wire = z.object({ uuid: z.string(), name: z.string(), jurisdiction: z.string().nullish() }).transform(withJurisdiction);
 const D1QueryWire = z.array(z.object({ results: z.array(z.record(z.string(), z.unknown())).default([]) }));
 const OrganizationWire = z.object({ auth_domain: z.string() });
 const IdpWire = z.object({ id: z.string(), name: z.string(), type: z.string() });
 const EmailDomainRuleWire = z.object({ email_domain: z.object({ domain: z.string() }) });
+const EmailRuleWire = z.object({ email: z.object({ email: z.string() }) });
 const EveryoneRuleWire = z.object({ everyone: z.object({}) });
 const PolicyWire = z.object({
   id: z.string(),
@@ -133,6 +138,8 @@ interface CallOptions {
   form?: FormData;
   /** Overrides the provider's token, for the assets upload, which authenticates with a session JWT. */
   bearer?: string;
+  /** Request headers besides authorization and content type. */
+  headers?: Record<string, string>;
   /**
    * Reads a 2xx with an empty body as success. `DELETE /workers/domains/{id}` answers that way: HTTP
    * 200 and no envelope (seen live on 2026-10-31, SCHO-66).
@@ -380,18 +387,25 @@ export class CloudflareHttpApi implements CloudflareApi {
     return await this.#paged("listKvNamespaces", `/accounts/${seg(accountId)}/storage/kv/namespaces`, KvWire);
   }
 
-  async createKvNamespace(accountId: string, title: string) {
+  async createKvNamespace(accountId: string, title: string, jurisdiction?: DataJurisdiction) {
     return KvWire.parse(
-      await this.#result("createKvNamespace", "POST", `/accounts/${seg(accountId)}/storage/kv/namespaces`, { json: { title } }),
+      await this.#result("createKvNamespace", "POST", `/accounts/${seg(accountId)}/storage/kv/namespaces`, {
+        json: { title, ...(jurisdiction ? { jurisdiction } : {}) },
+      }),
     );
   }
 
-  async listR2Buckets(accountId: string) {
+  async deleteKvNamespace(accountId: string, namespaceId: string) {
+    await this.#result("deleteKvNamespace", "DELETE", `/accounts/${seg(accountId)}/storage/kv/namespaces/${seg(namespaceId)}`);
+  }
+
+  async listR2Buckets(accountId: string, jurisdiction?: DataJurisdiction) {
     const buckets: { name: string }[] = [];
     let cursor: string | undefined;
     do {
       const envelope = await this.#envelope("listR2Buckets", "GET", `/accounts/${seg(accountId)}/r2/buckets`, {
         query: { per_page: "1000", ...(cursor ? { cursor } : {}) },
+        headers: r2JurisdictionHeader(jurisdiction),
       });
       buckets.push(...R2List.parse(envelope.result).buckets);
       cursor = envelope.result_info?.cursor || undefined;
@@ -399,18 +413,29 @@ export class CloudflareHttpApi implements CloudflareApi {
     return buckets;
   }
 
-  async createR2Bucket(accountId: string, name: string) {
-    await this.#result("createR2Bucket", "POST", `/accounts/${seg(accountId)}/r2/buckets`, { json: { name } });
+  async createR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction) {
+    await this.#result("createR2Bucket", "POST", `/accounts/${seg(accountId)}/r2/buckets`, {
+      json: { name },
+      headers: r2JurisdictionHeader(jurisdiction),
+    });
     return { name };
+  }
+
+  async deleteR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction) {
+    await this.#result("deleteR2Bucket", "DELETE", `/accounts/${seg(accountId)}/r2/buckets/${seg(name)}`, {
+      headers: r2JurisdictionHeader(jurisdiction),
+    });
   }
 
   async listD1Databases(accountId: string) {
     return await this.#paged("listD1Databases", `/accounts/${seg(accountId)}/d1/database`, D1Wire);
   }
 
-  async createD1Database(accountId: string, name: string) {
+  async createD1Database(accountId: string, name: string, jurisdiction?: DataJurisdiction) {
     return D1Wire.parse(
-      await this.#result("createD1Database", "POST", `/accounts/${seg(accountId)}/d1/database`, { json: { name } }),
+      await this.#result("createD1Database", "POST", `/accounts/${seg(accountId)}/d1/database`, {
+        json: { name, ...(jurisdiction ? { jurisdiction } : {}) },
+      }),
     );
   }
 
@@ -421,6 +446,10 @@ export class CloudflareHttpApi implements CloudflareApi {
       }),
     );
     return results.flatMap((r) => r.results);
+  }
+
+  async deleteD1Database(accountId: string, databaseId: string) {
+    await this.#result("deleteD1Database", "DELETE", `/accounts/${seg(accountId)}/d1/database/${seg(databaseId)}`);
   }
 
   async getAccessOrganization(accountId: string) {
@@ -457,6 +486,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     ));
   }
 
+  async deleteAccessPolicy(accountId: string, policyId: string) {
+    await this.#result("deleteAccessPolicy", "DELETE", `/accounts/${seg(accountId)}/access/policies/${seg(policyId)}`);
+  }
+
   async listAccessApplications(accountId: string) {
     return (await this.#paged("listAccessApplications", `/accounts/${seg(accountId)}/access/apps`, AppWire)).map(toApp);
   }
@@ -473,6 +506,10 @@ export class CloudflareHttpApi implements CloudflareApi {
         json: appBody(spec),
       }),
     ));
+  }
+
+  async deleteAccessApplication(accountId: string, appId: string) {
+    await this.#result("deleteAccessApplication", "DELETE", `/accounts/${seg(accountId)}/access/apps/${seg(appId)}`);
   }
 
   async listAiGateways(accountId: string) {
@@ -495,6 +532,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     );
   }
 
+  async deleteAiGateway(accountId: string, gatewayId: string) {
+    await this.#result("deleteAiGateway", "DELETE", `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}`);
+  }
+
   async #paged<T extends z.ZodType>(operation: string, path: string, item: T): Promise<z.infer<T>[]> {
     const out: z.infer<T>[] = [];
     for (let page = 1; ; page++) {
@@ -513,7 +554,7 @@ export class CloudflareHttpApi implements CloudflareApi {
     const url = new URL(this.#base + path);
     for (const [key, value] of Object.entries(options.query ?? {})) url.searchParams.set(key, value);
     const token = options.bearer ?? (await providerToken(this.#tokens, operation));
-    const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+    const headers: Record<string, string> = { ...options.headers, authorization: `Bearer ${token}` };
     let body: RequestInit["body"];
     if (options.form) body = options.form;
     else if (options.json !== undefined) {
@@ -544,6 +585,14 @@ function parseJson(text: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * R2's jurisdiction header. R2 scopes both listing and creating buckets by it; without it a call
+ * sees only buckets with no jurisdiction.
+ */
+function r2JurisdictionHeader(jurisdiction: DataJurisdiction | undefined): Record<string, string> {
+  return jurisdiction ? { "cf-r2-jurisdiction": jurisdiction } : {};
 }
 
 function seg(value: string): string {
@@ -585,6 +634,8 @@ function toPolicy(wire: z.infer<typeof PolicyWire>): AccessPolicy {
   const include = wire.include.flatMap((rule): AccessRule[] => {
     const parsed = EmailDomainRuleWire.safeParse(rule);
     if (parsed.success) return [{ email_domain: { domain: parsed.data.email_domain.domain } }];
+    const email = EmailRuleWire.safeParse(rule);
+    if (email.success) return [{ email: { email: email.data.email.email } }];
     return EveryoneRuleWire.safeParse(rule).success ? [{ everyone: {} }] : [];
   });
   return { id: wire.id, name: wire.name, decision: wire.decision, include };

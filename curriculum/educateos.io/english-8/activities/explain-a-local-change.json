@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8e430849953c49f1c9bb01c89adb0c022df68a9509b54957b7cb838530e2d985",
+      "id": "educateos.io/english-8-explain-a-local-change",
+      "version": "1.0.0"
+    }
+  },
+  "id": "explain-a-local-change",
+  "role": "assignment",
+  "title": "Explain a Local Change"
+}

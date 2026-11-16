@@ -1,0 +1,93 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 6,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Find equivalent fractions and explain why they are equal.",
+    "problems": [
+      {
+        "prompt": "Write two fractions equivalent to 1/3."
+      },
+      {
+        "prompt": "Is 3/4 equivalent to 6/8? Explain with a model."
+      },
+      {
+        "prompt": "Fill in the blank: 2/5 = ?/10"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Fraction Strips"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-fraction-strips",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains with a model"
+      }
+    ],
+    "title": "Equivalent fractions"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

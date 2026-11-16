@@ -1,0 +1,51 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "8",
+    "overview": "Read an article about a city that uncovered a buried creek, and find its central idea and how it is supported.",
+    "passage": "Opening the Creek: What Happened When Millbrook Uncovered Its Buried Stream\n\nThis article was written for EducateOS. Millbrook is an invented city, and its figures are invented, though they are modeled on projects real cities have carried out.\n\nFor eighty years, Fenner Creek ran through a concrete pipe under downtown Millbrook. City engineers buried it in the 1940s to make room for a parking lot and to stop it from flooding. In 2019, the city tore up the parking lot and brought the creek back into the open air, a process engineers call daylighting.\n\nThe project cost $14 million and took three years. The city now has a 600-meter strip of creek with walking paths, native plants and stone banks. According to the city's five-year report, the open creek has made downtown flooding less frequent, not more. A pipe can carry only so much water before it backs up into the streets; an open creek with planted banks spreads out and soaks into the ground. The report counts four street floods downtown in the five years after daylighting, compared with eleven in the five years before.\n\nThe creek also cooled the neighborhood. On summer afternoons, the report says, air temperatures along the creek walk measured about 2 degrees Celsius lower than on nearby streets of asphalt. Biologists have counted three species of fish in the creek that had not been seen in the pipe.\n\nBusinesses noticed too. Of the 31 shops facing the creek, 24 reported more customers in a survey two years after it opened. Rents along the creek rose by about 18 percent.\n\nSupporters say Millbrook shows that a city can repair a decision made generations ago. \"We used to hide our water,\" said one city planner. \"Now it is the center of town.\"",
+    "questions": [
+      {
+        "prompt": "What is daylighting? Use the article's words and your own."
+      },
+      {
+        "prompt": "State the central idea of the article in one sentence."
+      },
+      {
+        "prompt": "The article supports its central idea with evidence about flooding, temperature and wildlife, and business. Choose two and give the specific figures."
+      },
+      {
+        "prompt": "Explain how an open creek can reduce flooding, according to the article."
+      },
+      {
+        "prompt": "Write a three-sentence objective summary of the article, with no opinions of your own."
+      }
+    ],
+    "sentenceFrames": [
+      "The article's central idea is that ___.",
+      "This is supported by ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Finding the Central Idea"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-finding-the-central-idea",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

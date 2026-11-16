@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7e51bd95cbd3249f0fde7086d9064625245cfafa0cccd1405fa528a117c63cf6",
+      "id": "educateos.io/grade-1-reading-foundations-new-animal-words",
+      "version": "1.0.0"
+    }
+  },
+  "id": "new-animal-words",
+  "role": "assignment",
+  "title": "New Words in Animal Texts"
+}

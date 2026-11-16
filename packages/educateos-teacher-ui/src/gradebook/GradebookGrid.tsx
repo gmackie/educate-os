@@ -2,6 +2,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { Badge, LayerCard, Table, Text } from "@cloudflare/kumo";
 import type { Gradebook, GradebookCell, GradebookColumn, GradebookRow } from "../types.ts";
 import { MARKER_LABELS, percentText, scoreText } from "./gradebookText.ts";
+import { useScrollsSideways } from "./useScrollsSideways.ts";
 
 /** A cell a teacher opened to mark. */
 export interface CellTarget {
@@ -34,6 +35,11 @@ const CellContent = ({ cell, column, calculation }: { cell: GradebookCell; colum
  * assignment and the totals. Arrow keys move between cells, Home and End to a row's ends (with
  * Control, to the grid's corners), and only one cell is in the tab order. Enter or Space on an
  * assignment, or a click, opens it to mark when `onOpenCell` is given.
+ *
+ * A class with a semester of assignments is wider than a laptop screen. The grid then scrolls
+ * sideways inside a named group that then takes focus, so a keyboard can scroll it without
+ * entering the grid (WCAG 2.1.1), and a line above it says so, since overlay scrollbars hide until
+ * scrolled.
  */
 export const GradebookGrid = ({ gradebook, caption, onOpenCell }: {
   gradebook: Gradebook;
@@ -53,6 +59,8 @@ export const GradebookGrid = ({ gradebook, caption, onOpenCell }: {
   // The data may have shrunk since the teacher last moved; keep the tab stop on a cell that exists.
   const current = { row: Math.min(active.row, rows.length - 1), col: Math.min(active.col, width - 1) };
   const table = useRef<HTMLTableElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const scrollsSideways = useScrollsSideways(scroller);
 
   const moveTo = (row: number, col: number) => {
     const next = { row: Math.max(0, Math.min(rows.length - 1, row)), col: Math.max(0, Math.min(width - 1, col)) };
@@ -77,57 +85,73 @@ export const GradebookGrid = ({ gradebook, caption, onOpenCell }: {
   };
 
   return (
-    <LayerCard className="overflow-x-auto p-0">
-      <Table ref={table} role="grid" aria-readonly={onOpenCell === undefined}>
-        <caption className="sr-only">{caption}</caption>
-        <Table.Header>
-          <Table.Row>
-            <Table.Head sticky="left">Student</Table.Head>
-            {columns.map((column) => {
-              const group = settings.groups.find((g) => g.id === column.groupId);
-              return (
-                <Table.Head key={column.assignmentId}>
-                  <span className="flex min-w-32 flex-col">
-                    <span>{column.title}</span>
-                    <Text variant="secondary" size="xs" as="span">
-                      {[group?.name, column.pointsPossible === null ? undefined : `out of ${column.pointsPossible}`].filter((part) => part !== undefined).join(" · ")}
-                    </Text>
-                  </span>
-                </Table.Head>
-              );
-            })}
-            {totals.map((total) => <Table.Head key={total.key}>{total.label}</Table.Head>)}
-          </Table.Row>
-        </Table.Header>
-        <Table.Body onKeyDown={onKeyDown}>
-          {rows.map((row, r) => {
-            const cellProps = (c: number) => ({
-              role: "gridcell",
-              "data-cell": `${r}:${c}`,
-              tabIndex: current.row === r && current.col === c ? 0 : -1,
-              onFocus: () => setActive({ row: r, col: c }),
-              className: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kumo-brand",
-            });
-            return (
-              <Table.Row key={row.studentPrincipalId}>
-                <Table.Head sticky="left" role="rowheader">{row.displayName}</Table.Head>
-                {row.cells.map((cell, c) => (
-                  <Table.Cell
-                    key={cell.assignmentId}
-                    {...cellProps(c)}
-                    {...(onOpenCell === undefined ? {} : { "aria-haspopup": "dialog" as const, onClick: () => open(r, c) })}
-                  >
-                    <CellContent cell={cell} column={columns[c]!} calculation={settings.calculation} />
-                  </Table.Cell>
-                ))}
-                {totals.map((total, t) => (
-                  <Table.Cell key={total.key} {...cellProps(columns.length + t)}>{total.value(row)}</Table.Cell>
-                ))}
+    <div className="flex flex-col gap-2">
+      {scrollsSideways && (
+        <Text variant="secondary" size="sm">
+          The gradebook is wider than the screen. Scroll it sideways, or use the arrow keys in it: End goes to the totals.
+        </Text>
+      )}
+      <LayerCard className="p-0">
+        {/* Relative, so the cells' screen-reader-only labels are clipped with the table instead of scrolling the page. */}
+        <div
+          ref={scroller}
+          role="group"
+          aria-label={scrollsSideways ? `${caption}, scrolls sideways` : caption}
+          tabIndex={scrollsSideways ? 0 : undefined}
+          className="relative overflow-x-auto rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kumo-brand"
+        >
+          <Table ref={table} role="grid" aria-readonly={onOpenCell === undefined}>
+            <caption className="sr-only">{caption}</caption>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head sticky="left">Student</Table.Head>
+                {columns.map((column) => {
+                  const group = settings.groups.find((g) => g.id === column.groupId);
+                  return (
+                    <Table.Head key={column.assignmentId}>
+                      <span className="flex min-w-32 flex-col">
+                        <span>{column.title}</span>
+                        <Text variant="secondary" size="xs" as="span">
+                          {[group?.name, column.pointsPossible === null ? undefined : `out of ${column.pointsPossible}`].filter((part) => part !== undefined).join(" · ")}
+                        </Text>
+                      </span>
+                    </Table.Head>
+                  );
+                })}
+                {totals.map((total) => <Table.Head key={total.key}>{total.label}</Table.Head>)}
               </Table.Row>
-            );
-          })}
-        </Table.Body>
-      </Table>
-    </LayerCard>
+            </Table.Header>
+            <Table.Body onKeyDown={onKeyDown}>
+              {rows.map((row, r) => {
+                const cellProps = (c: number) => ({
+                  role: "gridcell",
+                  "data-cell": `${r}:${c}`,
+                  tabIndex: current.row === r && current.col === c ? 0 : -1,
+                  onFocus: () => setActive({ row: r, col: c }),
+                  className: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kumo-brand",
+                });
+                return (
+                  <Table.Row key={row.studentPrincipalId}>
+                    <Table.Head sticky="left" role="rowheader">{row.displayName}</Table.Head>
+                    {row.cells.map((cell, c) => (
+                      <Table.Cell
+                        key={cell.assignmentId}
+                        {...cellProps(c)}
+                        {...(onOpenCell === undefined ? {} : { "aria-haspopup": "dialog" as const, onClick: () => open(r, c) })}
+                      >
+                        <CellContent cell={cell} column={columns[c]!} calculation={settings.calculation} />
+                      </Table.Cell>
+                    ))}
+                    {totals.map((total, t) => (
+                      <Table.Cell key={total.key} {...cellProps(columns.length + t)}>{total.value(row)}</Table.Cell>
+                    ))}
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+        </div>
+      </LayerCard>
+    </div>
   );
 };

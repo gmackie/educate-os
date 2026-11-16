@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f7762e3d89f84a9e671664833f9c917e0dbffc0dc3d2b4564308ab779ff38948",
+      "id": "educateos.io/grade-5-science-our-star-and-the-sky",
+      "version": "1.0.0"
+    }
+  },
+  "id": "our-star-and-the-sky",
+  "role": "lesson",
+  "title": "Our Star and the Night Sky"
+}

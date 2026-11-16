@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6839d4c68833706ca31f0bf275eada8d9f46d7b3d21de5ca8ab9d8a38898d73d",
+      "id": "educateos.io/united-states-history-fear-itself-and-four-freedoms",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fear-itself-and-four-freedoms",
+  "role": "assignment",
+  "title": "Fear Itself and Four Freedoms"
+}

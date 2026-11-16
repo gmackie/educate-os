@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ca377548d78b75c7e6e5b5261ec576c2c91c4a283e6a832ebcccc534d55130b4",
+      "id": "educateos.io/grade-5-science-how-engineers-solve-problems",
+      "version": "1.0.0"
+    }
+  },
+  "id": "how-engineers-solve-problems",
+  "role": "lesson",
+  "title": "How Engineers Solve Problems"
+}

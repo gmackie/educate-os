@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:11d86554566b4afaa69f5b962173a3d83064df39fecb464971576229ef0a8bea",
+      "id": "educateos.io/grade-5-science-dissolving",
+      "version": "1.0.0"
+    }
+  },
+  "id": "dissolving",
+  "role": "assignment",
+  "title": "Does Temperature Change How Fast Sugar Dissolves?"
+}

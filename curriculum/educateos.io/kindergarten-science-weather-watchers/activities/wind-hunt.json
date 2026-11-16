@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ccde7c7f51d089dc5b8f1e068c3062a864c46ddaa9d953ae971701a9c2a00995",
+      "id": "educateos.io/kindergarten-science-weather-watchers-wind-hunt",
+      "version": "1.0.0"
+    }
+  },
+  "id": "wind-hunt",
+  "role": "assignment",
+  "title": "Wind Hunt"
+}

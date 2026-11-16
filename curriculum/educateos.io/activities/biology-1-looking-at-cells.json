@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Compare the two cell types. Which structures did you see in both, and which only in one? Explain how a cell wall changes a cell's shape. Show how you estimated cell length from the field-of-view diameter, and explain why your onion cells had no chloroplasts.",
+    "dataColumns": [
+      {
+        "name": "Specimen"
+      },
+      {
+        "name": "Magnification",
+        "unit": "x"
+      },
+      {
+        "name": "Structures observed"
+      },
+      {
+        "name": "Cells across the field of view"
+      },
+      {
+        "name": "Estimated cell length",
+        "unit": "micrometers"
+      }
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Prepare two wet mounts: a thin layer of onion skin stained with a drop of iodine, and cheek cells gently scraped with a clean toothpick and stained. Lower a cover slip at an angle to avoid air bubbles. Start at the lowest power, focus with the coarse knob, then switch to 100x and 400x and use only the fine knob. Before you begin, write down the field-of-view diameter your teacher gives for each magnification. Describe each step you followed and anything you changed.",
+    "overview": "Prepare wet mounts of onion and cheek cells, observe them at three magnifications, and estimate how big a cell really is.",
+    "question": "How are plant and animal cells alike and different in the structures we can see with a light microscope, and how large are they?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Looking at Cells"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-looking-at-cells",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

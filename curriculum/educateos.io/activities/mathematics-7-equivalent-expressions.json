@@ -1,0 +1,107 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Expand, factor and combine like terms, and explain what different forms of an expression tell you.",
+    "problems": [
+      {
+        "prompt": "Expand 4(2x - 3)."
+      },
+      {
+        "prompt": "Factor 6x + 15 using the greatest common factor."
+      },
+      {
+        "prompt": "Combine like terms: 3x + 7 - x + 2."
+      },
+      {
+        "prompt": "Simplify (1/2)(8y - 6) + 3y."
+      },
+      {
+        "prompt": "A shirt with price p is discounted 20%. Explain why p - 0.2p and 0.8p both give the sale price, and what each form tells a shopper."
+      },
+      {
+        "prompt": "A rectangle has length x + 4 and width 3. Write an expression for its perimeter in two different ways, and show that they are equivalent."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Equivalent Expressions"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-equivalent-expressions",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Rewrites expressions correctly"
+      },
+      {
+        "id": "explanation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains what each form shows"
+      }
+    ],
+    "title": "Equivalent expressions"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

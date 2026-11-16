@@ -1,0 +1,164 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Show what you know about equivalent fractions and comparing fractions. You may use fraction strips.",
+    "problems": [
+      {
+        "prompt": "Which fraction is equivalent to 1/2: 2/3, 3/6 or 1/4? Explain how you know."
+      },
+      {
+        "prompt": "Write every fraction from this list that is equal to 2/3: 4/6, 6/9, 3/4, 8/12."
+      },
+      {
+        "prompt": "True or false: 3/4 and 6/8 name the same amount. Draw a model to prove your answer."
+      },
+      {
+        "prompt": "Fill in the blank: 2/5 = ?/10."
+      },
+      {
+        "prompt": "Write two fractions that are equivalent to 3/5."
+      },
+      {
+        "prompt": "Compare 5/12 and 1/2 using a benchmark. Write <, > or =."
+      },
+      {
+        "prompt": "Compare 2/3 and 5/8. Write both fractions with a common denominator to show your thinking."
+      },
+      {
+        "prompt": "Ari says 4/8 is greater than 1/2 because 4 and 8 are bigger numbers than 1 and 2. Is Ari correct? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Fraction Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-fraction-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "precision",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels units and uses symbols correctly"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Fraction check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

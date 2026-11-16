@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 86,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Read a new scene on your own and analyze its dialogue and its dramatic irony.",
+    "passage": "The Interview: a scene in one act\n\nWritten for EducateOS.\n\nCHARACTERS: CARMEN, 14, interviewing for a summer job at an animal shelter. MR. OKAFOR, the shelter's manager. A small dog, offstage, barking.\n\nSETTING: A cluttered office at the shelter. Before the scene begins, the audience has watched CARMEN, alone in the hallway, quietly let a frightened dog out of a crate to calm it and then put it back. MR. OKAFOR did not see this.\n\nMR. OKAFOR: So. Why do you want to work here?\n\nCARMEN: (Rehearsed.) I am responsible, hard-working and a team player.\n\nMR. OKAFOR: (Writing nothing down.) Everybody says that. Have you ever taken care of an animal?\n\nCARMEN: No. We can't have pets in our building.\n\nMR. OKAFOR: Hm. This job is mostly cleaning, you know. And the dogs can be nervous. Some of them don't trust people yet.\n\n(The barking offstage gets louder, then frantic.)\n\nMR. OKAFOR: That's Pepper. She's been like that since she arrived. Nobody can get near her.\n\nCARMEN: (Hesitating, then deciding.) Can I try something?\n\nMR. OKAFOR: (Doubtful.) She'll snap at you.\n\nCARMEN: I won't open the crate. I'll just sit next to it. Sideways, so I'm not staring at her. And talk about nothing.\n\n(She exits. The barking slows. Stops. MR. OKAFOR leans to look through the doorway. A long pause. He picks up his pen and, for the first time, writes something down.)\n\nMR. OKAFOR: (Calling.) Where did you learn that?\n\nCARMEN: (Offstage.) My neighbor's dog was scared of thunder. I used to sit with him.\n\nMR. OKAFOR: (To himself, smiling.) No experience.\n\n(Lights fade.)",
+    "questions": [
+      {
+        "prompt": "What does the audience know about Carmen before the scene begins that Mr. Okafor does not?"
+      },
+      {
+        "prompt": "Carmen's first answer is \"rehearsed.\" What does this line, and Mr. Okafor's reaction, show about each character?"
+      },
+      {
+        "prompt": "When Carmen says she has never taken care of an animal, how does the dramatic irony make this moment tense?"
+      },
+      {
+        "prompt": "Which incident turns the interview around? Explain how it propels the action toward the end."
+      },
+      {
+        "prompt": "Mr. Okafor writes something down for the first time. What does this stage direction suggest?"
+      },
+      {
+        "prompt": "Explain the humor in Mr. Okafor's last line, \"No experience.\""
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Drama Check: \"The Interview\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-drama-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "dialogue",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes dialogue and incidents"
+      },
+      {
+        "id": "irony",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains dramatic irony"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Cites strong evidence"
+      }
+    ],
+    "title": "Drama analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

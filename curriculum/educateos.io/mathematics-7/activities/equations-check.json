@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7cd885f115d811631584e5882a4adb7496dea274abcb2347da4f0099ddc224f0",
+      "id": "educateos.io/mathematics-7-equations-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "equations-check",
+  "role": "assessment",
+  "title": "Equations and Inequalities Check"
+}

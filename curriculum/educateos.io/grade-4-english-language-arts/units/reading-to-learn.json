@@ -1,0 +1,65 @@
+{
+  "id": "reading-to-learn",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u3-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "monarch-main-idea"
+    },
+    {
+      "kind": "activity",
+      "ref": "two-accounts"
+    },
+    {
+      "kind": "activity",
+      "ref": "leaves-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read informational texts for the main idea and key details, use context to learn new words, and compare a firsthand and a secondhand account.",
+  "title": "Reading to Learn"
+}

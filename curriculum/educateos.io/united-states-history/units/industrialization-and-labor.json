@@ -1,0 +1,77 @@
+{
+  "id": "industrialization-and-labor",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "from-farm-to-factory"
+    },
+    {
+      "kind": "activity",
+      "ref": "mill-letter"
+    },
+    {
+      "kind": "activity",
+      "ref": "gospel-of-wealth"
+    },
+    {
+      "kind": "activity",
+      "ref": "industrialization-assessment"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.11.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "From the Lowell mills to Homestead: what industrialization offered American workers, what it cost them, and how they and their critics answered the new industrial order.",
+  "title": "Unit 3: Industrialization and Labor"
+}

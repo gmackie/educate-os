@@ -1,11 +1,12 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ClientGate } from '../../../src/ui/ClientGate';
-import { WriteResponse } from '../../../src/screens/Assignments';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { param } from '../../../src/params';
 
+/**
+ * Old `/assignment/<id>/write` links. Writing is now a step of the assignment, saved and submitted
+ * with its other steps (SCHO-342), so this opens the assignment.
+ */
 export default function WriteRoute() {
   const params = useLocalSearchParams();
-  const router = useRouter();
-  return <ClientGate>{(client) => <WriteResponse client={client} assignmentId={param(params.id)}
-    offeringId={param(params.offering)} onComplete={() => router.back()}/>}</ClientGate>;
+  const offering = param(params.offering);
+  return <Redirect href={{ pathname: '/assignment/[id]', params: { id: param(params.id), ...(offering ? { offering } : {}) } }}/>;
 }

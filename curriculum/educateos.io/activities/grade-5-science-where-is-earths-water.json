@@ -1,0 +1,59 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "5",
+    "overview": "Read about where Earth's water is found, then answer the questions.",
+    "passage": "Where Is Earth's Water?\n\nEarth is sometimes called the blue planet, because water covers most of its surface. But where is all that water, really?\n\nImagine pouring all of Earth's water into 100 buckets. About 97 buckets would hold salt water from the ocean. Only 3 buckets would hold fresh water.\n\nMost of that fresh water is hard to reach. About 2 of the 3 buckets would be frozen in glaciers and ice caps, the huge sheets of ice that cover land near the poles and on high mountains. Most of the last bucket would be groundwater: water stored in soil and in tiny spaces between rocks underground. The water in all the lakes, rivers and clouds on Earth would fill only a few cupfuls of that last bucket.\n\nThat is why fresh water is so precious. The water we drink, grow food with and wash in comes from a very small part of Earth's water.\n\nLuckily, the water cycle keeps fresh water coming. When ocean water evaporates, the salt is left behind. The water vapor rises, cools into clouds, and falls as fresh rain and snow.",
+    "questions": [
+      {
+        "prompt": "Out of 100 buckets of Earth's water, how many hold salt water? How many hold fresh water?"
+      },
+      {
+        "prompt": "Where is most of Earth's fresh water? Quote the text."
+      },
+      {
+        "prompt": "Use the text to explain what groundwater is."
+      },
+      {
+        "prompt": "Rain comes mostly from water that evaporated from the salty ocean. Why is rain fresh, not salty?"
+      },
+      {
+        "prompt": "Why does the author compare Earth's water to 100 buckets?"
+      },
+      {
+        "prompt": "What are the two main ideas of the article? Give one detail that supports each."
+      }
+    ],
+    "sentenceFrames": [
+      "Most fresh water is ___.",
+      "Groundwater is ___.",
+      "Rain is fresh because ___.",
+      "One main idea is ___. A detail that supports it is ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Where Is Earth's Water?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-where-is-earths-water",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

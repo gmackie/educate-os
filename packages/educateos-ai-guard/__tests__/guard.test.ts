@@ -250,8 +250,22 @@ describe("beforeModelCall", () => {
 
   it("fails closed for a gadget's call when Hall Monitor is down, even for an educator whose profile proceeds (SCHO-307)", async () => {
     const { guard } = setup(null);
-    const gadget = call(USERS.educatorProceeds, ["hello"], { initiator: { type: "gadget", id: USERS.educatorProceeds } });
-    expect(await guard.beforeModelCall(gadget)).toMatchObject({ action: "deny", reason: "moderation_unavailable" });
+    for (const audience of [undefined, "9-12"]) {
+      const gadget = call(USERS.educatorProceeds, ["hello"], { initiator: { type: "gadget", id: USERS.educatorProceeds }, ...(audience === undefined ? {} : { audience }) });
+      expect(await guard.beforeModelCall(gadget)).toMatchObject({ action: "deny", reason: "moderation_unavailable" });
+    }
+  });
+
+  it("moderates a gadget at the band its model binding declares, still as a student's, input and output (SCHO-325)", async () => {
+    const hallMonitor = hallMonitorClient(env, config)!;
+    const evaluate = vi.spyOn(hallMonitor, "evaluate");
+    const { guard } = setup(hallMonitor);
+    const gadget = call(USERS.educatorProceeds, ["Is my thesis arguable?"], { initiator: { type: "gadget", id: USERS.educatorProceeds }, audience: "9-12" });
+    expect(await guard.beforeModelCall(gadget)).toEqual(SCREENED);
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ policy: { profileId: "k12-high" }, context: { audience: "student", gradeBand: "9-12" } });
+    expect(await guard.screenModelOutput(gadget.callId, { parts: [{ type: "text", text: "A reply [[block]]" }], initiator: gadget.initiator, audience: "9-12" }))
+      .toEqual({ action: "withhold", reason: "moderation_block", message: DEFAULT_GUARD_MESSAGES.outputWithheld });
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ evaluationKind: "interaction.output", policy: { profileId: "k12-high" }, context: { audience: "student", gradeBand: "9-12" } });
   });
 
   it("refuses unknown initiators, agent initiators and unpriced models before holding anything", async () => {
@@ -489,6 +503,47 @@ describe("afterModelCall", () => {
     const { guard, ledger } = setup();
     await guard.afterModelCall({ callId: "never-admitted", status: "completed", usage });
     expect(await ledger.request("never-admitted")).toBeNull();
+  });
+});
+
+describe("logs", () => {
+  /** Every structured guard log entry, as the observability logger hands it to the console. */
+  function captureLogs(): Record<string, unknown>[] {
+    const entries: Record<string, unknown>[] = [];
+    for (const level of ["debug", "log", "info", "warn", "error"] as const) {
+      vi.spyOn(console, level).mockImplementation((entry: unknown) => {
+        if (typeof entry === "object" && entry !== null && (entry as { component?: unknown }).component === "educateos.ai-guard") {
+          entries.push(entry as Record<string, unknown>);
+        }
+      });
+    }
+    return entries;
+  }
+  const entry = (entries: Record<string, unknown>[], event: string) => entries.find((logged) => logged.event === event);
+
+  it("say which audience, profile and grade band admitted, denied or screened a call (SCHO-325)", async () => {
+    const entries = captureLogs();
+    const { guard } = setup();
+    // A tutor gadget whose binding declares grades 9-12, owned by an educator.
+    const gadget = call(USERS.educatorProceeds, ["Is my thesis arguable?"], { initiator: { type: "gadget", id: USERS.educatorProceeds }, audience: "9-12" });
+    expect(await guard.beforeModelCall(gadget)).toEqual(SCREENED);
+    const band = { audience: "student", profileId: "k12-high", gradeBand: "9-12" };
+    expect(entry(entries, "ai_guard.admitted")).toMatchObject({ callId: gadget.callId, ...band });
+    expect(entry(entries, "ai_guard.moderation.allowed")).toMatchObject(band);
+    await guard.screenModelOutput(gadget.callId, { parts: [{ type: "text", text: "A reply" }], initiator: gadget.initiator, audience: "9-12" });
+    expect(entry(entries, "ai_guard.output.released")).toMatchObject({ callId: gadget.callId, ...band });
+
+    const blocked = call(USERS.student, ["not fine [[block]]"]);
+    await guard.beforeModelCall(blocked);
+    expect(entry(entries, "ai_guard.denied")).toMatchObject({ callId: blocked.callId, reason: "moderation_block", audience: "student", profileId: "k12-student", gradeBand: "9-12" });
+    expect(entry(entries, "ai_guard.moderation.stopped")).toMatchObject({ profileId: "k12-student", gradeBand: "9-12" });
+
+    // An educator has no grade band, and none is logged.
+    const educator = call(USERS.educatorProceeds, ["Plan a lesson"]);
+    await guard.beforeModelCall(educator);
+    const admitted = entries.filter((logged) => logged.event === "ai_guard.admitted").at(-1)!;
+    expect(admitted).toMatchObject({ callId: educator.callId, audience: "educator", profileId: "educator" });
+    expect(admitted).not.toHaveProperty("gradeBand");
   });
 });
 

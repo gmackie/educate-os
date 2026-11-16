@@ -1,0 +1,195 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "9-12",
+    "minWords": 700,
+    "minimumCitations": 0,
+    "overview": "Write, revise and publish a personal essay about a moment after which you saw something differently.",
+    "prompt": "All semester we have read about thresholds: moments after which a person sees differently and cannot go back. Write a personal essay about a threshold of your own. It can be large or small: a conversation, a mistake, a first time, a loss, a discovery. Open inside a specific moment. Sequence the events so they build toward the turn. Use dialogue, pacing, telling details and sensory language. End with reflection that shows how your understanding changed, without stating a moral. Revise in at least two passes (structure, then detail) before you submit. You choose what to share; your story does not need to be dramatic to be powerful.",
+    "resources": [
+      "narrative-craft-notes"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "A Threshold of My Own"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.C",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.E",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-a-threshold-of-my-own",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "A personal essay is a true story told by the person who lived it, shaped so that a reader understands what it meant. These techniques help.\n\nStart inside a moment. Begin with a specific scene, not a summary of your life. \"I was nine and standing on a milk crate\" pulls a reader in faster than \"I have always helped my family.\"\n\nShow, then reflect. Let the reader see and hear the scene first: actions, dialogue, sensory details. Then step back and reflect on what it meant. The best essays move between the two.\n\nSlow down the important moment. Pacing is a choice. Spend one sentence on five years and five paragraphs on five minutes, if those five minutes are the threshold.\n\nUse telling details. One precise detail (a name tag, a pen on a chain, a shaking hand) does more than a paragraph of adjectives.\n\nLet dialogue do work. Use dialogue sparingly, for lines that reveal character or turn the story. Punctuate it correctly and start a new paragraph for each new speaker.\n\nFind the turn. Most personal essays have a moment where the writer's understanding changes. In Unit 2 we called it a threshold.\n\nEnd with reflection, not a moral. Avoid \"and that taught me to always...\" Instead, show where the experience has left you and how you see things differently today. Often the ending echoes the beginning, changed.\n\nRevise in passes. Read once for structure (does every scene build toward the turn?), once for detail (where can I be more specific?), and once aloud for sound and correctness.",
+      "id": "narrative-craft-notes",
+      "title": "Narrative Craft Notes"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Opens inside a specific moment that orients the reader and sets up a problem or question.",
+        "id": "opening",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Engaging opening"
+      },
+      {
+        "description": "Sequences events so they build to a clear turn and form a coherent whole.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sequence and turn"
+      },
+      {
+        "description": "Uses dialogue, pacing, telling details and sensory language purposefully.",
+        "id": "craft",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Narrative technique"
+      },
+      {
+        "description": "Ends with reflection that shows a changed understanding, not a stated moral.",
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reflection"
+      },
+      {
+        "description": "Writes with a consistent voice and standard English conventions.",
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Style and conventions"
+      }
+    ],
+    "title": "Personal essay"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.1"
+}

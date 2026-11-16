@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2c1d3388c1ef0eb401a8b701b240dfd2c349acf167d8e046ac8a2bbd18724f71",
+      "id": "educateos.io/kindergarten-science-weather-watchers-what-wind-can-do",
+      "version": "1.0.0"
+    }
+  },
+  "id": "what-wind-can-do",
+  "role": "lesson",
+  "title": "What Wind Can Do"
+}

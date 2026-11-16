@@ -1,0 +1,78 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw something whose name ends with Magic E, like a kite, a cake or a bike.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "lookPrompt": "Kite, cake, bike, rose and cube all end with Magic E. Each one has a long vowel that says its name.",
+    "overview": "Draw something whose name has Magic E, then tell about it.",
+    "sentenceFrames": [
+      "I drew a ___.",
+      "___ has a long ___."
+    ],
+    "subject": "english-language-arts",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Draw the Magic Word"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-draw-the-magic-word",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "magic-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "My picture is a Magic E word"
+      },
+      {
+        "id": "tells-vowel",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told the long vowel"
+      }
+    ],
+    "title": "Draw the magic word"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

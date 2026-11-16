@@ -1,0 +1,169 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about cell structures and how materials cross the membrane. Answer in complete sentences and show any calculations.",
+    "problems": [
+      {
+        "prompt": "Which organelle releases most of the usable energy a cell gets from glucose, and what molecule stores that energy?"
+      },
+      {
+        "prompt": "Name two structures found in plant cells but not in animal cells, and give the job of each."
+      },
+      {
+        "prompt": "The cell membrane is described as selectively permeable. Explain what this means and how the structure of the membrane makes it true."
+      },
+      {
+        "prompt": "Predict what happens, and explain why, in each case: (a) a red blood cell placed in pure water; (b) a plant cell placed in very salty water; (c) a cell placed in a solution with the same solute concentration as its cytoplasm."
+      },
+      {
+        "prompt": "Compare passive transport (diffusion and osmosis) with active transport. In your answer, name the direction each moves particles relative to the concentration gradient, whether it requires energy, and one example of active transport."
+      },
+      {
+        "prompt": "A model cell shaped like a cube is 1 cm on each side. A second model cell is 2 cm on each side. Calculate the surface area, the volume and the surface-area-to-volume ratio of each, then explain what this tells you about why cells are small."
+      },
+      {
+        "prompt": "Three potato cores each started at 5.00 g and soaked overnight in solutions A, B and C. Final masses: A 5.60 g, B 4.80 g, C 4.10 g. Calculate the percent change for each core. Which solution was hypotonic to the potato cells, and which had the highest solute concentration? Use the numbers in your reasoning."
+      },
+      {
+        "prompt": "Gardeners know that sprinkling salt on a slug harms it. Use what you learned about osmosis to explain why."
+      }
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Cells and Transport Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-cells-and-transport-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies organelles and membrane structure accurately and connects each to its job.",
+        "id": "concepts",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Cell structures and functions"
+      },
+      {
+        "description": "Predicts the direction of water and particle movement in each case and explains it with concentration gradients and energy.",
+        "id": "transport",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Transport explanations"
+      },
+      {
+        "description": "Calculates surface area, volume, ratios and percent change correctly, with units and work shown.",
+        "id": "calculations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Calculations"
+      },
+      {
+        "description": "Uses numbers and precise vocabulary (hypertonic, hypotonic, isotonic, osmosis) to support each claim.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses evidence"
+      }
+    ],
+    "title": "Cells and transport"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -22,6 +22,7 @@ describe("someone the school has not added yet", () => {
     expect(within(section).getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe("/cdn-cgi/access/logout");
     expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
     expect(document.body.textContent).not.toContain("not linked to a principal");
+    expect(document.title).toBe("Not added to this school yet · EducateOS district admin");
   });
 
   it("copies the sign-in ID from the keyboard and announces it", async () => {
@@ -43,6 +44,7 @@ describe("a person who is not a district administrator", () => {
     expect(within(apps).getByRole("link", { name: "Teacher Studio" }).getAttribute("href")).toBe("/teach/");
     expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
     expect(document.body.textContent).not.toMatch(/Could not load|reference req-fake/);
+    expect(document.title).toBe("Not an administrator · EducateOS district admin");
     // Both links are reachable from the keyboard, after the skip link and the shell's sidebar, which
     // offers their own places and the theme control (SCHO-260).
     await user.tab();

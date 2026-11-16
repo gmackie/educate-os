@@ -7,7 +7,9 @@ import { UsdNano } from "./money.ts";
  * `AiModelProvider`; it is restated here because EducateOS packages import nothing from the kernel
  * (ADR-0002), and the kernel seam that feeds this package maps one onto the other.
  */
-export const AiProvider = z.enum(["openai", "anthropic", "google", "cloudflare", "ollama"]);
+export const AiProvider = z.enum([
+  "openai", "anthropic", "google", "cloudflare", "ollama", "cloudflare-auto-router",
+]);
 /** An AI provider. */
 export type AiProvider = z.infer<typeof AiProvider>;
 

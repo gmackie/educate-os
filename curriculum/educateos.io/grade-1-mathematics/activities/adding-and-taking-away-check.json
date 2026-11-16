@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d20e44332546d8f40a7d6141afb09119067dd4a0179a11440d769ac72f01ddae",
+      "id": "educateos.io/grade-1-mathematics-adding-and-taking-away-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "adding-and-taking-away-check",
+  "role": "assessment",
+  "title": "Adding and Taking Away Check"
+}

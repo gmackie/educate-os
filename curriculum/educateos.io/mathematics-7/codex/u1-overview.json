@@ -1,0 +1,7 @@
+{
+  "body": "Two quantities are proportional when their ratio is always the same. That ratio is the constant of proportionality, k.\n\nThree ways to spot a proportional relationship:\n- The equation looks like y = kx.\n- The table has the same y ÷ x in every row.\n- The graph is a straight line through the origin, (0, 0).\n\nWorked example: A printer prints 45 pages in 3 minutes at a steady rate.\nk = 45 ÷ 3 = 15 pages per minute, so the equation is p = 15m.\nIn 8 minutes it prints 15 × 8 = 120 pages.\nThe point (1, 15) on the graph shows the unit rate: 15 pages in 1 minute.\n\nPercents are proportional relationships too. 20% of a number is 0.20 times the number, so a 20% tip on a $30 bill is 0.20 × 30 = $6.\n\nBy the end of this unit you will be able to decide whether a relationship is proportional, find k from a table, graph, equation or story, and use proportions to solve percent problems about tax, tips, discounts and change.",
+  "id": "u1-overview",
+  "purpose": "context",
+  "title": "Is It Proportional?",
+  "visibility": "students"
+}

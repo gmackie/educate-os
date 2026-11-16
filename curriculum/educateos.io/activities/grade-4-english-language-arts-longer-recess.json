@@ -1,0 +1,111 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "4",
+    "minWords": 100,
+    "minimumCitations": 0,
+    "overview": "Write an opinion piece about whether our school should have a longer recess.",
+    "prompt": "Should Northfield Elementary have a longer recess? Write an opinion piece. State your opinion, give at least two reasons with examples, and end with a conclusion.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Should Recess Be Longer?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-longer-recess",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "opinion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States an opinion"
+      },
+      {
+        "id": "reasons",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reasons and examples"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Linking words and conclusion"
+      }
+    ],
+    "title": "Opinion writing"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

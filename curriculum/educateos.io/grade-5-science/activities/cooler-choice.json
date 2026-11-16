@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:9762b3820fa4de60b180965cd7f8489a6cad01eeb70d8a7d756f6566e672bbfa",
+      "id": "educateos.io/grade-5-science-cooler-choice",
+      "version": "1.0.0"
+    }
+  },
+  "id": "cooler-choice",
+  "role": "assessment",
+  "title": "Design Check: Which Cooler Should We Buy?"
+}

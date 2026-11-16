@@ -8,6 +8,10 @@
 // action, through the official-grade gate (`QuizGrading.recordGrades`). Essays are graded by a
 // teacher, item by item. AI never scores an item. Time is the server's: an attempt's deadline is
 // fixed when it starts, and nothing is saved or submitted after it.
+//
+// A student's extended time (SCHO-383) is a `restricted` accommodation on one quiz, kept in the
+// quiz book beside the quiz rather than in it, so no view of the quiz carries it. Its staff and
+// district administrators read and set it; the student is shown only their own time.
 import {
   OfferingId,
   EducateOsError,
@@ -27,6 +31,7 @@ import { AssignmentId } from "@educateos/assessment";
 import type { CourseContentStorage, CourseOutline } from "@educateos/curriculum";
 import { z } from "zod";
 import {
+  AccommodationInput,
   ItemGradeInput,
   NewQuiz,
   Quiz,
@@ -36,6 +41,8 @@ import {
   StudentAttemptView,
   StudentQuizView,
   type ItemAnalysis,
+  type QuizAccommodation,
+  type QuizAccommodations,
   type QuizAttempt,
   type QuizAvailability,
   type QuizBook,
@@ -353,8 +360,8 @@ export class QuizService {
 
   /**
    * Starts an attempt, or resumes the student's attempt in progress. Its deadline is fixed now, on
-   * the server's clock: its start plus the time limit, or the quiz's (or its assignment's) close,
-   * whichever is earlier.
+   * the server's clock: its start plus the time limit (extended by the student's accommodation, if
+   * they have one), or the quiz's (or its assignment's) close, whichever is earlier.
    *
    * @throws EducateOsError `forbidden` before the quiz opens, after it closes, and once every
    *   attempt is used (an attempt whose time ran out counts).
@@ -375,11 +382,7 @@ export class QuizService {
       if (availability === "upcoming") throw new EducateOsError("forbidden", "This quiz is not open yet.");
       if (availability === "closed") throw new EducateOsError("forbidden", "This quiz is closed.");
       if (mine.length >= latest.settings.attemptsAllowed) throw new EducateOsError("forbidden", "You have used every attempt this quiz allows.");
-      const deadline = earliest([
-        latest.settings.timeLimitMinutes === undefined ? undefined : new Date(Date.parse(now) + latest.settings.timeLimitMinutes * 60_000).toISOString(),
-        latest.settings.availableUntil,
-        assignment?.closesAt,
-      ]);
+      const deadline = deadlineFor(latest, accommodationFor(book, latest.id, subject.principalId), assignment, now);
       const attempt: QuizAttempt = {
         id: newId("qza"),
         quizId: latest.id,
@@ -476,7 +479,11 @@ export class QuizService {
     const book = await this.#load(scope.offeringId);
     const quiz = this.#quiz(book, quizId);
     const now = this.#now();
-    const students = this.#rows(book, quiz, now);
+    const accommodated = await this.#allowed(subject, "read", scope, "quiz", "restricted");
+    const students = this.#rows(book, quiz, now).map((row) => {
+      const accommodation = accommodated ? accommodationFor(book, quiz.id, row.studentId) : undefined;
+      return accommodation === undefined ? row : { ...row, extendedTime: accommodation.extendedTime };
+    });
     return {
       quiz,
       students,
@@ -568,6 +575,59 @@ export class QuizService {
     };
   }
 
+  // Accommodations (SCHO-383)
+
+  /**
+   * A quiz's timing accommodations, for its staff and the district's administrators.
+   *
+   * @throws EducateOsError `forbidden` for anyone else who may read the quiz, `not-found` otherwise.
+   */
+  async accommodations(subject: VerifiedPrincipal, offeringId: unknown, quizId: unknown): Promise<QuizAccommodations> {
+    const scope = this.#scope(offeringId);
+    await this.#require(subject, "read", scope, "quiz", undefined, "Only the class's teachers and district administrators can see accommodations.", "restricted");
+    const book = await this.#load(scope.offeringId);
+    const quiz = this.#quiz(book, quizId);
+    return {
+      canManage: await this.#allowed(subject, "update", scope, "quiz", "restricted"),
+      accommodations: book.accommodations.filter((a) => a.quizId === quiz.id),
+    };
+  }
+
+  /**
+   * Sets one student's extended time on a quiz, or clears it (`extendedTime: null`). The student
+   * must be enrolled in the class. Their attempts started from now on get it; an attempt they have
+   * in progress is extended to it at once, and never shortened.
+   */
+  async setAccommodation(subject: VerifiedPrincipal, offeringId: unknown, quizId: unknown, input: unknown): Promise<QuizAccommodations> {
+    const { studentId, extendedTime } = parseInput(AccommodationInput, input);
+    const scope = this.#scope(offeringId);
+    await this.#require(subject, "update", scope, "quiz", undefined, "Only the class's teachers and district administrators can set accommodations.", "restricted");
+    const enrolled = this.#options.directory.enrollments.some((e) => e.offeringId === scope.offeringId && e.principalId === studentId && e.role === "student" && e.status === "active");
+    if (!enrolled) throw new EducateOsError("validation-failed", "Extended time can only be set for a student enrolled in this class.");
+    const current = this.#quiz(await this.#load(scope.offeringId), quizId);
+    const assignment = current.assignmentId === undefined ? undefined : await this.#options.grading.assignment(scope.offeringId, current.assignmentId);
+    await this.#change(scope, async (book) => {
+      const quiz = this.#quiz(book, quizId);
+      const now = this.#now();
+      const accommodation: QuizAccommodation | undefined = extendedTime === null ? undefined : { quizId: quiz.id, studentId, extendedTime, setBy: subject.principalId, setAt: now };
+      const extended = book.attempts.flatMap((attempt) => {
+        if (attempt.quizId !== quiz.id || attempt.studentId !== studentId || attemptStatus(attempt, now) !== "in-progress") return [];
+        const deadline = deadlineFor(quiz, accommodation, assignment, attempt.startedAt);
+        if (attempt.deadline === undefined || (deadline !== undefined && Date.parse(deadline) <= Date.parse(attempt.deadline))) return [];
+        const { deadline: _shorter, ...rest } = attempt;
+        return [deadline === undefined ? rest : { ...rest, deadline }];
+      });
+      return {
+        write: {
+          attempts: extended,
+          ...(accommodation === undefined ? { clearedAccommodations: [{ quizId: quiz.id, studentId }] } : { accommodations: [accommodation] }),
+        },
+        result: undefined,
+      };
+    });
+    return this.accommodations(subject, offeringId, quizId);
+  }
+
   // Internals: views
 
   async #studentQuizView(subject: VerifiedPrincipal, scope: OfferingScope, book: QuizBook, quiz: Quiz): Promise<StudentQuizView> {
@@ -587,6 +647,7 @@ export class QuizService {
     const canStart = (resumable || (availability === "open" && mine.length < quiz.settings.attemptsAllowed))
       && (await this.#allowed(subject, "create", scope, "quiz-attempt", "course", subject.principalId));
     const released = officialReleaseFor(book, quiz.id, subject.principalId);
+    const own = accommodationFor(book, quiz.id, subject.principalId);
     return StudentQuizView.parse({
       id: quiz.id,
       offeringId: quiz.offeringId,
@@ -599,6 +660,8 @@ export class QuizService {
       totalPoints: totalOf(quiz.items.map((i) => ({ itemId: i.id, points: 0, maxPoints: i.points, source: "auto" }))).maxPoints,
       attemptsAllowed: quiz.settings.attemptsAllowed,
       ...(quiz.settings.timeLimitMinutes === undefined ? {} : { timeLimitMinutes: quiz.settings.timeLimitMinutes }),
+      // Only the student's own, and only where there is a time limit to extend.
+      ...(quiz.settings.timeLimitMinutes === undefined || own === undefined ? {} : { extendedTime: own.extendedTime }),
       ...(quiz.settings.availableFrom === undefined ? {} : { availableFrom: quiz.settings.availableFrom }),
       ...(earliest([quiz.settings.availableUntil, assignment?.closesAt]) === undefined ? {} : { availableUntil: earliest([quiz.settings.availableUntil, assignment?.closesAt]) }),
       showAnswers: quiz.settings.showAnswers,
@@ -825,6 +888,8 @@ export class QuizService {
           deletedQuizIds: write.deletedQuizIds ?? [],
           attempts: write.attempts ?? [],
           releases: write.releases ?? [],
+          ...(write.accommodations === undefined ? {} : { accommodations: write.accommodations }),
+          ...(write.clearedAccommodations === undefined ? {} : { clearedAccommodations: write.clearedAccommodations }),
         }, book.revision);
         return result;
       } catch (error) {
@@ -898,6 +963,22 @@ function withItemIds(items: readonly QuizItemDraft[]): QuizItem[] {
 function earliest(times: readonly (string | undefined)[]): string | undefined {
   const present = times.filter((t): t is string => t !== undefined);
   return present.length === 0 ? undefined : present.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b));
+}
+
+/** A student's accommodation on a quiz, if they have one. */
+function accommodationFor(book: QuizBook, quizId: string, studentId: string): QuizAccommodation | undefined {
+  return book.accommodations.find((a) => a.quizId === quizId && a.studentId === studentId);
+}
+
+/**
+ * An attempt's deadline from `startedAt`: its start plus the time limit, extended by the student's
+ * accommodation (none for `unlimited`), or the quiz's or its assignment's close, whichever is earlier.
+ */
+function deadlineFor(quiz: Quiz, accommodation: QuizAccommodation | undefined, assignment: QuizAssignment | undefined, startedAt: string): string | undefined {
+  const limit = quiz.settings.timeLimitMinutes;
+  const extension = accommodation?.extendedTime ?? 1;
+  const timed = limit === undefined || extension === "unlimited" ? undefined : new Date(Date.parse(startedAt) + Math.round(limit * extension * 60_000)).toISOString();
+  return earliest([timed, quiz.settings.availableUntil, assignment?.closesAt]);
 }
 
 /** Where an attempt is at `now`: an unsubmitted attempt past its deadline has expired. */

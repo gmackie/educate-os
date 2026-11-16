@@ -1,0 +1,104 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to each question about rain. Tell or draw your answers.",
+    "passage": "Dark clouds fill the sky. Drip, drop! Rain falls on the garden and on the playground.",
+    "questions": [
+      {
+        "prompt": "Where does rain fall from?"
+      },
+      {
+        "prompt": "Name one thing that drinks the rain."
+      },
+      {
+        "prompt": "The rain cup came up to line 4 on Thursday and line 1 on Friday. Which day had more rain?"
+      },
+      {
+        "prompt": "What makes a puddle dry up?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw what happens to a puddle on a sunny day."
+      }
+    ],
+    "sentenceFrames": [
+      "Rain falls from ___.",
+      "___ had more rain."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Rain and Water Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.C.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-rain-and-water-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "rain",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell where rain comes from and where it goes"
+      },
+      {
+        "id": "compare",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can compare rain numbers"
+      }
+    ],
+    "title": "Rain and water"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

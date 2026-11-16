@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to how counting on and counting back work. Then try them.",
+    "passage": "You can add by counting on. Start with the bigger number in your head. Then count up. For 8 + 3, say 8, then count 9, 10, 11. So 8 + 3 = 11. You can take away by counting back. For 12 - 2, say 12, then count back 11, 10. So 12 - 2 = 10.",
+    "questions": [
+      {
+        "prompt": "Count on to solve 9 + 2."
+      },
+      {
+        "prompt": "Count on to solve 6 + 3."
+      },
+      {
+        "prompt": "Count back to solve 11 - 3."
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "To add 5 + 9, which number should you start with? Tell why."
+      }
+    ],
+    "sentenceFrames": [
+      "I start at ___ and count on ___.",
+      "___ + ___ = ___"
+    ],
+    "subject": "mathematics",
+    "template": "read-and-respond",
+    "title": "Count On, Count Back"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-count-on-count-back",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

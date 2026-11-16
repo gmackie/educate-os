@@ -59,6 +59,40 @@ export function audienceOf(subject: GuardSubject): { key: AudienceProfileKey; gr
   return { key: "student-9-12", gradeBand: "9-12" };
 }
 
+/** The grade bands students are moderated in, youngest first. */
+export const STUDENT_GRADE_BANDS = ["K-2", "3-5", "6-8", "9-12"] as const satisfies readonly GradeBand[];
+/** A student grade band. */
+export type StudentGradeBand = (typeof STUDENT_GRADE_BANDS)[number];
+
+const isStudentGradeBand = (band: unknown): band is StudentGradeBand => STUDENT_GRADE_BANDS.includes(band as StudentGradeBand);
+
+/** The audience class a student grade band is moderated under, as {@link audienceOf} assigns it. */
+export function studentProfileKey(band: StudentGradeBand): AudienceProfileKey {
+  return band === "9-12" ? "student-9-12" : band === "6-8" ? "student-6-8" : "student-k5";
+}
+
+/**
+ * The grade band a gadget's own model call is moderated at (SCHO-307, SCHO-325): the younger of
+ * the band the gadget's model binding declares (`AiCallDescriptor.audience`) and the band of the
+ * reader the guard knows of, the call's initiator. The Workshop cannot tell who is typing into a
+ * gadget, so the call is always moderated as a student's.
+ *
+ * - No declaration, or one that names no student band (`adult`, a typo), counts as `K-2`, the
+ *   youngest, which is how every gadget call was moderated before bands could be declared.
+ * - A student is never moderated at a band older than their own; a student with no known band
+ *   counts as `K-2`, as {@link audienceOf} does.
+ * - Staff have no band of their own, so a member of staff's gadget is moderated at the band it
+ *   declares, never as an educator.
+ *
+ * So a declaration can make a student's gadget calls stricter than their own band, never looser.
+ */
+export function gadgetGradeBand(declared: string | undefined, reader: Pick<GuardContext, "audience" | "gradeBand">): StudentGradeBand {
+  const band = isStudentGradeBand(declared) ? declared : "K-2";
+  if (reader.audience === "educator") return band;
+  const own = isStudentGradeBand(reader.gradeBand) ? reader.gradeBand : "K-2";
+  return STUDENT_GRADE_BANDS.indexOf(own) < STUDENT_GRADE_BANDS.indexOf(band) ? own : band;
+}
+
 /**
  * A {@link GuardDirectory} as the guard reaches it, possibly over a service binding: its answers
  * are untrusted until validated.

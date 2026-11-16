@@ -1,0 +1,53 @@
+{
+  "id": "measurement-and-data",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "measurement-units"
+    },
+    {
+      "kind": "activity",
+      "ref": "garden-plans"
+    },
+    {
+      "kind": "activity",
+      "ref": "sprout-line-plot"
+    },
+    {
+      "kind": "activity",
+      "ref": "measurement-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Convert measurements within one system, solve area, perimeter, time and money problems, and make and use line plots with fractions of a unit.",
+  "title": "Measurement and Data"
+}

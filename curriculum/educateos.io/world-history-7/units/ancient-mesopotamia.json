@@ -1,0 +1,57 @@
+{
+  "id": "ancient-mesopotamia",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "life-between-the-rivers"
+    },
+    {
+      "kind": "activity",
+      "ref": "hammurabi"
+    },
+    {
+      "kind": "activity",
+      "ref": "gifts-of-mesopotamia"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.4.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "How irrigation, cities, writing and written law began between the Tigris and Euphrates, and how to read Hammurabi's laws as historians do.",
+  "title": "Ancient Mesopotamia"
+}

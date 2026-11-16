@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5c7ae8e551c6d6c5f6547bcdf64e1dcee808fa540604949ef1b1d9c10881f0c4",
+      "id": "educateos.io/grade-1-mathematics-how-long-is-it",
+      "version": "1.0.0"
+    }
+  },
+  "id": "how-long-is-it",
+  "role": "lesson",
+  "title": "How Long Is It?"
+}

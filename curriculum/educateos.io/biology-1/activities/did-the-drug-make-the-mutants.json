@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5e004404777889813b34fe6e8473f565bb1164f625f5ef5d716e46d67220fb71",
+      "id": "educateos.io/biology-1-did-the-drug-make-the-mutants",
+      "version": "1.0.0"
+    }
+  },
+  "id": "did-the-drug-make-the-mutants",
+  "role": "assignment",
+  "title": "Did the Drug Make the Mutants?"
+}

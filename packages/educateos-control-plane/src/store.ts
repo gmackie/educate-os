@@ -275,6 +275,24 @@ export class ControlPlaneStore {
   }
 
   /**
+   * Removes an installation the operator made, and gives its slug back (SCHO-368, district
+   * offboarding). Only the operator who installed it may. Answers the removed installation, or
+   * undefined when the operator has none with that ID. The installation's Cloudflare resources are
+   * the district's and untouched: uninstalling them is the installer's (`launch-educate-os uninstall`).
+   */
+  removeInstallation(operatorSubject: string, instanceId: string): Installation | undefined {
+    return this.#tables.transact((sql) => {
+      const [row] = sql.exec(`SELECT instance_id, record FROM ${TABLES.installations} WHERE instance_id = ? AND operator_subject = ?`,
+        instanceId, operatorSubject).toArray();
+      if (row === undefined) return undefined;
+      const installation = parseStoredJson(Installation, row.record, `installation ${String(row.instance_id)}`);
+      sql.exec(`DELETE FROM ${TABLES.installations} WHERE instance_id = ?`, instanceId);
+      sql.exec(`DELETE FROM ${TABLES.reservations} WHERE instance_id = ? AND operator_subject = ?`, instanceId, operatorSubject);
+      return installation;
+    });
+  }
+
+  /**
    * The registry's account check (`CommercialAccountVerifier`): an installation may register
    * under an operator's account only if that operator installed it through educateos.io. So an
    * account ID alone, even a leaked one, lets nobody put an instance on someone's dashboard.

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:86496eabc4416877465a718ede607cd5c0dbf88856c5c9ab8960c55ac4719b11",
+      "id": "educateos.io/united-states-history-take-informed-action",
+      "version": "1.0.0"
+    }
+  },
+  "id": "take-informed-action",
+  "role": "assignment",
+  "title": "Take Informed Action"
+}

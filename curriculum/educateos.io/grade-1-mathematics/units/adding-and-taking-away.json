@@ -1,0 +1,49 @@
+{
+  "id": "adding-and-taking-away",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "count-on-count-back"
+    },
+    {
+      "kind": "activity",
+      "ref": "story-problems"
+    },
+    {
+      "kind": "activity",
+      "ref": "make-a-story-problem"
+    },
+    {
+      "kind": "activity",
+      "ref": "adding-and-taking-away-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Solve adding-to and taking-from story problems within 20 by drawing, counting on and counting back, and writing number sentences.",
+  "title": "Adding and Taking Away Within 20"
+}

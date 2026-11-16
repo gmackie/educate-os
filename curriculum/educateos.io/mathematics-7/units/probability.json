@@ -1,0 +1,53 @@
+{
+  "id": "probability",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "how-likely"
+    },
+    {
+      "kind": "activity",
+      "ref": "experiments"
+    },
+    {
+      "kind": "activity",
+      "ref": "compound-events"
+    },
+    {
+      "kind": "activity",
+      "ref": "probability-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.8",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Describe likelihood with numbers from 0 to 1, compare theoretical and experimental probability, and find probabilities of compound events with lists, tables, tree diagrams and simulations.",
+  "title": "Unit 6: Probability"
+}

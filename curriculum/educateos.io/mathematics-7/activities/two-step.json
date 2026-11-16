@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:eef620bb9e4f0501087540223effece3820d16f5638e7307f1f2c7d6d2d90033",
+      "id": "educateos.io/mathematics-7-two-step",
+      "version": "1.0.0"
+    }
+  },
+  "id": "two-step",
+  "role": "assignment",
+  "title": "Two-Step Equations in Context"
+}

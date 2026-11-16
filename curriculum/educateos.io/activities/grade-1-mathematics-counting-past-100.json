@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to how counting keeps going after 100. Then count on from different numbers.",
+    "passage": "When we count past 99, we say one hundred. Then we keep going: one hundred one, one hundred two, one hundred three. We write them 101, 102, 103. After 100, the counting pattern starts again, just like it did after 10 and after 20. Keep going all the way to 120!",
+    "questions": [
+      {
+        "prompt": "What number comes after 99?"
+      },
+      {
+        "prompt": "Count on from 104. Write the next three numbers."
+      },
+      {
+        "prompt": "Count on from 116. Write the numbers up to 120."
+      },
+      {
+        "prompt": "What number comes just before 111?"
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Where do you see the pattern start again after 100? Tell a partner."
+      }
+    ],
+    "sentenceFrames": [
+      "After ___ comes ___.",
+      "The number before ___ is ___."
+    ],
+    "subject": "mathematics",
+    "template": "read-and-respond",
+    "title": "Counting Past 100"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-counting-past-100",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,153 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "What did your data show? Use your numbers to explain why temperature made a difference.",
+    "dataColumns": [
+      {
+        "name": "Water temperature",
+        "unit": "°C"
+      },
+      {
+        "name": "Time to dissolve",
+        "unit": "s"
+      },
+      {
+        "name": "Trial"
+      }
+    ],
+    "due": {
+      "days": 8,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "methodPrompt": "Describe your steps. What will you keep the same in each cup? What will you change? How will you time it?",
+    "overview": "Test whether sugar dissolves faster in warm water or cold water.",
+    "question": "Does sugar dissolve faster in warm water or cold water?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Does Temperature Change How Fast Sugar Dissolves?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-dissolving",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "hypothesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Testable hypothesis"
+      },
+      {
+        "id": "method",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Fair test"
+      },
+      {
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Data recorded with units"
+      },
+      {
+        "id": "conclusion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Conclusion uses data"
+      }
+    ],
+    "title": "Investigation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

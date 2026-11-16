@@ -48,7 +48,8 @@ const AGENT_TURN_SITES = new Set<AiCallSite>([
 function passedMessages(scope: AiCallScope): Set<string> {
   if (scope.gadgetId === undefined) return new Set();
   let site = AGENT_TURN_SITES.has(scope.callSite) ? "agent-turn" : scope.callSite;
-  let key = `${site}:${scope.gadgetId}:${scope.chatId ?? ""}`;
+  // A message a guard let through for one audience has not been shown to it for another.
+  let key = `${site}:${scope.gadgetId}:${scope.chatId ?? ""}:${scope.audience ?? ""}`;
   let passed = passedByScope.get(key) ?? new Set();
   // Most recently used last, so the oldest scope is the first evicted.
   passedByScope.delete(key);
@@ -217,7 +218,8 @@ function visibleOutput(response: AssistantMessage): AiCallTextPart[] {
  * deciding when the call is aborted withholds.
  */
 async function screen(
-    guard: AiCallGuardClient, callId: string, scope: Pick<AiCallScope, "callSite" | "initiator">,
+    guard: AiCallGuardClient, callId: string,
+    scope: Pick<AiCallScope, "callSite" | "initiator" | "audience">,
     response: AssistantMessage, signal?: AbortSignal): Promise<AiCallDeniedError | undefined> {
   let callSite = scope.callSite;
   let parts = visibleOutput(response);
@@ -225,8 +227,10 @@ async function screen(
   let decision: AiCallOutputDecision;
   try {
     if (!guard.screenModelOutput) throw new Error("the guard asked for screening it cannot do");
-    decision = await decisionWithin(guard.screenModelOutput(callId,
-        { parts, initiator: { type: scope.initiator.type, id: scope.initiator.id } }), signal);
+    decision = await decisionWithin(guard.screenModelOutput(callId, {
+      parts, initiator: { type: scope.initiator.type, id: scope.initiator.id },
+      ...(scope.audience !== undefined ? { audience: scope.audience } : {}),
+    }), signal);
   } catch (error) {
     logger.error("AI call guard failed to screen a response; withholding it", {
       event: "ai_call_guard.screen.failed", callId, callSite, error,

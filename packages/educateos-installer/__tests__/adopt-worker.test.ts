@@ -92,9 +92,10 @@ describe("adopting a deployed Worker", () => {
     const release = await goldenRelease();
     const { fake, api } = deployedAccount();
     let deleted = 0;
-    // Before the third delete is counted, the next mutation after it (2 from now) is the upload.
+    // Before the third delete is counted, the upload is 4 from now: after the delete, its UIs'
+    // asset session and their upload.
     fake.beforeMutation = (operation) => {
-      if (operation === "deleteWorkerSecret" && ++deleted === 3) fake.interruptMutation(2, { effectApplied: false });
+      if (operation === "deleteWorkerSecret" && ++deleted === 3) fake.interruptMutation(4, { effectApplied: false });
     };
 
     await expect(run(api, release)).rejects.toMatchObject({ operation: "uploadWorkerScript", status: 0 });

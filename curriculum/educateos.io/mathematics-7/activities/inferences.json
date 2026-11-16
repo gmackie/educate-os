@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:02a5be0448a17c4372b24d9343ea81a5db4c286e40afbf30d5c217776a86b4ea",
+      "id": "educateos.io/mathematics-7-inferences",
+      "version": "1.0.0"
+    }
+  },
+  "id": "inferences",
+  "role": "assignment",
+  "title": "Making Inferences from Samples"
+}

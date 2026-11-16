@@ -10,7 +10,7 @@ const Text = (max: number) => z.string().trim().min(1).max(max);
 
 // Each refers to a release, rubric or approved standard in the publisher's own registry, which the
 // installing district does not have. A teacher adds their own after creating the activity.
-const RUBRIC_FIELDS = ["structureRubric", "investigationRubric", "analysisRubric", "solutionRubric"] as const;
+const RUBRIC_FIELDS = ["structureRubric", "investigationRubric", "analysisRubric", "solutionRubric", "pictureRubric", "responseRubric"] as const;
 
 /**
  * One activity in a pack: a curriculum template's inputs, under a key unique in the pack.

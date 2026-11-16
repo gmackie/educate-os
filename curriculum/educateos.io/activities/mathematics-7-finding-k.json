@@ -1,0 +1,42 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "7",
+    "overview": "Test tables, graphs and stories for a constant ratio, then write each proportional relationship as an equation.",
+    "problems": [
+      {
+        "prompt": "A dog walker's earnings are shown in a table. Hours: 2, 4, 6. Dollars earned: 18, 36, 54. Is this relationship proportional? If it is, find k and write an equation for dollars earned, d, after h hours."
+      },
+      {
+        "prompt": "A table shows x = 1, 2, 3, 4 and y = 5, 8, 11, 14. Is y proportional to x? Explain how you know."
+      },
+      {
+        "prompt": "A straight-line graph passes through the origin and the point (5, 20), where x is cups of juice concentrate and y is cups of water. Find k and explain what the point (1, k) means in this situation."
+      },
+      {
+        "prompt": "A garden hose fills a 12-gallon tub in 4 minutes at a steady rate. Write an equation for the gallons, g, after m minutes."
+      },
+      {
+        "prompt": "In the equation y = 2.5x, what is the constant of proportionality? Describe a real situation this equation could represent, with units."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Finding k: Tables, Graphs and Equations"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-finding-k",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

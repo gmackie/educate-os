@@ -1,0 +1,61 @@
+{
+  "id": "evolution",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "bead-bugs"
+    },
+    {
+      "kind": "activity",
+      "ref": "finch-beaks"
+    },
+    {
+      "kind": "activity",
+      "ref": "did-the-drug-make-the-mutants"
+    },
+    {
+      "kind": "activity",
+      "ref": "evolution-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.ID.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "How populations change over generations: variation, inheritance, selection and time; the evidence for common ancestry; and natural selection measured in finches and bacteria.",
+  "title": "Unit 5: Evolution and Natural Selection"
+}

@@ -2,11 +2,14 @@ import { canonicalJson, contentDigest } from "@educateos/catalog";
 import type { z } from "zod";
 import { OcsError, type PackageIssue } from "./errors.ts";
 import {
+  isPortable,
+  OCS_PORTABLE_SPEC_VERSION,
   OcsActivity,
   OcsCodexNote,
   OcsLock,
   OcsManifest,
   OcsResource,
+  type OcsSpecVersion,
   OcsUnit,
   type Sha256Digest,
 } from "./schema.ts";
@@ -143,6 +146,14 @@ export async function readPackage(files: OcsFiles): Promise<OcsPackage> {
       const first = override.target.modules[0]!;
       if (!moduleNames.has(first)) issues.push({ path: `${MANIFEST_PATH}: overrides.${index}`, message: `there is no module named ${first}` });
     }
+    // A 1.0 reader would refuse the portable form, so a package using it must say it needs 1.1.
+    if (manifest.specVersion !== OCS_PORTABLE_SPEC_VERSION) {
+      for (const activity of entries.activities.values()) {
+        if (isPortable(activity.definition)) {
+          issues.push({ path: `activities/${activity.id}.json: definition`, message: `a portable activity needs specVersion "${OCS_PORTABLE_SPEC_VERSION}" in ${MANIFEST_PATH}` });
+        }
+      }
+    }
   }
   for (const unit of entries.units.values()) {
     for (const [index, item] of unit.items.entries()) {
@@ -153,6 +164,15 @@ export async function readPackage(files: OcsFiles): Promise<OcsPackage> {
   }
   if (issues.length > 0 || manifest === undefined) throw new OcsError({ kind: "invalid-package", ...(manifest === undefined ? {} : { packageId: manifest.id }), issues });
   return { manifest, ...entries, lock, digest: await packageDigest(files) };
+}
+
+/**
+ * The lowest format version that can hold these activities: 1.1 if any is portable, otherwise
+ * `current` (a package never moves back from 1.1 once it declared it).
+ */
+export function requiredSpecVersion(activities: Iterable<OcsActivity>, current: OcsSpecVersion): OcsSpecVersion {
+  for (const activity of activities) if (isPortable(activity.definition)) return OCS_PORTABLE_SPEC_VERSION;
+  return current;
 }
 
 /** JSON with sorted keys, indented, with a final newline: the form OCS writes every file in. */

@@ -1,0 +1,174 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "collaboration": "group",
+    "due": {
+      "days": 80,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Rehearse and perform the scene in a group, then explain the choices you made.",
+    "passage": "In your group, assign the roles of Dev, Anika, Mom, the stage directions reader and the director. Agree on how you will give each other feedback. Rehearse at least twice, then record your performance. Use your voice, pace and pauses to show what each character knows and feels.",
+    "questions": [
+      {
+        "answerBy": "speaking",
+        "prompt": "Record your group's performance of the whole scene."
+      },
+      {
+        "prompt": "How did your group decide to deliver Dev's story about the broken phone (volume, pace, pauses)? Why?"
+      },
+      {
+        "prompt": "How did the actor playing Anika show the audience that she is hiding something, without new words?"
+      },
+      {
+        "prompt": "Describe one disagreement your group had during rehearsal and how you resolved it."
+      },
+      {
+        "prompt": "What is one thing you would change if you performed the scene again, and why?"
+      }
+    ],
+    "resources": [
+      "volcano-scene"
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Readers' Theater: \"The Volcano\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-readers-theater",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Volcano: a scene in one act\n\nWritten for EducateOS.\n\nCHARACTERS: DEV, 13. ANIKA, his sister, 11. MOM, offstage voice.\n\nSETTING: A garage, 7:15 on a school morning. A workbench. Under a beach towel on the floor, out of DEV's sight, is the broken half of a papier-mache volcano.\n\n(Lights up. ANIKA stands alone holding a roll of tape. She looks at the towel, then at the audience.)\n\nANIKA: (To the audience.) I was only trying to see if it really erupts. It did not erupt. It fell.\n\n(DEV bursts in, backpack half on.)\n\nDEV: Have you seen my volcano? The science fair bus leaves at eight.\n\nANIKA: (Too quickly.) What volcano?\n\nDEV: The one I've been building for three weeks. The one on this bench. Yesterday.\n\nANIKA: Maybe Mom moved it.\n\nDEV: (Calling offstage.) Mom! Did you move my volcano?\n\nMOM: (Offstage.) Why would I touch your volcano?\n\n(DEV starts searching. He lifts a box, a bucket. He steps right next to the towel. ANIKA moves to stand on the corner of it.)\n\nDEV: If I don't have it, I have nothing. Ms. Reyes said the project is a third of our grade.\n\nANIKA: You could explain volcanoes. With your hands. Like, very dramatically.\n\nDEV: (Not laughing.) Anika.\n\n(Pause. ANIKA looks at the audience, then at DEV.)\n\nDEV: (Quietly.) You know, last year when I broke Dad's phone, I hid it in the laundry for two days. The hiding was worse than the breaking. I couldn't eat. I kept thinking someone was about to find it.\n\n(ANIKA steps off the towel. She lifts it. The broken volcano sits on the floor. DEV stares at it.)\n\nANIKA: I wanted to see it erupt. I'm sorry.\n\n(Long pause.)\n\nDEV: (Kneeling.) The base is fine. It's just the top. (He picks up the tape.) Hold this side. If we're fast, we can make the bus. And you are explaining to Ms. Reyes why it looks like this.\n\nANIKA: Dramatically?\n\nDEV: Very dramatically.\n\n(They work together as the lights fade.)",
+      "id": "volcano-scene",
+      "title": "The Volcano: a scene in one act"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "delivery",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Voice, pace and expression"
+      },
+      {
+        "id": "interpretation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Choices that show character"
+      },
+      {
+        "id": "collaboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Collaboration and feedback"
+      },
+      {
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reflection on choices"
+      }
+    ],
+    "title": "Readers' theater"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

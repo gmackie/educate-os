@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readZip, writeZip, ZipRefusedError, type ZipLimits } from "../src/index.ts";
+import { readZip, writeZip, zipStream, ZipRefusedError, type ZipLimits, type ZipWriteEntry } from "../src/index.ts";
 
 const LIMITS: ZipLimits = { maxEntries: 10, maxEntryBytes: 64 * 1024, maxTotalBytes: 128 * 1024, maxCompressionRatio: 100 };
 const encoder = new TextEncoder();
@@ -62,5 +62,63 @@ describe("writeZip (SCHO-186)", () => {
     expect(await zip(files)).toStrictEqual(first);
     const archive = await readZip(first, LIMITS);
     expect(Object.fromEntries([...archive.files].map(([path, bytes]) => [path, new TextDecoder().decode(bytes)]))).toStrictEqual(files);
+  });
+});
+
+async function* entriesOf(entries: readonly ZipWriteEntry[], pulled?: string[]): AsyncIterable<ZipWriteEntry> {
+  for (const entry of entries) {
+    pulled?.push(entry.path);
+    yield entry;
+  }
+}
+
+async function* failingAfter(entry: ZipWriteEntry): AsyncIterable<ZipWriteEntry> {
+  yield entry;
+  throw new Error("content went missing");
+}
+
+describe("zipStream (SCHO-367)", () => {
+  const entries = [
+    { path: "manifest.json", bytes: encoder.encode("{}\n".repeat(40)) },
+    { path: "content/aa", bytes: encoder.encode("held content") },
+    { path: "content/bb", bytes: encoder.encode("more held content ".repeat(30)) },
+  ];
+
+  it("writes what writeZip writes for the same entries", async () => {
+    const streamed = new Uint8Array(await new Response(zipStream(entriesOf(entries))).arrayBuffer());
+    expect(streamed).toStrictEqual(await writeZip(entries));
+  });
+
+  it("stores the entries it is told to, and the reader reads them back", async () => {
+    const streamed = new Uint8Array(await new Response(zipStream(entriesOf(entries), { store: (path) => path.startsWith("content/") })).arrayBuffer());
+    const read = await readZip(streamed, LIMITS);
+    expect([...read.files.keys()]).toStrictEqual(entries.map((e) => e.path));
+    expect(read.files.get("content/bb")).toStrictEqual(entries[2]!.bytes);
+  });
+
+  it("pulls an entry only when the reader wants more", async () => {
+    const pulled: string[] = [];
+    const reader = zipStream(entriesOf(entries, pulled)).getReader();
+    await reader.read();
+    expect(pulled).toStrictEqual(["manifest.json"]);
+    await reader.cancel();
+  });
+
+  it("errors the stream when an entry cannot be read", async () => {
+    await expect(new Response(zipStream(failingAfter(entries[0]!))).arrayBuffer()).rejects.toThrow("content went missing");
+  });
+
+  it("adds the ZIP64 end records past 65,534 entries, which the bounded reader refuses", async () => {
+    const many = Array.from({ length: 0xffff }, (_, i) => ({ path: `f/${i}`, bytes: new Uint8Array([i & 0xff]) }));
+    const bytes = new Uint8Array(await new Response(zipStream(entriesOf(many), { store: () => true })).arrayBuffer());
+    const view = new DataView(bytes.buffer);
+    const end = bytes.byteLength - 22;
+    expect(view.getUint32(end, true)).toBe(0x06054b50);
+    expect(view.getUint16(end + 10, true)).toBe(0xffff);
+    expect(view.getUint32(end - 20, true)).toBe(0x07064b50);
+    const record = Number(view.getBigUint64(end - 20 + 8, true));
+    expect(view.getUint32(record, true)).toBe(0x06064b50);
+    expect(view.getBigUint64(record + 32, true)).toBe(0xffffn);
+    expect((await refusal(readZip(bytes, { ...LIMITS, maxEntries: 0x10000 }))).reason).toBe("zip64-unsupported");
   });
 });

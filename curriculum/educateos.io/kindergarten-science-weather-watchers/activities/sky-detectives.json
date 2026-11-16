@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:119c67cc26a988d67f6c7d25ed5476a6583411a3ed9efec8fadc99e9e25c83cb",
+      "id": "educateos.io/kindergarten-science-weather-watchers-sky-detectives",
+      "version": "1.0.0"
+    }
+  },
+  "id": "sky-detectives",
+  "role": "lesson",
+  "title": "Sky Detectives"
+}

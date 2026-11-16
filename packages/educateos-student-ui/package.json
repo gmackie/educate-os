@@ -19,7 +19,8 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3",
-    "uqr": "^0.1.3"
+    "uqr": "^0.1.3",
+    "@educateos/home-learning": "workspace:*"
   },
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
@@ -32,6 +33,7 @@
     "jsdom": "^26.1.0",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@educateos/contracts": "workspace:*"
   }
 }

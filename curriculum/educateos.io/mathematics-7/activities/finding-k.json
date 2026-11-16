@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7c122d9b99095bdfbb70524f85f077d0825b375362df6c9269f9d6c1b848bd48",
+      "id": "educateos.io/mathematics-7-finding-k",
+      "version": "1.0.0"
+    }
+  },
+  "id": "finding-k",
+  "role": "lesson",
+  "title": "Finding k: Tables, Graphs and Equations"
+}

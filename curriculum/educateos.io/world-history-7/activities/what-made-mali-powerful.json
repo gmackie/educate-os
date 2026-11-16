@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b7898d1d3aa51a63af52a77bec2970ff45ffbc715111ac033b409c7d34db74bd",
+      "id": "educateos.io/world-history-7-what-made-mali-powerful",
+      "version": "1.0.0"
+    }
+  },
+  "id": "what-made-mali-powerful",
+  "role": "assessment",
+  "title": "What Made Mali Powerful?"
+}

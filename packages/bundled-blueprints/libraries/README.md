@@ -71,7 +71,10 @@ test runs against a stub of `cloudflare:workers` that the package's vitest confi
 - [`sync`](sync/README.md) -- collaboration plumbing: on the server a mutation queue, a subscriber
   registry with presence seeding and broadcast, and versioned upserts; on the client a save scheduler
   with retry backoff, a presence roster and a subscribe helper. The Docs, Sheets and Slides
-  blueprints build on it.
+  blueprints build on it (Docs without presence).
+- [`tutor`](tutor/README.md) -- the bundled AI tutors' page (read-aloud, one-tap replies, sizes by
+  grade band) and conversation loop (prompt, privacy filter, reply shaping, transcript export), drawn
+  from each tutor's persona. Built on `ui`.
 - `zip` -- a server-only streaming ZIP32 writer shared by the Sheets XLSX exporter and PPTX library.
 - `pptx` -- a server-only PresentationML renderer for block-based slide decks, inlined into each
   importing blueprint's `server.js`, not shipped as a separate `pptx.js`. `deckToPptx(deck, adaptBlock)`
@@ -82,3 +85,5 @@ test runs against a stub of `cloudflare:workers` that the package's vitest confi
   (stripped of scripts, event handlers and outside links) as a picture with its `src` PNG as the
   fallback for viewers without SVG support.
   Installed gadgets cannot resolve these package imports at runtime.
+
+- [`teacher-board`](teacher-board/README.md) -- source-card presentation and local preparation notes shared by the three teacher connector blueprints, including print and Markdown preparation export.

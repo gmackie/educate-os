@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:dd81650b70a7ce46b99ff0ddd78afd3f801ddfab1665f3993913114b91f24a62",
+      "id": "educateos.io/english-9-service-argument",
+      "version": "1.0.0"
+    }
+  },
+  "id": "service-argument",
+  "role": "assignment",
+  "title": "Should Community Service Be Required to Graduate?"
+}

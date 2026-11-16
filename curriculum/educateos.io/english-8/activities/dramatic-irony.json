@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:20edcb4a9933e217a89625d07932c89394abfbcb42416116ce4178eb85256812",
+      "id": "educateos.io/english-8-dramatic-irony",
+      "version": "1.0.0"
+    }
+  },
+  "id": "dramatic-irony",
+  "role": "assignment",
+  "title": "Dramatic Irony in \"The Volcano\""
+}

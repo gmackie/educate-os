@@ -1,0 +1,83 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw one thing you saw the wind move.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "lookPrompt": "Go outside with your class. Look for things the wind is moving.",
+    "overview": "Look for things the wind is moving. Draw one and tell about it.",
+    "sentenceFrames": [
+      "The wind moved the ___.",
+      "It was a ___ wind."
+    ],
+    "subject": "science",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Wind Hunt"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-wind-hunt",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "observe",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I looked for what the wind moved"
+      },
+      {
+        "id": "record",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I drew and told what I saw"
+      }
+    ],
+    "title": "Wind hunt"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

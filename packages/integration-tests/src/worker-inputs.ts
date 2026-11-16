@@ -64,6 +64,9 @@ const WORKER_INPUTS: WorkerInput[] = [
   { kind: "dir", path: "packages/workshop-shared", excludeDirs: BUILT },
   { kind: "dir", path: "packages/observability", excludeDirs: BUILT },
   { kind: "dir", path: "packages/error-reporting", excludeDirs: BUILT },
+  // Lesson attachment extraction and its bounded ZIP/XML parsers.
+  ...["educateos-doc-extract", "educateos-cartridge", "educateos-content-studio", "educateos-zip", "educateos-contracts"]
+    .map(name => ({kind: "dir" as const, path: `packages/${name}`, excludeDirs: BUILT})),
   // Bundled into the fixture gatekeeper.
   { kind: "dir", path: "packages/gatekeeper-kit", excludeDirs: BUILT },
   // The real Context gatekeeper, split to keep its generated SPA and validated tree out of watch.

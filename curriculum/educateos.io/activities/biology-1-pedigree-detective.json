@@ -1,0 +1,149 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Read family histories and crosses written in words, draw them as pedigrees and Punnett squares, and work out patterns of inheritance beyond simple dominance.",
+    "problems": [
+      {
+        "prompt": "Carlos and Ana are both unaffected by a rare inherited condition, but their daughter has it. Is the allele dominant or recessive? Give the genotypes of Carlos, Ana and their daughter, using A and a."
+      },
+      {
+        "prompt": "Carlos and Ana also have an unaffected son. What is the probability that he carries the allele? Explain why the answer is not 1/2."
+      },
+      {
+        "prompt": "In snapdragons, a red-flowered plant (RR) crossed with a white-flowered plant (WW) gives all pink offspring. What pattern of inheritance is this? Predict the offspring of two pink plants."
+      },
+      {
+        "prompt": "In some cattle, a red bull (RR) and a white cow (WW) produce a roan calf, whose coat has both red hairs and white hairs. How is this different from the snapdragon example? Predict the offspring of two roan cattle."
+      },
+      {
+        "prompt": "Human ABO blood type is controlled by three alleles: IA, IB and i. A mother with genotype IAi and a father with genotype IBi have a child. List every possible blood type for the child and its probability."
+      },
+      {
+        "prompt": "Red-green color blindness is caused by a recessive allele on the X chromosome. A woman who is a carrier (XBXb) and a man with normal color vision (XBY) have children. Give the probability for daughters and for sons separately, and explain the difference."
+      },
+      {
+        "prompt": "Draw a three-generation pedigree for the family in problems 1 and 2: Carlos and Ana, their affected daughter and unaffected son, and the son's two children with an unaffected partner who is not a carrier. Use standard symbols and write the possible genotypes under each person."
+      }
+    ],
+    "resources": [
+      "pedigree-guide"
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Pedigree Detective"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.CP.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/biology-1-pedigree-detective",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "A pedigree is a family tree that tracks one trait through generations.\n\nSymbols:\n- A square is a male. A circle is a female.\n- A shaded shape has the trait. An unshaded shape does not. A half-shaded shape (used in some pedigrees) is a known carrier.\n- A horizontal line between a square and a circle joins two parents. A vertical line drops from that line to their children, who are joined by a horizontal line above them, oldest on the left.\n- Generations are numbered with Roman numerals (I, II, III), and people in a generation with numbers (II-1, II-2).\n\nClues to the pattern:\n- Two unaffected parents with an affected child: the trait is recessive. Both parents must be carriers.\n- An affected child always has at least one affected parent, in every generation: the trait is probably dominant.\n- Many more affected males than females, passed from carrier mothers to sons: the trait is probably X-linked recessive.\n\nNot every trait is simply dominant or recessive. In incomplete dominance, the heterozygote is in between (pink from red and white). In codominance, both alleles show fully (red hairs and white hairs). Some genes have more than two alleles in the population, like the ABO blood group gene, even though each person carries only two.",
+      "id": "pedigree-guide",
+      "title": "How to Read a Pedigree"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Names the inheritance pattern in each case (recessive, incomplete dominance, codominance, multiple alleles, X-linked) and justifies it from the evidence given.",
+        "id": "patterns",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies the pattern"
+      },
+      {
+        "description": "Sets up correct crosses and states accurate probabilities for each outcome.",
+        "id": "predictions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Predictions and probabilities"
+      },
+      {
+        "description": "Draws the pedigree with standard symbols and correct genotypes for every person.",
+        "id": "pedigree",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Pedigree chart"
+      }
+    ],
+    "title": "Inheritance patterns"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

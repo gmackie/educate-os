@@ -1,64 +1,144 @@
-import { describe, expect, it } from "vitest";
-import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS } from "./northfield.ts";
+import { beforeAll, describe, expect, it } from "vitest";
+import { NORTHFIELD, NORTHFIELD_COURSE_CLASSES, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
+import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS, NORTHFIELD_SECTIONS } from "./northfield.ts";
+import { schoolDayDue } from "@educateos/harness/school-day";
 
 describe("the demo district", () => {
-  it("signs each persona in as who the picker says they are, with work waiting for each", async () => {
-    const district = await bootNorthfield();
-    const as = (id: string) => district.clientFor(PERSONAS.find((p) => p.id === id)!.subject);
+  let district: Awaited<ReturnType<typeof bootNorthfield>>;
+  const as = (id: string) => district.clientFor(PERSONAS.find((p) => p.id === id)!.subject);
+  beforeAll(async () => {
+    const started = performance.now();
+    district = await bootNorthfield();
+    console.info(`Northfield booted, seeded and installed its courses in ${Math.round(performance.now() - started)} ms`);
+  }, 60_000);
+
+  it("signs each persona in as who the picker says they are, a student and a teacher in each band", async () => {
     for (const persona of PERSONAS) {
       expect(await district.clientFor(persona.subject).call("me.get")).toMatchObject({ displayName: persona.name });
     }
+    for (const band of ["K-2", "3-5", "6-8", "9-12"]) {
+      expect(PERSONAS.filter((p) => p.section === band).map((p) => p.kind), band).toStrictEqual(["student", "teacher"]);
+      expect(PERSONAS.find((p) => p.section === band && p.kind === "student")!.band).toBe(band);
+    }
+    expect(PERSONAS.every((p) => NORTHFIELD_SECTIONS.some((s) => s.key === p.section))).toBe(true);
+  });
 
-    const student = as("student");
-    const [english] = (await student.call("me.get")).enrollments.filter((e) => e.offeringId === "off_nf-eng9-fall-p3");
-    expect(english).toBeDefined();
-    const activities = await student.call("student.listActivities", { params: { offeringId: "off_nf-eng9-fall-p3" } });
-    expect(activities.map((a) => a.assignment.title).toSorted()).toEqual(["Reading reflection", "Should the school day start later?"]);
+  it("seeds the showcase: Mateo has a story to retell and feedback to read, and his teacher work to review", async () => {
+    const mateo = as("k2-student");
+    const reading = await mateo.call("student.listActivities", { params: { offeringId: "off_nf-g1read-fall-r7" } });
+    const retell = reading.find((a) => a.assignment.title === "Retell The Little Seed")!;
+    expect(retell.activity.content.template).toBe("read-and-respond");
+    expect(await mateo.call("student.listSubmissions", { params: { assignmentId: retell.assignment.id } })).toStrictEqual([]);
+    const words = reading.find((a) => a.assignment.title === "Word Builders")!;
+    expect(await mateo.call("student.assignmentFeedback", { params: { assignmentId: words.assignment.id } })).toHaveLength(1);
 
-    const teacher = as("teacher");
-    const assignments = await teacher.call("teacher.listAssignments", { params: { offeringId: "off_nf-eng9-fall-p3" } });
-    const essay = assignments.find((a) => a.title === "Should the school day start later?")!;
-    expect(await teacher.call("teacher.listSubmissions", { params: { assignmentId: essay.id } })).toHaveLength(2);
+    const yazzie = as("k2-teacher");
+    const submissions = await yazzie.call("teacher.listSubmissions", { params: { assignmentId: retell.assignment.id } });
+    expect(submissions.flatMap((s) => s.items.map((i) => i.artifactType)).toSorted()).toEqual(["audio", "audio", "audio", "audio", "image", "image"]);
+  });
 
-    expect(await as("guardian").call("guardian.listChildren")).toEqual([{ studentPrincipalId: "prn_nf-student-amara", displayName: "Amara Okafor" }]);
+  it("seeds World History 7's gradebook so every student has grades, Felix's analysis waiting on his teacher (SCHO-328)", async () => {
+    const book = await as("g68-teacher").call("teacher.gradebook", { params: { offeringId: "off_nf-whist7-fall-p4" } });
+    const column = (title: string) => book.columns.find((c) => c.title === title)!.assignmentId;
+    const graded = (assignmentId: string) => book.rows.filter((r) => r.cells.some((c) => c.assignmentId === assignmentId && c.score !== undefined)).map((r) => r.displayName).toSorted();
+    expect(book.rows).toHaveLength(3);
+    expect(graded(column("Land Between the Rivers Check-In"))).toHaveLength(3);
+    expect(graded(column("What Do Hammurabi's Laws Tell Us?"))).toStrictEqual(book.rows.map((r) => r.displayName).filter((n) => !n.startsWith("Felix")).toSorted());
+    expect(book.rows.every((r) => r.totals.final !== null)).toBe(true);
+  });
+
+  it("runs under an applied configuration, so the admin console shows the district set up and rostered", async () => {
+    const { head } = await as("admin").call("admin.getConfig");
+    expect(head?.desired).toMatchObject({ rostering: { provider: "oneroster-csv" }, modules: { "core-learning": { state: "enabled" } } });
+  });
+
+  it("gives the guardian both her children, in two schools", async () => {
+    const children = await as("guardian").call("guardian.listChildren");
+    expect(children.map((c) => c.displayName).toSorted()).toStrictEqual(["Lucía Delgado", "Mateo Delgado"]);
+  });
+
+  it("gives every class the rest of its semester from its sample course, with teacher-only notes kept from students", async () => {
+    const library = await as("admin").call("admin.listLibraryCourses");
+    for (const [packageId, offeringId] of Object.entries(NORTHFIELD_COURSE_CLASSES)) {
+      expect(library.find((c) => c.packageId === packageId)?.publisher).toStrictEqual({ domain: "educateos.io", signed: true });
+      const course = NORTHFIELD_SHOWCASE.courses.find((c) => c.offeringId === offeringId)!;
+      const teacher = district.clientFor(NORTHFIELD.principals.find((p) => p.id === course.teacherId)!.externalIdentities[0]!.subject);
+      const modules = (await teacher.call("teacher.listModules", { params: { offeringId } })).outline.modules;
+      expect(modules.length, packageId).toBeGreaterThan(course.modules.length);
+      expect(modules.slice(course.modules.length).every((m) => m.published && m.source?.kind === "course" && m.source.packageId === packageId), packageId).toBe(true);
+    }
+    const yazzie = as("k2-teacher"), mateo = as("k2-student");
+    const params = { offeringId: "off_nf-g1read-fall-r7" };
+    const modules = (await yazzie.call("teacher.listModules", { params })).outline.modules;
+    expect(modules.map((m) => m.title)).toStrictEqual(["Short Vowel Sounds", "Stories We Love", "Two Letters, One Sound", "Magic E: Long Vowels", "Animal Facts", "Rhymes and Smooth Reading"]);
+    expect(modules.slice(2).some((m) => m.items.some((i) => i.kind === "teacher-note"))).toBe(true);
+    const seen = (await mateo.call("student.listModules", { params })).outline;
+    expect(seen.modules.map((m) => m.title)).toStrictEqual(modules.map((m) => m.title));
+    expect(seen.modules.flatMap((m) => m.items).some((i) => i.kind === "teacher-note")).toBe(false);
+    expect(seen.modules.slice(2).every((m) => m.items.some((i) => i.kind === "page"))).toBe(true);
+    const offered = (await yazzie.call("teacher.libraryCourses", { params })).find((c) => c.packageId === "educateos.io/grade-1-reading-foundations");
+    expect(offered).toMatchObject({ matchesClass: true, installed: { version: "1.0.0", done: true } });
+  });
+
+  it("dues the showcase's work at 3:30 PM on a school day, never at the minute it booted", async () => {
+    // The sample courses' activities are due as their course says, counted from their install.
+    const showcase = new Set(NORTHFIELD_SHOWCASE.courses.find((c) => c.offeringId === "off_nf-eng9-fall-p3")!.activities.map((a) => a.title));
+    const assignments = (await as("g912-teacher").call("teacher.listAssignments", { params: { offeringId: "off_nf-eng9-fall-p3" } })).filter((a) => showcase.has(a.title));
+    expect(assignments.length).toBeGreaterThan(0);
+    for (const { dueAt } of assignments) {
+      const due = new Date(dueAt);
+      expect([due.getHours(), due.getMinutes()]).toStrictEqual([15, 30]);
+      expect([0, 6]).not.toContain(due.getDay());
+    }
+    // A Friday plus one day is the Monday after.
+    const friday = new Date(2026, 10, 6, 9, 41);
+    expect(new Date(schoolDayDue(friday)(1)).getDay()).toBe(1);
+    expect(new Date(schoolDayDue(friday)(1)).getDate()).toBe(9);
   });
 
   it("answers someone the district does not know as signed in to no one", async () => {
-    const district = await bootNorthfield();
     await expect(district.clientFor("nobody").call("me.get")).rejects.toMatchObject({ status: 401 });
   });
 
-  it("carries a new student's submission through teacher review and released feedback without granting teacher access", async () => {
-    const district = await bootNorthfield();
-    const as = (id: string) => district.clientFor(PERSONAS.find((persona) => persona.id === id)!.subject);
-    const student = as("student"), teacher = as("teacher"), guardian = as("guardian");
+  it("carries a new submission through teacher review and released feedback without granting teacher access", async () => {
+    const student = as("g912-student"), teacher = as("g912-teacher");
     const offeringId = "off_nf-eng9-fall-p3";
     const activity = (await student.call("student.listActivities", { params: { offeringId } }))
-      .find((item) => item.assignment.title === "Reading reflection")!;
+      .find((item) => item.assignment.title === "What Changes a Character?")!;
     const assignmentId = activity.assignment.id;
     const workspace = await student.call("student.openCourseWorkspace", { params: { offeringId } });
     const { artifact, head } = await student.call("student.createArtifact", { body: {
       workspaceId: workspace.id,
       type: "document",
-      title: "Clever meeting reading reflection",
-      content: { kind: "text", mediaType: "text/markdown", text: "I read an article about school gardens. Its evidence showed how observation can turn an everyday place into a science investigation." },
+      title: "What changes a character",
+      content: { kind: "text", mediaType: "text/markdown", text: "Loss, not success, is what makes the narrator grow up." },
     } });
-    const receipt = await student.call("student.submit", { params: { assignmentId }, body: { revisions: [{ artifactId: artifact.id, revisionId: head.id }] } });
+    await student.call("student.submit", { params: { assignmentId }, body: { revisions: [{ artifactId: artifact.id, revisionId: head.id }] } });
     const [own] = await student.call("student.listSubmissions", { params: { assignmentId } });
-    expect(receipt).toBeDefined();
-    expect(own).toBeDefined();
     expect((await teacher.call("teacher.listSubmissions", { params: { assignmentId } })).map((submission) => submission.id)).toContain(own!.id);
-    await teacher.call("teacher.addComment", { params: { submissionId: own!.id }, body: { body: "Clear reflection. Add one quotation to support the connection." } });
+    await teacher.call("teacher.addComment", { params: { submissionId: own!.id }, body: { body: "A sharp claim. Now prove it with a quotation." } });
     await expect(student.call("student.getFeedback", { params: { submissionId: own!.id } })).rejects.toMatchObject({ status: 404 });
-    const grade = await teacher.call("teacher.recordGrade", { params: { submissionId: own!.id }, body: { score: { points: 4, maxPoints: 5 } } });
-    expect(grade.status).toBe("official");
     await teacher.call("teacher.releaseFeedback", { params: { submissionId: own!.id }, body: { state: "shared-with-student" } });
     const feedback = await student.call("student.getFeedback", { params: { submissionId: own!.id } });
-    expect(feedback.comments.map((comment) => comment.body)).toContain("Clear reflection. Add one quotation to support the connection.");
-    const course = await guardian.call("guardian.childCourse", { params: { studentId: "prn_nf-student-amara", offeringId } });
-    expect(course.assignments.some((assignment) => assignment.assignment.id === assignmentId)).toBe(true);
-    expect(course.assignments.find((assignment) => assignment.assignment.id === assignmentId)!.grades).toHaveLength(1);
+    expect(feedback.comments.map((comment) => comment.body)).toContain("A sharp claim. Now prove it with a quotation.");
     await expect(student.call("teacher.listSubmissions", { params: { assignmentId } })).rejects.toMatchObject({ status: 403 });
-    await expect(guardian.call("guardian.childCourse", { params: { studentId: "prn_nf-student-elena", offeringId } })).rejects.toMatchObject({ status: 404 });
+    await expect(as("guardian").call("guardian.childCourse", { params: { studentId: "prn_nf-student-amara", offeringId } })).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("shows the technology director its decision trail, admin changes and sign-in settings (SCHO-376)", async () => {
+    const director = as("it-director");
+    const decisions = await director.call("admin.decisionLog", { query: {} });
+    expect(decisions.entries.length).toBeGreaterThan(0);
+    expect(decisions.nextBefore).toBeDefined();
+    const changes = await director.call("admin.auditLog", { query: {} });
+    expect(changes.entries.every((e) => e.effect === "allow" && e.ruleId.startsWith("admin."))).toBe(true);
+    // The configuration the district runs under, applied by its administrator at boot.
+    expect(changes.entries.some((e) => e.action === "configure" && e.principalName === "Avery Admin")).toBe(true);
+    expect(await director.call("admin.screeningLog")).toStrictEqual({ screening: "published-unscreened", entries: [], truncated: false });
+    const signIn = await director.call("admin.signInSettings");
+    expect(signIn).toMatchObject({ provider: "district-sso", deployment: { verifier: "demo" }, pendingLinks: 0 });
+    expect(signIn.issuers[0]!.activePeople).toBeGreaterThan(0);
+    // A teacher reads none of it.
+    await expect(as("g912-teacher").call("admin.decisionLog", { query: {} })).rejects.toMatchObject({ status: 403 });
   });
 });

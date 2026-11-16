@@ -45,7 +45,10 @@ export interface ControlPlaneEnv {
   CLEVER_LAUNCH_UNAFFILIATED?: string;
   /** Stamped by the ForgeGraph build (`scripts/production/stamp-commit.ts`). */
   FG_COMMIT_HASH?: string;
-  /** Signed releases for the guided install, as `scripts/release/upload-release.ts` lays them out. */
+  /**
+   * Signed releases for the guided install, as `scripts/release/upload-release.ts` lays them out, and
+   * served read-only under `/releases/` for installers outside educateos.io (SCHO-341).
+   */
   RELEASES?: R2Bucket;
   /** The release keys the guided install verifies releases against: a `ReleaseTrust`. */
   RELEASE_TRUST?: unknown;
@@ -117,6 +120,11 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
   /** Records the Clever district a registered installation serves. Never reachable over HTTP. */
   linkCleverDistrict(instanceId: string, cleverDistrictId: string): Promise<RegistryReply> {
     return this.#registry.linkCleverDistrict(instanceId, cleverDistrictId);
+  }
+
+  /** Deregisters one of the operator's installations. Reached only from the console's form post. */
+  deregisterInstallation(operator: Operator, instanceId: string): Promise<RegistryReply> {
+    return this.#registry.deregister(operator, instanceId);
   }
 
   cleverLaunchHostname(cleverDistrictId: string): Promise<string | undefined> {
@@ -270,6 +278,7 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
         cleverLaunchDistricts: configuredLaunchDistricts(env.CLEVER_LAUNCH_DISTRICTS),
         cleverLaunchUnaffiliated: configuredUnaffiliatedHostname(env.CLEVER_LAUNCH_UNAFFILIATED),
         ...(env.RELEASES && env.RELEASE_TRUST ? { releases: { bucket: env.RELEASES, trust: env.RELEASE_TRUST } } : {}),
+        ...(env.RELEASES ? { releaseFiles: env.RELEASES } : {}),
         waitUntil: (promise) => ctx.waitUntil(promise),
         ...(options.cloudflareApi ? { cloudflareApi: options.cloudflareApi } : {}),
         ...(movedTo === undefined ? {} : { adminUrl: movedTo }),

@@ -1,13 +1,14 @@
 // The control plane's pages: plain server-rendered HTML in the site's own shell (its header,
 // footer, Kumo tokens and site.css), so /app reads as part of educateos.io and ships no framework.
 // Every value that reaches a page passes through `html`, which escapes it.
+import { INSTALL_TOKEN_PERMISSIONS, installTokenLink } from "@educateos/installer";
 import { ACCESS_LOGOUT_PATH } from "./access.ts";
 import type { ProbedEntry } from "./app.ts";
 import { BILLING_PATHS, type BilledInvoice, type BillingOverview, MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE, TERM_DAYS } from "./billing.ts";
 import { ECHOED_FIELDS, type InstallEvent } from "./guided-install.ts";
 import type { ProbeResult } from "./probe.ts";
 import type { Registration } from "./registry.ts";
-import type { Operator } from "./store.ts";
+import type { Installation, Operator } from "./store.ts";
 
 /** The site's shared markup, from `sites/educateos-io/partials`. */
 export interface SiteShell {
@@ -257,6 +258,43 @@ export function billingPage(shell: SiteShell, operator: Operator, overview: Bill
 }
 
 /** A page for a request the control plane turns away. */
+/**
+ * The deregistration page (SCHO-368): the operator's installations, each with a form that must be
+ * confirmed by typing its instance ID.
+ */
+export function deregisterPage(
+  shell: SiteShell,
+  operator: Operator,
+  installations: readonly Installation[],
+  failed?: { instanceId: string; error: string },
+): string {
+  return page(shell, "Deregister an installation", html`<section class="page-hero">
+    <div class="wrap">
+      <div class="eyebrow">Operator console</div>
+      <h1>Deregister an installation</h1>
+      ${signedInBar(operator)}
+      <p class="lede">For a district leaving EducateOS. Deregistering deletes what educateos.io holds about an installation: its entry on your dashboard, its registry record and heartbeats if it registered, and the Clever district it served. Its slug becomes free.</p>
+      <p>It does not touch the installation itself, which runs in your own Cloudflare account: export the district first, then remove it with <code>npx launch-educate-os uninstall</code>. See the <a href="https://educateos.io/pilot/">founding pilot's offboarding notes</a>.</p>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+      ${installations.length === 0 ? html`<p class="muted">You have no installations made through educateos.io.</p>` : ""}
+      ${installations.map((installation) => html`<form method="post" action="/app/deregister" class="card">
+        <h3>${installation.hostname}</h3>
+        <p class="muted">${installation.instanceId}, installed ${installation.installedAt.slice(0, 10)} into account ${installation.accountId}</p>
+        <input type="hidden" name="instanceId" value="${installation.instanceId}">
+        <div class="field">
+          <label for="confirm-${installation.instanceId}">Type ${installation.instanceId} to confirm</label>
+          <input class="input" id="confirm-${installation.instanceId}" name="confirm" required autocomplete="off" spellcheck="false">
+          ${failed?.instanceId === installation.instanceId ? html`<br><small class="badge warn">${failed.error}</small>` : ""}
+        </div>
+        <p><button class="btn" type="submit">Deregister</button></p>
+      </form>`)}
+    </div>
+  </section>`);
+}
+
 export function messagePage(shell: SiteShell, title: string, message: string): string {
   return page(shell, title, html`<section class="page-hero">
     <div class="wrap">
@@ -268,32 +306,9 @@ export function messagePage(shell: SiteShell, title: string, message: string): s
   </section>`);
 }
 
-/**
- * The permissions the guided install's token needs, as Cloudflare's token editor names them
- * (docs/educateos/installer-permissions.md). `key` and `type` prefill the editor.
- */
-export const INSTALL_TOKEN_PERMISSIONS = [
-  { scope: "Account", name: "Account Settings", level: "Read", key: "account_settings", type: "read" },
-  { scope: "Account", name: "Billing", level: "Read", key: "billing", type: "read" },
-  { scope: "Account", name: "Workers Scripts", level: "Edit", key: "workers_scripts", type: "edit" },
-  { scope: "Account", name: "Workers KV Storage", level: "Edit", key: "workers_kv_storage", type: "edit" },
-  { scope: "Account", name: "Workers R2 Storage", level: "Edit", key: "workers_r2", type: "edit" },
-  { scope: "Account", name: "D1", level: "Edit", key: "d1", type: "edit" },
-  { scope: "Account", name: "Access: Apps and Policies", level: "Edit", key: "access", type: "edit" },
-  { scope: "Account", name: "Access: Organizations, Identity Providers, and Groups", level: "Read", key: "access_acct", type: "read" },
-  { scope: "Account", name: "AI Gateway", level: "Edit", key: "aig", type: "edit" },
-  { scope: "Zone", name: "Zone", level: "Read", key: "zone", type: "read" },
-  { scope: "Zone", name: "DNS", level: "Edit", key: "dns", type: "edit" },
-  { scope: "Zone", name: "Workers Routes", level: "Edit", key: "workers_routes", type: "edit" },
-  { scope: "Zone", name: "SSL and Certificates", level: "Edit", key: "ssl_and_certificates", type: "edit" },
-] as const;
-
-/** Cloudflare's token editor, prefilled with {@link INSTALL_TOKEN_PERMISSIONS}. */
-export function installTokenLink(): string {
-  const keys = INSTALL_TOKEN_PERMISSIONS.map(({ key, type }) => ({ key, type }));
-  const query = new URLSearchParams({ permissionGroupKeys: JSON.stringify(keys), name: "EducateOS guided install" });
-  return `https://dash.cloudflare.com/profile/api-tokens?${query}`;
-}
+// The token's permissions and the prefilled editor link live in the installer, which the CLI
+// (`launch-educate-os`) shares (SCHO-341).
+export { INSTALL_TOKEN_PERMISSIONS, installTokenLink };
 
 const FIELD_LABELS: Record<(typeof ECHOED_FIELDS)[number], { label: string; hint: string; placeholder: string }> = {
   slug: { label: "Address", hint: "Your installation serves at <slug>.educateos.io. Lowercase letters, digits and hyphens.", placeholder: "riverbend" },

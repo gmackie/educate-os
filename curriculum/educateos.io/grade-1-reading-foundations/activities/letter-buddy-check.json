@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:17d37a7390b04b02bff398ad12be494c40911d0f36d51a0e22f23ef250546370",
+      "id": "educateos.io/grade-1-reading-foundations-letter-buddy-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "letter-buddy-check",
+  "role": "assessment",
+  "title": "Letter Buddy Check"
+}

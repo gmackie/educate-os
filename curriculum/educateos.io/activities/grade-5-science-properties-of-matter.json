@@ -1,0 +1,55 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "5",
+    "overview": "Read about properties of matter and how matter changes, then answer the questions.",
+    "passage": "Properties of Matter\n\nAll matter is made of particles too small to see. Even air is matter. When you pump up a ball, the air you push inside takes up space, and the ball gets a little heavier.\n\nScientists tell materials apart by their properties. Some properties you can see, like color and shine. Others you have to test. Is it hard or soft? Does a magnet pull on it? Does heat or electricity move through it easily? That property is called conductivity. Does it dissolve in water? That property is called solubility.\n\nMatter can change. In a physical change, like melting ice or dissolving salt, the material is still the same substance. You could get the salt back by letting the water evaporate. In a chemical change, like rust forming on a bike chain or vinegar fizzing with baking soda, new substances form. Clues to a chemical change include a new color, a gas, or heat or light given off.\n\nOne rule is always true: when matter changes, the total mass stays the same. If you mix 100 grams of water with 10 grams of salt, the salt water has a mass of 110 grams, even though the salt seems to disappear.",
+    "questions": [
+      {
+        "prompt": "What evidence in the text shows that air is matter?"
+      },
+      {
+        "prompt": "In your own words, what does conductivity mean? Use a detail from the text."
+      },
+      {
+        "prompt": "Name two properties you can only find out by testing."
+      },
+      {
+        "prompt": "Is dissolving salt a physical change or a chemical change? Quote the sentence that tells you."
+      },
+      {
+        "prompt": "List two clues that a chemical change has happened."
+      },
+      {
+        "prompt": "You stir 15 grams of sugar into 250 grams of water. What is the mass of the sugar water? Explain using the rule in the last paragraph."
+      }
+    ],
+    "sentenceFrames": [
+      "The text says ___.",
+      "Conductivity means ___.",
+      "This is a ___ change because ___.",
+      "The mass is ___ because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Properties of Matter"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-properties-of-matter",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

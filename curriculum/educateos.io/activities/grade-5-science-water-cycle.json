@@ -1,0 +1,93 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw and label the water cycle: evaporation, condensation, precipitation and collection.",
+    "due": {
+      "days": 15,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "lookPrompt": "Think about a puddle on a sunny morning. By the afternoon it is gone. Where did the water go?",
+    "overview": "Draw how a drop of water travels through the water cycle, then explain it out loud.",
+    "sentenceFrames": [
+      "First the water ___ because ___.",
+      "Then it ___.",
+      "The cycle starts again when ___."
+    ],
+    "subject": "science",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Explain the Water Cycle"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.5.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.5.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-water-cycle",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate science ideas"
+      },
+      {
+        "id": "clarity",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear explanation"
+      }
+    ],
+    "title": "Water cycle explanation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,4 +1,4 @@
-import { forwardRef, type AnchorHTMLAttributes } from "react";
+import { forwardRef, useEffect, type AnchorHTMLAttributes } from "react";
 import { Empty } from "@cloudflare/kumo";
 import {
   Link as RouterLink,
@@ -11,6 +11,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { unlinkedSignInOf } from "@educateos/api-client";
+import { documentTitle, shellRoleOf, useRouteTitle } from "@educateos/shell";
 import { useQuery } from "./api.tsx";
 import { ActivityPage } from "./activity/ActivityPage.tsx";
 import { CoursePage } from "./CoursePage.tsx";
@@ -20,7 +21,8 @@ import { HomePage } from "./HomePage.tsx";
 import { Layout } from "./Layout.tsx";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import { MySpacePage } from "./MySpacePage.tsx";
-import { NotAddedYet } from "./NotAddedYet.tsx";
+import { APP_NAME } from "./PageHeading.tsx";
+import { routeName } from "./routeName.ts";
 import { useDistrictShell } from "./shell.tsx";
 import { ShellLayout } from "./ShellLayout.tsx";
 // Your devices and Connect phone (SCHO-260)
@@ -33,6 +35,20 @@ import { ChildPage } from "./family/ChildPage.tsx";
 import { FamilyHomePage } from "./family/FamilyHomePage.tsx";
 import { FamilySettingsPage } from "./family/FamilySettingsPage.tsx";
 import { InvitationPage } from "./family/InvitationPage.tsx";
+// Home learning (ADR-0016)
+import { HomeSettingsPage } from "./homeLearning/HomeSettingsPage.tsx";
+import { NoticeGate } from "./homeLearning/FamilyNotice.tsx";
+import { JoinFamilyPage } from "./homeLearning/JoinFamilyPage.tsx";
+import { JoinCommunity } from "./homeLearning/JoinCommunity.tsx";
+import { LibraryPage } from "./homeLearning/LibraryPage.tsx";
+import { HOME_PATH, HOME_SETTINGS_PATH, JOIN_FAMILY_PATH, LIBRARY_PATH, PROGRESS_PATH, SHELF_PATH } from "./homeLearning/paths.ts";
+import { PracticeApp } from "./homeLearning/practice/PracticeApp.tsx";
+import { FirstProgressPage, ProgressPage } from "./homeLearning/ProgressPage.tsx";
+import { QueuePage } from "./homeLearning/QueuePage.tsx";
+import { SessionPage } from "./homeLearning/SessionPage.tsx";
+import { ShelfPage } from "./homeLearning/ShelfPage.tsx";
+import { SignInRefreshContext } from "./homeLearning/signInRefresh.ts";
+import { TodayPage } from "./homeLearning/TodayPage.tsx";
 // Communication (SCHO-189)
 import { CalendarPage } from "./communication/CalendarPage.tsx";
 import { NotificationsPage } from "./communication/NotificationsPage.tsx";
@@ -55,34 +71,77 @@ export const isFamilyPath = (pathname: string): boolean => pathname === "/family
 /** Whether `pathname` is a page every role has, which no audience is taken away from. */
 const isSharedPath = (pathname: string) => pathname === DEVICES_PATH || pathname.startsWith(`${DEVICES_PATH}/`);
 
+/** The Learning Home pages staff use too: the shell links a teacher's Calendar and Inbox here. */
+const isStaffPath = (pathname: string) =>
+  isSharedPath(pathname) || ["/calendar", "/notifications", "/settings"].includes(pathname);
+
+/**
+ * Sends staff from a student page to their own app on the origin, Teacher Studio or the admin
+ * console, as a page load: the Learning Home's student pages are refused to anyone but a student.
+ */
+const StaffHome = ({ href }: { href: string }) => {
+  useEffect(() => window.location.replace(href), [href]);
+  return <LoadingSkeleton label={href === "/admin/" ? "Opening the admin console" : "Opening Teacher Studio"} />;
+};
+
 /**
  * The signed-in frame. Who the principal is decides which places exist: a guardian has only the
  * family view and is taken there from anywhere else, and the family view does not exist for a
  * student. The district refuses each the other's routes too; this keeps either from being offered.
  */
 const SignedIn = ({ pathname }: { pathname: string }) => {
-  const [me] = useQuery("me", (api) => api.call("me.get"));
+  const [me, reloadMe] = useQuery("me", (api) => api.call("me.get"));
   const audience = me.status === "ready" ? (me.data.kind === "guardian" ? "family" : "student") : undefined;
   const unlinked = me.status === "error" ? unlinkedSignInOf(me.error) : undefined;
   const shared = isSharedPath(pathname);
+  const shell = useDistrictShell();
+  // Only on the district origin, where Teacher Studio and the admin console are served beside it.
+  const role = me.status === "ready" ? shellRoleOf(me.data) : undefined;
+  const staffHome = shell !== undefined && (role === "teacher" || role === "school-admin") && !isStaffPath(pathname)
+    ? (role === "teacher" ? "/teach/" : "/admin/")
+    : undefined;
+  // Home learning (ADR-0016): where the installation offers it, a guardian's family home is Today.
+  const homeLearning = me.status === "ready" ? me.data.homeLearning : undefined;
+  const practicing = homeLearning?.childSession ?? null;
+  if (practicing !== null) {
+    // A child session owns the whole screen: no navigation, no account menu, only practice. The
+    // server refuses every other route for this browser anyway.
+    return (
+      <SignInRefreshContext value={reloadMe}>
+        <main className="min-h-dvh bg-kumo-base text-kumo-default">
+          <PracticeApp key={practicing.learnerId} child={practicing} onEnded={reloadMe} />
+        </main>
+      </SignInRefreshContext>
+    );
+  }
   const content = me.status === "loading" ? (
     <LoadingSkeleton label="Opening your Learning Home" />
   ) : unlinked !== undefined ? (
-    <NotAddedYet signIn={unlinked} />
+    <JoinCommunity signIn={unlinked} />
   ) : me.status === "error" ? (
     <ErrorState error={me.error} title="We couldn't open your Learning Home" />
+  ) : staffHome !== undefined ? (
+    <StaffHome href={staffHome} />
   ) : audience === "family" && !isFamilyPath(pathname) && !shared ? (
     <Navigate to={pathname === "/settings" ? FAMILY_SETTINGS_PATH : "/family"} replace />
+  ) : audience === "family" && homeLearning !== undefined && pathname === "/family" ? (
+    <Navigate to={HOME_PATH} replace />
   ) : audience === "student" && isFamilyPath(pathname) ? (
     <Empty title="There's nothing here" description="Use Home to find your classes." />
+  ) : audience === "family" && homeLearning?.hasFamily === true && pathname !== JOIN_FAMILY_PATH ? (
+    // A family adult who hasn't accepted the current notice reads it before any family page.
+    <NoticeGate><Outlet /></NoticeGate>
   ) : (
     <Outlet />
   );
-  const shell = useDistrictShell();
-  return shell === undefined ? (
-    <Layout studentName={me.status === "ready" ? me.data.displayName : undefined} audience={audience}>{content}</Layout>
-  ) : (
-    <ShellLayout shell={shell} me={me.status === "ready" ? me.data : undefined} audience={audience}>{content}</ShellLayout>
+  return (
+    <SignInRefreshContext value={reloadMe}>
+      {shell === undefined ? (
+        <Layout studentName={me.status === "ready" ? me.data.displayName : undefined} audience={audience}>{content}</Layout>
+      ) : (
+        <ShellLayout shell={shell} me={me.status === "ready" ? me.data : undefined} audience={audience}>{content}</ShellLayout>
+      )}
+    </SignInRefreshContext>
   );
 };
 
@@ -90,6 +149,7 @@ const Root = () => {
   // The location the rendered matches belong to: during a navigation `location` already names the
   // next page while the previous one is still what an outlet would render.
   const pathname = useRouterState({ select: (state) => (state.resolvedLocation ?? state.location).pathname });
+  useRouteTitle(documentTitle(routeName(pathname), APP_NAME), pathname);
   return pathname === INVITATION_PATH ? <Layout studentName={undefined} audience={undefined}><Outlet /></Layout> : <SignedIn pathname={pathname} />;
 };
 
@@ -172,12 +232,45 @@ const childCourseRoute = createRoute({
   },
 });
 
+// Home learning (ADR-0016)
+const homeRouteFamily = createRoute({ getParentRoute: () => rootRoute, path: HOME_PATH, component: TodayPage });
+const libraryRoute = createRoute({ getParentRoute: () => rootRoute, path: LIBRARY_PATH, component: LibraryPage });
+const shelfRoute = createRoute({ getParentRoute: () => rootRoute, path: SHELF_PATH, component: ShelfPage });
+const homeSettingsRoute = createRoute({ getParentRoute: () => rootRoute, path: HOME_SETTINGS_PATH, component: HomeSettingsPage });
+const joinFamilyRoute = createRoute({ getParentRoute: () => rootRoute, path: JOIN_FAMILY_PATH, component: JoinFamilyPage });
+const firstProgressRoute = createRoute({ getParentRoute: () => rootRoute, path: PROGRESS_PATH, component: FirstProgressPage });
+const planRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/family/learners/$learnerId/plan",
+  component: () => {
+    const { learnerId } = planRoute.useParams();
+    return <QueuePage key={learnerId} learnerId={learnerId} />;
+  },
+});
+const progressRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/family/learners/$learnerId/progress",
+  component: () => {
+    const { learnerId } = progressRoute.useParams();
+    return <ProgressPage key={learnerId} learnerId={learnerId} />;
+  },
+});
+const sessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/family/learners/$learnerId/sessions/$sessionId",
+  component: () => {
+    const { learnerId, sessionId } = sessionRoute.useParams();
+    return <SessionPage key={sessionId} learnerId={learnerId} sessionId={sessionId} />;
+  },
+});
+
 // Your devices and Connect phone (SCHO-260)
 const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: DEVICES_PATH, component: DevicesPage });
 
 const connectPhoneRoute = createRoute({ getParentRoute: () => rootRoute, path: CONNECT_PHONE_PATH, component: ConnectPhonePage });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, familySettingsRoute, invitationRoute, childRoute, childCourseRoute, devicesRoute, connectPhoneRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, familySettingsRoute, invitationRoute, childRoute, childCourseRoute, devicesRoute, connectPhoneRoute,
+  homeRouteFamily, libraryRoute, shelfRoute, homeSettingsRoute, joinFamilyRoute, firstProgressRoute, planRoute, progressRoute, sessionRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>

@@ -4,7 +4,8 @@
 
 import { DEMO_DISTRICTS } from "@educateos/fixtures";
 import { describe, expect, it } from "vitest";
-import { CLEVER_ISSUER, DEMO_ACCESS_ISSUER, demoDistrictConfig } from "../scripts/demo-district-config.ts";
+import { CLEVER_ISSUER, DEMO_ACCESS_ISSUER, DEMO_SHOWCASE, demoDistrictConfig } from "../scripts/demo-district-config.ts";
+import { DEMO_DISTRICT_DEPLOYMENTS } from "../../../scripts/production/demo-districts.ts";
 import { readDistrictWorkerConfig } from "../src/config.ts";
 
 const ADMIN_SUBJECT = "00000000-0000-0000-0000-000000000000";
@@ -24,6 +25,11 @@ describe.each(DEMO_DISTRICTS.filter((d) => d.slug !== "northfield"))("demo distr
     // Clever SSO stays off until the district can sign people in through Clever alone.
     expect(config.cleverSso).toBeUndefined();
     expect(config.authority).toBe(demo.profile.roster === "local" ? "local" : undefined);
+  });
+
+  it("may seed the showcase its generated Worker config names (SCHO-326)", () => {
+    expect(config.demo).toEqual({ showcase: DEMO_SHOWCASE });
+    expect(DEMO_DISTRICT_DEPLOYMENTS.find((d) => d.slug === demo.slug)?.showcase).toBe(DEMO_SHOWCASE);
   });
 
   it("seeds only the fixture's district administrator, a person, matched by Access subject", () => {

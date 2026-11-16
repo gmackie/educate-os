@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6d9ab3b436f3c0bb00851041e2d54a83567884307d1dda5cf170eaefb069470a",
+      "id": "educateos.io/kindergarten-science-weather-watchers-weather-week",
+      "version": "1.0.0"
+    }
+  },
+  "id": "weather-week",
+  "role": "assignment",
+  "title": "Our Weather Week"
+}

@@ -1,6 +1,7 @@
 import { Badge, Table, Text } from "@cloudflare/kumo";
 import { formatMoment } from "../app/labels.ts";
 import { changeSummary, failureReason, modeName, type SyncRun } from "./rosterSync.ts";
+import { TableScroll } from "../app/TableScroll.tsx";
 
 const outcomeBadge = (run: SyncRun) => {
   if (run.outcome === "succeeded") return <Badge variant="success">Succeeded</Badge>;
@@ -25,7 +26,7 @@ export const RosterSyncHistory = ({ runs, provider }: {
   <section aria-labelledby="sync-history-heading" className="flex flex-col gap-3">
     <Text as="h3" variant="heading" id="sync-history-heading">Recent syncs</Text>
     {runs.length === 0 ? <Text variant="secondary">No roster sync has run yet.</Text> : (
-      <div className="overflow-x-auto">
+      <TableScroll label="Recent roster syncs, newest first">
         <Table>
           <caption className="sr-only">Recent roster syncs, newest first</caption>
           <Table.Header>
@@ -60,7 +61,7 @@ export const RosterSyncHistory = ({ runs, provider }: {
             ))}
           </Table.Body>
         </Table>
-      </div>
+      </TableScroll>
     )}
   </section>
 );

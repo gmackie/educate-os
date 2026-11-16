@@ -1,0 +1,103 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Use organized lists, tables, tree diagrams and simulations to find probabilities of compound events.",
+    "problems": [
+      {
+        "prompt": "You flip a coin and roll a number cube. List the sample space. How many outcomes are there?"
+      },
+      {
+        "prompt": "For the coin and number cube, what is the probability of getting heads and an even number?"
+      },
+      {
+        "prompt": "A lunch special has 3 main dishes (pasta, tacos, soup) and 2 drinks (milk, juice). Draw a tree diagram. How many different meals are there? If a meal is chosen at random, what is the probability it is tacos with juice?"
+      },
+      {
+        "prompt": "Two coins are flipped. What is the probability of getting at least one head?"
+      },
+      {
+        "prompt": "Two number cubes are rolled. Use a table to find the probability that the sum is 7."
+      },
+      {
+        "prompt": "Each snack bag holds one of 4 different trading cards, and each card is equally likely. Describe a simulation you could use to estimate how many bags you would need to buy to collect all 4 cards."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Compound Events"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.8",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-compound-events",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "model",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Builds the sample space"
+      },
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct probabilities"
+      }
+    ],
+    "title": "Compound events"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

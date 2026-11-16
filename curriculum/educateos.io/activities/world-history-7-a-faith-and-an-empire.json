@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 120,
+    "minimumCitations": 1,
+    "overview": "Read how Islam and the caliphate spread, then explain why Arabic became a shared language of trade and learning.",
+    "prompt": "Read \"A Faith and an Empire Spread.\" Explain two reasons Arabic became a shared language across lands from Spain to Central Asia, and explain how a shared language and shared rules made trade easier. Use at least one detail from the reading.",
+    "resources": [
+      "faith-and-empire"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "A Faith and an Empire Spread"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-a-faith-and-an-empire",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Islam began in the Arabian Peninsula in the early 600s CE. Muslims believe that, beginning around 610, the prophet Muhammad received revelations from God in and near the trading city of Mecca. These revelations were later gathered in the Quran. In 622, Muhammad and his followers moved to the city of Medina. This journey, the Hijra, marks the first year of the Islamic calendar.\n\nAfter Muhammad's death in 632, his successors, called caliphs, led Arab armies out of Arabia. Within about a hundred years, the caliphate stretched from Spain and North Africa in the west to Central Asia and the Indus River in the east. The Umayyad caliphs ruled from Damascus. In 750, a new family, the Abbasids, took power, and in 762 the caliph al-Mansur founded a new capital: Baghdad, on the Tigris River.\n\nMany people in the conquered lands kept their own religions for generations. Christians and Jews, called \"people of the book,\" could keep their faith if they paid a special tax. Over time, though, more and more people became Muslim, and Arabic, the language of the Quran, became the shared language of government, trade and learning across a huge area.\n\nShared language and shared rules made trade easier. Merchants could travel from Cordoba to Cairo to Baghdad and find markets, mosques, inns and a common law for contracts. Every year, Muslims from distant lands traveled to Mecca for the hajj, the pilgrimage, carrying goods and news along with them.",
+      "id": "faith-and-empire",
+      "title": "A Faith and an Empire Spread"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,93 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 13,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Add fractions with like denominators to solve pizza problems.",
+    "problems": [
+      {
+        "prompt": "Ari ate 2/8 of a pizza and Bo ate 3/8. How much of the pizza did they eat together?"
+      },
+      {
+        "prompt": "A pan of cornbread is cut into 6 equal pieces. The class ate 4/6, then 1/6 more. How much is left?"
+      },
+      {
+        "prompt": "Write 7/8 as a sum of eighths in two different ways."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Pizza Party Fractions"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-pizza-fractions",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps"
+      }
+    ],
+    "title": "Adding fractions"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

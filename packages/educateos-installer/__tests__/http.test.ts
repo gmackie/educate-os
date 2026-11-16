@@ -32,6 +32,31 @@ const ok = (result: unknown, resultInfo?: unknown) =>
   Response.json({ success: true, errors: [], messages: [], result, ...(resultInfo ? { result_info: resultInfo } : {}) });
 
 describe("Cloudflare HTTP client", () => {
+  it("deletes the uninstall's resources at their documented endpoints, an R2 bucket in its jurisdiction", async () => {
+    const { fetchImpl, requests } = stubFetch(() => ok(null));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    await api.deleteKvNamespace(ACCOUNT, "kv1");
+    await api.deleteR2Bucket(ACCOUNT, "educateos-northfield-files", "us");
+    await api.deleteR2Bucket(ACCOUNT, "educateos-northfield-old");
+    await api.deleteD1Database(ACCOUNT, "d1uuid");
+    await api.deleteAccessApplication(ACCOUNT, "app1");
+    await api.deleteAccessPolicy(ACCOUNT, "pol1");
+    await api.deleteAiGateway(ACCOUNT, "educateos-northfield");
+
+    const base = `/client/v4/accounts/${ACCOUNT}`;
+    expect(requests.map((r) => `${r.method} ${new URL(r.url).pathname}`)).toEqual([
+      `DELETE ${base}/storage/kv/namespaces/kv1`,
+      `DELETE ${base}/r2/buckets/educateos-northfield-files`,
+      `DELETE ${base}/r2/buckets/educateos-northfield-old`,
+      `DELETE ${base}/d1/database/d1uuid`,
+      `DELETE ${base}/access/apps/app1`,
+      `DELETE ${base}/access/policies/pol1`,
+      `DELETE ${base}/ai-gateway/gateways/educateos-northfield`,
+    ]);
+    expect(requests.map((r) => r.headers.get("cf-r2-jurisdiction"))).toEqual([null, "us", null, null, null, null, null]);
+  });
+
   it("sends the bearer token and walks every page of a paged list", async () => {
     const { fetchImpl, requests } = stubFetch((request) => {
       const page = Number(new URL(request.url).searchParams.get("page"));
@@ -59,13 +84,13 @@ describe("Cloudflare HTTP client", () => {
     expect(await api.listWorkerDomains(ACCOUNT)).toEqual([{ id: "d1", hostname: "northfield.educateos.io", service: "router", zoneId: "z1" }]);
   });
 
-  it("reads back a bypass policy's everyone rule and a path destination, and writes them as Access expects", async () => {
+  it("reads back a bypass policy's everyone rule, a person's email rule and a path destination, and writes them as Access expects", async () => {
     const { fetchImpl, requests } = stubFetch((request) => {
       const path = new URL(request.url).pathname;
       if (path.endsWith("/access/policies")) {
         return ok([
           { id: "p1", name: "educateos-northfield-bypass", decision: "bypass", include: [{ everyone: {} }, { ip: { ip: "192.0.2.1/32" } }] },
-          { id: "p2", name: "educateos-northfield-members", decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }] },
+          { id: "p2", name: "educateos-northfield-members", decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }, { email: { email: "owner@example.com" } }] },
         ], { page: 1, total_pages: 1 });
       }
       if (request.method === "POST") return ok({ id: "a1", name: "x", domain: "h.example/healthz", aud: "aud-1", destinations: [{ type: "public", uri: "h.example/healthz" }], policies: [{ id: "p1" }] });
@@ -75,7 +100,7 @@ describe("Cloudflare HTTP client", () => {
 
     expect(await api.listAccessPolicies(ACCOUNT)).toEqual([
       { id: "p1", name: "educateos-northfield-bypass", decision: "bypass", include: [{ everyone: {} }] },
-      { id: "p2", name: "educateos-northfield-members", decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }] },
+      { id: "p2", name: "educateos-northfield-members", decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }, { email: { email: "owner@example.com" } }] },
     ]);
     const app = await api.createAccessApplication(ACCOUNT, {
       name: "x", domain: "h.example/healthz", destinations: ["h.example/healthz", "h.example/api/m/*"], type: "self_hosted", sessionDuration: "12h", policyIds: ["p1"],
@@ -165,6 +190,46 @@ describe("Cloudflare HTTP client", () => {
     const path = `/client/v4/accounts/${ACCOUNT}/workers/scripts/educateos-northfield-educateos-district-worker/schedules`;
     expect(requests.map((r) => [r.method, new URL(r.url).pathname])).toEqual([["GET", path], ["PUT", path]]);
     expect(await requests[1]!.json()).toEqual([{ cron: "7 * * * *" }, { cron: "0 14 * * SUN" }]);
+  });
+
+  it("scopes R2 to a jurisdiction by header and creates a D1 database in one by its body (ADR-0015)", async () => {
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/r2/buckets")) return ok(request.method === "GET" ? { buckets: [{ name: "b1" }] } : { name: "b1" });
+      if (request.method === "POST") return ok({ uuid: "u1", name: "db1", jurisdiction: "us", created_at: "2026-11-14T00:00:00Z" });
+      return ok([{ uuid: "u1", name: "db1", jurisdiction: "us" }, { uuid: "u2", name: "db2", jurisdiction: null }, { uuid: "u3", name: "db3" }], { page: 1, total_pages: 1 });
+    });
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    expect(await api.listR2Buckets(ACCOUNT, "us")).toEqual([{ name: "b1" }]);
+    await api.createR2Bucket(ACCOUNT, "b1", "us");
+    await api.listR2Buckets(ACCOUNT);
+    await api.createR2Bucket(ACCOUNT, "b2");
+    expect(requests.map((r) => r.headers.get("cf-r2-jurisdiction"))).toEqual(["us", "us", null, null]);
+    expect(await requests[1]!.json()).toEqual({ name: "b1" });
+
+    expect(await api.createD1Database(ACCOUNT, "db1", "us")).toEqual({ uuid: "u1", name: "db1", jurisdiction: "us" });
+    await api.createD1Database(ACCOUNT, "db2");
+    expect(await requests[4]!.json()).toEqual({ name: "db1", jurisdiction: "us" });
+    expect(await requests[5]!.json()).toEqual({ name: "db2" });
+    expect(await api.listD1Databases(ACCOUNT)).toEqual([
+      { uuid: "u1", name: "db1", jurisdiction: "us" },
+      { uuid: "u2", name: "db2" },
+      { uuid: "u3", name: "db3" },
+    ]);
+  });
+
+  it("creates a KV namespace in a jurisdiction by its body, and reads one back from the list (ADR-0015)", async () => {
+    const { fetchImpl, requests } = stubFetch((request) => request.method === "POST"
+      ? ok({ id: "k1", title: "t1", jurisdiction: "us" })
+      : ok([{ id: "k1", title: "t1", jurisdiction: "us" }, { id: "k2", title: "t2" }], { page: 1, total_pages: 1 }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    expect(await api.createKvNamespace(ACCOUNT, "t1", "us")).toEqual({ id: "k1", title: "t1", jurisdiction: "us" });
+    await api.createKvNamespace(ACCOUNT, "t2");
+    expect(await requests[0]!.json()).toEqual({ title: "t1", jurisdiction: "us" });
+    expect(await requests[1]!.json()).toEqual({ title: "t2" });
+    expect(await api.listKvNamespaces(ACCOUNT)).toEqual([{ id: "k1", title: "t1", jurisdiction: "us" }, { id: "k2", title: "t2" }]);
   });
 
   it("reads the empty 200 that DELETE /workers/domains answers as a detach, but not elsewhere", async () => {

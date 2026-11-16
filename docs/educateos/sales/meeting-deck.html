@@ -1,0 +1,316 @@
+<!doctype html>
+<!-- The school meeting deck (SCHO-405): 13 slides for a 30-minute meeting with a district or school.
+     Self-contained: no network, no build. Open it in a browser and use the arrow keys, or print it
+     (landscape Letter, one slide per page). meeting-deck.pdf beside it is printed from this file by
+     node sites/educateos-io/build.mjs --pdf.
+     This is a school-facing deck. It is not the investor pitch deck, and neither goes on educateos.io.
+     Every status follows docs/educateos/maturity.md; the cost figures come from
+     sites/educateos-io/public/assets/cost-to-run.json as published on educateos.io/pricing on
+     2026-11-13. Update both before a meeting if either has changed. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EducateOS · School meeting deck</title>
+<style>
+  :root {
+    --brand: #155dfc; --ink: #0f172a; --text: #334155; --subtle: #64748b; --line: #e2e8f0;
+    --tint: #eff4ff; --paper: #ffffff; --page: #f1f5f9;
+    --ok: #15803d; --ok-bg: #ecfdf3; --dev: #1d4ed8; --dev-bg: #eff4ff; --warn: #92400e; --warn-bg: #fff7e6;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--page); }
+  body { margin: 0; font: 16px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--text); }
+  .slide {
+    position: relative; width: min(100vw - 32px, 1100px); aspect-ratio: 11 / 8.5; margin: 16px auto;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    padding: 4.2% 5%; display: flex; flex-direction: column; container-type: inline-size;
+  }
+  .slide { font-size: clamp(9px, 2.1cqw, 23px); }
+  .slide h1 { font-size: 3.1em; line-height: 1.06; color: var(--ink); margin: .2em 0 .35em; letter-spacing: -.02em; }
+  .slide h2 { font-size: 2.05em; line-height: 1.12; color: var(--ink); margin: 0 0 .55em; letter-spacing: -.015em; }
+  .slide h3 { font-size: 1.08em; color: var(--ink); margin: 0 0 .3em; }
+  .slide p { margin: 0 0 .6em; }
+  .slide ul { margin: 0; padding-left: 1.15em; display: grid; gap: .32em; }
+  .eyebrow { font-size: .78em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+  .lede { font-size: 1.22em; color: var(--text); max-width: 46em; }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; font-size: .68em; color: var(--subtle); border-top: 1px solid var(--line); padding-top: .6em; }
+  .logo { display: inline-flex; align-items: center; gap: .45em; font-weight: 700; color: var(--ink); }
+  .logo svg { width: 1.4em; height: 1.4em; }
+  .grid2, .grid3, .grid4 { display: grid; gap: .9em; }
+  .grid2 { grid-template-columns: 1fr 1fr; }
+  .grid3 { grid-template-columns: repeat(3, 1fr); }
+  .grid4 { grid-template-columns: repeat(4, 1fr); }
+  .card { border: 1px solid var(--line); border-radius: .55em; padding: .8em .95em; background: var(--paper); }
+  .card.tint { background: var(--tint); }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .9em; }
+  th, td { text-align: left; padding: .38em .55em; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .74em; letter-spacing: .06em; text-transform: uppercase; color: var(--subtle); }
+  td:last-child { white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; border-radius: 99px; padding: .05em .6em; font-size: .78em; font-weight: 600; border: 1px solid currentColor; }
+  .chip.ok { color: var(--ok); background: var(--ok-bg); }
+  .chip.dev { color: var(--dev); background: var(--dev-bg); }
+  .chip.warn { color: var(--warn); background: var(--warn-bg); }
+  .chip.plan { color: var(--subtle); border-style: dashed; }
+  .big { font-size: 2.4em; font-weight: 700; color: var(--ink); line-height: 1.1; }
+  .muted { color: var(--subtle); }
+  .note { font-size: .78em; color: var(--subtle); margin-top: .7em; }
+  .boxes { display: grid; grid-template-columns: 1.1fr .9fr; gap: 1em; }
+  .acct { border: 2px solid var(--brand); border-radius: .6em; padding: .8em 1em; }
+  .acct.optional { border: 2px dashed var(--line); }
+  .acct h3 { color: var(--brand); }
+  .acct.optional h3 { color: var(--subtle); }
+  .weeks .card b { display: block; font-size: .72em; letter-spacing: .06em; text-transform: uppercase; color: var(--brand); }
+  .title-slide { justify-content: center; }
+  .title-slide .lede { margin-bottom: 1.4em; }
+  .notes { display: none; }
+  @media (max-width: 700px) { .slide { width: calc(100vw - 32px); } }
+  @media print {
+    @page { size: 11in 8.5in; margin: 0; }
+    html, body { background: #fff; }
+    .slide { width: 11in; height: 8.5in; aspect-ratio: auto; margin: 0; border: 0; border-radius: 0; break-after: page; font-size: 22px; padding: .45in .55in; }
+    .slide:last-of-type { break-after: auto; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<section class="slide title-slide" id="s1" aria-label="Slide 1">
+  <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>EducateOS</span>
+  <h1>AI for your teachers, in your district's own account.</h1>
+  <p class="lede">An open-source learning platform with AI built in, and a free ten-week founding pilot for three to five public districts in Texas and Michigan.</p>
+  <p class="muted">[District name] · [Date] · [Presenter], EducateOS · hello@educateos.io</p>
+  <div class="foot"><span>educateos.io/pilot</span><span>1</span></div>
+</section>
+
+<section class="slide" id="s2" aria-label="Slide 2">
+  <div class="eyebrow">Today, in 30 minutes</div>
+  <h2>We want to leave you able to decide whether a pilot is worth your time.</h2>
+  <div class="grid4">
+    <div class="card"><b class="big">5</b><h3>What we hear</h3><p>The questions districts are weighing about AI.</p></div>
+    <div class="card"><b class="big">10</b><h3>Live demo</h3><p>A teacher, a student and the district console, in the public demo.</p></div>
+    <div class="card"><b class="big">10</b><h3>The pilot</h3><p>What it asks, what it gives, cost, data and how it ends.</p></div>
+    <div class="card"><b class="big">5</b><h3>Your questions</h3><p>And what would have to be true for you to try it.</p></div>
+  </div>
+  <p class="note">Minutes per part. We will tell you plainly what is built, what is tested and what is still planned.</p>
+  <div class="foot"><span>EducateOS · School meeting</span><span>2</span></div>
+</section>
+
+<section class="slide" id="s3" aria-label="Slide 3">
+  <div class="eyebrow">What districts are weighing</div>
+  <h2>Teachers want AI help now. The district has to answer for it.</h2>
+  <div class="grid2">
+    <div class="card"><h3>Unreviewed tools</h3><p>Staff paste lesson material, and sometimes student work, into AI tools nobody reviewed, with no record of what went in.</p></div>
+    <div class="card"><h3>Data leaves the district</h3><p>Most AI products for schools keep student data on the vendor's servers, under the vendor's terms.</p></div>
+    <div class="card"><h3>Costs nobody can cap</h3><p>Per-seat licences and usage-based AI make next year's bill hard to predict or limit.</p></div>
+    <div class="card"><h3>One more system</h3><p>Every new tool is another login, another contract, another security review and more training time.</p></div>
+  </div>
+  <div class="foot"><span>Ask: which of these is most pressing for you?</span><span>3</span></div>
+</section>
+
+<section class="slide" id="s4" aria-label="Slide 4">
+  <div class="eyebrow">What EducateOS is</div>
+  <h2>A learning platform and an AI workspace, behind one sign-in.</h2>
+  <div class="grid3">
+    <div class="card"><h3>Teacher Studio</h3><ul><li>Modules, assignments, quizzes and a weighted gradebook</li><li>12 open courses to start from, added as drafts</li><li>Families' weekly digest and announcements</li><li>A grade is official only when the teacher approves it</li></ul></div>
+    <div class="card"><h3>AI workspace</h3><ul><li>Course agents that read only what the teacher gives them</li><li>Gadgets: small classroom apps built by asking, each in its own sandbox</li><li>Emails, documents and grades an agent prepares wait for approval</li></ul></div>
+    <div class="card"><h3>District console</h3><ul><li>People, rosters, classes, families and term rollover</li><li>Policies previewed as a dry run before they apply</li><li>AI budgets and per-person caps</li><li>A full district export</li></ul></div>
+  </div>
+  <p class="note">Built on the open-source Cloudflare OS (Apache-2.0). On the demo districts today, the courses and the AI workspace share one address and one sign-in.</p>
+  <div class="foot"><span>EducateOS · School meeting</span><span>4</span></div>
+</section>
+
+<section class="slide" id="s5" aria-label="Slide 5">
+  <div class="eyebrow">Who owns it</div>
+  <h2>It runs in your Cloudflare account. We are optional.</h2>
+  <div class="boxes">
+    <div class="acct">
+      <h3>Your district's Cloudflare account</h3>
+      <ul>
+        <li>The district app: courses, rosters, grades, families, administration</li>
+        <li>The AI workspace, each agent and gadget sandboxed</li>
+        <li>The AI call guard: policy, screening and spending caps on every model call</li>
+        <li>Cloudflare Access in front, with the identity provider you already use</li>
+        <li>Student records stored here, under your credentials</li>
+      </ul>
+    </div>
+    <div class="acct optional">
+      <h3>educateos.io (optional)</h3>
+      <ul>
+        <li>Release files and a guided install</li>
+        <li>No standing credentials for your account</li>
+        <li>Never in the data path; never sees school data</li>
+        <li>You can install, update and run without it</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note">Your IT lead can end all access by changing one Access policy in your account. It does not need us. The code is open, so your staff can read exactly what runs.</p>
+  <div class="foot"><span>Details: educateos.io/it</span><span>5</span></div>
+</section>
+
+<section class="slide" id="s6" aria-label="Slide 6">
+  <div class="eyebrow">AI on your terms</div>
+  <h2>Every AI call goes through rules the district sets.</h2>
+  <table>
+    <thead><tr><th>Control</th><th>What it does</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>AI call guard</td><td>Every model call passes through it, in your account</td><td><span class="chip dev">Deployed on the demo districts</span></td></tr>
+      <tr><td>Hall Monitor screening</td><td>Screens messages before the model sees them, paid from a protected safety reserve</td><td><span class="chip dev">In development</span></td></tr>
+      <tr><td>Spending caps</td><td>District pool, safety reserve and per-person caps; when a budget runs out, the assistant stops</td><td><span class="chip dev">In development</span></td></tr>
+      <tr><td>Default-deny policy</td><td>If no rule allows a school read or write, it is denied; district floors can't be loosened below</td><td><span class="chip dev">In development</span></td></tr>
+      <tr><td>Teacher approval</td><td>Grades and messages an agent drafts stay drafts until a teacher approves them</td><td><span class="chip dev">In development</span></td></tr>
+      <tr><td>Student-facing AI</td><td>Grade-band tutors; off for the whole founding pilot</td><td><span class="chip warn">Pilot preview, synthetic students</span></td></tr>
+    </tbody>
+  </table>
+  <p class="note">In development: built and tested, not yet run for a real district. Before any teacher signs in, we confirm in writing which of these controls are on in your install.</p>
+  <div class="foot"><span>Details: educateos.io/security</span><span>6</span></div>
+</section>
+
+<section class="slide" id="s7" aria-label="Slide 7">
+  <div class="eyebrow">Works with what you run</div>
+  <h2>Keep your SIS, LMS and sign-in. We tell you how ready each is.</h2>
+  <table>
+    <thead><tr><th>System</th><th>Evidence today</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Canvas, Moodle (LTI 1.3 and Advantage)</td><td>Passed live runs against current Canvas and Moodle 4.5: launches, deep linking, rosters, teacher-approved grades</td><td><span class="chip ok">Supported</span></td></tr>
+      <tr><td>Google Classroom</td><td>Coursework and a teacher-approved grade ran live on one course</td><td><span class="chip dev">Unit-tested</span></td></tr>
+      <tr><td>Clever sign-in</td><td>End to end against a fake of Clever's sign-in; no live sign-in yet</td><td><span class="chip dev">Harness-tested</span></td></tr>
+      <tr><td>Clever roster sync</td><td>End to end against a fake of Clever's Data API; no live roster yet</td><td><span class="chip dev">Harness-tested</span></td></tr>
+      <tr><td>OneRoster 1.2 (CSV, REST)</td><td>Preview before apply, quarantine, deactivation instead of deletion</td><td><span class="chip dev">Unit-tested</span></td></tr>
+      <tr><td>ClassLink</td><td>Built against our own fakes; no ClassLink account to test with yet</td><td><span class="chip plan">Fakes only</span></td></tr>
+      <tr><td>Outside AI clients (MCP)</td><td>Tested with the official MCP client; off in production</td><td><span class="chip dev">Harness-tested</span></td></tr>
+    </tbody>
+  </table>
+  <p class="note">No 1EdTech certification is claimed. Supported means passed live runs against the real service.</p>
+  <div class="foot"><span>Every feature: educateos.io/integrations</span><span>7</span></div>
+</section>
+
+<section class="slide" id="s8" aria-label="Slide 8">
+  <div class="eyebrow">Live demo · 10 minutes</div>
+  <h2>educateos.io/demo</h2>
+  <p class="lede">The real Teacher, Student and Admin screens, running in your browser against a fictional district. No sign-up, and no AI: the tutor in the demo is scripted.</p>
+  <div class="grid3">
+    <div class="card"><h3>Teacher</h3><p>Score an essay on a rubric, approve the official grade, see it in the gradebook, post to the class.</p></div>
+    <div class="card"><h3>Student</h3><p>See the grade and the comment, ask the homework helper for a hint, and watch it refuse to write the answer.</p></div>
+    <div class="card"><h3>District</h3><p>Change the AI cap, preview who it affects, apply it, find it in the audit log, export the district.</p></div>
+  </div>
+  <p class="note">Presenter's script with exact clicks: docs/educateos/sales/demo-script.md. If the network fails, use the screens on educateos.io/tour.</p>
+  <div class="foot"><span>All people and districts in the demo are fictional</span><span>8</span></div>
+</section>
+
+<section class="slide" id="s9" aria-label="Slide 9">
+  <div class="eyebrow">Where it is today</div>
+  <h2>Early, open and honest about it.</h2>
+  <div class="grid2">
+    <div class="card tint"><h3>True today</h3><ul>
+      <li>Runs on synthetic demo districts, deployed from source</li>
+      <li>The installer has installed EducateOS end to end into our own Cloudflare account</li>
+      <li>Canvas and Moodle passed live LTI runs</li>
+      <li>An accessibility report on 143 demo screens against WCAG 2.1 AA: partially conforms, with open issues listed</li>
+    </ul></div>
+    <div class="card"><h3>Not yet</h3><ul>
+      <li>No real students use EducateOS</li>
+      <li>No district has run the installer in its own account. You would be among the first</li>
+      <li>No district references yet</li>
+      <li>No screen-reader testing yet</li>
+      <li>No compliance certification or third-party audit, and we don't claim one</li>
+    </ul></div>
+  </div>
+  <p class="note">Every status on educateos.io comes from the project's public maturity record and changes only with its evidence.</p>
+  <div class="foot"><span>EducateOS · School meeting</span><span>9</span></div>
+</section>
+
+<section class="slide" id="s10" aria-label="Slide 10">
+  <div class="eyebrow">The founding pilot</div>
+  <h2>One school, a few champion teachers, about ten weeks.</h2>
+  <div class="grid4 weeks">
+    <div class="card"><b>Before kickoff</b><h3>Readiness and install</h3><ul><li>20-minute IT walkthrough</li><li>Readiness checklist</li><li>Pilot agreement; DPA status agreed</li><li>Guided install on a call</li></ul></div>
+    <div class="card"><b>Week 1</b><h3>Kickoff and training</h3><ul><li>Kickoff with every role</li><li>Success criteria written down</li><li>An hour of teacher training</li><li>Baseline survey</li></ul></div>
+    <div class="card"><b>Weeks 2 to 9</b><h3>Classroom use</h3><ul><li>Teachers use it in their own planning</li><li>20-minute check-in weekly</li><li>Shared issue log</li><li>Mid-point review, week 5</li></ul></div>
+    <div class="card"><b>Week 10</b><h3>Review</h3><ul><li>Exit survey</li><li>Review against the criteria</li><li>You decide: keep, export or uninstall</li></ul></div>
+  </div>
+  <p class="note">Teacher-facing AI first; student-facing AI stays off. Three to five public districts in Texas and Michigan in this first round.</p>
+  <div class="foot"><span>Full terms: educateos.io/pilot</span><span>10</span></div>
+</section>
+
+<section class="slide" id="s11" aria-label="Slide 11">
+  <div class="eyebrow">What you give, what you get</div>
+  <h2>A fair trade, written down at kickoff.</h2>
+  <div class="grid2">
+    <div class="card"><h3>The district gives</h3><ul>
+      <li>A district sponsor, a school lead and three to six champion teachers</li>
+      <li>A few hours of IT time before kickoff</li>
+      <li>An hour of training per teacher, then 20 minutes a week</li>
+      <li>Its own Cloudflare bill, paid directly to Cloudflare</li>
+      <li>Honest feedback, and a reference only if it wants to give one</li>
+    </ul></div>
+    <div class="card tint"><h3>The district gets</h3><ul>
+      <li>The software, free and open source, with no per-seat fee</li>
+      <li>A guided install and pilot support at no charge</li>
+      <li>Teacher training and printable kits for staff, students and families</li>
+      <li>Written success criteria and a written end-of-pilot review</li>
+      <li>A seat on the founding advisory councils and a say in what we build</li>
+    </ul></div>
+  </div>
+  <p class="note">We never name a district publicly without its written approval.</p>
+  <div class="foot"><span>Full terms: educateos.io/pilot</span><span>11</span></div>
+</section>
+
+<section class="slide" id="s12" aria-label="Slide 12">
+  <div class="eyebrow">Cost and data</div>
+  <h2>A small Cloudflare bill, a cap on AI, and records that stay with you.</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Monthly running cost, projected at Cloudflare list prices</h3>
+      <table>
+        <thead><tr><th>Students</th><th>Teachers</th><th>Running cost</th></tr></thead>
+        <tbody>
+          <tr><td class="num">500</td><td class="num">34</td><td class="num">$8.09</td></tr>
+          <tr><td class="num">2,500</td><td class="num">167</td><td class="num">$37.29</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Includes the $5 Workers Paid base. Sign-in seats are separate: a teachers-first pilot of up to 50 people fits Cloudflare's free plan. AI usage is billed by your model provider, up to your cap. Optional educateos.io services after the pilot are not priced yet. Not a quote: educateos.io/pricing has the method.</p>
+    </div>
+    <div class="card">
+      <h3>The data rule</h3>
+      <ul>
+        <li>Until a data processing agreement is signed: synthetic or staff-only data. No student names, records, grades or work, and no real roster.</li>
+        <li>Records stay in your account. Gmacko Ventures LLC, which develops EducateOS, does not receive them.</li>
+        <li>Our DPA template is a draft pending counsel review; send us your state's standard agreement if you use one.</li>
+        <li>At the end: a district export of open JSON records, or an uninstall that shows what it will delete first. Both tested in simulation, not yet run live.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>educateos.io/pricing · educateos.io/student-privacy</span><span>12</span></div>
+</section>
+
+<section class="slide" id="s13" aria-label="Slide 13">
+  <div class="eyebrow">Next steps</div>
+  <h2>If it fits, here is how we start.</h2>
+  <div class="grid3">
+    <div class="card"><b class="big">1</b><h3>A 20-minute IT walkthrough</h3><p>With your IT lead: identity provider, roster source, LMS. We tell you honestly how ready EducateOS is for each.</p></div>
+    <div class="card"><b class="big">2</b><h3>The readiness checklist</h3><p>Cloudflare account, Zero Trust, a domain, AI provider and cap, and the champion teachers.</p></div>
+    <div class="card"><b class="big">3</b><h3>Agreement and kickoff</h3><p>We send the pilot agreement and the DPA template, and agree a kickoff date that fits your calendar.</p></div>
+  </div>
+  <div class="card tint" style="margin-top:1em"><p style="margin:0"><b>hello@educateos.io</b> · we reply within one business day. One-page briefs for your superintendent, principals, teachers and IT: <b>educateos.io/pilot</b>.</p></div>
+  <div class="foot"><span>EducateOS is developed by Gmacko Ventures LLC on the open-source Cloudflare OS, and is not affiliated with or endorsed by Cloudflare, Inc.</span><span>13</span></div>
+</section>
+
+</main>
+<script>
+  // Arrow keys, Page Up/Down and space move one slide at a time on screen.
+  addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, PageDown: 1, " ": 1, ArrowLeft: -1, ArrowUp: -1, PageUp: -1 }[event.key];
+    if (!step) return;
+    const slides = [...document.querySelectorAll(".slide")];
+    const current = slides.findIndex((slide) => slide.getBoundingClientRect().top > -10);
+    const next = slides[Math.min(Math.max((current < 0 ? slides.length - 1 : current) + step, 0), slides.length - 1)];
+    event.preventDefault();
+    next.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+</script>
+</body>
+</html>

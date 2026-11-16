@@ -1,0 +1,52 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Make a line graph of the percent of the population for each color across generations. Which color became more common, and why? Identify the four conditions for natural selection in the simulation. Describe two ways this model differs from a real population of animals.",
+    "dataColumns": [
+      {
+        "name": "Generation"
+      },
+      {
+        "name": "Bug color"
+      },
+      {
+        "name": "Number at start"
+      },
+      {
+        "name": "Number eaten"
+      },
+      {
+        "name": "Number surviving"
+      },
+      {
+        "name": "Percent of population",
+        "unit": "%"
+      }
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Scatter 20 bead bugs of each of five colors on the fabric. One student is the predator: for 15 seconds, pick up bugs one at a time and drop each in a cup. Count the survivors of each color. Each survivor then reproduces: add one new bug of the same color for every survivor. Repeat for three generations, changing predators each time. Describe the rules you followed and how this models variation, inheritance, overproduction and selection.",
+    "overview": "Play predator and prey with colored beads on patterned fabric, and track how a population of bead bugs changes over three generations.",
+    "question": "How does predation change the frequency of different colors in a population of prey over several generations?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Bead Bugs: A Selection Simulation"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-bead-bugs",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

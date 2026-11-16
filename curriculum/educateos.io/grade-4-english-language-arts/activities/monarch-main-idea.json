@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:869443e1b3ca160c1ddbaecb4d58fa9cefab135afe7bede4cc541e62679eedc6",
+      "id": "educateos.io/grade-4-english-language-arts-monarch-main-idea",
+      "version": "1.0.0"
+    }
+  },
+  "id": "monarch-main-idea",
+  "role": "lesson",
+  "title": "Monarchs on the Move: Main Idea and Details"
+}

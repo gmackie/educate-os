@@ -1,4 +1,6 @@
-import { CartridgeRefusedError, parseXml, readZip, type XmlElement, type XmlNode } from "@educateos/cartridge";
+import { CartridgeRefusedError } from "@educateos/cartridge/errors";
+import { parseXml, type XmlElement, type XmlNode } from "@educateos/cartridge/xml";
+import { readZip } from "@educateos/cartridge/zip";
 import { type StepBudget, ExtractionStopped, TextSink } from "./budget.ts";
 import type { ExtractionLimits } from "./limits.ts";
 
