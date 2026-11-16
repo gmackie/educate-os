@@ -15,7 +15,7 @@ import {
   WRITE_ACTIONS,
   type GuardianGuidanceCapability,
 } from "../src/index.ts";
-import { courseResource, P, SHARING_FLOOR, subject, withChanges } from "./setup.ts";
+import { courseResource, P, req, SHARING_FLOOR, subject, withChanges } from "./setup.ts";
 
 const BIO = "off_nf-bio-fall-p2";
 const MATH7 = "off_nf-math7-fall-p1";
@@ -182,12 +182,55 @@ describe("guardian learning guidance is a separate, explicit opt-in", () => {
     await expect(grants.save(first, 0)).rejects.toMatchObject({ code: "conflict" });
   });
 
-  it("is never reachable by staff, students or other principals through the guardian rule", async () => {
+  it("keeps guardian guidance and administrative disposition in exact, separate rules", () => {
+    expect(DEFAULT_POLICY_RULES.filter((r) => r.when.kinds?.includes("learning-guidance")).map(({ id, when, effect }) => ({ id, when, effect }))).toEqual([
+      {
+        id: "guardian.child.learning-guidance",
+        when: { principalKinds: ["guardian"], kinds: ["learning-guidance"], ownership: ["others"], relationships: ["guardian-of"], classifications: ["course"], actions: ["create", "read", "list"] },
+        effect: { effect: "allow" },
+      },
+      {
+        id: "admin.student-learning.lifecycle",
+        when: { kinds: ["learning-guidance"], roles: ["district-admin"], classifications: ["restricted"], actions: ["read", "configure", "delete"], channels: ["http"] },
+        effect: { effect: "allow" },
+      },
+    ]);
+  });
+
+  it("allows guardian suggestions and progress without allowing deletion or staff access to that guidance", async () => {
     const { engine, grant } = await setup();
     await grant(GINA_AMARA, ["suggest", "progress"]);
-    expect(DEFAULT_POLICY_RULES.filter((r) => r.when.kinds?.includes("learning-guidance")).map((r) => r.id)).toEqual(["guardian.child.learning-guidance"]);
-    for (const who of [subject(P.nfAdmin.principalId), subject(AMARA), subject("prn_nf-student-dmitri")]) {
-      expect((await engine.decide(ask(who, "create", guidance(BIO, AMARA)))).ruleId).not.toBe("guardian.child.learning-guidance");
+    for (const action of ["create", "read", "list"] as const) {
+      expect(await engine.decide(ask(G.gina, action, guidance(BIO, AMARA)))).toMatchObject({
+        decision: { effect: "allow" }, ruleId: "guardian.child.learning-guidance", grantId: GINA_AMARA.id,
+      });
+      for (const who of [P.nfAdmin, P.highPrincipal, P.morgan, P.rivera, P.amara, P.dmitri, P.rbAdmin]) {
+        expect((await engine.decide(ask(who, action, guidance(BIO, AMARA)))).decision.effect, `${who.principalId}: ${action}`).toBe("deny");
+      }
+    }
+    expect((await engine.decide(ask(G.gina, "delete", guidance(BIO, AMARA)))).decision.effect).toBe("deny");
+    expect((await engine.decide(ask(P.nfAdmin, "delete", guidance(BIO, AMARA)))).decision.effect).toBe("deny");
+  });
+
+  it("allows restricted lifecycle operations only for the district administrator over HTTP", async () => {
+    const { engine, audit, grant } = await setup();
+    await grant(GINA_AMARA, ["suggest", "progress"]);
+    // The lifecycle API addresses one student at district scope, separately from course guidance.
+    const target = { resource: { kind: "learning-guidance", id: AMARA, ownerPrincipalId: P.amara.principalId, scope: { level: "district", districtId: P.nfAdmin.districtId }, classification: "restricted" } } as const;
+    for (const action of ["read", "configure", "delete"] as const) {
+      expect(await engine.decide(req(P.nfAdmin, action, target))).toMatchObject({ decision: { effect: "allow" }, ruleId: "admin.student-learning.lifecycle" });
+      expect(audit.events.at(-1)).toMatchObject({ principalId: P.nfAdmin.principalId, resourceId: AMARA, action, effect: "allow", ruleId: "admin.student-learning.lifecycle" });
+      for (const who of [G.gina, G.gus, P.highPrincipal, P.morgan, P.rivera, P.amara, P.dmitri, P.rbAdmin, subject("prn_unknown"), subject(P.nfAdmin.principalId, "dst_riverbend")]) {
+        expect((await engine.decide(req(who, action, target))).decision.effect, `${who.principalId} in ${who.districtId}: ${action}`).toBe("deny");
+      }
+      for (const channel of ["agent", "mcp", "lti-service"] as const) {
+        expect((await engine.decide(req(P.nfAdmin, action, target, channel))).decision.effect, `${channel}: ${action}`).toBe("deny");
+      }
+      const foreign = { resource: { ...target.resource, scope: { level: "district", districtId: P.rbAdmin.districtId } } } as const;
+      expect((await engine.decide(req(P.nfAdmin, action, foreign))).decision.effect).toBe("deny");
+    }
+    for (const action of ["create", "list", "update", "export"] as const) {
+      expect((await engine.decide(req(P.nfAdmin, action, target))).decision.effect, action).toBe("deny");
     }
   });
 });
