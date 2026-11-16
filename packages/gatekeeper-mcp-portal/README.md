@@ -64,7 +64,10 @@ Only `MCP_ALLOW_INSECURE` is set in the repo's `cloudflare.config.ts`, pinned to
 is explicit rather than merely absent. None of the others is, and a portal URL committed there would
 become the default for every deployment of this repo and would send their users' OAuth flows to
 whichever host it named, so it belongs in the deployment's own configuration — for Cloudflare's
-internal deployment, the per-package overrides in `gadgets-internal`.
+internal deployment, the per-package overrides in `gadgets-internal`. A release-based install sets
+them through the package's `deploy-inputs.json`: `MCP_PORTAL_URL` is asked for, the others are
+optional inputs, and `MCP_PORTAL_TOKEN` an optional secret (EducateOS: SCHO-409,
+`launch-educate-os mcp add --connector portal`).
 
 Unconfigured, `getSupportedResources()` returns nothing and the Workshop drops the vendor. A
 `MCP_PORTAL_URL` that cannot be used — a non-`https` typo or a URL containing `username:password`,

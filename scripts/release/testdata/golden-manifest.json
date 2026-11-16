@@ -1141,13 +1141,61 @@
       }
     },
     "gatekeeper-mcp-portal": {
-      "bindings": [],
+      "bindings": [
+        {
+          "name": "MCP_PORTAL_TOKEN",
+          "text": "$SECRET(MCP_PORTAL_TOKEN)",
+          "type": "secret_text"
+        }
+      ],
       "compatibilityDate": "2026-09-04",
       "compatibilityFlags": [
         "allow_irrevocable_stub_storage",
         "global_fetch_strictly_public"
       ],
-      "inputs": [],
+      "inputs": [
+        {
+          "help": "The portal's MCP endpoint (Streamable HTTP, https://), typically a Cloudflare MCP server portal, so Access decides who may connect and Gateway logs what crosses. Users never type a URL: this is the connector's whole portal. An unusable URL hides the connector.",
+          "kind": "var",
+          "label": "MCP portal URL",
+          "name": "MCP_PORTAL_URL"
+        },
+        {
+          "help": "Shown in the connector list and every approval prompt. Blank: \"MCP Server Portal (<host>)\".",
+          "kind": "var",
+          "label": "Display name",
+          "name": "MCP_PORTAL_NAME",
+          "optional": true
+        },
+        {
+          "help": "\"oauth\" (blank means oauth): each person signs in through the portal. \"token\": every call carries the MCP_PORTAL_TOKEN secret. \"none\": the portal needs no credential.",
+          "kind": "var",
+          "label": "Sign-in (oauth, token or none)",
+          "name": "MCP_PORTAL_AUTH",
+          "optional": true
+        },
+        {
+          "help": "Only for MCP_PORTAL_AUTH \"token\": the bearer token sent on every call to the portal. Leave blank otherwise.",
+          "kind": "secret",
+          "label": "Portal bearer token",
+          "name": "MCP_PORTAL_TOKEN",
+          "optional": true
+        },
+        {
+          "help": "\"true\" lets read-only annotations from servers behind the portal skip approval. Blank (off) unless you trust every upstream server the portal proxies: a portal's annotations are written by those servers, not by you.",
+          "kind": "var",
+          "label": "Trust tool annotations (true or blank)",
+          "name": "MCP_PORTAL_TRUST_ANNOTATIONS",
+          "optional": true
+        },
+        {
+          "help": "Comma-separated upstream server IDs to leave out of the resource configurator and refuse, such as servers reached through their own native connector instead. Blank hides none.",
+          "kind": "var",
+          "label": "Hidden upstream server IDs",
+          "name": "MCP_PORTAL_HIDDEN_SERVER_IDS",
+          "optional": true
+        }
+      ],
       "installable": true,
       "kind": "gatekeeper",
       "mainModule": "mcp-portal.js",
@@ -1177,7 +1225,6 @@
         }
       },
       "shortName": "mcpportal",
-      "singleton": true,
       "vars": {
         "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/mcpportal",
         "MCP_ALLOW_INSECURE": "false"

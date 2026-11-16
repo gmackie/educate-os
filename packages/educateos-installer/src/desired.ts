@@ -143,6 +143,11 @@ export interface DesiredWorkerSecret extends ResourceBase {
    * Never rotated once set.
    */
   generated: boolean;
+  /**
+   * The release marks the input optional: when the secret source has none and the Worker does not
+   * have it, it is left unset rather than asked for.
+   */
+  optional?: true;
 }
 
 /**
@@ -280,6 +285,34 @@ export const ACCESS_BYPASS_PATHS: readonly string[] = [
 ];
 
 /**
+ * The district's organization MCP endpoint (SCHO-174) and its OAuth protected resource metadata
+ * (RFC 9728), which a one-origin install also exempts from Access when the district's
+ * `DISTRICT_CONFIG` has `mcp` (SCHO-409). MCP clients bring an access token from the district's
+ * authorization server and can't complete an Access sign-in; the endpoint verifies the token
+ * itself. Without `mcp` the district answers these paths 404, and they stay behind Access.
+ */
+export const ACCESS_MCP_BYPASS_PATHS: readonly string[] = [
+  "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+];
+
+/**
+ * Whether a district's `DISTRICT_CONFIG` text turns on its MCP endpoint: a JSON object with an
+ * `mcp` object. The rest of the config is the district Worker's to validate, and so is `mcp`'s
+ * shape; text that isn't JSON turns nothing on.
+ */
+export function districtMcpEnabled(text: string | undefined): boolean {
+  if (text === undefined) return false;
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return false;
+  }
+  const mcp = typeof json === "object" && json !== null ? (json as Record<string, unknown>).mcp : undefined;
+  return typeof mcp === "object" && mcp !== null && !Array.isArray(mcp);
+}
+
+/**
  * The pairing relay's browser endpoints (SCHO-261 pairing contract), which sit under the
  * `/api/pair/*` bypass but belong to a signed-in web session: creating a room, and its status,
  * approve and deny. They are listed as path destinations of the district's own application, so the
@@ -371,8 +404,9 @@ function nameSuffix(binding: string): string {
 
 /**
  * The plain-text vars a gatekeeper's non-secret deploy inputs become, from the config's values.
- * Every `var` and `workerName` input needs a value; a value for anything else is refused, so a
- * secret can't be put in the (non-secret) config by mistake and a typo can't go unnoticed.
+ * Every `var` and `workerName` input needs a value unless the release marks it optional; a value for
+ * anything else is refused, so a secret can't be put in the (non-secret) config by mistake and a
+ * typo can't go unnoticed.
  */
 function gatekeeperInputVars(pkgName: string, entry: WorkerEntry, config: DistrictInstallConfig): Record<string, string> {
   const supplied = config.gatekeeperInputs[pkgName] ?? {};
@@ -386,6 +420,7 @@ function gatekeeperInputVars(pkgName: string, entry: WorkerEntry, config: Distri
   for (const input of inputs.values()) {
     if (input.kind === "secret") continue;
     const value = supplied[input.name];
+    if (value === undefined && input.optional) continue;
     if (value === undefined) invalid(`${pkgName} needs a value for ${input.name} (${input.label}) in gatekeeperInputs`);
     if (input.kind === "workerName" && !WorkerScriptName.safeParse(value).success) {
       invalid(`${pkgName}: ${input.name} must be a Worker name`);
@@ -496,7 +531,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     const setHere = name === districtPkg ? installerSet : new Set<string>();
     for (const input of declared.values()) {
       if (input.kind === "workerName") invalid(`${name} needs a workerName input, which the installer does not collect yet`);
-      if (setHere.has(input.name)) continue;
+      if (setHere.has(input.name) || input.optional) continue;
       inputs.push(input.kind === "var"
         ? { pkgName: name, name: input.name, label: input.label, kind: "var", supplied: Object.hasOwn(wanted.vars, input.name) }
         : { pkgName: name, name: input.name, label: input.label, kind: "secret", generated: input.generated === true });
@@ -572,7 +607,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     sessionDuration: ACCESS_SESSION_DURATION,
     policyKey: accessPolicy.key,
   };
-  // ADR-0014 decision 4: the paths that check their own credential are exempt from Access.
+  // ADR-0014 decision 4: the paths that check their own credential are exempt from Access, and the
+  // MCP endpoint's when the district turns it on.
+  const mcpBypass = oneOrigin && districtMcpEnabled(config.services[districtPkg!]?.vars.DISTRICT_CONFIG);
+  const bypassPaths = [...ACCESS_BYPASS_PATHS, ...mcpBypass ? ACCESS_MCP_BYPASS_PATHS : []];
   const bypassPolicy: DesiredAccessPolicy | undefined = oneOrigin
     ? { kind: "access_policy", key: RESOURCE_KEYS.accessBypassPolicy, dependsOn: [], spec: { name: `${prefix}-bypass`, decision: "bypass", include: [{ everyone: {} }] } }
     : undefined;
@@ -583,7 +621,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       dependsOn: [bypassPolicy.key, RESOURCE_KEYS.managedHostnameRelease],
       name: `${prefix}-bypass`,
       domain: `${hostname}${ACCESS_BYPASS_PATHS[0]}`,
-      destinations: onHosts(ACCESS_BYPASS_PATHS),
+      destinations: onHosts(bypassPaths),
       sessionDuration: ACCESS_SESSION_DURATION,
       policyKey: bypassPolicy.key,
     }
@@ -686,6 +724,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
           scriptName: scriptNames.get(pkgName)!,
           secretName: binding.name,
           generated: entry.inputs?.some((input) => input.name === binding.name && input.generated === true) ?? false,
+          ...entry.inputs?.some((input) => input.name === binding.name && input.optional === true) ? { optional: true as const } : {},
         });
         continue;
       }

@@ -93,7 +93,14 @@ export const DeployInput = z.strictObject({
    * base64url) and never rotates it, so nobody supplies it.
    */
   generated: z.literal(true).optional(),
-}).refine((input) => input.generated === undefined || input.kind === "secret", "only a secret input can be generated");
+  /**
+   * The Worker runs without it: an unsupplied optional var is not written, and an unsupplied
+   * optional secret is not set. Never on a generated secret or a `workerName`.
+   */
+  optional: z.literal(true).optional(),
+}).refine((input) => input.generated === undefined || input.kind === "secret", "only a secret input can be generated")
+  .refine((input) => input.optional === undefined || (input.kind !== "workerName" && input.generated === undefined),
+    "only a var or an asked-for secret can be optional");
 /** A deploy input. */
 export type DeployInput = z.infer<typeof DeployInput>;
 

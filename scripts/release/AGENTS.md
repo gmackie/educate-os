@@ -31,6 +31,11 @@ An installable gatekeeper's user-supplied inputs default to OAuth `CLIENT_ID`/`C
 secrets; a per-package `deploy-inputs.json` overrides them, and `NO_DEFAULT_CRED_INPUTS` in
 `manifest-lib.ts` opts out gatekeepers that take no third-party OAuth app credentials (the wizard
 blocks Install on unfilled secret inputs, so a spurious default makes a gatekeeper uninstallable).
+An input marked `"optional": true` (a var or an asked-for secret, never `generated` or a
+`workerName`) may be left blank: the EducateOS installer writes no var and sets no secret for it,
+and keeps a secret the Worker already has. The secret's `secret_text` binding stays in the manifest,
+so a deploy service that does not know `optional` treats it as required. The MCP Server Portal's
+inputs use it (SCHO-409).
 Backend instance-state vars (`ADMINS`, `CLOUDFLARE_OS_DEPLOYMENT`, ...) are injected by the deploy
 service at PUT time, never manifest-templated.
 

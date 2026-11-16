@@ -135,7 +135,10 @@ describe("mcp status", () => {
     cloudflare.fake.seedWorker("educateos-northfield-gatekeeper-mcp");
     cloudflare.fake.seedWorker("educateos-northfield-gatekeeper-mcp-portal", { MCP_ALLOW_INSECURE: "false" });
     const config = districtConfig({ workshopPolicy: { personalCreation: false, personalBlueprints: [], classBlueprints: [], models: [], connectors: [{ vendorId: "mcp", access: "all" }] } });
-    const { dir } = writeAnswersFile(oneOriginAnswers(config, { gatekeepers: ["gatekeeper-mcp", "gatekeeper-mcp-portal"] }));
+    const { dir } = writeAnswersFile(oneOriginAnswers(config, {
+      gatekeepers: ["gatekeeper-mcp", "gatekeeper-mcp-portal"],
+      gatekeeperInputs: { "gatekeeper-mcp-portal": { MCP_PORTAL_URL: "https://portal.northfield.example/mcp" } },
+    }));
     const { fetchImpl, requests } = scriptedFetch(liveDistrict());
     const env = { CLOUDFLARE_API_TOKEN: cloudflare.token, [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url };
     const result = await run(["mcp", "status", "--json"], { cwd: dir, env, fetch: fetchImpl });
@@ -146,7 +149,9 @@ describe("mcp status", () => {
     expect(status("live", /metadata served/)).toBe("ok");
     expect(status("challenge", /401 naming the metadata/)).toBe("ok");
     expect(status("server", /Worker educateos-northfield-gatekeeper-mcp is installed/)).toBe("ok");
-    expect(status("portal", /MCP_PORTAL_URL is not set.*SCHO-409/)).toBe("warn");
+    expect(status("portal", /portal https:\/\/portal.northfield.example\/mcp \(sign-in oauth\) in the answers/)).toBe("ok");
+    // The Worker predates the answers' URL: applying sets it.
+    expect(status("portal", /MCP_PORTAL_URL is not set on the Worker.*mcp add --connector portal/)).toBe("warn");
     expect(status("policy", /district administrators may connect the MCP Server /)).toBe("ok");
     expect(status("policy", /no grant for "mcpportal"/)).toBe("warn");
     expect(result.code).toBe(0);
@@ -164,7 +169,7 @@ describe("mcp status", () => {
     });
     const result = await run(["mcp", "status"], { cwd: dir, fetch: fetchImpl });
     expect(result.code).toBe(1);
-    expect(result.stdout).toMatch(/FAIL\s+live\s+Cloudflare Access answered.*SCHO-409/);
+    expect(result.stdout).toMatch(/FAIL\s+live\s+Cloudflare Access answered.*applying the answers adds that bypass/);
     expect(result.stdout).toMatch(/WARN\s+policy\s+workshopPolicy.connectors has no grant for "mcp"/);
   });
 
@@ -321,13 +326,84 @@ describe("mcp add", () => {
     expect(result.stderr).toMatch(/refuses private, loopback and metadata hosts/);
     expect(requests).toEqual([]);
   });
+});
 
-  it("explains that the portal can't be configured by the installer yet, and changes nothing", async () => {
+describe("mcp add --connector portal", () => {
+  const PORTAL = "https://portal.northfield.example/mcp";
+  const portalInputs = async (path: string) =>
+    ((await readAnswers(path))!.install.gatekeeperInputs as Record<string, Record<string, string>> | undefined)?.["gatekeeper-mcp-portal"];
+
+  it("writes the portal's URL, name and sign-in, installs the connector and grants it", async () => {
+    const { dir, path } = writeAnswersFile(oneOriginAnswers(districtConfig()));
+    const result = await run(["mcp", "add", "--connector", "portal", "--portal-url", PORTAL, "--portal-name", "Northfield tools", "--portal-auth", "oauth", "--yes"], { cwd: dir });
+    expect(result.code).toBe(0);
+    const saved = (await readAnswers(path))!;
+    expect(saved.install.gatekeepers).toEqual(["gatekeeper-mcp-portal"]);
+    expect(await portalInputs(path)).toEqual({ MCP_PORTAL_URL: PORTAL, MCP_PORTAL_NAME: "Northfield tools", MCP_PORTAL_AUTH: "oauth" });
+    const services = saved.install.services as Record<string, { vars: { DISTRICT_CONFIG: string } }>;
+    expect(JSON.parse(services["educateos-district-worker"]!.vars.DISTRICT_CONFIG).workshopPolicy.connectors).toEqual([{ vendorId: "mcpportal", access: "all" }]);
+    expect(result.stdout).toContain("choose Northfield tools");
+    expect(result.stdout).not.toContain("SCHO-409");
+
+    // A second run has nothing to change; a new URL changes only the URL and keeps the rest.
+    expect((await run(["mcp", "add", "--connector", "portal", "--portal-url", PORTAL, "--yes"], { cwd: dir })).stdout)
+      .toContain("None: the answers already install this portal and grant it.");
+    const moved = await run(["mcp", "add", "--connector", "portal", "--portal-url", "https://tools.northfield.example/mcp", "--yes"], { cwd: dir });
+    expect(moved.stdout).toContain(`MCP_PORTAL_URL: change from "${PORTAL}" to "https://tools.northfield.example/mcp"`);
+    expect(await portalInputs(path)).toEqual({ MCP_PORTAL_URL: "https://tools.northfield.example/mcp", MCP_PORTAL_NAME: "Northfield tools", MCP_PORTAL_AUTH: "oauth" });
+
+    const status = await run(["mcp", "status", "--offline"], { cwd: dir });
+    expect(status.stdout).toMatch(/ok\s+portal\s+portal https:\/\/tools.northfield.example\/mcp \("Northfield tools", sign-in oauth\)/);
+    expect(status.stdout).toMatch(/ok\s+policy\s+district administrators may connect the MCP Server Portal/);
+  });
+
+  it("keeps the token out of the answers and names the variable the apply reads it from", async () => {
+    const { dir, path } = writeAnswersFile(northfieldAnswers());
+    const result = await run(["mcp", "add", "--connector", "portal", "--portal-url", PORTAL, "--portal-auth", "token", "--yes", "--json"], { cwd: dir });
+    expect(result.code).toBe(0);
+    expect(await portalInputs(path)).toEqual({ MCP_PORTAL_URL: PORTAL, MCP_PORTAL_AUTH: "token" });
+    expect(events(result.stdout).find((event) => event.check === "token")).toMatchObject({ status: "warn" });
+    expect(result.stderr).toContain("Set EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN to the portal's token, then apply");
+    // A Workshop-only install has no district policy to change.
+    expect(result.stderr).not.toContain("workshopPolicy.connectors: add");
+
+    const secret = "synthetic-portal-token";
+    const withToken = await run(["mcp", "status", "--offline"], { cwd: dir, env: { EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN: secret } });
+    expect(withToken.stdout).toMatch(/ok\s+token\s+EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN is set/);
+    expect(withToken.stdout + withToken.stderr).not.toContain(secret);
+    expect(readFileSync(path, "utf8")).not.toContain(secret);
+  });
+
+  it("asks for the URL, name and sign-in on a terminal", async () => {
+    const { dir, path } = writeAnswersFile(northfieldAnswers());
+    const result = await run(["mcp", "add", "--connector", "portal"], { cwd: dir, terminal: [PORTAL, "", "3", "y"] });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("MCP portal URL");
+    expect(await portalInputs(path)).toEqual({ MCP_PORTAL_URL: PORTAL, MCP_PORTAL_AUTH: "none" });
+  });
+
+  it("refuses a missing or unusable URL, an unknown sign-in and portal flags without --connector portal, changing nothing", async () => {
     const { dir, path } = writeAnswersFile(northfieldAnswers());
     const before = readFileSync(path, "utf8");
-    const result = await run(["mcp", "add", "--connector", "portal"], { cwd: dir });
-    expect(result.code).toBe(1);
-    expect(result.stdout).toContain("SCHO-409");
+    const missing = await run(["mcp", "add", "--connector", "portal", "--yes"], { cwd: dir });
+    expect(missing.code).toBe(1);
+    expect(missing.stderr).toMatch(/needs the portal's URL: pass --portal-url/);
+    const local = await run(["mcp", "add", "--connector", "portal", "--portal-url", "http://127.0.0.1/mcp", "--yes"], { cwd: dir });
+    expect(local.code).toBe(1);
+    expect((await run(["mcp", "add", "--connector", "portal", "--portal-url", PORTAL, "--portal-auth", "basic"], { cwd: dir })).code).toBe(2);
+    expect((await run(["mcp", "add", "--portal-url", PORTAL], { cwd: dir })).stderr).toContain("--portal-url is for mcp add --connector portal");
     expect(readFileSync(path, "utf8")).toBe(before);
+  });
+
+  it("checks the portal Worker's URL and token in the account", async () => {
+    const cloudflare = await serveCloudflare(accountFor(NORTHFIELD));
+    closing.push(cloudflare);
+    cloudflare.fake.seedWorker("educateos-northfield-gatekeeper-mcp-portal", { MCP_PORTAL_URL: PORTAL, MCP_PORTAL_AUTH: "token" });
+    const { dir } = writeAnswersFile(northfieldAnswers({ gatekeepers: ["gatekeeper-mcp-portal"], gatekeeperInputs: { "gatekeeper-mcp-portal": { MCP_PORTAL_URL: PORTAL, MCP_PORTAL_AUTH: "token" } } }));
+    const env = { CLOUDFLARE_API_TOKEN: cloudflare.token, [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url };
+    const result = await run(["mcp", "status", "--offline"], { cwd: dir, env });
+    expect(result.stdout).toMatch(new RegExp(`ok\\s+portal\\s+portal ${PORTAL.replaceAll(".", "\\.")}$`, "m"));
+    expect(result.stdout).toMatch(/FAIL\s+token\s+sign-in is token, but the Worker has no MCP_PORTAL_TOKEN/);
+    expect(result.code).toBe(1);
   });
 });

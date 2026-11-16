@@ -225,6 +225,7 @@ npx launch-educate-os mcp status                  # what's set up, with live che
 npx launch-educate-os mcp clients                 # connect AI clients to your district's /mcp
 npx launch-educate-os mcp clients --client claude # one client's steps
 npx launch-educate-os mcp add --server-url https://mcp.example.org/mcp   # add an MCP server to the Workshop
+npx launch-educate-os mcp add --connector portal --portal-url https://portal.example.org/mcp   # or an MCP portal
 ```
 
 - **`mcp status`** reads the answers file: whether `DISTRICT_CONFIG.mcp` turns the endpoint on, its
@@ -244,6 +245,13 @@ npx launch-educate-os mcp add --server-url https://mcp.example.org/mcp   # add a
   teachers may not). It shows the changes and asks first (`--yes` without a terminal). Apply them
   with `npx launch-educate-os --config educateos-install.json`, then connect the server in the
   Workshop: it prints the steps.
+- **`mcp add --connector portal`** sets up the MCP Server Portal connector instead: one portal (such
+  as a Cloudflare MCP server portal) for the whole install. It writes the portal's URL and, if given,
+  its display name (`--portal-name`) and sign-in (`--portal-auth oauth|token|none`, default oauth) to
+  `gatekeeperInputs`, adds `gatekeeper-mcp-portal` to `gatekeepers`, and grants `mcpportal` to
+  district administrators. On a terminal it asks for each. For `token` sign-in, set
+  `EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN` when you apply: the answers file never
+  holds the token.
 
 Every MCP command reads and changes only the answers file and never Cloudflare. Live checks send
 no token or cookie. `--offline` skips them; `--json` prints `mcp`, `mcp-client` and `mcp-change`
@@ -253,11 +261,10 @@ What isn't ready yet:
 
 - **The district endpoint has no live sign-in yet.** It is built and tested with the official MCP
   client against a simulated authorization server, but the district's authorization server (Nathan)
-  doesn't issue tokens for it yet, no outside client has connected, and the installer doesn't exempt
-  `/mcp` from Cloudflare Access yet. Each person's delegation to a client is issued through the
-  district API; there is no page for it yet.
-- **The MCP Server Portal can't be configured by the installer yet**: it has no setting for the
-  portal's address, so `mcp add --connector portal` explains that and changes nothing.
+  doesn't issue tokens for it yet, and no outside client has connected. (Applying answers that turn
+  it on exempts `/mcp` and its OAuth metadata from Cloudflare Access.) Each person's delegation to a
+  client is issued through the district API; there is no page for it yet.
+- **No portal has been connected through the MCP Server Portal connector** in an EducateOS district.
 - **Not run against a live district.** The commands are tested against simulated endpoints and the
   installer's simulated Cloudflare.
 

@@ -208,11 +208,25 @@ test("worker entries carry the deploy contract", () => {
     }
   }
 
-  // The MCP connectors are install-once for SINGLETON's second reason: they take no inputs, so a
-  // second install could not differ from the first — it would only mint a second vendor id.
+  // The MCP Server connector is install-once for SINGLETON's second reason: it takes no inputs, so
+  // a second install could not differ from the first — it would only mint a second vendor id.
   assert.equal(workers["gatekeeper-mcp"].singleton, true);
-  assert.equal(workers["gatekeeper-mcp-portal"].singleton, true);
   assert.equal(workers["gatekeeper-homeassistant"].singleton, true);
+
+  // The MCP Server Portal takes its portal as deploy inputs (SCHO-409): the URL is asked for, the
+  // rest may be left blank, and the token is a secret. Two installs can front two portals, so it
+  // is no longer install-once.
+  const portal = workers["gatekeeper-mcp-portal"];
+  assert.equal(portal.singleton, undefined);
+  assert.deepEqual(portal.inputs?.map((input) => [input.name, input.kind, input.optional ?? false]), [
+    ["MCP_PORTAL_URL", "var", false],
+    ["MCP_PORTAL_NAME", "var", true],
+    ["MCP_PORTAL_AUTH", "var", true],
+    ["MCP_PORTAL_TOKEN", "secret", true],
+    ["MCP_PORTAL_TRUST_ANNOTATIONS", "var", true],
+    ["MCP_PORTAL_HIDDEN_SERVER_IDS", "var", true],
+  ]);
+  assert.deepEqual(portal.bindings, [{ type: "secret_text", name: "MCP_PORTAL_TOKEN", text: "$SECRET(MCP_PORTAL_TOKEN)" }]);
 
   // The EducateOS gatekeeper takes no OAuth credentials: the district verifies its own sign-in,
   // through a service binding the district deployment injects, so the release declares none.
@@ -334,11 +348,15 @@ test("per-package deploy-inputs.json files are well-formed when present", () => 
       assert.equal(typeof input.label, "string", `${pkg.name}: input.label`);
       for (const key of Object.keys(input)) {
         assert.ok(["name", "kind", "label", "help", "consoleUrl", "setupSteps",
-          "redirectUriTemplate", "generated"].includes(key), `${pkg.name}: unknown input key ${key}`);
+          "redirectUriTemplate", "generated", "optional"].includes(key), `${pkg.name}: unknown input key ${key}`);
       }
       if (input.generated !== undefined) {
         assert.equal(input.generated, true, `${pkg.name}: generated must be true`);
         assert.equal(input.kind, "secret", `${pkg.name}: only a secret can be generated`);
+      }
+      if (input.optional !== undefined) {
+        assert.equal(input.optional, true, `${pkg.name}: optional must be true`);
+        assert.notEqual(input.kind, "workerName", `${pkg.name}: a workerName can't be optional`);
       }
       if (input.setupSteps !== undefined) {
         assert.ok(Array.isArray(input.setupSteps) &&
@@ -507,7 +525,7 @@ test("the asset variants are the declared ones, and the one-origin variant is re
   assert.throws(() => generate({ access: assets, "access-ai": assets, other: assets }), /unknown asset variant other/);
 });
 
-test("a router config that binds DISTRICT itself, or a generated input that is not a secret, fails the build", () => {
+test("a router config that binds DISTRICT itself, or a generated or optional input of the wrong kind, fails the build", () => {
   const builds = readTestWorkerBuilds();
   const withDistrict = builds.map((w) => w.pkgName !== "router" ? w : {
     ...w, config: { ...w.config, services: [...w.config.services ?? [], { binding: "DISTRICT", service: "educateos-district-worker" }] },
@@ -517,6 +535,13 @@ test("a router config that binds DISTRICT itself, or a generated input that is n
     ...w, deployInputs: [{ name: "X", kind: "var" as const, label: "X", generated: true as const }],
   });
   assert.throws(() => buildTestManifest(generatedVar), /X is marked generated, which only a secret can be/);
+  for (const input of [
+    { name: "X", kind: "secret" as const, label: "X", generated: true as const, optional: true as const },
+    { name: "X", kind: "workerName" as const, label: "X", optional: true as const },
+  ]) {
+    const optional = builds.map((w) => w.pkgName !== "gatekeeper-mcp-portal" ? w : { ...w, deployInputs: [input] });
+    assert.throws(() => buildTestManifest(optional), /X is marked optional, which only a var or an asked-for secret can be/);
+  }
 });
 
 // SCHO-263: the OSS admin ships in every release as a component built from its config template,
