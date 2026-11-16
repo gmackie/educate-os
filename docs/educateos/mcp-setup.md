@@ -68,6 +68,7 @@ portal, where Access decides who may connect and Gateway logs the traffic. Its p
 connector's deploy inputs (`MCP_PORTAL_URL`, `MCP_PORTAL_NAME`, `MCP_PORTAL_AUTH`,
 `MCP_PORTAL_TRUST_ANNOTATIONS`, `MCP_PORTAL_HIDDEN_SERVER_IDS`, and the `MCP_PORTAL_TOKEN` secret; see
 `packages/gatekeeper-mcp-portal/README.md`). Only the URL is required; the rest may be left out.
+This needs `launch-educate-os` 0.3.0 or later and a release built after SCHO-409 (r000004 or later).
 
 ```sh
 npx launch-educate-os mcp add --connector portal \

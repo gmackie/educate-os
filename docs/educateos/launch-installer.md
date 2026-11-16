@@ -1,7 +1,8 @@
 # `npx launch-educate-os`
 
 - Status: Published to npm as `launch-educate-os` (0.1.0, SCHO-341; 0.2.0 adds `connect`, `status`, `mcp` and
-  `uninstall`, SCHO-406, SCHO-407, SCHO-368). A full install
+  `uninstall`, SCHO-406, SCHO-407, SCHO-368; 0.3.0 adds `mcp add --connector portal` and the `/mcp` Access
+  bypass, SCHO-409). A full install
   into the owner's Cloudflare account completed on 2026-11-04 ([below](#live-install-2026-11-04));
   no district has run it yet.
 - Code: `packages/launch-educate-os` (the npm package), `packages/educateos-control-plane/src/release-files.ts`
@@ -143,7 +144,8 @@ Limits:
   KiB, each request times out after 10 seconds, and an address the Workshop's connector would refuse
   (`isBlockedHost` from `@gadgets/mcp-shared/endpoint`, the same blocklist) is refused before any
   request. The checks run from the operator's machine, not Cloudflare, and say so.
-- **The portal** (SCHO-409): `mcp add --connector portal` writes the portal's non-secret deploy
+- **The portal** (SCHO-409, added in 0.3.0; it needs a release built after SCHO-409, r000004 or
+  later): `mcp add --connector portal` writes the portal's non-secret deploy
   inputs (`MCP_PORTAL_URL`, `MCP_PORTAL_NAME`, `MCP_PORTAL_AUTH`) to `gatekeeperInputs`; its token is
   the optional `MCP_PORTAL_TOKEN` secret, read at apply from
   `EDUCATEOS_SECRET_GATEKEEPER_MCP_PORTAL__MCP_PORTAL_TOKEN`. The `/mcp` Access bypass is the
