@@ -6,6 +6,7 @@ import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 import {test} from "node:test";
 import {LISTENING_PATHS} from "./listening/core.mjs";
+import {NOTICE_VERSION} from "./listening/schema.mjs";
 import {INTAKE_PATHS} from "./intake/core.mjs";
 import {DYNAMIC_PATHS} from "../../packages/educateos-control-plane/src/app.ts";
 
@@ -48,6 +49,15 @@ test("intake is isolated and production-disabled without keys or review", () => 
   assert.deepEqual(config.migrations[1], {tag: "interest-v1", new_sqlite_classes: ["InterestIntake"]});
 });
 
+test("only the reviewed adult listening intake is enabled with its real public widget", () => {
+  assert.equal(config.vars.LISTENING_ENABLED, "true");
+  assert.equal(config.vars.LISTENING_REVIEWED, NOTICE_VERSION);
+  assert.equal(config.vars.LISTENING_TURNSTILE_SITE_KEY, "0x4AAAAAAGEJuErQSqWOCB_D");
+  for (const name of ["LISTENING_HMAC_SECRET", "LISTENING_EXPORT_TOKEN", "LISTENING_PRIVACY_TOKEN", "LISTENING_TURNSTILE_SECRET"]) {
+    assert.equal(config.vars[name], undefined, "private credentials belong in the secret store");
+  }
+});
+
 // Existing site CI invokes this file; keep intake checks in that path without broad CI changes.
 test("the isolated intake security and fake-Workers binding suites pass", async () => {
   const {execFileSync} = await import("node:child_process");
@@ -63,12 +73,15 @@ test("the isolated listening rehearsal protects dispatch and proves local SQLite
   const {execFileSync} = await import("node:child_process");
   const {mkdtempSync, rmSync} = await import("node:fs");
   const {tmpdir} = await import("node:os");
-  const {join} = await import("node:path");
+  const {dirname, join} = await import("node:path");
   const {fileURLToPath} = await import("node:url");
   const output = mkdtempSync(join(tmpdir(), "listening-rehearsal-"));
   const root = fileURLToPath(new URL("../../", import.meta.url));
+  // Execute the already installed binary: a deploy node's global/Corepack pnpm can differ
+  // from the version used to install this checkout. No install or version bypass is needed.
+  const wrangler = join(dirname(createRequire(new URL("../../package.json", import.meta.url)).resolve("wrangler/package.json")), "bin/wrangler.js");
   try {
-    execFileSync("pnpm", ["exec", "wrangler", "deploy", "-c",
+    execFileSync(process.execPath, [wrangler, "deploy", "-c",
       "sites/educateos-io/listening/rehearsal/wrangler.jsonc", "--dry-run", "--outdir", output],
     {cwd: root, timeout: 60_000, stdio: "pipe"});
     execFileSync(process.execPath, [fileURLToPath(new URL("listening/rehearsal/check.mjs", import.meta.url)),

@@ -38,9 +38,11 @@ still incur cost. Staff must combine or omit small groups before publishing any 
 
 ## Publishing and rollout
 
-The current user authorizes implementation and a PR; **do not merge without user confirmation**.
-Collection remains closed (`LISTENING_ENABLED=false`) in committed config. Do not copy the old
-interest review attestation or enable its unrelated funnel. These deployment prerequisites remain:
+The user explicitly approved merge/deployment on 2026-11-16 and confirmed their team monitors
+`hello@educateos.io`, handles privacy/follow-up requests, and reviewed/accepted the published
+notice and 90-day record/export/provider-recovery-copy procedure. That approval supersedes the
+original PR-only merge restriction. Do not copy the old interest review attestation or enable its
+unrelated funnel. The following prerequisites govern launch and any future reopening:
 
 1. Confirm the operator identity/contact mailbox is current and monitored. Review notice,
    processor/international processing terms, 90-day retention, deletion procedure, staff access and
@@ -69,6 +71,21 @@ interest review attestation or enable its unrelated funnel. These deployment pre
    `/api/listening/config`. Confirm unauthorized exports fail. Use synthetic adult test data and
    delete it after proving storage/export. Never claim the feature is live based only on a push,
    merged PR, healthz from another app or a static page rendering. Record exact revision/deployment.
+
+SCHO-430 / canonical PRs #411 and #428 record the scoped launch evidence: independent credentials,
+hostname-restricted real widget, keyboard challenge completion, no injected analytics/body logs,
+free listening-route edge body/burst controls, and existing enabled capacity budget alerts.
+An isolated deployed SQLite rehearsal proved object-restart persistence, idempotency, private
+export/erasure, real alarm expiry and actual provider PITR followed by deletion replay. Its
+synthetic rows, temporary credential and Workers were removed. Cloudflare's SQLite PITR keeps
+30 days of recovery history; it is not erased on demand by deleting an active record.
+The production configuration now opts this listening collection in; deployment plus the final
+live synthetic submit/export/erase and exact-revision health evidence remain tracked on SCHO-430.
+
+To pause, set `LISTENING_ENABLED=false` and deploy this site target. Submission/config then fail
+closed while staff export/erasure remain available. During any recovery, keep collection paused,
+replay independently retained verified deletions, remove affected private exports, and verify
+expiry/suppression before reopening. Do not restore a production object using the rehearsal.
 
 The old intake README's draft-only authorization applied to SCHO-295. This separately authorized
 implementation does not remove its security prerequisites or open that funnel.
