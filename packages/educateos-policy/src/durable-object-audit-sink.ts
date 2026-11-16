@@ -8,10 +8,12 @@ import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import {
   auditEventMatches,
   MAX_AUDIT_SEARCH_SCAN,
+  RETENTION_PURGEABLE_KINDS,
   PolicyAuditEvent,
   PolicyAuditQuery,
   type PolicyAuditPage,
   type PolicyAuditReader,
+  type PolicyAuditRetention,
   type PolicyAuditSink,
   type StoredPolicyAuditEvent,
 } from "./audit.ts";
@@ -41,7 +43,11 @@ export const POLICY_AUDIT_TABLE = "educateos_policy_audit_events";
 // `seq` keeps append order. The correlation ID, time and effect are copies of what the JSON holds,
 // so the trail can be searched without parsing it; the JSON is what is trusted. The triggers make
 // the table append-only at the storage layer, so no code path, this one included, can rewrite or
-// remove a decision once recorded.
+// remove a decision once recorded. The one exception is a decision about a family's own home
+// learning records (ADR-0016), which a retention schedule deletes once it is old enough; the
+// delete trigger names those kinds itself, so no other decision can be removed by any statement.
+const PURGEABLE_SQL = RETENTION_PURGEABLE_KINDS.map((kind) => `'${kind}'`).join(", ");
+const KIND_SQL = "json_extract(OLD.event_json, '$.resourceKind')";
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS ${POLICY_AUDIT_TABLE} (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +59,10 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS ${POLICY_AUDIT_TABLE}_correlation ON ${POLICY_AUDIT_TABLE} (correlation_id)`,
   `CREATE TRIGGER IF NOT EXISTS ${POLICY_AUDIT_TABLE}_no_update BEFORE UPDATE ON ${POLICY_AUDIT_TABLE}
     BEGIN SELECT RAISE(ABORT, 'policy audit events are append-only'); END`,
-  `CREATE TRIGGER IF NOT EXISTS ${POLICY_AUDIT_TABLE}_no_delete BEFORE DELETE ON ${POLICY_AUDIT_TABLE}
+  // Replaces the first trigger, which refused every delete, in the same transaction.
+  `DROP TRIGGER IF EXISTS ${POLICY_AUDIT_TABLE}_no_delete`,
+  `CREATE TRIGGER IF NOT EXISTS ${POLICY_AUDIT_TABLE}_no_delete_unless_family BEFORE DELETE ON ${POLICY_AUDIT_TABLE}
+    WHEN ${KIND_SQL} IS NULL OR ${KIND_SQL} NOT IN (${PURGEABLE_SQL})
     BEGIN SELECT RAISE(ABORT, 'policy audit events are append-only'); END`,
 ];
 
@@ -91,7 +100,7 @@ function parseRow(raw: Record<string, unknown>): StoredPolicyAuditEvent {
  * Reads page through the trail in order, or fetch every decision of one invocation by the
  * correlation ID its error body carries.
  */
-export class DurableObjectPolicyAuditSink implements PolicyAuditSink, PolicyAuditReader {
+export class DurableObjectPolicyAuditSink implements PolicyAuditSink, PolicyAuditReader, PolicyAuditRetention {
   readonly #storage: AuditSqlStorage;
   #ready = false;
 
@@ -144,6 +153,14 @@ export class DurableObjectPolicyAuditSink implements PolicyAuditSink, PolicyAudi
     }
     const older = this.#exec(`SELECT seq FROM ${POLICY_AUDIT_TABLE} WHERE seq < ? LIMIT 1`, before);
     return older.length === 0 ? { entries } : { entries, nextBefore: before };
+  }
+
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    const at = z.iso.datetime().parse(before);
+    const where = `decided_at < ? AND json_extract(event_json, '$.resourceKind') IN (${PURGEABLE_SQL})`;
+    const [row] = this.#exec(`SELECT COUNT(*) AS n FROM ${POLICY_AUDIT_TABLE} WHERE ${where}`, at);
+    this.#exec(`DELETE FROM ${POLICY_AUDIT_TABLE} WHERE ${where}`, at);
+    return Number(row?.n ?? 0);
   }
 
   /** Every decision recorded under one correlation ID, in the order they were made. */

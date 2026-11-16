@@ -33,13 +33,13 @@
 
 | Data | About | Where | Kept until |
 |---|---|---|---|
-| Adult's sign-in identifier (Access subject, a random UUID) and the name they typed | Each adult | The installation's Durable Object (Cloudflare, pinned to the US jurisdiction) | The installation is offboarded; no self-service account deletion yet |
-| Family name, adults' names as shown to each other, a hashed 4–8 digit PIN | The family | Same | The family deletes itself |
+| Adult's sign-in identifier (Access subject, a random UUID) and the name they typed | Each adult | The installation's Durable Object (Cloudflare, pinned to the US jurisdiction) | The adult deletes their account from Family settings, or the installation is offboarded |
+| Family name, adults' names as shown to each other, a hashed 4–8 digit PIN, the read-aloud setting, and which notice version each adult accepted and when | The family | Same | The family deletes itself |
 | Child's display name or nickname, chosen avatar (from 12 emoji), grade band (K, 1 or 2), starting activity per subject | Each child | Same | The child is removed, or the family deleted |
 | Practice queue and saved practice: which activity, which items, each answer tapped, whether a hint or "ask my grown-up" was used, timestamps; a parent's corrections | Each child | Same | **Deleted automatically 2 years after the session started** (Safranek's setting), or earlier when the family removes the child or deletes the family |
 | A parent's shelf: titles, links and notes they add | The family | Same | The family removes them |
-| Child-session token (digest only) and invitation tokens (digest only) | The device / invitee | Same | Ended or used; not separately purged yet |
-| Policy decision audit: who read or changed which family record, when, by which rule | Each adult's actions | Same | Not purged today (the installation's general audit log) |
+| Child-session token (digest only) and invitation tokens (digest only) | The device / invitee | Same | A child session: deleted a day after it ends, or 30 days after it started. An invitation: when used or revoked, or within an hour after it expires |
+| Policy decision audit: who read or changed which family record, when, by which rule | Each adult's actions | Same | **Deleted automatically on the same schedule as practice** (2 years). Decisions about anything other than family records stay, append-only |
 
 Not collected: birth date, age in years, school, photo, voice or audio (oral reading is recorded only
 as the adult's choice of "on their own", "with help" or "not yet"), location, contacts, device
@@ -53,7 +53,12 @@ service. The text is the activity's own content (directions, a word, a story), n
 child typed or said. No AI model is used in home learning.
 
 **Export and deletion.** Any adult of the family can download everything kept for the family (JSON,
-without the PIN hash), remove a child with all their practice, or delete the family.
+without the PIN hash), remove a child with all their practice, delete the family, or delete their
+own account (which deletes the family too if they are its only adult).
+
+**Notice and read-aloud.** Every adult reads and accepts the notice below before starting or joining
+a family; which version they accepted, and when, is kept. When the wording changes, every adult is
+asked again. A family can turn read-aloud off in Family settings.
 
 ## Questions
 
@@ -86,20 +91,44 @@ without the PIN hash), remove a child with all their practice, or delete the fam
 
 ## Draft notice for families (for counsel to edit)
 
-> **Your family's information.** Only your family's grown-ups can see your children's practice. We
-> keep each child's nickname, the picture they picked, a starting grade, the activities you choose,
-> and the answers they tap. We don't collect birth dates, photos, recordings or locations, and
-> children don't have accounts. Practice is deleted automatically after two years. You can download
-> everything or delete it at any time from Family settings. Reading aloud uses your browser's own
-> voice, which may send the activity's words (never your child's answers) to your browser's speech
-> service. [Installation operator and contact.]
+As shown today (version `2026-11-16`, in `packages/educateos-home-learning/src/notice.ts`), on
+Safranek:
 
-## Engineering follow-ups that depend on the answers
+> **Your family's information.**
+>
+> Only your family's grown-ups can see your children's practice. Children don't have accounts; a
+> grown-up signs in and hands over the device.
+>
+> We keep each child's nickname, the picture they picked, a starting grade, the activities you
+> choose, and the answers they tap. We don't collect birth dates, photos, recordings or locations.
+>
+> Practice is deleted automatically 2 years after it happened, and so is the record of who looked
+> at it.
+>
+> You can download everything, delete a child, delete your family, or delete your account at any
+> time from Family settings.
+>
+> Reading aloud uses your browser's own voice, which may send the activity's words (never your
+> child's answers) to your browser's speech service. You can turn reading aloud off in Family
+> settings.
+>
+> This installation is run by Safranek Family. [Contact, once `homeLearning.contact` is set.]
 
-- Showing and recording acceptance of the notice at sign-up and family setup.
-- Self-service deletion of an adult's account and sign-in identifier.
-- Purging audit entries and spent tokens on a schedule.
-- A way for a family to turn off read-aloud.
+It is shown, with an "I've read this and agree" checkbox, when an adult sets up a family or joins one
+by invitation, and to any adult who accepted an older version before any family page.
+
+## Built ahead of the answers (2026-11-16)
+
+Each is built so that an answer changes a setting or the wording, not the design:
+
+- The notice is shown and accepted at family setup and on joining, with the version and time
+  recorded; a new version asks every adult again (questions 5 and 1).
+- An adult can delete their own account and sign-in identifier (question 4).
+- Audit entries about family records, and spent tokens, are purged on schedule (question 4).
+- A family can turn off read-aloud (question 7).
+
+Still open: the notice at community sign-up (before family setup), notifying other adults when one
+joins (question 6), and anything counsel's answers add.
 
 ## Sign-off
 

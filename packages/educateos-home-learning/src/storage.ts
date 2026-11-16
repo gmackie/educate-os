@@ -47,6 +47,13 @@ export interface HomeLearningStore {
   endChildSessionsOf(familyId: FamilyId, at: string, startedBy?: PrincipalId): Promise<number>;
   /** Deletes every practice session started before `before`, in any family. Returns how many. */
   deleteSessionsStartedBefore(before: string): Promise<number>;
+  /**
+   * Deletes every child session that ended before `endedBefore` or started before `startedBefore`,
+   * in any family. Returns how many.
+   */
+  deleteChildSessions(endedBefore: string, startedBefore: string): Promise<number>;
+  /** Every family's ID, for the scheduled purge. */
+  familyIds(): Promise<FamilyId[]>;
 }
 
 const conflict = () => new EducateOsError("conflict", HOME_LEARNING_CONFLICT);
@@ -137,6 +144,21 @@ export class InMemoryHomeLearningStore implements HomeLearningStore {
       }
     }
     return deleted;
+  }
+
+  async deleteChildSessions(endedBefore: string, startedBefore: string) {
+    let deleted = 0;
+    for (const [key, child] of this.#children) {
+      if ((child.endedAt !== undefined && child.endedAt < endedBefore) || child.startedAt < startedBefore) {
+        this.#children.delete(key);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
+  async familyIds() {
+    return [...this.#families.keys()] as FamilyId[];
   }
 
   async endChildSessionsOf(familyId: FamilyId, at: string, startedBy?: PrincipalId) {

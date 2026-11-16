@@ -37,6 +37,7 @@ import {
 } from "./content/index.ts";
 import {
   AdultInvitationId,
+  CHILD_SESSION_MAX_DAYS,
   DisplayName,
   MAX_ADULTS,
   LearnerAvatar,
@@ -58,6 +59,7 @@ import { nextAfter, progressOf, sessionNote, suggestionFor, type SkillProgress }
 import { scoreResponse, ResponseInput, type ScoredResponse } from "./scoring.ts";
 import { PIN_LOCK_MS, PIN_MAX_FAILURES, Pin, hashPin, idBody, newToken, pinMatches, tokenDigest } from "./secrets.ts";
 import type { HomeLearningStore } from "./storage.ts";
+import { FAMILY_NOTICE_VERSION, familyNotice, type FamilyNotice } from "./notice.ts";
 
 /** What the service is built from. */
 export interface HomeLearningServiceOptions {
@@ -73,15 +75,35 @@ export interface HomeLearningServiceOptions {
    * deletes older ones. Undefined keeps them until the family deletes them.
    */
   retentionDays?: number;
+  /** Who runs the installation and how to reach them, as the family notice states it. */
+  operator?: { name: string; contact?: string };
 }
 
 /** How long an invitation for another adult stays usable. */
 export const ADULT_INVITATION_DAYS = 7;
 
+/** How long an ended child session's record is kept before the scheduled purge deletes it. */
+export const ENDED_CHILD_SESSION_KEEP_DAYS = 1;
+
+/** What one scheduled purge deleted. */
+export interface HomeLearningPurge {
+  /** Practice sessions past the retention period; absent where the installation keeps them. */
+  practiceSessions?: { deleted: number; before: string };
+  /** Child sessions that ended, or whose cookie can no longer be presented. */
+  childSessions: number;
+  /** Expired invitations for another adult. */
+  invitations: number;
+}
+
+const DAY_MS = 86_400_000;
+
 // Inputs
 
-/** Starting a family. */
-export const CreateFamilyInput = z.strictObject({ name: DisplayName, pin: Pin });
+/** The notice version an adult accepted, which must be the current one. */
+export const NoticeAcceptance = z.string().min(1).max(32);
+
+/** Starting a family, having accepted the current notice. */
+export const CreateFamilyInput = z.strictObject({ name: DisplayName, pin: Pin, acceptNotice: NoticeAcceptance });
 /** Adding a child. */
 export const AddLearnerInput = z.strictObject({ displayName: DisplayName, avatar: LearnerAvatar, gradeBand: GradeBand });
 /** Changing a child's profile or starting points. */
@@ -125,6 +147,8 @@ export interface FamilyView {
   invitations: { id: string; createdAt: string; expiresAt: string }[];
   /** How long practice is kept, in days; undefined until the family deletes it. */
   retentionDays?: number;
+  /** Whether the child's practice screen reads aloud. */
+  readAloud: boolean;
   learners: Learner[];
   queues: Record<string, QueueEntryView[]>;
   shelf: ShelfItem[];
@@ -134,6 +158,10 @@ export interface FamilyView {
 /** The home page's answer: the adult's family, or none yet. */
 export interface HomeView {
   family: FamilyView | null;
+  /** The current family notice, with this installation's facts. */
+  notice: FamilyNotice;
+  /** Whether the caller has accepted this version of it. */
+  noticeAccepted: boolean;
 }
 
 /** One finished or unfinished session, summarized with its parent note. */
@@ -222,6 +250,8 @@ export interface LibraryView {
 /** What a child sees on their practice page. */
 export interface PracticeHome {
   learner: Pick<Learner, "id" | "displayName" | "avatar">;
+  /** Whether the family lets the practice screen read aloud. */
+  readAloud: boolean;
   queue: { entryId: string; title: string; track: Track; minutes: number; inProgress: boolean }[];
 }
 
@@ -274,6 +304,7 @@ export class HomeLearningService {
   readonly #now: () => Date;
   readonly #packs: readonly Pack[];
   readonly #retentionDays: number | undefined;
+  readonly #notice: FamilyNotice;
 
   constructor(options: HomeLearningServiceOptions) {
     this.#store = options.store;
@@ -282,6 +313,16 @@ export class HomeLearningService {
     this.#now = options.now ?? (() => new Date());
     this.#packs = options.packs ?? PACKS;
     this.#retentionDays = options.retentionDays;
+    this.#notice = familyNotice({
+      operator: options.operator?.name ?? "this community's organizers",
+      ...(options.operator?.contact === undefined ? {} : { contact: options.operator.contact }),
+      ...(options.retentionDays === undefined ? {} : { retentionDays: options.retentionDays }),
+    });
+  }
+
+  /** The current family notice, with this installation's facts. */
+  notice(): FamilyNotice {
+    return structuredClone(this.#notice);
   }
 
   // Family
@@ -289,9 +330,30 @@ export class HomeLearningService {
   /** The adult's family, or none yet. */
   async home(subject: VerifiedPrincipal): Promise<HomeView> {
     const familyId = await this.#store.familyOfAdult(subject.principalId);
-    if (familyId === undefined) return { family: null };
+    if (familyId === undefined) return { family: null, notice: this.notice(), noticeAccepted: false };
     const family = await this.#read(subject, "read", familyId);
-    return { family: await this.#view(family, subject) };
+    const accepted = family.adults.find((a) => a.principalId === subject.principalId)?.noticeAccepted?.version === FAMILY_NOTICE_VERSION;
+    return { family: await this.#view(family, subject), notice: this.notice(), noticeAccepted: accepted };
+  }
+
+  /**
+   * Records that the adult accepted the current notice.
+   *
+   * @throws EducateOsError `validation-failed` if `version` isn't the current notice's.
+   */
+  async acceptNotice(subject: VerifiedPrincipal, version: unknown): Promise<HomeView> {
+    const accepted = this.#acceptance(version);
+    await this.#change(subject, (family) => ({
+      ...family,
+      adults: family.adults.map((a) => (a.principalId === subject.principalId ? { ...a, noticeAccepted: accepted } : a)),
+    }));
+    return this.home(subject);
+  }
+
+  /** Turns the practice screen's reading aloud on or off for every child of the family. */
+  async setReadAloud(subject: VerifiedPrincipal, on: unknown): Promise<FamilyView> {
+    const parsed = z.boolean().parse(on);
+    return this.#change(subject, (family) => ({ ...family, readAloud: parsed }));
   }
 
   /**
@@ -300,7 +362,8 @@ export class HomeLearningService {
    * @throws EducateOsError `conflict` if the adult already has one.
    */
   async createFamily(subject: VerifiedPrincipal, input: unknown, displayName?: string): Promise<FamilyView> {
-    const { name, pin } = CreateFamilyInput.parse(input);
+    const { name, pin, acceptNotice } = CreateFamilyInput.parse(input);
+    const accepted = this.#acceptance(acceptNotice);
     await this.#require(subject, "create", this.#familyRef());
     if (await this.#store.familyOfAdult(subject.principalId) !== undefined) {
       throw new EducateOsError("conflict", "You already have a family here.");
@@ -310,11 +373,12 @@ export class HomeLearningService {
       id: FamilyId.parse(`fam_${idBody()}`),
       districtId: this.#districtId,
       name,
-      adults: [{ principalId: subject.principalId, ...adultName(displayName), joinedAt: at }],
+      adults: [{ principalId: subject.principalId, ...adultName(displayName), joinedAt: at, noticeAccepted: accepted }],
       learners: [],
       queues: {},
       shelf: [],
       invitations: [],
+      readAloud: true,
       pin: await hashPin(pin),
       createdAt: at,
       revision: 1,
@@ -363,7 +427,8 @@ export class HomeLearningService {
    *
    * @throws EducateOsError `conflict` if the caller already belongs to a family.
    */
-  async acceptInvitation(subject: VerifiedPrincipal, token: unknown, displayName?: string): Promise<FamilyView> {
+  async acceptInvitation(subject: VerifiedPrincipal, token: unknown, acceptNotice: unknown, displayName?: string): Promise<FamilyView> {
+    const accepted = this.#acceptance(acceptNotice);
     await this.#require(subject, "create", this.#familyRef());
     if (await this.#store.familyOfAdult(subject.principalId) !== undefined) {
       throw new EducateOsError("conflict", "You already belong to a family here. Leave it first to join another.");
@@ -380,7 +445,7 @@ export class HomeLearningService {
     if (family.adults.length >= MAX_ADULTS) throw new EducateOsError("conflict", `A family can have up to ${MAX_ADULTS} grown-ups.`);
     const next: FamilyRecord = {
       ...family,
-      adults: [...family.adults, { principalId: subject.principalId, ...adultName(displayName), joinedAt: now.toISOString() }],
+      adults: [...family.adults, { principalId: subject.principalId, ...adultName(displayName), joinedAt: now.toISOString(), noticeAccepted: accepted }],
       invitations: family.invitations.filter((i) => i.id !== invitation.id),
       revision: family.revision + 1,
     };
@@ -402,17 +467,52 @@ export class HomeLearningService {
       return { ...family, adults: family.adults.filter((a) => a.principalId !== id) };
     }, id === subject.principalId);
     await this.#store.endChildSessionsOf(familyId, this.#iso(), id);
-    return id === subject.principalId ? { family: null } : this.home(subject);
+    return this.home(subject);
   }
 
   /**
-   * Deletes practice sessions older than the retention period, across every family. A system job,
-   * run by the installation's schedule: it reads no family and decides nothing on anyone's behalf.
+   * The family's part of deleting an adult's account: they leave the family, or, as its last adult,
+   * delete it with all its children's practice. Returns whether the family was deleted. The caller
+   * then removes the adult's sign-in from the installation's directory.
    */
-  async purgeExpired(): Promise<{ ran: false } | { ran: true; deleted: number; before: string }> {
-    if (this.#retentionDays === undefined) return { ran: false };
-    const before = new Date(this.#now().getTime() - this.#retentionDays * 86_400_000).toISOString();
-    return { ran: true, deleted: await this.#store.deleteSessionsStartedBefore(before), before };
+  async leaveForAccountDeletion(subject: VerifiedPrincipal): Promise<{ familyDeleted: boolean }> {
+    const familyId = await this.#store.familyOfAdult(subject.principalId);
+    if (familyId === undefined) return { familyDeleted: false };
+    const family = await this.#read(subject, "update", familyId);
+    if (family.adults.length === 1) {
+      await this.deleteFamily(subject);
+      return { familyDeleted: true };
+    }
+    await this.removeAdult(subject, subject.principalId);
+    return { familyDeleted: false };
+  }
+
+  /**
+   * The scheduled purge, across every family: practice sessions older than the retention period
+   * (where one is set), child sessions that ended or can no longer be presented, and expired
+   * invitations. A system job: it reads no family on anyone's behalf, only prunes by age.
+   */
+  async purgeExpired(): Promise<HomeLearningPurge> {
+    const now = this.#now().getTime();
+    const ago = (days: number) => new Date(now - days * DAY_MS).toISOString();
+    let practiceSessions: HomeLearningPurge["practiceSessions"];
+    if (this.#retentionDays !== undefined) {
+      const before = ago(this.#retentionDays);
+      practiceSessions = { deleted: await this.#store.deleteSessionsStartedBefore(before), before };
+    }
+    const childSessions = await this.#store.deleteChildSessions(ago(ENDED_CHILD_SESSION_KEEP_DAYS), ago(CHILD_SESSION_MAX_DAYS));
+    let invitations = 0;
+    for (const id of await this.#store.familyIds()) {
+      const family = await this.#store.loadFamily(id);
+      const open = family?.invitations.filter((i) => Date.parse(i.expiresAt) > now);
+      if (family === undefined || open === undefined || open.length === family.invitations.length) continue;
+      // A family changed meanwhile keeps its expired invitations until the next run.
+      await this.#store.commitFamily({ ...family, invitations: open, revision: family.revision + 1 }, family.revision).then(
+        () => { invitations += family.invitations.length - open.length; },
+        (error: unknown) => { if (!(error instanceof EducateOsError && error.code === "conflict")) throw error; },
+      );
+    }
+    return { ...(practiceSessions === undefined ? {} : { practiceSessions }), childSessions, invitations };
   }
 
   /** Renames the family. */
@@ -734,6 +834,7 @@ export class HomeLearningService {
     const queue = await this.#queueView(family, learner.id);
     return {
       learner: { id: learner.id, displayName: learner.displayName, avatar: learner.avatar },
+      readAloud: family.readAloud,
       queue: queue.filter((e) => !e.paused).map((e) => ({ entryId: e.id, title: e.title, track: e.track, minutes: e.minutes, inProgress: e.inProgress })),
     };
   }
@@ -858,11 +959,19 @@ export class HomeLearningService {
       adults: family.adults.map((a) => ({ principalId: a.principalId, ...(a.displayName === undefined ? {} : { displayName: a.displayName }), joinedAt: a.joinedAt, you: a.principalId === subject.principalId })),
       invitations: family.invitations.filter((i) => Date.parse(i.expiresAt) > now).map(({ id, createdAt, expiresAt }) => ({ id, createdAt, expiresAt })),
       ...(this.#retentionDays === undefined ? {} : { retentionDays: this.#retentionDays }),
+      readAloud: family.readAloud,
       learners: family.learners,
       queues,
       shelf: family.shelf,
       pinLocked: locked,
     };
+  }
+
+  #acceptance(version: unknown): { version: string; at: string } {
+    if (version !== FAMILY_NOTICE_VERSION) {
+      throw new EducateOsError("validation-failed", "The notice about your family's information has changed. Read it again, then accept it.");
+    }
+    return { version: FAMILY_NOTICE_VERSION, at: this.#iso() };
   }
 
   #resolve(ref: ActivityRef) {

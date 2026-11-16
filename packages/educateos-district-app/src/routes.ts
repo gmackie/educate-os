@@ -9,6 +9,7 @@ import {
   AddLearnerInput,
   CorrectionInput,
   CreateFamilyInput,
+  NoticeAcceptance,
   Pin,
   QueueAddInput,
   QueueChangeInput,
@@ -1972,7 +1973,25 @@ export const ROUTES = {
   /** Joins the family an invitation names, as a guardian with no family yet. */
   "family.acceptInvitation": route({
     method: "POST", path: "/api/family/join", surface: "family",
-    body: z.strictObject({ token: z.string().min(1).max(200) }), response: declared<FamilyView>(),
+    body: z.strictObject({ token: z.string().min(1).max(200), acceptNotice: NoticeAcceptance }), response: declared<FamilyView>(),
+  }),
+  /** Records that the caller accepted the current family notice. */
+  "family.acceptNotice": route({
+    method: "POST", path: "/api/family/notice/accept", surface: "family",
+    body: z.strictObject({ version: NoticeAcceptance }), response: declared<HomeView>(),
+  }),
+  /** Turns the practice screen's reading aloud on or off for the whole family. */
+  "family.readAloud": route({
+    method: "POST", path: "/api/family/read-aloud", surface: "family",
+    body: z.strictObject({ on: z.boolean() }), response: declared<FamilyView>(),
+  }),
+  /**
+   * Deletes the caller's account: they leave their family (or, as its last grown-up, delete it), and
+   * their sign-in is removed from the installation. Signing in again starts over as a newcomer.
+   */
+  "family.deleteAccount": route({
+    method: "POST", path: "/api/family/account/delete", surface: "family",
+    body: z.strictObject({ confirm: z.literal("delete") }), response: z.strictObject({ deleted: z.literal(true), familyDeleted: z.boolean() }),
   }),
   /** Removes a grown-up from the family: oneself (leaving) or another. Never the last one. */
   "family.removeAdult": route({

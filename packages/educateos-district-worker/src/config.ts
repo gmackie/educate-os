@@ -134,6 +134,8 @@ export const DistrictWorkerConfig = z.strictObject({
     signup: z.enum(["open", "approval", "invite-only"]),
     /** Days a practice session is kept; the hourly job deletes older ones. Unset keeps them until the family deletes them. */
     retentionDays: z.int().min(30).max(3650).optional(),
+    /** How families reach whoever runs the installation (an email address or https link), stated in the family notice. */
+    contact: z.string().trim().min(3).max(200).optional(),
   }).optional(),
   /**
    * The organization MCP endpoint (SCHO-174). Absent (the default), `/mcp` and its metadata are

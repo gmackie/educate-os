@@ -5,7 +5,7 @@ import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { DistrictId, PrincipalId } from "@educateos/contracts";
 import { DurableObjectHomeLearningStore } from "@educateos/district-app/durable-stores";
-import { HomeLearningService, hashPin, type FamilyRecord, type Item } from "@educateos/home-learning";
+import { FAMILY_NOTICE_VERSION, HomeLearningService, hashPin, type ChildSession, type FamilyRecord, type Item } from "@educateos/home-learning";
 
 let objects = 0;
 const fresh = () => env.DISTRICT.getByName(`home-learning-${objects++}`);
@@ -22,6 +22,7 @@ async function family(id: string, adult: string, revision = 1): Promise<FamilyRe
     queues: {},
     shelf: [],
     invitations: [],
+    readAloud: true,
     pin: await hashPin("2468", 10_000),
     createdAt: "2026-11-16T12:00:00.000Z",
     revision,
@@ -51,6 +52,25 @@ describe("DurableObjectHomeLearningStore", () => {
     });
   });
 
+  it("lists families and deletes spent child sessions by age", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectHomeLearningStore(state.storage);
+      await store.commitFamily(await family("fam_b", "prn_wc-parent-rivers"), undefined);
+      await store.commitFamily(await family("fam_a", "prn_wc-parent-nair"), undefined);
+      expect(await store.familyIds()).toEqual(["fam_a", "fam_b"]);
+      const child = (digest: string, startedAt: string, endedAt?: string): ChildSession => ({
+        digest: digest.padEnd(43, "x"), familyId: "fam_a" as ChildSession["familyId"], learnerId: "lrn_a" as ChildSession["learnerId"],
+        startedBy: PrincipalId.parse("prn_wc-parent-nair"), startedAt, ...(endedAt === undefined ? {} : { endedAt }),
+      });
+      await store.putChildSession(child("ended", "2026-11-01T00:00:00.000Z", "2026-11-02T00:00:00.000Z"));
+      await store.putChildSession(child("stale", "2026-09-01T00:00:00.000Z"));
+      await store.putChildSession(child("open", "2026-11-10T00:00:00.000Z"));
+      expect(await store.deleteChildSessions("2026-11-05T00:00:00.000Z", "2026-10-01T00:00:00.000Z")).toBe(2);
+      expect(await store.getChildSession("open".padEnd(43, "x"))).toBeDefined();
+      expect(await store.getChildSession("ended".padEnd(43, "x"))).toBeUndefined();
+    });
+  });
+
   it("runs a whole practice through the service and keeps it across a restart", async () => {
     const object = fresh();
     const allow = { authorize: async () => ({ effect: "allow" as const }) };
@@ -59,7 +79,7 @@ describe("DurableObjectHomeLearningStore", () => {
     let token = "";
     await runInDurableObject(object, async (_instance, state) => {
       const service = new HomeLearningService({ store: new DurableObjectHomeLearningStore(state.storage), authorizer: allow, districtId: D });
-      await service.createFamily(RIVERS, { name: "Rivers", pin: "2468" });
+      await service.createFamily(RIVERS, { name: "Rivers", pin: "2468", acceptNotice: FAMILY_NOTICE_VERSION });
       const maya = await service.addLearner(RIVERS, { displayName: "Maya", avatar: "🦊", gradeBand: "K" });
       learnerId = maya.id;
       await service.addToQueue(RIVERS, maya.id, { pack: "number-sense", activity: "count-to-5" });

@@ -5,7 +5,7 @@
 // is refused, as the district refuses them.
 import { DistrictApiError, type DistrictApiClient, type RouteInput, type RouteName, type RouteResponse } from "@educateos/api-client";
 import { DistrictId, PrincipalId } from "@educateos/contracts";
-import { HomeLearningService, InMemoryHomeLearningStore } from "@educateos/home-learning";
+import { FAMILY_NOTICE_VERSION, HomeLearningService, InMemoryHomeLearningStore } from "@educateos/home-learning";
 
 const D = DistrictId.parse("dst_willowcreek");
 const JORDAN = PrincipalId.parse("prn_g-jordan");
@@ -28,11 +28,14 @@ export async function fakeCommunity(options: {
   /** Another adult's view of the same community, sharing its service. */
   as?: { service: HomeLearningService; principalId: string; displayName: string };
   retentionDays?: number;
+  /** The adult accepted an older notice than the current one. */
+  staleNotice?: boolean;
 } = {}): Promise<FakeCommunity> {
   const ADULT = { principalId: PrincipalId.parse(options.as?.principalId ?? JORDAN), districtId: D };
   const displayName = options.as?.displayName ?? "Jordan Rivers";
+  const store = new InMemoryHomeLearningStore();
   const service = options.as?.service ?? new HomeLearningService({
-    store: new InMemoryHomeLearningStore(), authorizer: { authorize: async () => ({ effect: "allow" }) }, districtId: D,
+    store, operator: { name: "Willow Creek" }, authorizer: { authorize: async () => ({ effect: "allow" }) }, districtId: D,
     ...(options.retentionDays === undefined ? {} : { retentionDays: options.retentionDays }),
   });
   let joined = options.joined ?? true;
@@ -40,8 +43,13 @@ export async function fakeCommunity(options: {
   const calls: FakeCommunity["calls"] = [];
   const failures = new Map<RouteName, DistrictApiError>();
   if (options.children !== undefined) {
-    await service.createFamily(ADULT, { name: "The Rivers family", pin: "2468" }, displayName);
+    await service.createFamily(ADULT, { name: "The Rivers family", pin: "2468", acceptNotice: FAMILY_NOTICE_VERSION }, displayName);
     for (const name of options.children) await service.addLearner(ADULT, { displayName: name, avatar: "🦊", gradeBand: "K" });
+    if (options.staleNotice === true) {
+      const family = (await store.loadFamily((await store.familyOfAdult(ADULT.principalId))!))!;
+      const adults = family.adults.map((a) => ({ ...a, noticeAccepted: { version: "2026-01-01", at: a.joinedAt } }));
+      await store.commitFamily({ ...family, adults, revision: family.revision + 1 }, family.revision);
+    }
   }
   const child = async () => (token === undefined ? undefined : service.childSession(ADULT, token));
   const needChild = async () => {
@@ -77,7 +85,14 @@ export async function fakeCommunity(options: {
       return { id, expiresAt, link: `https://safranek.example/family/join#invitation=${encodeURIComponent(token)}` };
     },
     "family.revokeInvitation": ({ params }) => service.revokeInvitation(ADULT, params.invitationId),
-    "family.acceptInvitation": ({ body }) => service.acceptInvitation(ADULT, body.token, displayName),
+    "family.acceptInvitation": ({ body }) => service.acceptInvitation(ADULT, body.token, body.acceptNotice, displayName),
+    "family.acceptNotice": ({ body }) => service.acceptNotice(ADULT, body.version),
+    "family.readAloud": ({ body }) => service.setReadAloud(ADULT, body.on),
+    "family.deleteAccount": async () => {
+      const { familyDeleted } = await service.leaveForAccountDeletion(ADULT);
+      joined = false;
+      return { deleted: true, familyDeleted };
+    },
     "family.removeAdult": ({ params }) => service.removeAdult(ADULT, params.principalId),
     "family.changePin": ({ body }) => service.changePin(ADULT, body.pin),
     "family.addLearner": ({ body }) => service.addLearner(ADULT, body),

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Banner, Button } from "@cloudflare/kumo";
-import { ArrowRightIcon, HandWavingIcon, LightbulbIcon, SpeakerHighIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, HandWavingIcon, LightbulbIcon } from "@phosphor-icons/react";
 import { DistrictApiError } from "@educateos/api-client";
 import { scoreTry, triesAllowed, type Answer } from "@educateos/home-learning/scoring";
 import { useApi } from "../../api.tsx";
 import { ItemView } from "./ItemView.tsx";
-import { quiet, speak } from "./speak.ts";
+import { HearButton } from "./HearButton.tsx";
+import { quiet, useSpeech } from "./speak.ts";
 import { BIG, type Item, type PracticeView } from "./types.ts";
 
 type Outcome = "right" | "try-again" | "finished-wrong" | "recorded";
@@ -40,6 +41,7 @@ const MESSAGES: Record<Outcome, (item: Item) => string> = {
  */
 export const ItemStep = ({ view, item, number, onNext }: { view: PracticeView; item: Item; number: number; onNext: () => void }) => {
   const api = useApi();
+  const { speak } = useSpeech();
   const [requestId] = useState(() => crypto.randomUUID());
   const [answers, setAnswers] = useState<Answer[]>([]);
   // Counts retries only, so the answering part starts clean for a retry but keeps showing a finished answer.
@@ -79,7 +81,7 @@ export const ItemStep = ({ view, item, number, onNext }: { view: PracticeView; i
       </h2>
       <div className="flex flex-wrap items-start gap-3">
         <p className="text-2xl">{item.prompt}</p>
-        <Button variant="ghost" icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(item.prompt)}>Hear it again</Button>
+        <HearButton variant="ghost" text={item.prompt}>Hear it again</HearButton>
       </div>
 
       {/* Remounted for a retry, so a second try starts clean. */}

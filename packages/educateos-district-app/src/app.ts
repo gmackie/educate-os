@@ -46,8 +46,8 @@ import { encodeBase64, exportCourseCartridge, importCourseCartridge, previewCour
 import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
-import { familyAdults, HomeLearningService, type ChildSession } from "@educateos/home-learning";
-import { childSessionToken, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
+import { familyAdults, HomeLearningService, type ChildSession, type HomeLearningPurge } from "@educateos/home-learning";
+import { childSessionToken, deleteCommunityPrincipal, enforceChildSession, homeLearningHandlers, joinCommunity, type HomeLearningOptions, type HomeLearningRouteName } from "./home-learning.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type Announcement, type MailSender } from "./communication/index.ts";
@@ -342,8 +342,12 @@ export interface DistrictApp {
   readonly communication: CommunicationJobs;
   /** The roster sync job (SCHO-203). Not on the `/api` surface. */
   readonly rostering: RosterJobs;
-  /** Home learning's scheduled job (ADR-0016): deletes practice older than the retention period. */
-  readonly homeLearning: { purgeExpired(): Promise<{ ran: false } | { ran: true; deleted: number; before: string }> };
+  /**
+   * Home learning's scheduled job (ADR-0016): deletes practice, and the audit trail's decisions
+   * about families, older than the retention period, with spent child-session tokens and expired
+   * invitations.
+   */
+  readonly homeLearning: { purgeExpired(): Promise<{ ran: false } | ({ ran: true; auditEvents: number } & HomeLearningPurge)> };
   /**
    * The device token service (SCHO-261): device registration for the pairing relay and the browser
    * sign-in path, and revocation for administrators and operators. Not on the `/api` surface itself.
@@ -633,7 +637,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     homeLearning(): HomeLearningService {
       if (options.homeLearning === undefined) throw new EducateOsError("not-found", "Home learning isn't offered here.");
-      return new HomeLearningService({ store: stores.homeLearning, authorizer: this.authorizer, districtId, now, ...homeLearningRetention() });
+      const contact = options.homeLearning.contact;
+      return new HomeLearningService({
+        store: stores.homeLearning, authorizer: this.authorizer, districtId, now, ...homeLearningRetention(),
+        operator: { name: this.snapshot.district.name, ...(contact === undefined ? {} : { contact }) },
+      });
+    }
+
+    async deleteOwnPrincipal(): Promise<void> {
+      await deleteCommunityPrincipal(stores.directory, this.subject.principalId);
     }
 
     academics(): AcademicDirectory {
@@ -2101,9 +2113,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
     homeLearning: {
       // A system job: it deletes by age alone and reads nobody's records, so it asks no policy.
-      purgeExpired: () => options.homeLearning === undefined
-        ? Promise.resolve({ ran: false as const })
-        : new HomeLearningService({ store: stores.homeLearning, authorizer: { authorize: async () => ({ effect: "deny", reason: "no-matching-grant" }) }, districtId, now, ...homeLearningRetention() }).purgeExpired(),
+      purgeExpired: async () => {
+        if (options.homeLearning === undefined) return { ran: false as const };
+        const purge = await new HomeLearningService({ store: stores.homeLearning, authorizer: { authorize: async () => ({ effect: "deny", reason: "no-matching-grant" }) }, districtId, now, ...homeLearningRetention() }).purgeExpired();
+        // Decisions about families age out with the practice they were about.
+        const auditEvents = purge.practiceSessions === undefined ? 0 : await stores.audit.deleteFamilyDecisionsBefore(purge.practiceSessions.before);
+        return { ran: true as const, auditEvents, ...purge };
+      },
     },
     rostering: {
       async runScheduledSync() {

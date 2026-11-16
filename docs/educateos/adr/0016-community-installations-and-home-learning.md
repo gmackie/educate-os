@@ -121,3 +121,19 @@ EducateOS assumed a school district in four places that block this:
 - `homeLearning.retentionDays` deletes practice sessions older than the period, hourly; Safranek
   keeps two years (amended 2026-11-15). Community installations pin storage to the US
   jurisdiction (ADR-0015).
+- Amended 2026-11-16, ahead of counsel's answers, so each answer changes a setting or wording
+  rather than adding a feature:
+  - **Notice.** Every adult accepts a versioned family notice (`FAMILY_NOTICE_VERSION`, the
+    counsel brief's draft with the installation's name, retention and optional
+    `homeLearning.contact`) before starting or joining a family. Changing its wording bumps the
+    version, and each adult is asked again before any family page.
+  - **Account deletion.** An adult deletes their own account from Family settings: they leave the
+    family, or delete it as its last adult, and their guardian principal, with its sign-in
+    identifier, leaves the directory. Only a guardian nothing else in the directory names can.
+  - **Audit retention.** The policy audit trail stays append-only, enforced by its trigger, except
+    for decisions about `family` and `home-practice` resources, which the hourly job deletes once
+    older than `retentionDays`. Decisions about anything else can't be deleted by any statement.
+  - **Spent tokens.** The hourly job also deletes child sessions a day after they end (or once
+    their 30-day cookie has expired) and expired invitations.
+  - **Read-aloud.** A family turns the practice screen's read-aloud off in Family settings; items
+    that need a spoken word then show the grown-up what to say.

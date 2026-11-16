@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, ClipboardText, Input, Surface, Text } from "@cloudflare/kumo";
+import { Button, ClipboardText, Input, Surface, Switch, Text } from "@cloudflare/kumo";
 import { DownloadSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { Navigate } from "@tanstack/react-router";
 import { useAnnounce } from "../AppContext.tsx";
@@ -9,6 +9,7 @@ import { useRefreshSignIn } from "./signInRefresh.ts";
 import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { PageHeading } from "../PageHeading.tsx";
+import { NoticeText, type FamilyNoticeView } from "./FamilyNotice.tsx";
 import { HomeLearningNav } from "./HomeLearningNav.tsx";
 import { avatarName } from "./labels.ts";
 import { LearnerFields, NEW_LEARNER, type LearnerDraft } from "./LearnerFields.tsx";
@@ -192,7 +193,57 @@ const PinAndDevices = ({ family, onChanged }: { family: FamilyView; onChanged: (
   );
 };
 
-const YourData = ({ retentionDays, onDeleted }: { retentionDays: number | undefined; onDeleted: () => void }) => {
+const ReadAloud = ({ family, onChanged }: { family: FamilyView; onChanged: () => void }) => {
+  const api = useApi();
+  const announce = useAnnounce();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+  return (
+    <Surface className="flex flex-col gap-4 rounded-xl border border-kumo-hairline p-5">
+      <section aria-labelledby="settings-read-aloud" className="flex flex-col gap-4">
+        <h2 id="settings-read-aloud" className="text-lg font-semibold">Reading aloud</h2>
+        <Text>Practice reads directions, words and stories aloud with your browser's own voice, which may send those words (never your child's answers) to your browser's speech service. With it off, a grown-up reads them instead: the screen shows them what to say.</Text>
+        <Switch label="Read practice aloud" checked={family.readAloud} disabled={saving} onCheckedChange={(on) => {
+          setSaving(true);
+          setError(undefined);
+          api.call("family.readAloud", { body: { on } }).then(() => {
+            announce(on ? "Reading aloud is on." : "Reading aloud is off.");
+            onChanged();
+          }, (caught: unknown) => setError(messageFor(caught))).finally(() => setSaving(false));
+        }} />
+        {error === undefined ? null : <p role="alert" className="text-kumo-danger">{error}</p>}
+      </section>
+    </Surface>
+  );
+};
+
+const YourAccount = ({ family }: { family: FamilyView }) => {
+  const api = useApi();
+  const refresh = useRefreshSignIn();
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | undefined>(undefined);
+  const last = family.adults.length === 1;
+  return (
+    <Surface className="flex flex-col gap-4 rounded-xl border border-kumo-hairline p-5">
+      <section aria-labelledby="settings-account" className="flex flex-col gap-4">
+        <h2 id="settings-account" className="text-lg font-semibold">Your account</h2>
+        <Text>{last
+          ? "Deleting your account also deletes your family and all its practice, because you're its only grown-up. Download everything first if you want to keep it."
+          : "Deleting your account takes you out of the family; its other grown-ups keep everything."} Your sign-in is removed from this site. If you sign in again later, you'll start over.</Text>
+        <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
+          event.preventDefault();
+          api.call("family.deleteAccount", { body: { confirm: "delete" } }).then(() => refresh(), (caught: unknown) => setError(messageFor(caught)));
+        }}>
+          <Input label='To delete your account, type "delete"' value={confirm} onChange={(event) => setConfirm(event.target.value)} />
+          <Button type="submit" variant="destructive" disabled={confirm !== "delete"}>Delete my account</Button>
+        </form>
+        {error === undefined ? null : <p role="alert" className="text-kumo-danger">{error}</p>}
+      </section>
+    </Surface>
+  );
+};
+
+const YourData = ({ notice, onDeleted }: { notice: FamilyNoticeView; onDeleted: () => void }) => {
   const api = useApi();
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
@@ -200,10 +251,7 @@ const YourData = ({ retentionDays, onDeleted }: { retentionDays: number | undefi
     <Surface className="flex flex-col gap-4 rounded-xl border border-kumo-hairline p-5">
       <section aria-labelledby="settings-data" className="flex flex-col gap-4">
         <h2 id="settings-data" className="text-lg font-semibold">Your family's data</h2>
-        <Text>Kept: each child's name, picture and starting grade; their plan; and the answers they saved. No audio, photos or birth dates. Only your family's grown-ups can see it; the community's organizers can't.</Text>
-        <Text>{retentionDays === undefined
-          ? "Practice is kept until you delete it."
-          : `Practice older than ${retentionDays % 365 === 0 ? `${retentionDays / 365} ${retentionDays === 365 ? "year" : "years"}` : `${retentionDays} days`} is deleted automatically.`}</Text>
+        <NoticeText notice={notice} headingLevel={3} />
         <Button className="self-start" icon={<DownloadSimpleIcon aria-hidden />} onClick={() => {
           api.call("family.export").then((data) => download("home-learning-export.json", data), (caught: unknown) => setError(messageFor(caught)));
         }}>Download everything</Button>
@@ -234,7 +282,9 @@ export const HomeSettingsPage = () => {
       <Children family={family} onChanged={reload} />
       <GrownUps family={family} onChanged={reload} />
       <PinAndDevices family={family} onChanged={reload} />
-      <YourData retentionDays={family.retentionDays} onDeleted={reload} />
+      <ReadAloud family={family} onChanged={reload} />
+      <YourData notice={home.data.notice} onDeleted={reload} />
+      <YourAccount family={family} />
     </div>
   );
 };

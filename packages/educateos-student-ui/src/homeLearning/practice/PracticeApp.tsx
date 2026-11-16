@@ -7,7 +7,7 @@ import { LoadingSkeleton } from "../../LoadingSkeleton.tsx";
 import { avatarName } from "../labels.ts";
 import { ActivityRunner } from "./ActivityRunner.tsx";
 import { FinishPractice } from "./FinishPractice.tsx";
-import { speak } from "./speak.ts";
+import { ReadAloudSetting, say } from "./speak.ts";
 import { BIG, type PracticeView } from "./types.ts";
 
 /** Who is practicing on this browser. */
@@ -28,6 +28,8 @@ export const PracticeApp = ({ child, onEnded }: { child: PracticingChild; onEnde
   const [running, setRunning] = useState<{ view: PracticeView } | undefined>(undefined);
   const [starting, setStarting] = useState<string | undefined>(undefined);
   const [startError, setStartError] = useState<unknown>(undefined);
+  // Off until the family's setting has loaded.
+  const readAloud = home.status === "ready" && home.data.readAloud;
 
   const open = (entryId: string) => {
     setStarting(entryId);
@@ -56,13 +58,15 @@ export const PracticeApp = ({ child, onEnded }: { child: PracticingChild; onEnde
 
   if (running !== undefined) {
     return (
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4" data-presentation="young">
-        {header}
-        <ActivityRunner view={running.view} onDone={() => {
-          setRunning(undefined);
-          reload();
-        }} />
-      </div>
+      <ReadAloudSetting value={readAloud}>
+        <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4" data-presentation="young">
+          {header}
+          <ActivityRunner view={running.view} onDone={() => {
+            setRunning(undefined);
+            reload();
+          }} />
+        </div>
+      </ReadAloudSetting>
     );
   }
   return (
@@ -90,7 +94,7 @@ export const PracticeApp = ({ child, onEnded }: { child: PracticingChild; onEnde
                   loading={starting === entry.entryId}
                   disabled={starting !== undefined}
                   onClick={() => {
-                    speak(entry.title);
+                    say(readAloud, entry.title);
                     open(entry.entryId);
                   }}
                 >
