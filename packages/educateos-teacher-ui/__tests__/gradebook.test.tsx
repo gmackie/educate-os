@@ -1,7 +1,7 @@
 // SCHO-187: a teacher reads a class's gradebook, moves around it by keyboard, marks work, sets how
 // it adds up and exports it.
 import { screen, waitFor, within } from "@testing-library/dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fakeDistrict, IDS } from "./fakeDistrict.ts";
 import { onScreen, renderApp } from "./render.tsx";
 
@@ -157,5 +157,21 @@ describe("the gradebook", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     // A co-teacher still exports.
     expect(screen.getByRole("button", { name: "Export CSV" })).toBeTruthy();
+  });
+
+  it("says when it is wider than the screen, and lets the keyboard scroll it (SCHO-410)", async () => {
+    // jsdom lays nothing out: make every element report content wider than itself.
+    const scrollWidth = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(2000);
+    const clientWidth = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(900);
+    try {
+      await renderApp(fakeDistrict().client, gradebookPage);
+      const scroller = await screen.findByRole("group", { name: "Gradebook for English 9 · Period 3, scrolls sideways" });
+      expect(scroller.tabIndex).toBe(0);
+      expect(within(scroller).getByRole("grid")).toBe(grid());
+      expect(screen.getByText(/The gradebook is wider than the screen\. Scroll it sideways/)).toBeTruthy();
+    } finally {
+      scrollWidth.mockRestore();
+      clientWidth.mockRestore();
+    }
   });
 });

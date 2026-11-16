@@ -14,7 +14,7 @@
     "summary.canvas": "supported",
     "summary.google-classroom": "unit-tested",
     "summary.oneroster": "unit-tested",
-    "summary.clever": "validating",
+    "summary.clever": "harness-tested",
 
     "lti.login": "supported",
     "lti.idtoken": "supported",
@@ -46,7 +46,7 @@
     "gc.districtsync": "unit-tested",
     "gc.live": "validating",
 
-    "clever.sso": "validating",
+    "clever.sso": "harness-tested",
     "clever.mapping": "harness-tested",
     "clever.roster": "harness-tested",
     "clever.events": "harness-tested",

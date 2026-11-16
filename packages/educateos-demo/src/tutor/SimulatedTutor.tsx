@@ -6,8 +6,11 @@ import type { GradeBand } from "../districts/index.ts";
 import type { TutorPersona } from "@gadgets/bundled-blueprints/libraries/tutor/client";
 import { answer, scriptFor, TUTORS, type Exchange, type Screening } from "./scripts.ts";
 
-/** The label every simulated tutor carries, so nobody takes it for the live AI. */
-export const SIMULATED_NOTE = "Simulated preview — the live district runs this on real AI with safety screening.";
+/**
+ * The label every simulated tutor carries, so nobody takes it for AI. It follows the pilot's rule
+ * (educateos.io/pilot/): student-facing AI stays off in the founding pilot.
+ */
+export const SIMULATED_NOTE = "Simulated preview — scripted, with no AI behind it. Student-facing AI stays off in the founding pilot.";
 
 const GRADES: Record<GradeBand, string> = { "K-2": "grades K–2", "3-5": "grades 3–5", "6-8": "grades 6–8", "9-12": "grades 9–12" };
 
