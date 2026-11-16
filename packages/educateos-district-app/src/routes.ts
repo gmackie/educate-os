@@ -4,6 +4,7 @@ import { PlannerKnowledge } from "./planner-evidence.ts";
 import { WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
 import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 import { PlannerPlan, PlannerTeacherView, PlannerGoalInput, PlannerReviewInput, PlannerAssistance, PlannerSkill } from "./planner.ts";
+import { RecipeDecisionInput, TeacherRecipesBody } from "./learning-recipe.ts";
 import { AdminGuardianGuidanceBody, GuardianGuidanceBody, GuardianSuggestionInput, GuidancePractice, GuidancePriorityInput, GuidanceSuggestion, StudentGuidanceBody, TeacherEvidenceBody, TeacherGuidanceBody } from "./guidance.ts";
 // The district application's HTTP contract: every route's method, path, surface and Zod schemas.
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
@@ -1283,6 +1284,16 @@ function route<const S extends RouteSpec>(spec: S): S {
   return spec;
 }
 
+/**
+ * Educator-reviewed learning recipes. Teacher-only: students meet an approved recipe as an
+ * ordinary, skippable planner opportunity that shows where it came from, and guardians have no route here.
+ */
+export const RECIPE_ROUTES = {
+  "teacher.recipes": route({ method: "GET", path: "/api/teacher/offerings/:offeringId/recipes", surface: "teacher", params: params({ offeringId: OfferingId }), response: TeacherRecipesBody }),
+  "teacher.recipeDecision": route({ method: "POST", path: "/api/teacher/offerings/:offeringId/recipes/decision", surface: "teacher", params: params({ offeringId: OfferingId }), body: RecipeDecisionInput, response: TeacherRecipesBody, status: 201 }),
+  "teacher.recipeSettings": route({ method: "POST", path: "/api/teacher/offerings/:offeringId/recipes/settings", surface: "teacher", params: params({ offeringId: OfferingId }), body: z.strictObject({ revision: z.number().int().nonnegative(), paused: z.boolean() }), response: TeacherRecipesBody }),
+} as const;
+
 // Guidance and Evidence. Kept as one block so the feature mounts with one spread into ROUTES.
 const GuidanceId = z.string().uuid();
 const Revision = z.number().int().positive();
@@ -1349,6 +1360,7 @@ export const ROUTES = {
   "student.plannerCoach": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/coach", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), action: PlannerCoachAction, allowAi: z.boolean().default(false) }), response: PlannerPlan }),
   "student.plannerChallenge": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/challenge", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), text: z.string().trim().min(1).max(10000), reflection: z.string().trim().min(1).max(2000), assistance: PlannerAssistance }), response: PlannerPlan }),
   ...GUIDANCE_ROUTES,
+  ...RECIPE_ROUTES,
   "student.planner": route({ method: "GET", path: "/api/student/offerings/:offeringId/planner", surface: "student", params: params({ offeringId: OfferingId }), response: z.array(PlannerPlan) }),
   "student.planGoal": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner", surface: "student", params: params({ offeringId: OfferingId }), body: PlannerGoalInput, response: PlannerPlan, status: 201 }),
   "student.plannerDecision": route({ method: "POST", path: "/api/student/offerings/:offeringId/planner/:planId/:opportunityId/decision", surface: "student", params: params({ offeringId: OfferingId, planId: z.string().uuid(), opportunityId: z.string().uuid() }), body: z.strictObject({ revision: z.number().int().positive(), decision: z.enum(["accepted", "skipped"]) }), response: PlannerPlan }),

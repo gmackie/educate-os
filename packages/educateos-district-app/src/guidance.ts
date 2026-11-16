@@ -14,6 +14,7 @@ import { independentlyReviewedPlannerEvidence } from "./planner-evidence.ts";
 import { EducateOsError, OfferingId, PrincipalId } from "@educateos/contracts";
 import type { GuardianGuidanceGrantStore } from "@educateos/policy";
 import { PlannerOpportunity, PlannerSkill, plannerTeacherView, type PlannerPlan } from "./planner.ts";
+import { LearningRecipeRecord, LearningRecipeSettings } from "./learning-recipe.ts";
 
 // Standards
 
@@ -96,8 +97,11 @@ export const GuidancePreference = z.strictObject({
 });
 /** A student's preference record. */
 export type GuidancePreference = z.infer<typeof GuidancePreference>;
-/** Any record the guidance store keeps. */
-export const GuidanceRecord = z.discriminatedUnion("type", [GuidanceAgenda, GuidanceSuggestion, GuidancePractice, GuidancePreference]);
+/**
+ * Any record the guidance store keeps. Learning recipes are class records like the agenda:
+ * they carry no student, so a student's erasure never touches them and they hold no private goal.
+ */
+export const GuidanceRecord = z.discriminatedUnion("type", [GuidanceAgenda, GuidanceSuggestion, GuidancePractice, GuidancePreference, LearningRecipeRecord, LearningRecipeSettings]);
 /** A guidance record. */
 export type GuidanceRecord = z.infer<typeof GuidanceRecord>;
 
@@ -116,7 +120,7 @@ export class InMemoryGuidanceStore implements GuidanceStore {
   readonly lifecycle: StudentLearningLifecycle | undefined;
   constructor(lifecycle?: StudentLearningLifecycle) { this.lifecycle = lifecycle; }
   /** Agendas are class records and never enter a subject purge. */
-  subjectRecords(studentId: string): GuidanceRecord[] { return [...this.#records.values()].filter((r) => r.type !== "agenda" && r.studentId === studentId); }
+  subjectRecords(studentId: string): GuidanceRecord[] { return [...this.#records.values()].filter((r) => "studentId" in r && r.studentId === studentId); }
   /** Called only by the authorized lifecycle coordinator. */
   eraseSubject(studentId: string): void { for (const r of this.subjectRecords(studentId)) this.#records.delete(r.id); }
   async list(scope: string): Promise<GuidanceRecord[]> {
@@ -124,7 +128,7 @@ export class InMemoryGuidanceStore implements GuidanceStore {
   }
   async save(raw: GuidanceRecord, expectedRevision: number): Promise<void> {
     const record = GuidanceRecord.parse(raw);
-    if (record.type !== "agenda") this.lifecycle?.assertWritable(record.studentId);
+    if ("studentId" in record) this.lifecycle?.assertWritable(record.studentId);
     if ((this.#records.get(record.id)?.revision ?? 0) !== expectedRevision || record.revision !== expectedRevision + 1) throw guidanceConflict();
     this.#records.set(record.id, structuredClone(record));
   }
@@ -278,7 +282,7 @@ export async function computeCoverage(input: {
       ...(standard.releaseVersion === undefined ? {} : { releaseVersion: standard.releaseVersion }),
       ...(standard.provenance === undefined ? {} : { provenance: standard.provenance }),
       ...(priority === undefined ? {} : { priority }),
-      evidencePathway: PLANNER_EVIDENCE_CODES.has(standard.code) ? "planner" : "none",
+      evidencePathway: PLANNER_EVIDENCE_CODES.has(standard.code) || visible.some((v) => v.opportunities.some((o) => o.recipe !== undefined && o.frameworkKey === ref.frameworkKey && o.node.uri === ref.competencyUri)) ? "planner" : "none",
       roster: input.roster.length, mastery, opportunities: counts,
     });
   }

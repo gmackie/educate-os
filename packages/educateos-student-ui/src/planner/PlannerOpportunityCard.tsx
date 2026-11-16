@@ -33,7 +33,15 @@ export const PlannerOpportunityCard = ({ plan, opportunity: o, onChanged }: { pl
   const review = o.reviews.at(-1);
   return <article aria-label={`${o.code} opportunity`} className="flex flex-col gap-3 border-t border-kumo-line pt-3">
     <Text as="h4" variant="heading">{o.code} · {o.decision}</Text>
-    <Text>{o.reason}</Text><Text>{o.task}</Text>
+    <Text>{o.reason}</Text>
+    {o.recipe && <section aria-label="Where this opportunity came from" className="flex flex-col gap-1 rounded-lg border border-kumo-line p-3">
+      <Text>Approved for your class by {o.recipe.approvedBy} · “{o.recipe.title}”, version {o.recipe.version}. {o.recipe.origin === "starter" ? "Starter text, approved as written." : o.recipe.origin === "starter-edited" ? "Starter text your teacher edited." : "Written by your teacher."}</Text>
+      {o.recipe.matched.length > 0 && <Text>It fits because your goal mentioned: {o.recipe.matched.join(", ")}.</Text>}
+      <Text>Why now: {o.recipe.whyNow}</Text>
+      <Text>Good to know first (suggestions, not a test): {o.recipe.prerequisites.join("; ")}.</Text>
+      <Text variant="secondary">This does not cover: {o.recipe.coverage} It is optional, you can skip it, and it never changes a grade.</Text>
+    </section>}
+    <Text>{o.task}</Text>
     <Text variant="secondary">{o.priorEvidence}</Text>
     <details><summary>Approved standard and evidence contract</summary>
       <Text>{o.framework.title} · {o.framework.publisher ?? o.framework.creator} · {o.framework.version} · release {o.releaseVersion}</Text>

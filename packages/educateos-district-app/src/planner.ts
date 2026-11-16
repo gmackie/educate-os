@@ -6,6 +6,8 @@ import { CompetencyNode, EvidenceContract, FrameworkDefinition } from "@educateo
 import type { CatalogMirror } from "@educateos/catalog";
 import { plannerKnowledge } from "./planner-evidence.ts";
 import { PlannerChallenge, PlannerCoaching, plannerLesson } from "./planner-coaching.ts";
+import { lessonFromRecipe, matchRecipeInterest, RecipeProvenance } from "./learning-recipe.ts";
+import type { ResolvedRecipe } from "./learning-recipe-approval.ts";
 
 /** Learning observations are distinct from mastery and from how much help was used. */
 export const PlannerLevel = z.enum(["encountered", "practiced", "demonstrated", "retained", "transferred"]);
@@ -30,7 +32,8 @@ const Review = PlannerReviewInput.extend({ by: PrincipalId, at: z.iso.datetime()
 /** An opportunity pins the approved catalog metadata and evidence contract used at creation. */
 export const PlannerOpportunity = z.strictObject({
   id: z.string().uuid(),
-  code: z.enum(["6.RP.A.3b", "W.6.1", "7.RP.A.1", "W.7.1"]),
+  /** The standard label shown to learners. A teacher-approved recipe may name any approved catalog item. */
+  code: z.string().min(1).max(30),
   frameworkKey: z.string(),
   releaseVersion: z.string(),
   releaseDigest: z.string(),
@@ -45,7 +48,14 @@ export const PlannerOpportunity = z.strictObject({
   reviews: z.array(Review),
   coaching: PlannerCoaching.optional(),
   challenge: PlannerChallenge.optional(),
-});
+  /** Present when a teacher-approved recipe, not the fixed mapping, produced this opportunity. */
+  recipe: RecipeProvenance.optional(),
+}).refine(
+  // Both stores parse on every save and read, so no raw label can be credited to a standard it does not name:
+  // the label is the pinned item's own code, or that code with one lettered component (6.RP.A.3 -> 6.RP.A.3b).
+  (o) => o.node.humanCodingScheme !== undefined && (o.code === o.node.humanCodingScheme || (o.code.length === o.node.humanCodingScheme.length + 1 && o.code.startsWith(o.node.humanCodingScheme) && /[a-z]$/.test(o.code))),
+  "The opportunity's standard label must be the pinned catalog item's own code.",
+);
 /** A private learner goal or a clearly attributed teacher invitation, never a required assignment. */
 export const PlannerPlan = z.strictObject({
   id: z.string().uuid(), revision: z.number().int().positive(), offeringId: OfferingId, studentId: PrincipalId,
@@ -93,7 +103,8 @@ export const plannerConflict = () => new EducateOsError("conflict", "This plan c
 /** Redacts private intent even after a learner shares one task response. No chat is ever read. */
 export function plannerTeacherView(plan: PlannerPlan): z.infer<typeof PlannerTeacherView> | undefined {
   const { goal, ...rest } = plan;
-  const opportunities = (plan.source === "teacher" ? plan.opportunities : plan.opportunities.filter((o) => o.response !== undefined)).map(({ coaching: _coaching, priorEvidence: _prior, ...o }) => ({ ...o, priorEvidence: "Only explicitly shared evidence is included." }));
+  // `recipe.matched` is the learner's own words that hit the recipe; teachers see the recipe, not the words.
+  const opportunities = (plan.source === "teacher" ? plan.opportunities : plan.opportunities.filter((o) => o.response !== undefined)).map(({ coaching: _coaching, priorEvidence: _prior, recipe, ...o }) => ({ ...o, ...(recipe === undefined ? {} : { recipe: { ...recipe, matched: [] } }), priorEvidence: "Only explicitly shared evidence is included." }));
   return plan.source === "student" && opportunities.length === 0 ? undefined : {
     ...rest, skills: plan.source === "teacher" ? plan.skills : [], opportunities, ...(plan.source === "teacher" ? { invitation: goal } : {}),
   };
@@ -104,6 +115,63 @@ export function assertPlannerReview(review: z.infer<typeof PlannerReviewInput>):
   if (review.decision === "recommend" && (!review.independentlyAssessed || review.assistance !== "independent" || !["demonstrated", "retained", "transferred"].includes(review.level))) {
     throw new EducateOsError("conflict", "A mastery recommendation needs independently assessed, unassisted demonstrated, retained or transferred evidence.");
   }
+}
+
+/** What this learner has already shared for a standard and why now, from their own evidence only; never a mastery claim. */
+function plannerPriorEvidence(prior: PlannerPlan[], node: CompetencyNode, releaseDigest: string): string {
+  const previous = prior.flatMap((p) => p.opportunities).filter((o) => o.node.uri === node.uri && o.response !== undefined).at(-1);
+  const review = previous?.reviews.at(-1);
+  const knowledge = prior[0] && plannerKnowledge(prior, prior[0].offeringId, prior[0].studentId).competencies.find((c) => c.competencyUri === node.uri && c.releaseDigest === releaseDigest);
+  const evidence = review === undefined ? (previous === undefined ? "No shared planner evidence yet; this is an opportunity to practice, not a mastery claim." : "Previously shared work awaits teacher review; no mastery inferred.") : `Previous teacher observation: ${review.level}; assistance: ${review.assistance}; decision: ${review.decision}. A new context still needs new evidence.`;
+  return `${evidence} Current trusted knowledge: ${knowledge?.status ?? "unverified"}. ${knowledge && ["demonstrated", "retained", "transferred"].includes(knowledge.status) ? "Why now: test this skill in a new setting or arrange a delayed check; skip repeated instruction if ready." : "Why now: build the idea with a worked example, then try independently; prerequisites are practice suggestions, not inferred deficits."}`;
+}
+
+/**
+ * Opportunities from the class's teacher-approved recipes. A recipe is offered when the
+ * learner's own words match its criteria, or, for an explicit standards focus, when it is for that
+ * standard. At most two are offered, one per standard, best match first; no match offers nothing.
+ * Everything the learner sees (task, lesson, rubric, origin) is the approved recipe's text.
+ */
+export function plannerRecipeOpportunities(recipes: readonly ResolvedRecipe[], goal: string, prior: PlannerPlan[], now: string, focus?: string): PlannerPlan["opportunities"] {
+  const chosen = recipes
+    .flatMap((r) => {
+      if (focus !== undefined) return r.record.content.standard.label === focus ? [{ r, score: 0, matched: [] as string[] }] : [];
+      const match = matchRecipeInterest(goal, r.record.content.interest);
+      return match === undefined ? [] : [{ r, ...match }];
+    })
+    .toSorted((a, b) => b.score - a.score || a.r.record.content.standard.label.localeCompare(b.r.record.content.standard.label));
+  const seen = new Set<string>();
+  const result: PlannerPlan["opportunities"] = [];
+  for (const { r, matched } of chosen) {
+    if (seen.has(r.node.uri) || result.length >= 2) continue;
+    seen.add(r.node.uri);
+    const { content, origin, audit } = r.record;
+    const approval = audit.findLast((a) => a.action === "approved")!;
+    const label = content.standard.label;
+    result.push({
+      id: crypto.randomUUID(), code: label, frameworkKey: content.standard.frameworkKey, releaseVersion: r.releaseVersion, releaseDigest: r.releaseDigest,
+      framework: r.framework, node: r.node,
+      reason: focus !== undefined
+        ? `You chose ${label} as your focus. ${approval.byName} approved the "${content.title}" recipe for this class; you may skip it.`
+        : `Your goal fits "${content.interest.label}". ${approval.byName} approved this recipe so you can practice ${label} through it. This is a teacher-approved connection you may skip.`,
+      task: content.studentTask,
+      priorEvidence: plannerPriorEvidence(prior, r.node, r.releaseDigest), decision: "offered", reviews: [],
+      coaching: { lesson: lessonFromRecipe(content), step: 0, mode: "instruction", hints: 0, events: [], source: "curriculum" },
+      recipe: {
+        recipeId: r.record.recipeId, version: r.record.version, contentDigest: r.record.contentDigest, title: content.title,
+        origin: origin.kind, approvedBy: approval.byName, approvedAt: approval.at, interestLabel: content.interest.label, standardLabel: label,
+        whyNow: content.whyNow, prerequisites: content.prerequisites.map((p) => p.concept), coverage: content.coverage, matched,
+      },
+      contract: EvidenceContract.parse({
+        id: EvidenceContractId.parse(`evc_${crypto.randomUUID()}`), version: 1, title: `${label} project evidence`,
+        competencies: [{ frameworkUri: r.framework.uri, competencyUri: r.node.uri, frameworkRevision: r.framework.provenance.sourceRevision }],
+        responseType: "text", criteria: content.transfer.rubric.map((description, i) => ({ id: `criterion-${i + 1}`, description })),
+        restrictions: { aiAssistance: "allowed-with-disclosure", collaboration: "individual" },
+        provenance: { source: "district-authored", sourceUri: `urn:educateos:learning-recipe:${r.record.recipeId}`, sourceRevision: String(r.record.version), retrievedAt: now },
+      }),
+    });
+  }
+  return result;
 }
 
 /** Small, inspectable mappings. Unrecognized goals produce no speculative alignment. */
@@ -130,10 +198,6 @@ export async function plannerOpportunities(catalog: CatalogMirror, goal: string,
     if (match.code === "7.RP.A.1" && !node.fullStatement.includes("Compute unit rates associated with ratios of fractions")) continue;
     if (match.code === "W.7.1" && !node.fullStatement.includes("acknowledge alternate or opposing claims")) continue;
     const lesson = plannerLesson(match.code);
-    const previous = prior.flatMap((p) => p.opportunities).filter((o) => o.node.uri === node.uri && o.response !== undefined).at(-1);
-    const review = previous?.reviews.at(-1);
-    const knowledge = prior[0] && plannerKnowledge(prior, prior[0].offeringId, prior[0].studentId).competencies.find((c) => c.competencyUri === node.uri && c.releaseDigest === approved.release.contentDigest);
-    const priorEvidence = review === undefined ? (previous === undefined ? "No shared planner evidence yet; this is an opportunity to practice, not a mastery claim." : "Previously shared work awaits teacher review; no mastery inferred.") : `Previous teacher observation: ${review.level}; assistance: ${review.assistance}; decision: ${review.decision}. A new context still needs new evidence.`;
     result.push({
       id: crypto.randomUUID(), code: match.code, frameworkKey: match.key, releaseVersion: approved.release.version,
       releaseDigest: approved.release.contentDigest, framework: approved.release.content.framework, node,
@@ -145,7 +209,7 @@ export async function plannerOpportunities(catalog: CatalogMirror, goal: string,
           : match.key === "ccss-math" && /\b(basketball|free throws?|soccer|running)\b/i.test(goal)
             ? "Basketball practice: in drill A you make 18 free throws in 6 minutes; in drill B you make 14 in 4 minutes. Calculate free throws per minute for each drill, predict makes in 20 minutes of practice, and explain which drill fits your goal. Then solve a fresh unit-rate problem without help."
             : match.task,
-      priorEvidence: `${priorEvidence} Current trusted knowledge: ${knowledge?.status ?? "unverified"}. ${knowledge && ["demonstrated", "retained", "transferred"].includes(knowledge.status) ? "Why now: test this skill in a new setting or arrange a delayed check; skip repeated instruction if ready." : "Why now: build the idea with a worked example, then try independently; prerequisites are practice suggestions, not inferred deficits."}`, decision: "offered", reviews: [],
+      priorEvidence: plannerPriorEvidence(prior, node, approved.release.contentDigest), decision: "offered", reviews: [],
       coaching: { lesson, step: 0, mode: "instruction", hints: 0, events: [], source: "curriculum" },
       contract: EvidenceContract.parse({
         id: EvidenceContractId.parse(`evc_${crypto.randomUUID()}`), version: 1, title: `${match.code} project evidence`,

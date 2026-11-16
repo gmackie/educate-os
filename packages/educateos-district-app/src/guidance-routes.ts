@@ -24,7 +24,11 @@ import {
   type GuidanceAgenda, type GuidancePractice, type GuidancePriorityInput, type GuidancePreference, type GuidancePriority, type GuidanceRecord, type GuidanceSuggestion,
   type ResolvedStandard, type StudentInvitation,
 } from "./guidance.ts";
+import { contentDigest } from "@educateos/catalog";
 import { learningGoalsFor } from "./standards.ts";
+import type { LearningRecipeRecord, LearningRecipeSettings } from "./learning-recipe.ts";
+import { STARTER_RECIPES } from "./learning-recipe-starters.ts";
+import { latestRecipes, recipeClassOf, verifyRecipeStandard } from "./learning-recipe-approval.ts";
 import type { PlannerPlan } from "./planner.ts";
 import type { ParsedRouteInput, RouteResponse } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
@@ -34,7 +38,8 @@ export type GuidanceRouteName =
   | "teacher.guidance" | "teacher.guidanceAgenda" | "teacher.guidanceEvidence" | "teacher.guidanceSuggestionReview" | "teacher.guidancePracticeInvite"
   | "student.guidance" | "student.guidanceRespond" | "student.guidancePreference"
   | "guardian.guidance" | "guardian.guidanceSuggest" | "guardian.guidanceWithdraw"
-  | "admin.guardianGuidance" | "admin.setGuardianGuidance";
+  | "admin.guardianGuidance" | "admin.setGuardianGuidance"
+  | "teacher.recipes" | "teacher.recipeDecision" | "teacher.recipeSettings";
 
 /** What the handlers need from app.ts's request context. */
 export interface GuidanceRequestContext {
@@ -276,7 +281,91 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
   const save = (record: GuidanceRecord, expected: number) => records.save(record, expected);
   const stamp = (ctx: C) => ({ by: ctx.principal.principalId, byName: nameOf(ctx, ctx.principal.principalId), at: now().toISOString() });
 
+  // Learning recipes. A teacher's decision is the only way a recipe reaches a student.
+
+  const recipesBody = async (ctx: C, offeringId: OfferingId): Promise<RouteResponse<"teacher.recipes">> => {
+    const all = await load(offeringId);
+    const klass = recipeClassOf(ctx.snapshot, offeringId);
+    const settings = all.find((r): r is LearningRecipeSettings => r.type === "recipe-settings");
+    const latest = latestRecipes(all);
+    const entry = async (content: LearningRecipeRecord["content"], record: LearningRecipeRecord | undefined, starterId: string | undefined, origin: LearningRecipeRecord["origin"]): Promise<RouteResponse<"teacher.recipes">["entries"][number]> => {
+      const check = await verifyRecipeStandard(catalog, content, klass, record?.status === "approved" ? record.pin?.releaseDigest : undefined);
+      return {
+        ...(record === undefined ? {} : { recipeId: record.recipeId }), ...(starterId === undefined ? {} : { starterId }),
+        version: record?.version ?? 0, revision: record?.revision ?? 0, status: record?.status ?? "unreviewed",
+        content, contentDigest: record?.contentDigest ?? await contentDigest(content), origin,
+        standardCheck: { state: check.state, message: check.message }, audit: record?.audit ?? [],
+      };
+    };
+    const entries: RouteResponse<"teacher.recipes">["entries"] = [];
+    for (const starter of STARTER_RECIPES) {
+      const record = latest.find((r) => r.origin.starterId === starter.id);
+      entries.push(await entry(record?.content ?? starter.content, record, starter.id, record?.origin ?? { kind: "starter", starterId: starter.id, starterDigest: await contentDigest(starter.content) }));
+    }
+    for (const record of latest.filter((r) => r.origin.starterId === undefined)) entries.push(await entry(record.content, record, undefined, record.origin));
+    return {
+      paused: settings?.paused === true, settingsRevision: settings?.revision ?? 0, engaged: latest.length > 0 || settings !== undefined, entries,
+      note: "Approved recipes are optional suggestions. They create no assignment, due date or grade, and a student's private goal is never shown here.",
+    };
+  };
+
   return {
+    "teacher.recipes": async (ctx, { params }) => {
+      await teacherAccess(ctx, params.offeringId, false);
+      return recipesBody(ctx, params.offeringId);
+    },
+
+    "teacher.recipeSettings": async (ctx, { params, body }) => {
+      await teacherAccess(ctx, params.offeringId, true);
+      const current = (await load(params.offeringId)).find((r): r is LearningRecipeSettings => r.type === "recipe-settings");
+      if ((current?.revision ?? 0) !== body.revision) throw guidanceConflict();
+      await save({ type: "recipe-settings", id: `recipe-settings:${params.offeringId}`, scope: params.offeringId, revision: body.revision + 1, offeringId: params.offeringId, paused: body.paused, updated: stamp(ctx) }, body.revision);
+      return recipesBody(ctx, params.offeringId);
+    },
+
+    "teacher.recipeDecision": async (ctx, { params, body }) => {
+      await teacherAccess(ctx, params.offeringId, true);
+      if (body.starterId !== undefined && body.recipeId !== undefined) throw new EducateOsError("validation-failed", "Name a starter recipe or an existing recipe, not both.");
+      if (body.decision !== "approve" && body.content !== undefined) throw new EducateOsError("validation-failed", "Edited content can only be sent with an approval.");
+      const starter = body.starterId === undefined ? undefined : STARTER_RECIPES.find((s) => s.id === body.starterId);
+      if (body.starterId !== undefined && starter === undefined) throw notFound();
+      const latest = latestRecipes(await load(params.offeringId));
+      const current = body.recipeId !== undefined ? latest.find((r) => r.recipeId === body.recipeId) : starter === undefined ? undefined : latest.find((r) => r.origin.starterId === starter.id);
+      if (body.recipeId !== undefined && current === undefined) throw notFound();
+      if ((current?.revision ?? 0) !== body.revision) throw guidanceConflict();
+      const who = stamp(ctx);
+      const audit = (action: LearningRecipeRecord["audit"][number]["action"]) => ({ action, ...who, ...(body.note === undefined ? {} : { note: body.note }) });
+      if (body.decision === "withdraw") {
+        if (current?.status !== "approved") throw new EducateOsError("conflict", "Only an approved recipe can be withdrawn.");
+        await save({ ...current, revision: current.revision + 1, status: "withdrawn", audit: [...current.audit, audit("withdrawn")] }, current.revision);
+        return recipesBody(ctx, params.offeringId);
+      }
+      const content = body.content ?? current?.content ?? starter?.content;
+      if (content === undefined) throw new EducateOsError("validation-failed", "Choose a starter or an existing recipe, or send the recipe's content.");
+      const digest = await contentDigest(content);
+      const starterId = starter?.id ?? current?.origin.starterId;
+      const starterDigest = starter === undefined ? current?.origin.starterDigest : await contentDigest(starter.content);
+      const origin: LearningRecipeRecord["origin"] = starterId === undefined || starterDigest === undefined ? { kind: "teacher" } : { kind: digest === starterDigest ? "starter" : "starter-edited", starterId, starterDigest };
+      const record = (status: "approved" | "rejected", pin?: LearningRecipeRecord["pin"]): LearningRecipeRecord => ({
+        type: "recipe", id: crypto.randomUUID(), scope: params.offeringId, revision: 1, offeringId: params.offeringId,
+        recipeId: current?.recipeId ?? crypto.randomUUID(), version: (current?.version ?? 0) + 1, status, content, contentDigest: digest, origin,
+        ...(pin === undefined ? {} : { pin }), audit: [audit(status === "approved" ? "approved" : "rejected")],
+      });
+      if (body.decision === "reject") {
+        if (current?.status === "approved") throw new EducateOsError("conflict", "Withdraw an approved recipe instead of rejecting it.");
+        if (current?.status === "rejected" && current.contentDigest === digest) throw new EducateOsError("conflict", "This recipe is already rejected.");
+        await save(record("rejected"), 0);
+        return recipesBody(ctx, params.offeringId);
+      }
+      if (current?.status === "approved" && current.contentDigest === digest) throw new EducateOsError("conflict", "This version is already approved.");
+      // Approval is the only gate: the standard must already be in the release this district approved, now.
+      const check = await verifyRecipeStandard(catalog, content, recipeClassOf(ctx.snapshot, params.offeringId));
+      if (!check.ok) throw new EducateOsError("conflict", check.message);
+      if (current?.status === "approved") await save({ ...current, revision: current.revision + 1, status: "withdrawn", audit: [...current.audit, audit("superseded")] }, current.revision);
+      await save(record("approved", { competencyUri: check.node.uri, releaseVersion: check.releaseVersion, releaseDigest: check.releaseDigest }), 0);
+      return recipesBody(ctx, params.offeringId);
+    },
+
     "teacher.guidance": async (ctx, { params }) => {
       await teacherAccess(ctx, params.offeringId, false);
       return teacherBody(ctx, params.offeringId);

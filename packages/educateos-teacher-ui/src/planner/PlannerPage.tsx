@@ -10,6 +10,7 @@ import { PageHeading } from "../PageHeading.tsx";
 import { useAnnounce } from "../Announcer.tsx";
 import type { TeachingOffering } from "../types.ts";
 import { PlannerReview } from "./PlannerReview.tsx";
+import { RecipeReview } from "./RecipeReview.tsx";
 
 /** Attributed optional teacher invitations and only the evidence students explicitly shared. */
 export const PlannerPage = ({ teaching }: { teaching: TeachingOffering }) => {
@@ -37,6 +38,7 @@ export const PlannerPage = ({ teaching }: { teaching: TeachingOffering }) => {
     <PageHeading>Personalized Learning Planner</PageHeading>
     <Text>Send a transparent, optional grade 6 invitation. Students may accept or skip it. Use Create activity for required assignments.</Text>
     <Text variant="secondary">Private learner goals and chats are never shown here. Only your invitations, their decisions, and responses students explicitly share are visible to class teachers. Reviews never change official grades.</Text>
+    <RecipeReview offeringId={offeringId} />
     {data.status === "loading" && <Loading label="Loading planner…" />}
     {data.status === "error" && <Problem error={data.error} onRetry={data.reload} />}
     {data.status === "ready" && <>

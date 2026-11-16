@@ -32,7 +32,8 @@ import { contentStudioReleases, CourseContentService, CurriculumService, type Ai
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
 import type { ReleaseTrust } from "@educateos/releases";
 import { approveStandards, educationLevelsOf, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
-import { assertPlannerReview, plannerConflict, plannerOpportunities, plannerTeacherView, type PlannerPlan } from "./planner.ts";
+import { assertPlannerReview, plannerConflict, plannerOpportunities, plannerRecipeOpportunities, plannerTeacherView, type PlannerPlan } from "./planner.ts";
+import { recipeClassOf, resolveClassRecipes } from "./learning-recipe-approval.ts";
 import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
 import { createDraftRevision, DesiredState, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
 import { integrationHealth, oneroster } from "@educateos/integrations";
@@ -784,20 +785,29 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (levels === undefined || (!["06", "07"].some((l) => levels.has(l)))) throw new EducateOsError("conflict", "Reviewed coaching lessons currently cover grades 6 and 7. No alignment is inferred for other grades.");
       if (focus && !levels.has(focus.startsWith("W.") ? focus.split(".")[1]!.padStart(2, "0") : focus[0]!.padStart(2, "0"))) throw new EducateOsError("conflict", "Choose a focus within this class grade band.");
       const createdAt = now().toISOString();
+      const prior = plans.filter((p) => p.studentId === studentId);
+      // Teacher-approved recipes decide the connection. Until a class has made a recipe
+      // decision the fixed mapping still applies; after that, no recipe means no connection.
+      const recipes = await resolveClassRecipes(catalog, await stores.guidance.records.list(offeringId), recipeClassOf(this.snapshot, offeringId));
+      const opportunities = recipes.engaged ? plannerRecipeOpportunities(recipes.resolved, goal, prior, createdAt, focus) : await plannerOpportunities(catalog, goal, prior, createdAt, levels, focus);
       const plan: PlannerPlan = {
         id: crypto.randomUUID(), revision: 1, offeringId, studentId, goal, skills,
         source: teacher ? "teacher" : "student", authorId: this.principal.principalId,
         authorName: this.snapshot.principals.find((p) => p.id === this.principal.principalId)!.displayName,
-        createdAt, opportunities: await plannerOpportunities(catalog, goal, plans.filter((p) => p.studentId === studentId), createdAt, levels, focus),
+        createdAt, opportunities,
       };
+      // Whatever produced an opportunity, its standard must be in the approved release now.
+      for (const opportunity of opportunities) await this.plannerApproved(opportunity);
       await stores.planner.save(plan, 0);
       return plan;
     }
 
-    /** New work and recommendations cannot use a withdrawn release or a hidden item. */
+    /** New work and recommendations cannot use a withdrawn release, a hidden item, or an item the release does not contain. */
     async plannerApproved(opportunity: PlannerPlan["opportunities"][number]) {
       const state = await catalog.get(opportunity.frameworkKey);
-      if (!state?.releases.some((r) => r.status === "approved" && r.release.contentDigest === opportunity.releaseDigest) || state.overlays.some((o) => o.nodeUri === opportunity.node.uri && o.hidden === true)) throw new EducateOsError("conflict", "These standards are no longer approved. Make a new plan with your teacher.");
+      const release = state?.releases.find((r) => r.status === "approved" && r.release.contentDigest === opportunity.releaseDigest);
+      const member = release?.release.content.nodes?.some((n) => n.uri === opportunity.node.uri && n.humanCodingScheme === opportunity.node.humanCodingScheme) === true;
+      if (!member || state!.overlays.some((o) => o.nodeUri === opportunity.node.uri && o.hidden === true)) throw new EducateOsError("conflict", "These standards are no longer approved. Make a new plan with your teacher.");
     }
 
     /** Requires the engine to allow `action` on a resource, answering `forbidden` otherwise. */

@@ -1455,7 +1455,7 @@ export class DurableObjectGuidanceStore implements GuidanceStore {
   async save(raw: GuidanceRecord, expectedRevision: number): Promise<void> {
     const record = GuidanceRecord.parse(raw);
     this.storage.transactionSync(() => {
-      if (record.type !== "agenda") assertStudentLearningWritable(this.storage, record.studentId);
+      if ("studentId" in record) assertStudentLearningWritable(this.storage, record.studentId);
       const [row] = this.storage.sql.exec("SELECT revision FROM educateos_guidance WHERE id = ?", record.id).toArray();
       if ((row?.revision ?? 0) !== expectedRevision || record.revision !== expectedRevision + 1) throw guidanceConflict();
       this.storage.sql.exec("INSERT INTO educateos_guidance (id, scope, revision, record_json) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET revision = excluded.revision, record_json = excluded.record_json", record.id, record.scope, record.revision, JSON.stringify(record));
