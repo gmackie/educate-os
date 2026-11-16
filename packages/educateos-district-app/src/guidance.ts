@@ -370,6 +370,8 @@ export const EvidenceStudent = z.strictObject({
     opportunityId: z.string().uuid(), planId: z.string().uuid(), source: z.enum(["student", "teacher"]), task: z.string(), criteria: z.array(z.string()), decision: z.enum(["offered", "accepted", "skipped"]),
     response: PlannerOpportunity.shape.response,
     reviews: PlannerOpportunity.shape.reviews,
+    /** Exact pinned criteria for reading criterion-level teacher observations. */
+    rubricCriteria: PlannerOpportunity.shape.contract.shape.criteria.optional(),
   })),
 });
 /** Drill-down for one standard. */

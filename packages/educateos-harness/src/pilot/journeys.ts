@@ -4,6 +4,7 @@
 // What a passing replay shows: the software routes interest, help, practice, review and coverage as
 // designed. What it does NOT show: that a child learned anything. Learning gains need the
 // independent pre/post and delayed test in docs/educateos/pilot/learning-pilot-evaluation.md.
+import { syntheticCheckRubric } from "./synthetic-check.ts";
 import { PILOT_PERSONAS, PL, type PilotPersona, type PilotWork } from "@educateos/fixtures";
 import { auditOpportunity } from "./alignment-audit.ts";
 import { bootPilotDistrict, outcomeOf, type PilotDistrict, type PilotOptions, type PilotPlan } from "./district.ts";
@@ -113,7 +114,7 @@ async function replayWork(
 
   advance(d, 10);
   const base = { revision: plan.revision };
-  const unseen = { method: "independent-task" as const, observedAt: d.now().toISOString(), context: "Teacher-selected unseen unit-rate or argument task, observed without help." };
+  const unseen = { rubric: syntheticCheckRubric(opp()), method: "independent-task" as const, observedAt: d.now().toISOString(), context: "Teacher-selected unseen unit-rate or argument task, observed without help." };
   const recommend = { ...base, level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Observed the learner independently meet every criterion on a task they had not seen.", assessment: unseen };
   const attempt = await d.call(teacher, "teacher.plannerReview", { params: target(), body: recommend });
   if (attempt.status < 400) {
@@ -144,7 +145,7 @@ async function replayRetention(d: PilotDistrict): Promise<PilotStep[]> {
   plan = await d.ok(student, "student.plannerCoach", { params: target(), body: { revision: plan.revision, action: "try", allowAi: false } });
   plan = await d.ok(student, "student.plannerChallenge", { params: target(), body: { revision: plan.revision, text: "Truck A: 150 miles in 3 hours is 50 mph. Truck B: 180 miles in 4 hours is 45 mph. Truck A is faster.", reflection: "I would check the units before comparing.", assistance: "independent" } });
   advance(d, 10);
-  const early = await d.call(teacher, "teacher.plannerReview", { params: target(), body: { revision: plan.revision, level: "retained", assistance: "independent", independentlyAssessed: true, decision: "recommend", rationale: "Delayed check.", assessment: { method: "delayed-check", observedAt: d.now().toISOString(), context: "Unseen delivery-rate problem after one week." } } });
+  const early = await d.call(teacher, "teacher.plannerReview", { params: target(), body: { revision: plan.revision, level: "retained", assistance: "independent", independentlyAssessed: true, decision: "recommend", rationale: "Delayed check.", assessment: { rubric: syntheticCheckRubric(plan.opportunities[0]!), method: "delayed-check", observedAt: d.now().toISOString(), context: "Unseen delivery-rate problem after one week." } } });
   steps.push({ actor: "teacher", action: "record delayed check", result: { answer: outcomeOf(early) } });
   const knowledge = await d.ok(student, "student.plannerKnowledge", { params });
   steps.push({ actor: "system", action: "advisory knowledge", result: knowledge.competencies.map((c) => ({ code: c.code, status: c.status })).toSorted((a, b) => a.code.localeCompare(b.code)) });

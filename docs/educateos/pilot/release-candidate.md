@@ -79,3 +79,10 @@ companion build, desktop pairing or a live LevelForge connection.
 No measured student outcomes exist. The pre/post/delayed evaluation remains a proposed district
 study requiring consent and independent assessment. Legal/DPA review and actual installation,
 accessibility, operational readiness and district approval remain separate pilot gates.
+
+## Stacked assessment follow-up (SCHO-435)
+
+See [criterion-level teacher reconfirmation](criterion-review.md) for the narrow assessment change
+stacked on PR #417. It preserves old judgments as historical, requires new criterion observations for
+reconfirmation, and gives teachers source/rating/reviewer history plus withdrawal. Synthetic tests
+establish software behavior only; educator agreement and live-school validity remain unvalidated.

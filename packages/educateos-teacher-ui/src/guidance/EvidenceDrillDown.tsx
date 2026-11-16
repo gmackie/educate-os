@@ -5,6 +5,7 @@ import { Problem } from "../Problem.tsx";
 import { useLoad } from "../useLoad.ts";
 import type { CoverageRow } from "./CoverageTable.tsx";
 import { MASTERY_LABELS } from "./practice.ts";
+import { PlannerJudgmentHistory } from "../planner/PlannerJudgmentHistory.tsx";
 
 /** One student's shared evidence on one standard. */
 export const EvidenceStudentCard = ({ student, code }: { student: RouteResponse<"teacher.guidanceEvidence">["students"][number]; code: string }) => (
@@ -24,11 +25,7 @@ export const EvidenceStudentCard = ({ student, code }: { student: RouteResponse<
             <p className="m-0 whitespace-pre-wrap">{item.response.text}</p>
             <Text variant="secondary" size="sm">Shared <time dateTime={item.response.sharedAt}>{item.response.sharedAt.slice(0, 10)}</time> · help the student disclosed: {item.response.assistance}</Text>
           </>}
-        {item.reviews.length > 0 && (
-          <ol className="m-0 flex list-decimal flex-col gap-1 pl-5 text-sm" aria-label={`Teacher review history for ${student.displayName}`}>
-            {item.reviews.map((r) => <li key={`${r.by}:${r.at}`}>{r.level} · help observed: {r.assistance} · {r.decision === "recommend" ? "recommended for mastery consideration" : "held"} · {r.rationale}</li>)}
-          </ol>
-        )}
+        {item.reviews.length > 0 && <PlannerJudgmentHistory reviews={item.reviews} criteria={item.rubricCriteria} />}
         <details>
           <summary>Evidence criteria</summary>
           <ul className="list-disc pl-5">{item.criteria.map((c) => <li key={c}>{c}</li>)}</ul>

@@ -9,23 +9,42 @@ export const PlannerKnowledge = z.strictObject({
     competencyUri: z.string(), releaseDigest: z.string(), code: z.string(),
     status: z.enum(["unverified", "practiced", "demonstrated", "retained", "transferred"]),
     evidenceIds: z.array(z.string()), reviewedAt: z.iso.datetime().optional(),
+    /** Historical recommendations stay intact but are not criterion-verified evidence. */
+    needsCriterionReconfirmation: z.boolean().optional(),
   })),
 });
 
 type Opportunity = PlannerPlan["opportunities"][number];
 type Review = z.infer<typeof PlannerReviewInput>;
+/** A review must cover exactly the pinned contract, with observed evidence for every criterion. */
+export const plannerRubricMet = (review: Review, opportunity: Opportunity): boolean => {
+  const rubric = review.assessment?.rubric;
+  return rubric !== undefined && rubric.contractId === opportunity.contract.id && rubric.contractVersion === opportunity.contract.version
+    && opportunity.contract.criteria.length > 0 && rubric.criteria.length === opportunity.contract.criteria.length
+    && new Set(rubric.criteria.map((c) => c.criterionId)).size === rubric.criteria.length
+    && opportunity.contract.criteria.every((c) => rubric.criteria.some((r) => r.criterionId === c.id && r.rating === "met" && r.sourceSnippet.trim() !== ""));
+};
 /** The common evidence floor for learner knowledge, teacher coverage and family progress. */
 export const independentlyReviewedPlannerEvidence = (o: Opportunity) => {
   const r = o.reviews.at(-1);
-  return o.response !== undefined && o.challenge?.assistance === "independent" && r?.decision === "recommend" && r.assistance === "independent" && r.independentlyAssessed && r.assessment !== undefined && ["demonstrated", "retained", "transferred"].includes(r.level);
+  return o.response !== undefined && o.challenge?.assistance === "independent" && r?.decision === "recommend" && r.assistance === "independent" && r.independentlyAssessed && plannerRubricMet(r, o) && ["demonstrated", "retained", "transferred"].includes(r.level);
 };
 
 /** Requires a separately observed, unseen teacher assessment; student practice is never its own test. */
 export function assertPlannerAssessment(review: Review, opportunity: Opportunity, prior: PlannerPlan[], at: string): void {
+  const rubric = review.assessment?.rubric;
+  if (rubric !== undefined && (rubric.contractId !== opportunity.contract.id || rubric.contractVersion !== opportunity.contract.version
+    || rubric.criteria.length !== opportunity.contract.criteria.length || new Set(rubric.criteria.map((c) => c.criterionId)).size !== rubric.criteria.length
+    || !opportunity.contract.criteria.every((c) => rubric.criteria.some((r) => r.criterionId === c.id)))) {
+    throw new EducateOsError("conflict", "The rubric must name this opportunity's exact contract version and each criterion exactly once.");
+  }
   if (review.decision !== "recommend") return;
   const assessment = review.assessment;
   if (opportunity.challenge?.assistance !== "independent" || assessment === undefined) {
     throw new EducateOsError("conflict", "Share an independent practice challenge, then record a separate unseen teacher assessment before recommending mastery.");
+  }
+  if (!plannerRubricMet(review, opportunity)) {
+    throw new EducateOsError("conflict", "Review every criterion of the pinned evidence contract with a rating and an observed excerpt from the separate teacher check. Only all-met evidence supports a recommendation.");
   }
   if (Date.parse(assessment.observedAt) < Date.parse(opportunity.challenge.sharedAt) || Date.parse(assessment.observedAt) > Date.parse(at)) {
     throw new EducateOsError("conflict", "The teacher assessment must follow the shared practice and cannot be in the future.");
@@ -58,7 +77,7 @@ export function plannerKnowledge(plans: PlannerPlan[], offeringId: z.infer<typeo
       const reviewed = opportunities.filter((o) => o.reviews.length > 0).toSorted((a, b) => a.reviews.at(-1)!.at.localeCompare(b.reviews.at(-1)!.at) || Number(a.reviews.at(-1)!.decision === "hold") - Number(b.reviews.at(-1)!.decision === "hold"));
       const latest = reviewed.at(-1);
       const status = latest && independentlyReviewedPlannerEvidence(latest) ? latest.reviews.at(-1)!.level as "demonstrated" | "retained" | "transferred" : opportunities.some((o) => o.response !== undefined) ? "practiced" as const : "unverified" as const;
-      return { competencyUri: first.node.uri, releaseDigest: first.releaseDigest, code: first.code, status, evidenceIds: opportunities.filter((o) => o.response !== undefined).map((o) => o.id), ...(latest ? { reviewedAt: latest.reviews.at(-1)!.at } : {}) };
+      return { competencyUri: first.node.uri, releaseDigest: first.releaseDigest, code: first.code, status, evidenceIds: opportunities.filter((o) => o.response !== undefined).map((o) => o.id), ...(latest ? { reviewedAt: latest.reviews.at(-1)!.at, ...(latest.reviews.at(-1)!.decision === "recommend" && latest.reviews.at(-1)!.assessment?.rubric === undefined ? { needsCriterionReconfirmation: true } : {}) } : {}) };
     }),
   };
 }

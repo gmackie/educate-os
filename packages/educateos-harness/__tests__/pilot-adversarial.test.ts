@@ -1,3 +1,4 @@
+import { syntheticCheckRubric } from "../src/pilot/synthetic-check.ts";
 // Adversarial pilot scenarios (SCHO-432): each one tries to get something the product must refuse.
 // These are rule checks over invented people. They say nothing about whether children learn.
 import { describe, expect, it, vi } from "vitest";
@@ -25,7 +26,7 @@ const teacher = (d: PilotDistrict) => d.tokenFor(PL.okoye);
 const target = (plan: PilotPlan, index = 0) => ({ ...grade6, planId: plan.id, opportunityId: plan.opportunities[index]!.id }) as never;
 const recommend = (plan: PilotPlan, d: PilotDistrict, over: Record<string, unknown> = {}) => ({
   revision: plan.revision, level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const,
-  rationale: "Observed independently on an unseen task.", assessment: { method: "independent-task" as const, observedAt: d.now().toISOString(), context: "Unseen teacher-selected task." }, ...over,
+  rationale: "Observed independently on an unseen task.", assessment: { rubric: syntheticCheckRubric(plan.opportunities[0]!), method: "independent-task" as const, observedAt: d.now().toISOString(), context: "Unseen teacher-selected task." }, ...over,
 });
 const status = async (d: PilotDistrict, who: string, code = "6.RP.A.3b") => (await d.ok(d.tokenFor(who), "student.plannerKnowledge", { params: grade6 })).competencies.find((c) => c.code === code)?.status ?? "unverified";
 
@@ -201,7 +202,7 @@ describe("retention and transfer need new evidence, not repetition", () => {
   it("refuses a delayed check earlier than seven days, and one with no earlier demonstration", async () => {
     const d = await bootPilotDistrict();
     const solo = await drive(d, PL.maribel, "Compare cookie prices and persuade our club to choose a recipe", { project: "independent", challenge: "independent" });
-    const delayed = (plan: PilotPlan) => recommend(plan, d, { level: "retained", assessment: { method: "delayed-check", observedAt: d.now().toISOString(), context: "Unseen task one week later." } });
+    const delayed = (plan: PilotPlan) => recommend(plan, d, { level: "retained", assessment: { rubric: syntheticCheckRubric(plan.opportunities[0]!), method: "delayed-check", observedAt: d.now().toISOString(), context: "Unseen task one week later." } });
     expect(outcomeOf(await d.call(teacher(d), "teacher.plannerReview", { params: target(solo), body: delayed(solo) }))).toBe("409 conflict");
     await demonstrated(d);
     d.setNow(new Date(d.now().getTime() + 6 * 24 * HOUR).toISOString());
@@ -216,7 +217,7 @@ describe("retention and transfer need new evidence, not repetition", () => {
     await demonstrated(d);
     d.setNow(new Date(d.now().getTime() + 24 * HOUR).toISOString());
     const next = await drive(d, PL.jules, "Build a Roblox Pizza Tycoon", { project: "independent", challenge: "independent" });
-    const transfer = (context: string) => recommend(next, d, { level: "transferred", assessment: { method: "new-context", observedAt: d.now().toISOString(), context } });
+    const transfer = (context: string) => recommend(next, d, { level: "transferred", assessment: { rubric: syntheticCheckRubric(next.opportunities[0]!), method: "new-context", observedAt: d.now().toISOString(), context } });
     expect(outcomeOf(await d.call(teacher(d), "teacher.plannerReview", { params: target(next), body: transfer("Unseen teacher-selected task.") }))).toBe("409 conflict");
     expect(outcomeOf(await d.call(teacher(d), "teacher.plannerReview", { params: target(next), body: transfer("Walking-time map problem, a setting the learner has not practiced.") }))).toBe("ok");
     expect(await status(d, PL.jules)).toBe("transferred");

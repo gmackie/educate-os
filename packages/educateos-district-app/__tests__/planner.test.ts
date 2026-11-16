@@ -1,3 +1,4 @@
+import { observedRubric } from "./planner-review-fixtures.ts";
 /// <reference types="node" />
 import { describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
@@ -77,7 +78,7 @@ describe("Personalized Learning Planner", () => {
     p = await d.ok(d.tokenFor(NF.amara), "student.plannerCoach", { params: target(p), body: { revision: p.revision, action: "try", allowAi: false } });
     p = await d.ok(d.tokenFor(NF.amara), "student.plannerChallenge", { params: target(p), body: { revision: p.revision, text: "Printer A: 6 cards/min; B: 5; after 7 minutes: 42 and 35. Constant rates assumed.", reflection: "Use rates to compare garden watering systems.", assistance: "independent" } });
     const teacher = d.tokenFor(NF.rivera);
-    const review = { revision: p.revision, level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: false, decision: "recommend" as const, rationale: "Fresh problem and oral explanation observed.", assessment: { method: "independent-task" as const, context: "Unseen garden task: Amara calculated rates and explained units against all contract criteria.", observedAt: p.opportunities[0]!.challenge!.sharedAt } };
+    const review = { revision: p.revision, level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: false, decision: "recommend" as const, rationale: "Fresh problem and oral explanation observed.", assessment: { rubric: observedRubric(p.opportunities[0]!), method: "independent-task" as const, context: "Unseen garden task: Amara calculated rates and explained units against all contract criteria.", observedAt: p.opportunities[0]!.challenge!.sharedAt } };
     expectError(await d.call(teacher, "teacher.plannerReview", { params: target(p), body: review }), 409, "conflict");
     expectError(await d.call(d.tokenFor(NF.amara), "teacher.plannerReview", { params: target(p), body: review }), 403, "forbidden");
     const assessed = await d.ok(teacher, "teacher.plannerReview", { params: target(p), body: { ...review, independentlyAssessed: true } });

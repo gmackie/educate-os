@@ -1,3 +1,4 @@
+import { observedRubric } from "./planner-review-fixtures.ts";
 import { expect, it } from "vitest";
 import { ActivityRuntime, MemoryReplayStore } from "@educateos/activity-adapters/runtime";
 import type { ActivityRequest } from "@educateos/activity-adapters/contracts";
@@ -36,7 +37,7 @@ it("binds adapter evidence to its learner and contract, preserves assistance, an
   expect(plan.opportunities[0]!.response!.activityEvidence).toMatchObject({ status: "complete", assistance: ["ai"], learningClaim: "requires-teacher-verification" });
   let dashboard = await d.ok(teacher, "teacher.guidance", { params });
   expect(dashboard.coverage[0]).toMatchObject({ evidencePathway: "planner", mastery: { encountered: 1, "independent-reviewed": 0 } });
-  const review = { level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Separate unseen assessment", assessment: { method: "independent-task" as const, observedAt: at, context: "Teacher observed independent fraction-rate reasoning on an unseen cycling problem." } };
+  const review = { level: "demonstrated" as const, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Separate unseen assessment", assessment: { rubric: observedRubric(plan.opportunities[0]!), method: "independent-task" as const, observedAt: at, context: "Teacher observed independent fraction-rate reasoning on an unseen cycling problem." } };
   expectError(await d.call(teacher, "teacher.plannerReview", { params: target(plan), body: { revision: plan.revision, ...review } }), 409, "conflict");
   plan = await d.ok(student, "student.plannerCoach", { params: target(plan), body: { revision: plan.revision, action: "try", allowAi: false } });
   plan = await d.ok(student, "student.plannerChallenge", { params: target(plan), body: { revision: plan.revision, text: "Six miles/hour, three miles in half an hour.", reflection: "I can use labeled rates elsewhere.", assistance: "independent" } });

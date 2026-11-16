@@ -26,6 +26,18 @@ export const PlannerReviewInput = z.strictObject({
     method: z.enum(["independent-task", "delayed-check", "new-context"]),
     observedAt: z.iso.datetime(),
     context: z.string().trim().min(1).max(500),
+    /** Optional on historical records; required for every new mastery recommendation. */
+    rubric: z.strictObject({
+      source: z.literal("teacher-observed-common-check"),
+      contractId: EvidenceContract.shape.id,
+      contractVersion: z.number().int().positive(),
+      criteria: z.array(z.strictObject({
+        criterionId: z.string().trim().min(1).max(100),
+        rating: z.enum(["not-observed", "developing", "met"]),
+        /** Teacher-transcribed excerpt from the separate check, never a private project or chat. */
+        sourceSnippet: z.string().trim().min(1).max(1000),
+      })).min(1).max(30),
+    }).optional(),
   }).optional(),
 });
 const Review = PlannerReviewInput.extend({ by: PrincipalId, at: z.iso.datetime() });

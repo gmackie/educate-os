@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { observedRubric } from "./planner-review-fixtures.ts";
 import type { RouteInput } from "../src/routes.ts";
 import type { PlannerPlan } from "../src/planner.ts";
 import { bootDistrict, expectError, NF, NORTHFIELD, type TestDistrict } from "./support.ts";
@@ -17,7 +18,7 @@ async function practice(d: TestDistrict, p: PlannerPlan) {
   p = await coach(d, p, "reflect");
   return d.ok(student, "student.plannerChallenge", { params: target(p), body: { revision: p.revision, text: "6 and 5 cards/minute. In seven minutes: 42 and 35; assumes constant rates.", reflection: "I could compare watering rates, but would check for leaks.", assistance: "independent" } });
 }
-const assessment = (observedAt: string, level: "demonstrated" | "retained" | "transferred" = "demonstrated", context = "Unseen teacher-selected garden problem: correct division, units and prediction observed.") => ({ level, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Observed the learner independently satisfy every contract criterion on a fresh unseen problem.", assessment: { observedAt, context, method: level === "retained" ? "delayed-check" as const : level === "transferred" ? "new-context" as const : "independent-task" as const } });
+const assessment = (p: PlannerPlan, observedAt: string, level: "demonstrated" | "retained" | "transferred" = "demonstrated", context = "Unseen teacher-selected garden problem: correct division, units and prediction observed.") => ({ level, assistance: "independent" as const, independentlyAssessed: true, decision: "recommend" as const, rationale: "Observed the learner independently satisfy every contract criterion on a fresh unseen problem.", assessment: { rubric: observedRubric(p.opportunities[0]!), observedAt, context, method: level === "retained" ? "delayed-check" as const : level === "transferred" ? "new-context" as const : "independent-task" as const } });
 const knowledge = (d: TestDistrict) => d.ok(d.tokenFor(NF.amara), "student.plannerKnowledge", { params });
 
 describe("adaptive coaching and trusted knowledge", () => {
@@ -47,7 +48,7 @@ describe("adaptive coaching and trusted knowledge", () => {
     const before = await d.stores.assessment.load();
     let p = await practice(d, await goal(d));
     expect((await knowledge(d)).competencies[0]!.status).toBe("practiced");
-    const review = assessment(time.toISOString());
+    const review = assessment(p, time.toISOString());
     const reviewParams = target(p);
     expectError(await d.call(d.tokenFor(NF.amara), "teacher.plannerReview", { params: reviewParams, body: { ...review, revision: p.revision } }), 403, "forbidden");
     expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: reviewParams, body: { ...review, revision: p.revision, assessment: { ...review.assessment, observedAt: "2026-11-16T00:00:00Z" } } }), 409, "conflict");
@@ -68,17 +69,17 @@ describe("adaptive coaching and trusted knowledge", () => {
     let time = new Date("2026-11-15T14:00:00Z");
     const d = await bootDistrict(directory(), { now: () => time });
     const first = await practice(d, await goal(d));
-    expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(first), body: { ...assessment(time.toISOString(), "retained"), revision: first.revision } }), 409, "conflict");
-    await d.ok(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(first), body: { ...assessment(time.toISOString()), revision: first.revision } });
+    expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(first), body: { ...assessment(first, time.toISOString(), "retained"), revision: first.revision } }), 409, "conflict");
+    await d.ok(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(first), body: { ...assessment(first, time.toISOString()), revision: first.revision } });
     time = new Date("2026-11-16T14:00:00Z");
     const second = await practice(d, await goal(d));
-    expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(second), body: { ...assessment(time.toISOString(), "retained"), revision: second.revision } }), 409, "conflict");
-    expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(second), body: { ...assessment(time.toISOString(), "transferred"), revision: second.revision } }), 409, "conflict");
-    await d.ok(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(second), body: { ...assessment(time.toISOString(), "transferred", "Unseen map-making task: independently used rates to calculate walking time with units and check assumptions."), revision: second.revision } });
+    expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(second), body: { ...assessment(second, time.toISOString(), "retained"), revision: second.revision } }), 409, "conflict");
+    expectError(await d.call(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(second), body: { ...assessment(second, time.toISOString(), "transferred"), revision: second.revision } }), 409, "conflict");
+    await d.ok(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(second), body: { ...assessment(second, time.toISOString(), "transferred", "Unseen map-making task: independently used rates to calculate walking time with units and check assumptions."), revision: second.revision } });
     expect((await knowledge(d)).competencies[0]!.status).toBe("transferred");
     time = new Date("2026-11-23T14:00:00Z");
     const third = await practice(d, await goal(d));
-    await d.ok(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(third), body: { ...assessment(time.toISOString(), "retained"), revision: third.revision } });
+    await d.ok(d.tokenFor(NF.rivera), "teacher.plannerReview", { params: target(third), body: { ...assessment(third, time.toISOString(), "retained"), revision: third.revision } });
     expect((await knowledge(d)).competencies[0]!.status).toBe("retained");
   });
 

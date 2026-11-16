@@ -433,7 +433,7 @@ export function guidanceHandlers<C extends GuidanceRequestContext>(options: Guid
               opportunityId: o.id, planId: plans.find((p) => p.opportunities.some((x) => x.id === o.id))!.id,
               source: plans.find((p) => p.opportunities.some((x) => x.id === o.id))!.source,
               task: o.task, criteria: o.contract.criteria.map((c) => c.description), decision: o.decision,
-              ...(o.response === undefined ? {} : { response: o.response }), reviews: o.reviews,
+              ...(o.response === undefined ? {} : { response: o.response }), reviews: o.reviews, rubricCriteria: o.contract.criteria,
             })),
           };
         }),

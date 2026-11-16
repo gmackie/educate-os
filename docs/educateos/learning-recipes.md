@@ -82,3 +82,10 @@ profiling in the recipe matcher.
 Tracker metadata could not be updated because the Kanbanger workspace credential is missing. Optional
 React Doctor did not run because pnpm's external cache was not writable. Local checks and hosted CI
 receipts are reported separately in the integration PR; producer receipts do not certify its head.
+
+## Criterion-level independent review (SCHO-435)
+
+The [educator reconfirmation procedure](pilot/criterion-review.md) adds observed common-check excerpts
+and a teacher rating for each pinned evidence-contract criterion. Legacy judgments remain readable
+and are explicitly marked for reconfirmation; no text is automatically graded. This is a non-deploying
+WIP rehearsal, not school-validated calibration.

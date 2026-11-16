@@ -1,3 +1,4 @@
+import { observedRubric } from "./planner-review-fixtures.ts";
 /// <reference types="node" />
 // Guidance and Evidence: guardian opt-in, learning invitations, teacher coverage and CASEL practice.
 import { describe, expect, it } from "vitest";
@@ -58,7 +59,7 @@ async function independentPractice(d: TestDistrict, plan: PlannerPlan, opportuni
   const started = await d.ok(student, "student.plannerCoach", { params: target, body: { revision: plan.revision, action: "try", allowAi: false } });
   return d.ok(student, "student.plannerChallenge", { params: target, body: { revision: started.revision, text: "A new claim with credible supporting sources, reasons and a conclusion.", reflection: "I can explain this in another project.", assistance: "independent" } });
 }
-const unseenAssessment = (plan: PlannerPlan, opportunityId: string) => ({ method: "independent-task" as const, observedAt: plan.opportunities.find((o) => o.id === opportunityId)!.challenge!.sharedAt, context: "Teacher selected a separate unseen argument task and observed every criterion independently." });
+const unseenAssessment = (plan: PlannerPlan, opportunityId: string) => ({ rubric: observedRubric(plan.opportunities.find((o) => o.id === opportunityId)!), method: "independent-task" as const, observedAt: plan.opportunities.find((o) => o.id === opportunityId)!.challenge!.sharedAt, context: "Teacher selected a separate unseen argument task and observed every criterion independently." });
 
 describe("guardian opt-in is explicit, per relationship and off by default", () => {
   it("gives a confirmed guardian nothing until an administrator enables it, including for new relationships", async () => {
