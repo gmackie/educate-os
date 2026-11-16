@@ -11,7 +11,7 @@ import {
   type DistrictDirectorySnapshot,
 } from "@educateos/contracts";
 import { InMemoryAcademicStore, type AcademicStore } from "@educateos/academics";
-import { searchAuditEvents, type PolicyAuditEvent, type PolicyAuditPage, type PolicyAuditQuery, type PolicyAuditReader, type PolicyAuditSink } from "@educateos/policy";
+import { isRetentionPurgeable, searchAuditEvents, type PolicyAuditEvent, type PolicyAuditPage, type PolicyAuditQuery, type PolicyAuditReader, type PolicyAuditRetention, type PolicyAuditSink } from "@educateos/policy";
 import { InMemoryWorkspaceStore, type WorkspaceStore } from "@educateos/workspaces";
 import {
   BackendArtifactStore,
@@ -222,8 +222,15 @@ export class InMemoryWorkshopUserLinkStore implements WorkshopUserLinkStore {
 }
 
 /** A {@link PolicyAuditSink} that keeps events in memory, for tests and the local harness. */
-export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReader {
+export class InMemoryPolicyAuditLog implements PolicyAuditSink, PolicyAuditReader, PolicyAuditRetention {
   readonly #events: PolicyAuditEvent[] = [];
+
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    const kept = this.#events.filter((e) => !(isRetentionPurgeable(e) && e.decidedAt < before));
+    const deleted = this.#events.length - kept.length;
+    this.#events.splice(0, this.#events.length, ...kept);
+    return deleted;
+  }
 
   async record(event: PolicyAuditEvent): Promise<void> {
     this.#events.push(structuredClone(event));
@@ -293,7 +300,7 @@ export interface DistrictAppStores {
    * The policy decision audit trail (A02). Every decision every service makes lands here, and the
    * admin console's audit screens search it (SCHO-376).
    */
-  audit: PolicyAuditSink & PolicyAuditReader;
+  audit: PolicyAuditSink & PolicyAuditReader & PolicyAuditRetention;
   // Guardians (ADR-0012, SCHO-188)
   /** Guardian relationships and their change history. */
   guardianRelationships: GuardianRelationshipStore;

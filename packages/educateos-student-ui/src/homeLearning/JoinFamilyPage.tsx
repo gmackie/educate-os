@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Banner, Button, Text } from "@cloudflare/kumo";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { messageFor, useApi } from "../api.tsx";
+import { ErrorState } from "../ErrorState.tsx";
+import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { PageHeading } from "../PageHeading.tsx";
+import { NoticeAcceptance } from "./FamilyNotice.tsx";
 import { HOME_PATH, JOIN_FAMILY_PATH } from "./paths.ts";
 import { useRefreshSignIn } from "./signInRefresh.ts";
 import { useFamily } from "./useFamily.ts";
@@ -18,7 +21,8 @@ export const JoinFamilyPage = () => {
   const refresh = useRefreshSignIn();
   const hash = useRouterState({ select: (state) => state.location.hash });
   const [token] = useState(() => new URLSearchParams(hash).get("invitation") ?? undefined);
-  const [home] = useFamily();
+  const [home, reload] = useFamily();
+  const [accepted, setAccepted] = useState(false);
   const [state, setState] = useState<{ status: "idle" | "sending" } | { status: "failed"; message: string }>({ status: "idle" });
 
   useEffect(() => {
@@ -31,15 +35,20 @@ export const JoinFamilyPage = () => {
       <PageHeading id="join-family">Join your family's home learning</PageHeading>
       {token === undefined ? (
         <Text>This page needs the invitation link another grown-up sent you. Open the link again, or ask them for a new one.</Text>
+      ) : home.status === "loading" ? (
+        <LoadingSkeleton label="Loading your invitation" />
+      ) : home.status === "error" ? (
+        <ErrorState error={home.error} title="We couldn't open your invitation" onRetry={reload} />
       ) : hasFamily ? (
         <Text>You already belong to a family here. To join this one instead, leave your current family from Family settings first, then open the link again.</Text>
       ) : (
         <>
           <Text>You'll see the same children, plans and progress as the grown-up who invited you, and you can change them too.</Text>
+          <NoticeAcceptance notice={home.data.notice} accepted={accepted} onChange={setAccepted} />
           {state.status === "failed" ? <div role="alert"><Banner variant="error" title="That didn't work" description={state.message} /></div> : null}
-          <Button variant="primary" className="self-start" loading={state.status === "sending"} onClick={() => {
+          <Button variant="primary" className="self-start" disabled={!accepted} loading={state.status === "sending"} onClick={() => {
             setState({ status: "sending" });
-            api.call("family.acceptInvitation", { body: { token } }).then(() => {
+            api.call("family.acceptInvitation", { body: { token, acceptNotice: home.data.notice.version } }).then(() => {
               refresh();
               void navigate({ to: HOME_PATH, replace: true });
             }, (caught: unknown) => setState({ status: "failed", message: messageFor(caught) }));

@@ -392,7 +392,15 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     const log = logger.with({ districtId: app.districtId });
     try {
       const outcome = await app.homeLearning.purgeExpired();
-      if (outcome.ran) log.info("a scheduled district job ran", { event: "district.cron.home-learning.purge", deleted: outcome.deleted });
+      if (outcome.ran) {
+        log.info("a scheduled district job ran", {
+          event: "district.cron.home-learning.purge",
+          deleted: outcome.practiceSessions?.deleted ?? 0,
+          auditEvents: outcome.auditEvents,
+          childSessions: outcome.childSessions,
+          invitations: outcome.invitations,
+        });
+      }
     } catch (error) {
       log.error("the home-learning purge failed", { event: "district.cron.home-learning.purge.failed", error });
     }

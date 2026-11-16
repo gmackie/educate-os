@@ -17,7 +17,7 @@ the product plan is [K–2 family learning](../plans/2026-11-15-k2-family-learni
 | | `/family/learners/:id/progress` | Each skill's practice state with the counts behind it, then recent sessions with a note. |
 | | `/family/learners/:id/sessions/:id` | Item by item: what was asked, every try, hints, help, the evidence source. Correct or exclude a response; the original is kept. |
 | | `/family/shelf` | Books, links, worksheets and notes. Never practice, never evidence. |
-| | `/family/home-settings` | Add and remove children, change the PIN, end practice on every device, download everything, delete the family. |
+| | `/family/home-settings` | Add and remove children, invite and remove grown-ups, change the PIN, end practice on every device, turn read-aloud off, read the family notice, download everything, delete the family, delete your account. |
 | A child | anywhere, while a child session is open | Only their queued activities: spoken directions, a worked example, one item a page, large targets, a hint, **Ask my grown-up**, calm retries. |
 
 The child's screen offers a tap or keyboard route for everything: counters are added with a button,
@@ -118,8 +118,24 @@ other adult. An adult can remove another, or leave, but never the last one; the 
 child sessions end.
 
 `DISTRICT_CONFIG.homeLearning.retentionDays` (30–3650) makes the hourly district job delete practice
-sessions started longer ago than that. Family settings states the period. Safranek keeps practice
-for 730 days.
+sessions started longer ago than that, and the audit trail's decisions about family records
+(`family`, `home-practice`) older than that. The trail's trigger refuses any other delete. The same
+job deletes child sessions a day after they end, or once their 30-day cookie has expired, and
+expired invitations. Family settings states the period. Safranek keeps practice for 730 days.
+
+## Notice, read-aloud and account deletion
+
+- **Notice.** `src/notice.ts` holds the family notice and its version. An adult accepts it when
+  setting up a family or joining one; an adult who accepted an older version sees it before any
+  family page (`family.acceptNotice`). It names the installation (the directory's district name),
+  its retention period and, if set, `DISTRICT_CONFIG.homeLearning.contact`. Change the wording, then
+  bump `FAMILY_NOTICE_VERSION`.
+- **Read-aloud.** On by default; any adult turns it off in Family settings (`family.readAloud`).
+  Off, the practice screen speaks nothing, hides its "Hear" buttons, and where an item needs a
+  spoken word or story, shows the grown-up what to say behind "Grown-up: what to say".
+- **Account deletion.** `family.deleteAccount` removes the adult from their family (or deletes it, as
+  its last adult), then removes their guardian principal and sign-in identifier from the
+  directory. Signing in again starts over as a newcomer.
 
 ## Reviews
 
@@ -134,5 +150,4 @@ for 730 days.
 - Child sessions on the phone app.
 - Reviewed packs, recorded phoneme models, and later patterns (digraphs, final e, vowel teams).
 - Adult-reviewed adaptation of shelf items into practice.
-- Purging audit entries and spent tokens; self-service deletion of an adult's account.
 - A family pilot: see [pilot/home-learning-pilot.md](pilot/home-learning-pilot.md).

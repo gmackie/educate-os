@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button, Surface } from "@cloudflare/kumo";
-import { ArrowLeftIcon, SpeakerHighIcon, StarIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, StarIcon } from "@phosphor-icons/react";
 import { ItemStep } from "./ItemStep.tsx";
-import { quiet, speak } from "./speak.ts";
+import { HearButton } from "./HearButton.tsx";
+import { quiet, useSpeech } from "./speak.ts";
 import { BIG, type PracticeView } from "./types.ts";
 
 /**
@@ -13,6 +14,7 @@ export const ActivityRunner = ({ view, onDone }: { view: PracticeView; onDone: (
   const firstOpen = view.items.findIndex((item) => !view.saved.includes(item.key));
   const [page, setPage] = useState<"intro" | number | "done">(view.completed || firstOpen < 0 ? "done" : "intro");
   const start = firstOpen < 0 ? 0 : firstOpen;
+  const { speak } = useSpeech();
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -31,7 +33,7 @@ export const ActivityRunner = ({ view, onDone }: { view: PracticeView; onDone: (
             <p className="text-2xl">{view.directions}</p>
             <p className="text-xl text-kumo-subtle">{view.example}</p>
             <div className="flex flex-wrap gap-3">
-              <Button className={BIG} icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(`${view.directions} ${view.example}`)}>Hear the directions</Button>
+              <HearButton className={BIG} text={`${view.directions} ${view.example}`}>Hear the directions</HearButton>
               <Button className={BIG} variant="primary" onClick={() => {
                 setPage(start);
                 speak(view.items[start]!.prompt);

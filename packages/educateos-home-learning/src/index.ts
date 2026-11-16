@@ -5,6 +5,7 @@ export * from "./progress.ts";
 export * from "./secrets.ts";
 export * from "./storage.ts";
 export * from "./service.ts";
+export * from "./notice.ts";
 export * from "./relationships.ts";
 export {
   PACKS,

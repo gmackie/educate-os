@@ -112,6 +112,8 @@ export const FamilyAdult = z.strictObject({
   /** Their name as the directory had it when they joined, for the other adults to recognize. */
   displayName: DisplayName.optional(),
   joinedAt: Timestamp,
+  /** The family notice they last accepted. Absent in records from before the notice existed. */
+  noticeAccepted: z.strictObject({ version: z.string().min(1).max(32), at: Timestamp }).optional(),
 });
 /** A family adult. */
 export type FamilyAdult = z.infer<typeof FamilyAdult>;
@@ -148,6 +150,8 @@ export const FamilyRecord = z.strictObject({
   shelf: z.array(ShelfItem).max(MAX_SHELF),
   /** Open invitations for more adults. Absent in records from before invitations existed. */
   invitations: z.array(AdultInvitation).max(MAX_ADULTS).default([]),
+  /** Whether a child's practice screen reads directions and words aloud with the browser's speech. */
+  readAloud: z.boolean().default(true),
   pin: StoredPin,
   createdAt: Timestamp,
   revision: z.int().min(1),
@@ -213,3 +217,9 @@ export const ChildSession = z.strictObject({
 });
 /** A child session. */
 export type ChildSession = z.infer<typeof ChildSession>;
+
+/**
+ * How long a child session's cookie lasts. A child session older than this can no longer be
+ * presented by any browser, so the scheduled purge deletes it.
+ */
+export const CHILD_SESSION_MAX_DAYS = 30;

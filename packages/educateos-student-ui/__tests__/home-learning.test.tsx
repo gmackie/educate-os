@@ -61,6 +61,11 @@ describe("home learning (ADR-0016)", () => {
     expect(start.hasAttribute("disabled")).toBe(true);
     await user.clear(screen.getByLabelText("Type the PIN again"));
     await user.type(screen.getByLabelText("Type the PIN again"), "2468");
+    // The notice about the family's information must be accepted first.
+    expect(screen.getByRole("heading", { name: "Your family's information" })).toBeTruthy();
+    expect(screen.getByText("This installation is run by Willow Creek.")).toBeTruthy();
+    expect(start.hasAttribute("disabled")).toBe(true);
+    await user.click(screen.getByRole("checkbox", { name: "I've read this and agree" }));
     await user.click(start);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
@@ -177,7 +182,7 @@ describe("more grown-ups (ADR-0016)", () => {
     const { unmount } = await renderApp(jordan, "/family/home-settings");
     const adults = await screen.findByRole("region", { name: "Grown-ups" });
     expect(within(adults).getByText("You")).toBeTruthy();
-    expect(screen.getByText("Practice older than 2 years is deleted automatically.")).toBeTruthy();
+    expect(screen.getByText(/Practice is deleted automatically 2 years after it happened/)).toBeTruthy();
     await user.click(within(adults).getByRole("button", { name: "Invite another grown-up" }));
     const copy = await within(adults).findByRole("button", { name: "Copy the invitation link" });
     expect(copy).toBeTruthy();
@@ -186,10 +191,59 @@ describe("more grown-ups (ADR-0016)", () => {
 
     const sam = await fakeCommunity({ as: { service: jordan.service, principalId: "prn_g-sam", displayName: "Sam Safranek" } });
     await renderApp(sam, `/family/join#${new URL(link).hash.slice(1)}`);
-    await user.click(await screen.findByRole("button", { name: "Join the family" }));
+    const join = await screen.findByRole("button", { name: "Join the family" });
+    expect(join.hasAttribute("disabled")).toBe(true);
+    await user.click(screen.getByRole("checkbox", { name: "I've read this and agree" }));
+    await user.click(join);
     expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
     expect(await screen.findByRole("region", { name: /Maya/ })).toBeTruthy();
     const family = (await jordan.service.home({ principalId: "prn_g-jordan" as never, districtId: "dst_willowcreek" as never })).family!;
     expect(family.adults.map((a) => a.displayName)).toEqual(["Jordan Rivers", "Sam Safranek"]);
+  });
+});
+
+describe("family controls (ADR-0016)", () => {
+  it("asks a grown-up who accepted an older notice to accept the current one first", async () => {
+    const user = userEvent.setup();
+    await renderApp(await fakeCommunity({ children: ["Maya"], staleNotice: true }), "/family/library");
+    expect(await screen.findByRole("heading", { level: 1, name: "Before you carry on" })).toBeTruthy();
+    const carryOn = screen.getByRole("button", { name: "Continue" });
+    expect(carryOn.hasAttribute("disabled")).toBe(true);
+    await user.click(screen.getByRole("checkbox", { name: "I've read this and agree" }));
+    await user.click(carryOn);
+    expect(await screen.findByRole("heading", { level: 1, name: "Library" })).toBeTruthy();
+  });
+
+  it("turns reading aloud off, so practice shows the grown-up what to say instead", async () => {
+    const user = userEvent.setup();
+    const community = await fakeCommunity({ children: ["Maya"] });
+    const { unmount } = await renderApp(community, "/family/home-settings");
+    const toggle = await screen.findByRole("switch", { name: "Read practice aloud" });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    await user.click(toggle);
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Read practice aloud" }).getAttribute("aria-checked")).toBe("false"));
+    unmount();
+
+    await handOverMaya(user, community);
+    await user.click(await screen.findByRole("button", { name: "Start: Count the sounds" }));
+    expect(screen.queryByRole("button", { name: "Hear the directions" })).toBeNull();
+    await user.click(await screen.findByRole("button", { name: "Let's go" }));
+    expect(await screen.findByText("Grown-up: what to say")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Hear the word" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hear it again" })).toBeNull();
+  });
+
+  it("deletes a grown-up's account, after which the next visit starts over", async () => {
+    const user = userEvent.setup();
+    const community = await fakeCommunity({ children: ["Maya"] });
+    await renderApp(community, "/family/home-settings");
+    const account = await screen.findByRole("region", { name: "Your account" });
+    expect(within(account).getByText(/also deletes your family/)).toBeTruthy();
+    const remove = within(account).getByRole("button", { name: "Delete my account" });
+    expect(remove.hasAttribute("disabled")).toBe(true);
+    await user.type(within(account).getByLabelText('To delete your account, type "delete"'), "delete");
+    await user.click(remove);
+    expect(await screen.findByRole("heading", { level: 1, name: "Join this learning community" })).toBeTruthy();
+    expect((await community.service.home({ principalId: "prn_g-jordan" as never, districtId: "dst_willowcreek" as never })).family).toBeNull();
   });
 });

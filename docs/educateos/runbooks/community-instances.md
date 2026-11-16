@@ -44,7 +44,7 @@ operator routes stay off, and organizers can't see families' practice.
 
    ```sh
    node packages/educateos-district-worker/scripts/community-config.ts <slug> \
-     --name "<Name>" --time-zone <IANA zone> --signup open --retention-days 730 \
+     --name "<Name>" --time-zone <IANA zone> --signup open --retention-days 730 [--contact <email or https link>] \
      --organizer-subject <Access user_uuid> --organizer-name "<Organizer>" |
      FG_APP=educateos-<slug> forge secret set DISTRICT_CONFIG --stage production --stdin
    printf %s '<audience>' | FG_APP=educateos-<slug> forge secret set CF_ACCESS_AUD --stage production --stdin

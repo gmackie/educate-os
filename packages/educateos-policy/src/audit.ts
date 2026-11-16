@@ -52,6 +52,27 @@ export interface PolicyAuditSink {
   record(event: PolicyAuditEvent): Promise<void>;
 }
 
+/**
+ * The resource kinds whose decisions a retention schedule may delete (ADR-0016): a family's own home
+ * learning records, which the family can delete outright and which an installation keeps only for
+ * its retention period. Every other decision stays append-only.
+ */
+export const RETENTION_PURGEABLE_KINDS = ["family", "home-practice"] as const satisfies readonly ResourceKind[];
+
+/** A trail that can let decisions about a family's records age out (ADR-0016). */
+export interface PolicyAuditRetention {
+  /**
+   * Deletes every decision about a {@link RETENTION_PURGEABLE_KINDS} resource made before `before`
+   * (an ISO timestamp), and returns how many it deleted.
+   */
+  deleteFamilyDecisionsBefore(before: string): Promise<number>;
+}
+
+/** Whether a retention schedule may delete `event`. */
+export function isRetentionPurgeable(event: PolicyAuditEvent): boolean {
+  return event.resourceKind !== undefined && (RETENTION_PURGEABLE_KINDS as readonly string[]).includes(event.resourceKind);
+}
+
 /** One recorded event and its position in the trail. */
 export interface StoredPolicyAuditEvent {
   /** The event's position: strictly increasing in append order. */
@@ -138,9 +159,16 @@ export function searchAuditEvents(events: readonly PolicyAuditEvent[], query: Po
 }
 
 /** A {@link PolicyAuditSink} that keeps events in memory, in order: for tests and local harnesses. */
-export class InMemoryPolicyAuditSink implements PolicyAuditSink, PolicyAuditReader {
+export class InMemoryPolicyAuditSink implements PolicyAuditSink, PolicyAuditReader, PolicyAuditRetention {
   /** The events recorded so far. */
   readonly events: PolicyAuditEvent[] = [];
+
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    const kept = this.events.filter((e) => !(isRetentionPurgeable(e) && e.decidedAt < before));
+    const deleted = this.events.length - kept.length;
+    this.events.splice(0, this.events.length, ...kept);
+    return deleted;
+  }
 
   async record(event: PolicyAuditEvent): Promise<void> {
     this.events.push(event);

@@ -1378,6 +1378,26 @@ export class DurableObjectHomeLearningStore implements HomeLearningStore {
     });
   }
 
+  async deleteChildSessions(endedBefore: string, startedBefore: string): Promise<number> {
+    return this.#tables.transaction((sql) => {
+      let deleted = 0;
+      for (const row of sql.exec(`SELECT digest, session_json FROM ${DISTRICT_TABLES.childSessions}`).toArray()) {
+        const child = parseStored(ChildSession, row.session_json, "a child session");
+        if ((child.endedAt !== undefined && child.endedAt < endedBefore) || child.startedAt < startedBefore) {
+          sql.exec(`DELETE FROM ${DISTRICT_TABLES.childSessions} WHERE digest = ?`, String(row.digest));
+          deleted += 1;
+        }
+      }
+      return deleted;
+    });
+  }
+
+  async familyIds(): Promise<FamilyId[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT id FROM ${DISTRICT_TABLES.families} ORDER BY id`).toArray().map((row) => FamilyId.parse(row.id))
+    );
+  }
+
   async deleteSessionsOf(learnerId: LearnerId): Promise<void> {
     this.#tables.transaction((sql) => {
       sql.exec(`DELETE FROM ${DISTRICT_TABLES.practiceSessions} WHERE learner_id = ?`, learnerId);

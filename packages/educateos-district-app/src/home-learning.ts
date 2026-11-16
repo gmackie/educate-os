@@ -15,7 +15,7 @@ import {
 import type { AcademicStore } from "@educateos/academics";
 import { requestNewPrincipalLink } from "@educateos/identity";
 import { newIdentityRequestId, type IdentityLinkAdminService, type IdentityLinkStore } from "@educateos/identity-links";
-import type { ChildSession, HomeLearningService } from "@educateos/home-learning";
+import { CHILD_SESSION_MAX_DAYS, type ChildSession, type HomeLearningService } from "@educateos/home-learning";
 import type { ParsedRouteInput, RouteResponse, WithCookie } from "./routes.ts";
 
 /** How a community installation admits newcomers (ADR-0016). */
@@ -28,6 +28,8 @@ export interface HomeLearningOptions {
   signup: "open" | "approval" | "invite-only";
   /** Days a practice session is kept after it started; the hourly job deletes older ones. Unset keeps them. */
   retentionDays?: number;
+  /** How families reach whoever runs the installation, stated in the family notice. */
+  contact?: string;
 }
 
 /** The routes this module handles. */
@@ -40,6 +42,7 @@ export type HomeLearningRouteName =
   | "family.shelfAdd" | "family.shelfRemove"
   | "family.startChildSession" | "family.endChildSessions"
   | "family.inviteAdult" | "family.revokeInvitation" | "family.acceptInvitation" | "family.removeAdult"
+  | "family.acceptNotice" | "family.readAloud" | "family.deleteAccount"
   | "learner.session" | "learner.home" | "learner.start" | "learner.save" | "learner.exit"
   | "admin.familySignups";
 
@@ -54,6 +57,8 @@ export interface HomeLearningRequestContext {
   /** The browser's open child session, resolved once per request, or undefined. */
   readonly childSession: ChildSession | undefined;
   homeLearning(): HomeLearningService;
+  /** Removes the caller's own principal, and so their sign-in, from the directory. */
+  deleteOwnPrincipal(): Promise<void>;
 }
 
 /** The cookie a child session rides in. `__Host-` pins it to this origin, path `/`, over HTTPS. */
@@ -70,7 +75,7 @@ export function childSessionToken(request: Request): string | undefined {
 
 /** The `Set-Cookie` value that starts a child session. It lasts until an adult ends it. */
 export function childSessionCookie(token: string): string {
-  return `${CHILD_SESSION_COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 30}`;
+  return `${CHILD_SESSION_COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * CHILD_SESSION_MAX_DAYS}`;
 }
 
 /** The `Set-Cookie` value that clears it. */
@@ -118,7 +123,15 @@ export function homeLearningHandlers<C extends HomeLearningRequestContext>(): Ho
       return { id, expiresAt, link: link.toString() };
     },
     "family.revokeInvitation": (ctx, { params }) => ctx.homeLearning().revokeInvitation(ctx.subject, params.invitationId),
-    "family.acceptInvitation": (ctx, { body }) => ctx.homeLearning().acceptInvitation(ctx.subject, body.token, nameOf(ctx)),
+    "family.acceptInvitation": (ctx, { body }) => ctx.homeLearning().acceptInvitation(ctx.subject, body.token, body.acceptNotice, nameOf(ctx)),
+    "family.acceptNotice": (ctx, { body }) => ctx.homeLearning().acceptNotice(ctx.subject, body.version),
+    "family.readAloud": (ctx, { body }) => ctx.homeLearning().setReadAloud(ctx.subject, body.on),
+    "family.deleteAccount": async (ctx) => {
+      // The family first, through policy, so a refusal there leaves the sign-in in place.
+      const { familyDeleted } = await ctx.homeLearning().leaveForAccountDeletion(ctx.subject);
+      await ctx.deleteOwnPrincipal();
+      return { deleted: true as const, familyDeleted };
+    },
     "family.removeAdult": (ctx, { params }) => ctx.homeLearning().removeAdult(ctx.subject, params.principalId),
     "family.rename": (ctx, { body }) => ctx.homeLearning().renameFamily(ctx.subject, body.name),
     "family.changePin": (ctx, { body }) => ctx.homeLearning().changePin(ctx.subject, body.pin),
@@ -222,4 +235,30 @@ export async function joinCommunity(deps: CommunityJoinDependencies, identity: V
   if (checkDirectoryIntegrity(next).length > 0) throw new EducateOsError("conflict", "That sign-in can't join this community.");
   await deps.directory.commit(next, version);
   return { outcome: "joined" };
+}
+
+/**
+ * Removes a community member's own principal from the directory, with the sign-in identifier it
+ * holds (ADR-0016). Only a guardian principal that nothing else in the directory refers to can go
+ * this way; anyone else (an organizer, or a guardian a school roster knows) asks an administrator.
+ *
+ * @throws EducateOsError `forbidden` for any other principal.
+ */
+export async function deleteCommunityPrincipal(directory: AcademicStore, principalId: PrincipalId): Promise<void> {
+  const refuse = () => new EducateOsError("forbidden", "Your account can't be deleted here. Ask this community's organizer.");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { version, snapshot } = await directory.load();
+    const principal = snapshot.principals.find((p) => p.id === principalId);
+    if (principal === undefined) return;
+    if (principal.kind !== "guardian") throw refuse();
+    const next: DistrictDirectorySnapshot = { ...snapshot, principals: snapshot.principals.filter((p) => p.id !== principalId) };
+    // A principal something still names (a relationship, an enrollment) fails integrity, so stays.
+    if (checkDirectoryIntegrity(next).length > 0) throw refuse();
+    try {
+      await directory.commit(next, version);
+      return;
+    } catch (error) {
+      if (!(error instanceof EducateOsError && error.code === "conflict") || attempt === 2) throw error;
+    }
+  }
 }

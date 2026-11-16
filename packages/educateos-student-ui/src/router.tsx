@@ -47,6 +47,7 @@ import { FamilySettingsPage } from "./family/FamilySettingsPage.tsx";
 import { InvitationPage } from "./family/InvitationPage.tsx";
 // Home learning (ADR-0016)
 import { HomeSettingsPage } from "./homeLearning/HomeSettingsPage.tsx";
+import { NoticeGate } from "./homeLearning/FamilyNotice.tsx";
 import { JoinFamilyPage } from "./homeLearning/JoinFamilyPage.tsx";
 import { JoinCommunity } from "./homeLearning/JoinCommunity.tsx";
 import { LibraryPage } from "./homeLearning/LibraryPage.tsx";
@@ -137,6 +138,9 @@ const SignedIn = ({ pathname }: { pathname: string }) => {
     <Navigate to={HOME_PATH} replace />
   ) : audience === "student" && isFamilyPath(pathname) ? (
     <Empty title="There's nothing here" description="Use Home to find your classes." />
+  ) : audience === "family" && homeLearning?.hasFamily === true && pathname !== JOIN_FAMILY_PATH ? (
+    // A family adult who hasn't accepted the current notice reads it before any family page.
+    <NoticeGate><Outlet /></NoticeGate>
   ) : (
     <Outlet />
   );

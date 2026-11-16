@@ -29,6 +29,14 @@ describe.each(COMMUNITY_DEPLOYMENTS)("community $slug", ({ slug }) => {
   });
 });
 
+it("states a contact for the family notice when one is given", () => {
+  const config = readDistrictWorkerConfig(JSON.stringify(communityConfig({
+    slug: "safranek", name: "F", timeZone: "America/Chicago", signup: "open", retentionDays: 730, contact: "help@example.org",
+    organizerSubject: "00000000-0000-0000-0000-000000000000", organizerName: "O",
+  })));
+  expect(config.homeLearning).toEqual({ signup: "open", retentionDays: 730, contact: "help@example.org" });
+});
+
 it("refuses a bad slug or time zone", () => {
   const base = { slug: "safranek", name: "F", timeZone: "America/Chicago", signup: "open" as const, organizerSubject: "x", organizerName: "O" };
   expect(() => communityConfig({ ...base, slug: "Bad Slug" })).toThrow();

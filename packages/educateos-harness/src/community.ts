@@ -40,7 +40,8 @@ async function main(): Promise<void> {
 
   // Jordan Rivers' family: Maya (K) and Leo (grade 1), each with a short plan.
   const rivers = await token("wc-parent-rivers");
-  await call(rivers, "POST", "/api/family/create", { name: "The Rivers family", pin: "2468" });
+  const { notice } = (await call(rivers, "GET", "/api/family/home")).json as { notice: { version: string } };
+  await call(rivers, "POST", "/api/family/create", { name: "The Rivers family", pin: "2468", acceptNotice: notice.version });
   const maya = (await call(rivers, "POST", "/api/family/learners", { displayName: "Maya", avatar: "🦊", gradeBand: "K" })).json;
   const leo = (await call(rivers, "POST", "/api/family/learners", { displayName: "Leo", avatar: "🐢", gradeBand: "1" })).json;
   for (const activity of ["count-to-5", "count-sounds"]) {
