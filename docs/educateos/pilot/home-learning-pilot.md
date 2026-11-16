@@ -9,7 +9,9 @@ pseudonyms (Family A, Child A1) and keep consent forms elsewhere.
 
 - [ ] The packs used have had qualified educator review, recorded in each pack's `review` field, or
       families are told plainly that the content is a draft.
-- [ ] Retention for practice evidence is decided and written here.
+- [x] Retention for practice evidence is decided and written here: practice sessions are deleted
+      automatically 730 days (2 years) after they started (`DISTRICT_CONFIG.homeLearning.retentionDays`,
+      decided 2026-11-15; counsel brief question 4 may revise it).
 - [ ] Each family has given written consent, and knows how to export and delete their data.
 - [ ] The community installation runs the release under test, with `homeLearning` set.
 
