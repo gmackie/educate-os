@@ -79,6 +79,25 @@ describe("DurableObjectPolicyAuditSink", () => {
     expect(await trail.forCorrelation("cor-1")).toStrictEqual([event("cor-1")]);
   });
 
+  it("lets only decisions about a family's records age out, and nothing else be deleted (ADR-0016)", async () => {
+    const trail = fresh();
+    const about = (correlationId: string, decidedAt: string, resourceKind?: PolicyAuditEvent["resourceKind"]): PolicyAuditEvent =>
+      ({ ...event(correlationId), decidedAt, ...(resourceKind === undefined ? {} : { resourceKind, resourceId: "fam_x" }) });
+    await trail.record(about("old-family", "2024-01-01T00:00:00.000Z", "family"));
+    await trail.record(about("old-practice", "2024-01-01T00:00:00.000Z", "home-practice"));
+    await trail.record(about("old-term", "2024-01-01T00:00:00.000Z", "term"));
+    await trail.record(about("old-none", "2024-01-01T00:00:00.000Z"));
+    await trail.record(about("new-family", "2026-11-01T00:00:00.000Z", "family"));
+    expect(await trail.deleteFamilyDecisionsBefore("2025-01-01T00:00:00.000Z")).toBe(2);
+    expect((await trail.read(0, 10)).map((s) => s.event.correlationId)).toStrictEqual(["old-term", "old-none", "new-family"]);
+    await runInDurableObject(trail, (_instance, state) => {
+      // The trigger itself still refuses any other delete, whatever statement asks.
+      expect(() => state.storage.sql.exec(`DELETE FROM ${POLICY_AUDIT_TABLE} WHERE correlation_id = 'old-term'`)).toThrow(/append-only/);
+      expect(() => state.storage.sql.exec(`DELETE FROM ${POLICY_AUDIT_TABLE} WHERE correlation_id = 'old-none'`)).toThrow(/append-only/);
+      expect(() => state.storage.sql.exec(`UPDATE ${POLICY_AUDIT_TABLE} SET effect = 'deny' WHERE correlation_id = 'new-family'`)).toThrow(/append-only/);
+    });
+  });
+
   it("stores nothing for an event that carries content or misses required fields", async () => {
     await runInDurableObject(fresh(), async (_instance, state) => {
       const sink = new DurableObjectPolicyAuditSink(state.storage);

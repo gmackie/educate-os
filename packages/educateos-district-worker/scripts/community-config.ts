@@ -29,6 +29,8 @@ export interface CommunityConfigInput {
   organizerName: string;
   /** Days practice is kept; unset keeps it until the family deletes it. */
   retentionDays?: number;
+  /** How families reach the operator, stated in the family notice. */
+  contact?: string;
 }
 
 /** A community's `DISTRICT_CONFIG`, as a `DistrictWorkerConfig` document. */
@@ -52,7 +54,11 @@ export function communityConfig(input: CommunityConfigInput): Record<string, unk
       roleAssignments: [{ principalId: organizerId, role: "district-admin", scope: { level: "district", districtId }, source: "local-grant" }],
     },
     authority: "local",
-    homeLearning: { signup: input.signup, ...(input.retentionDays === undefined ? {} : { retentionDays: input.retentionDays }) },
+    homeLearning: {
+      signup: input.signup,
+      ...(input.retentionDays === undefined ? {} : { retentionDays: input.retentionDays }),
+      ...(input.contact === undefined ? {} : { contact: input.contact }),
+    },
   };
 }
 
@@ -66,6 +72,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       "organizer-subject": { type: "string" },
       "organizer-name": { type: "string", default: "Community organizer" },
       "retention-days": { type: "string" },
+      contact: { type: "string" },
     },
   });
   const signup = values.signup as CommunityConfigInput["signup"];
@@ -77,6 +84,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       slug: positionals[0]!, name: values.name, timeZone: values["time-zone"], signup,
       organizerSubject: values["organizer-subject"], organizerName: values["organizer-name"]!,
       ...(values["retention-days"] === undefined ? {} : { retentionDays: Number(values["retention-days"]) }),
+      ...(values.contact === undefined ? {} : { contact: values.contact }),
     })));
   }
 }

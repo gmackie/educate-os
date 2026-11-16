@@ -7,8 +7,10 @@ import { DistrictId, EducateOsError, PrincipalId, type PolicySettings, type Veri
 import { WILLOWCREEK } from "@educateos/fixtures";
 import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@educateos/policy";
 import {
+  FAMILY_NOTICE_VERSION as NOTICE,
   HomeLearningService,
   InMemoryHomeLearningStore,
+  tokenDigest,
   familyAdults,
   type Answer,
   type Item,
@@ -45,7 +47,7 @@ function setup(options: { retentionDays?: number } = {}) {
 }
 
 async function riversFamily(service: HomeLearningService) {
-  await service.createFamily(RIVERS, { name: "The Rivers family", pin: "2468" });
+  await service.createFamily(RIVERS, { name: "The Rivers family", pin: "2468", acceptNotice: NOTICE });
   const maya = await service.addLearner(RIVERS, { displayName: "Maya", avatar: "🦊", gradeBand: "K" });
   const leo = await service.addLearner(RIVERS, { displayName: "Leo", avatar: "🐢", gradeBand: "1" });
   return { maya, leo };
@@ -82,14 +84,14 @@ const code = async (promise: Promise<unknown>) => {
 describe("families", () => {
   it("lets an adult start one family, add children with grade-based starting points, and see it", async () => {
     const { service, audit } = setup();
-    expect(await service.home(RIVERS)).toEqual({ family: null });
+    expect((await service.home(RIVERS)).family).toBeNull();
     const { maya, leo } = await riversFamily(service);
     expect(maya.starts).toEqual({ reading: "count-sounds", math: "count-to-5" });
     expect(leo.starts).toEqual({ reading: "build-words-set-1", math: "place-on-line-10" });
     const home = await service.home(RIVERS);
     expect(home.family?.learners.map((l) => l.displayName)).toEqual(["Maya", "Leo"]);
     expect(JSON.stringify(home)).not.toContain("hash");
-    expect(await code(service.createFamily(RIVERS, { name: "Again", pin: "1234" }))).toBe("conflict");
+    expect(await code(service.createFamily(RIVERS, { name: "Again", pin: "1234", acceptNotice: NOTICE }))).toBe("conflict");
     // Every allowed decision is audited with the family as its grant.
     const allowed = audit.events.filter((e) => e.effect === "allow" && e.ruleId === "family.adult.manage");
     expect(allowed.length).toBeGreaterThan(0);
@@ -99,7 +101,7 @@ describe("families", () => {
   it("keeps each family's records from every other adult", async () => {
     const { service } = setup();
     const { maya } = await riversFamily(service);
-    await service.createFamily(NAIR, { name: "Nair", pin: "1357" });
+    await service.createFamily(NAIR, { name: "Nair", pin: "1357", acceptNotice: NOTICE });
     expect((await service.home(NAIR)).family?.learners).toEqual([]);
     expect(await code(service.progress(NAIR, maya.id))).toBe("not-found");
     expect(await code(service.addToQueue(NAIR, maya.id, { pack: "number-sense", activity: "count-to-5" }))).toBe("not-found");
@@ -111,15 +113,15 @@ describe("families", () => {
     const { service } = setup();
     const { maya } = await riversFamily(service);
     expect(await code(service.progress(ORGANIZER, maya.id))).toBe("not-found");
-    expect(await code(service.createFamily(ORGANIZER, { name: "Staff", pin: "1111" }))).toBe("forbidden");
+    expect(await code(service.createFamily(ORGANIZER, { name: "Staff", pin: "1111", acceptNotice: NOTICE }))).toBe("forbidden");
   });
 
   it("refuses a malformed PIN or name", async () => {
     const { service } = setup();
     // A Zod error here is answered `validation-failed` by the district app.
-    await expect(service.createFamily(RIVERS, { name: "R", pin: "12" })).rejects.toThrow(/4 to 8 digits/);
-    await expect(service.createFamily(RIVERS, { name: "<b>", pin: "1234" })).rejects.toThrow(/plain text/);
-    expect(await service.home(RIVERS)).toEqual({ family: null });
+    await expect(service.createFamily(RIVERS, { name: "R", pin: "12", acceptNotice: NOTICE })).rejects.toThrow(/4 to 8 digits/);
+    await expect(service.createFamily(RIVERS, { name: "<b>", pin: "1234", acceptNotice: NOTICE })).rejects.toThrow(/plain text/);
+    expect((await service.home(RIVERS)).family).toBeNull();
   });
 
   it("removes a child with all their practice, and exports everything but the PIN", async () => {
@@ -277,15 +279,15 @@ describe("more grown-ups", () => {
     const { maya } = await riversFamily(service);
     const { token } = await service.inviteAdult(RIVERS);
     expect((await service.home(RIVERS)).family?.invitations).toHaveLength(1);
-    const joined = await service.acceptInvitation(ORTIZ, token, "Sam Ortiz");
+    const joined = await service.acceptInvitation(ORTIZ, token, NOTICE, "Sam Ortiz");
     expect(joined.adults.map((a) => [a.displayName, a.you])).toEqual([[undefined, false], ["Sam Ortiz", true]]);
     expect(joined.invitations).toEqual([]);
     expect((await service.progress(ORTIZ, maya.id)).learner.displayName).toBe("Maya");
     // Used once; another adult can't reuse it.
-    await service.createFamily(NAIR, { name: "Nair", pin: "1357" });
-    expect(await code(service.acceptInvitation(NAIR, token))).toBe("conflict");
+    await service.createFamily(NAIR, { name: "Nair", pin: "1357", acceptNotice: NOTICE });
+    expect(await code(service.acceptInvitation(NAIR, token, NOTICE))).toBe("conflict");
     await service.deleteFamily(NAIR);
-    expect(await code(service.acceptInvitation(NAIR, token))).toBe("not-found");
+    expect(await code(service.acceptInvitation(NAIR, token, NOTICE))).toBe("not-found");
   });
 
   it("refuses an expired, revoked or forged invitation the same way", async () => {
@@ -293,22 +295,22 @@ describe("more grown-ups", () => {
     await riversFamily(service);
     const expired = await service.inviteAdult(RIVERS);
     clock.at += 8 * 86_400_000;
-    expect(await code(service.acceptInvitation(ORTIZ, expired.token))).toBe("not-found");
+    expect(await code(service.acceptInvitation(ORTIZ, expired.token, NOTICE))).toBe("not-found");
     const revoked = await service.inviteAdult(RIVERS);
     await service.revokeInvitation(RIVERS, revoked.id);
-    expect(await code(service.acceptInvitation(ORTIZ, revoked.token))).toBe("not-found");
-    expect(await code(service.acceptInvitation(ORTIZ, `${revoked.token.split(".")[0]}.${"A".repeat(43)}`))).toBe("not-found");
-    expect(await code(service.acceptInvitation(ORTIZ, "nonsense"))).toBe("not-found");
+    expect(await code(service.acceptInvitation(ORTIZ, revoked.token, NOTICE))).toBe("not-found");
+    expect(await code(service.acceptInvitation(ORTIZ, `${revoked.token.split(".")[0]}.${"A".repeat(43)}`, NOTICE))).toBe("not-found");
+    expect(await code(service.acceptInvitation(ORTIZ, "nonsense", NOTICE))).toBe("not-found");
   });
 
   it("removes an adult, ending their access and child sessions, but never the last one", async () => {
     const { service } = setup();
     const { maya } = await riversFamily(service);
-    await service.acceptInvitation(ORTIZ, (await service.inviteAdult(RIVERS)).token);
+    await service.acceptInvitation(ORTIZ, (await service.inviteAdult(RIVERS)).token, NOTICE);
     const { token } = await service.startChildSession(ORTIZ, maya.id);
     await service.removeAdult(RIVERS, ORTIZ.principalId);
     expect(await code(service.progress(ORTIZ, maya.id))).toBe("not-found");
-    expect(await service.home(ORTIZ)).toEqual({ family: null });
+    expect((await service.home(ORTIZ)).family).toBeNull();
     expect(await service.childSession(ORTIZ, token)).toBeUndefined();
     expect(await code(service.removeAdult(RIVERS, RIVERS.principalId))).toBe("conflict");
   });
@@ -327,9 +329,84 @@ describe("retention", () => {
     clock.at += 400 * 86_400_000;
     await service.startPractice(RIVERS, child, second!.entryId);
     clock.at += 400 * 86_400_000;
-    expect(await service.purgeExpired()).toMatchObject({ ran: true, deleted: 1 });
+    expect(await service.purgeExpired()).toMatchObject({ practiceSessions: { deleted: 1 } });
     expect((await service.exportFamily(RIVERS)).sessions.map((s) => s.ref.activity)).toEqual(["count-to-10"]);
     expect((await service.home(RIVERS)).family?.retentionDays).toBe(730);
-    expect(await setup().service.purgeExpired()).toEqual({ ran: false });
+    expect(await setup().service.purgeExpired()).toEqual({ childSessions: 0, invitations: 0 });
+  });
+
+  it("purges spent child-session tokens and expired invitations, keeping live ones", async () => {
+    const { service, store, clock } = setup();
+    const { maya, leo } = await riversFamily(service);
+    const ended = await service.startChildSession(RIVERS, maya.id);
+    await service.endChildSession(RIVERS, (await service.childSession(RIVERS, ended.token))!, "2468");
+    const stale = await service.startChildSession(RIVERS, leo.id);
+    await service.inviteAdult(RIVERS);
+    clock.at += 4 * 86_400_000;
+    const fresh = await service.inviteAdult(RIVERS);
+    clock.at += 4 * 86_400_000;
+    const live = await service.startChildSession(RIVERS, maya.id);
+    expect(await service.purgeExpired()).toEqual({ childSessions: 1, invitations: 1 });
+    expect((await service.home(RIVERS)).family?.invitations.map((i) => i.id)).toEqual([fresh.id]);
+    clock.at += 25 * 86_400_000;
+    // A child session no cookie can still carry goes too; the newer one stays.
+    expect(await service.purgeExpired()).toMatchObject({ childSessions: 1 });
+    expect(await service.childSession(RIVERS, stale.token)).toBeUndefined();
+    expect(await store.getChildSession(await tokenDigest(live.token))).toBeDefined();
+  });
+});
+
+describe("the family notice", () => {
+  it("must be accepted, in its current version, to start or join a family", async () => {
+    const { service } = setup({ retentionDays: 730 });
+    const home = await service.home(RIVERS);
+    expect(home).toMatchObject({ family: null, noticeAccepted: false, notice: { version: NOTICE } });
+    expect(home.notice.paragraphs.join(" ")).toMatch(/deleted automatically 2 years after/);
+    expect(await code(service.createFamily(RIVERS, { name: "R", pin: "2468", acceptNotice: "2000-01-01" }))).toBe("validation-failed");
+    await riversFamily(service);
+    expect((await service.home(RIVERS)).noticeAccepted).toBe(true);
+    const { token } = await service.inviteAdult(RIVERS);
+    expect(await code(service.acceptInvitation(ORTIZ, token, "old"))).toBe("validation-failed");
+    await service.acceptInvitation(ORTIZ, token, NOTICE);
+    expect((await service.home(ORTIZ)).noticeAccepted).toBe(true);
+  });
+
+  it("is asked for again when an adult accepted an older version", async () => {
+    const { service, store } = setup();
+    await riversFamily(service);
+    const id = (await store.familyOfAdult(RIVERS.principalId))!;
+    const family = (await store.loadFamily(id))!;
+    await store.commitFamily({ ...family, adults: family.adults.map((a) => ({ ...a, noticeAccepted: { version: "2026-01-01", at: a.joinedAt } })), revision: family.revision + 1 }, family.revision);
+    expect((await service.home(RIVERS)).noticeAccepted).toBe(false);
+    expect((await service.acceptNotice(RIVERS, NOTICE)).noticeAccepted).toBe(true);
+  });
+});
+
+describe("reading aloud", () => {
+  it("is on until the family turns it off, and the practice screen follows it", async () => {
+    const { service } = setup();
+    const { maya } = await riversFamily(service);
+    const { token } = await service.startChildSession(RIVERS, maya.id);
+    const child = (await service.childSession(RIVERS, token))!;
+    expect((await service.practiceHome(RIVERS, child)).readAloud).toBe(true);
+    await service.endAllChildSessions(RIVERS);
+    expect((await service.setReadAloud(RIVERS, false)).readAloud).toBe(false);
+    const again = (await service.childSession(RIVERS, (await service.startChildSession(RIVERS, maya.id)).token))!;
+    expect((await service.practiceHome(RIVERS, again)).readAloud).toBe(false);
+    expect(await code(service.setReadAloud(NAIR, true))).toBe("not-found");
+  });
+});
+
+describe("deleting an account", () => {
+  it("leaves the family when other adults remain, and deletes it as the last one", async () => {
+    const { service, store } = setup();
+    const { maya } = await riversFamily(service);
+    await service.acceptInvitation(ORTIZ, (await service.inviteAdult(RIVERS)).token, NOTICE);
+    expect(await service.leaveForAccountDeletion(ORTIZ)).toEqual({ familyDeleted: false });
+    expect((await service.home(ORTIZ)).family).toBeNull();
+    expect((await service.home(RIVERS)).family?.adults).toHaveLength(1);
+    expect(await service.leaveForAccountDeletion(RIVERS)).toEqual({ familyDeleted: true });
+    expect(await store.familyOfLearner(maya.id)).toBeUndefined();
+    expect(await service.leaveForAccountDeletion(RIVERS)).toEqual({ familyDeleted: false });
   });
 });

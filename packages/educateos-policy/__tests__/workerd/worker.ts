@@ -30,6 +30,11 @@ export class TestAuditTrail extends DurableObject {
     return this.#sink.search(query);
   }
 
+  /** Deletes decisions about a family's records made before `before`. */
+  async deleteFamilyDecisionsBefore(before: string): Promise<number> {
+    return this.#sink.deleteFamilyDecisionsBefore(before);
+  }
+
   /** One invocation's decisions. */
   async forCorrelation(correlationId: string): Promise<PolicyAuditEvent[]> {
     return this.#sink.forCorrelation(correlationId);

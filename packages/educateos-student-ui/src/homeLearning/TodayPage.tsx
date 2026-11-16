@@ -101,7 +101,7 @@ export const TodayPage = () => {
   const [home, reload] = useFamily();
   if (home.status === "loading") return <LoadingSkeleton label="Loading home learning" />;
   if (home.status === "error") return <ErrorState error={home.error} title="We couldn't load home learning" onRetry={reload} />;
-  if (home.data.family === null) return <FamilySetup onCreated={reload} />;
+  if (home.data.family === null) return <FamilySetup notice={home.data.notice} onCreated={reload} />;
   return (
     <div className="flex flex-col gap-6">
       <PageHeading>Today</PageHeading>

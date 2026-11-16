@@ -1,7 +1,6 @@
 import { Button } from "@cloudflare/kumo";
-import { SpeakerHighIcon } from "@phosphor-icons/react";
 import { BIG, type ItemOf, type ItemProps } from "./types.ts";
-import { speak } from "./speak.ts";
+import { HearButton } from "./HearButton.tsx";
 
 type ChoiceType = "blend-sounds" | "read-word" | "find-word" | "read-sentence" | "listen-and-answer";
 
@@ -21,14 +20,14 @@ const Stimulus = ({ item }: { item: ItemOf<ChoiceType> }) => {
       return <p lang="en" className="text-4xl font-semibold leading-snug">{item.sentence}</p>;
     case "find-word":
       return (
-        <Button size="lg" icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(item.word)}>Hear the word</Button>
+        <HearButton size="lg" text={item.word} sayInstead={item.word}>Hear the word</HearButton>
       );
     case "listen-and-answer":
       return (
         <div className="flex flex-col items-start gap-3">
-          <Button size="lg" icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(item.passage)}>Hear the story</Button>
+          <HearButton size="lg" text={item.passage} sayInstead={item.passage}>Hear the story</HearButton>
           <p className="text-2xl">{item.question}</p>
-          <Button variant="ghost" icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(item.question)}>Hear the question</Button>
+          <HearButton variant="ghost" text={item.question}>Hear the question</HearButton>
         </div>
       );
   }

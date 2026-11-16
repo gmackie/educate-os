@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@cloudflare/kumo";
-import { MinusIcon, PlusIcon, SpeakerHighIcon } from "@phosphor-icons/react";
+import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
 import { BIG, type ItemProps } from "./types.ts";
-import { speak } from "./speak.ts";
+import { HearButton } from "./HearButton.tsx";
 
 const MAX_COUNTERS = 6;
 
@@ -13,7 +13,7 @@ export const CountSoundsItem = ({ item, disabled, onAnswer }: ItemProps<"count-s
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <span role="img" aria-label={item.picture.label} className="text-6xl">{item.picture.emoji}</span>
-        <Button size="lg" icon={<SpeakerHighIcon aria-hidden />} onClick={() => speak(item.word)}>Hear the word</Button>
+        <HearButton size="lg" text={item.word} sayInstead={item.word}>Hear the word</HearButton>
       </div>
       <div className="flex min-h-20 items-center gap-3" aria-live="polite">
         <ol aria-hidden className="flex gap-3">
