@@ -223,7 +223,7 @@ describe("guardian learning guidance is a separate, explicit opt-in", () => {
       for (const who of [G.gina, G.gus, P.highPrincipal, P.morgan, P.rivera, P.amara, P.dmitri, P.rbAdmin, subject("prn_unknown"), subject(P.nfAdmin.principalId, "dst_riverbend")]) {
         expect((await engine.decide(req(who, action, target))).decision.effect, `${who.principalId} in ${who.districtId}: ${action}`).toBe("deny");
       }
-      for (const channel of ["agent", "mcp", "lti-service"] as const) {
+      for (const channel of ["agent", "mcp-tool", "lti-service", "system"] as const) {
         expect((await engine.decide(req(P.nfAdmin, action, target, channel))).decision.effect, `${channel}: ${action}`).toBe("deny");
       }
       const foreign = { resource: { ...target.resource, scope: { level: "district", districtId: P.rbAdmin.districtId } } } as const;
