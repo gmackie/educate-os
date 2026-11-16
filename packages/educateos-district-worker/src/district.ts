@@ -1,3 +1,4 @@
+import { plannerRuntimeLifecycle } from "./planner-runtime-lifecycle.ts";
 // One district, composed over its Durable Object's storage: the district application and its school
 // tools. This module imports nothing Workers-only, so it is type-checked on the web-standard surface
 // with the rest of the EducateOS libraries it composes (ADR-0009); `district-object.ts` is the
@@ -131,7 +132,7 @@ export interface DistrictSettings {
 /** What a district reaches outside its storage. */
 export interface DistrictSeams {
   /** Installer-owned model and mandatory screening bindings. */
-  plannerRuntime?: (policy: () => DistrictWorkerConfig["plannerAi"], table: DurableObjectRecordTable) => DistrictAppOptions["plannerAi"];
+  plannerRuntime?: (policy: () => DistrictWorkerConfig["plannerAi"], table: DurableObjectRecordTable, subject: { districtId: DistrictWorkerConfig["directory"]["district"]["id"]; lifecycle: ReturnType<typeof durableDistrictStores>["studentLearningLifecycle"] }) => DistrictAppOptions["plannerAi"];
   /** Installer-provided release verification binding; no caller-supplied URL or publisher. */
   workshopReleases?: NonNullable<Parameters<typeof createDistrictApp>[0]["workshopReleases"]>;
   /** The fetch the Content Studio imports URLs with, after its own URL checks. */
@@ -296,7 +297,8 @@ const CLASSROOM_GRADE_RETRY = { maxAttempts: 2, baseDelayMs: 250, maxDelayMs: 1_
  */
 export async function startDistrict(storage: DistrictSqlStorage, settings: DistrictSettings, seams: DistrictSeams): Promise<District> {
   const config = readDistrictWorkerConfig(settings.config);
-  const stores = durableDistrictStores(storage, config.directory);
+  const runtimeTable = new DurableObjectRecordTable(storage);
+  const stores = durableDistrictStores(storage, config.directory, plannerRuntimeLifecycle(runtimeTable));
   if (config.additionalTrustedIssuers !== undefined) {
     const { snapshot, version } = await stores.directory.load();
     const trustedIssuers = [...new Set([...snapshot.district.trustedIssuers, ...config.additionalTrustedIssuers])];
@@ -334,7 +336,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const app = await createDistrictApp({
     stores,
     verifyRequest,
-    plannerAi: seams.plannerRuntime?.(() => readDistrictWorkerConfig(settings.config).plannerAi, new DurableObjectRecordTable(storage)),
+    plannerAi: seams.plannerRuntime?.(() => readDistrictWorkerConfig(settings.config).plannerAi, runtimeTable, { districtId: config.directory.district.id, lifecycle: stores.studentLearningLifecycle }),
     // IT review (SCHO-376): how sign-ins are verified, for the console's read-only settings. The
     // audience tags themselves are not passed, only how many there are.
     signIn: {

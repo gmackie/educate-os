@@ -118,7 +118,7 @@ it("blocks a legal hold then purges only the selected learner and revokes their 
   expect((await d.ok(admin, "admin.studentLearningPreview", { params: child })).counts).toMatchObject({ plans: 1, guidance: 1, guardianGrants: 1 });
   await d.ok(admin, "admin.studentLearningDisposition", { params: child, body: { revision: 1, legalHold: false, deletionAuthorized: true, archiveSatisfied: true } });
   const receipt = await d.ok(admin, "admin.purgeStudentLearning", { params: child, body: { revision: 2, confirmStudentId: child.studentId } });
-  expect(receipt.counts).toEqual({ plans: 1, guidance: 1, guardianGrants: 1 });
+  expect(receipt.counts).toEqual({ plans: 1, guidance: 1, guardianGrants: 1, aiRuntimeCounters: 0 });
   expect(await d.ok(admin, "admin.purgeStudentLearning", { params: child, body: { revision: 2, confirmStudentId: child.studentId } })).toEqual(receipt);
   expect(await d.ok(student, "student.planner", { params })).toEqual([]);
   expect(await d.ok(peer, "student.planner", { params })).toEqual([peerPlan]);

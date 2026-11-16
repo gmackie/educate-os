@@ -41,7 +41,7 @@ it("previews without mutation, fails closed until disposition review, and denies
   const admin = d.tokenFor(NF.admin);
   await d.stores.guidance.records.save(preference(), 0);
   const preview = await d.ok(admin, "admin.studentLearningPreview", { params });
-  expect(preview).toMatchObject({ counts: { plans: 0, guidance: 1, guardianGrants: 0 }, state: { revision: 0 }, blockers: ["disposition-unreviewed", "archive-required"] });
+  expect(preview).toMatchObject({ counts: { plans: 0, guidance: 1, guardianGrants: 0, aiRuntimeCounters: 0 }, state: { revision: 0 }, blockers: ["disposition-unreviewed", "archive-required"] });
   expectError(await d.call(admin, "admin.purgeStudentLearning", { params, body: { revision: 0, confirmStudentId: studentId } }), 409, "conflict");
   let revision = 0;
   for (const disposition of [{ ...allowed, legalHold: true }, { ...allowed, retainUntil: "2027-01-01T00:00:00Z" }, { ...allowed, archiveSatisfied: false }]) {
@@ -65,7 +65,7 @@ it("purges through the admin API, preserves identity links/audit and reroutes ac
   const auditBefore = d.audit.events();
   await d.ok(admin, "admin.studentLearningDisposition", { params, body: { ...allowed, revision: 0 } });
   const receipt = await d.ok(admin, "admin.purgeStudentLearning", { params, body: { revision: 1, confirmStudentId: studentId } });
-  expect(receipt).toMatchObject({ studentId, actorId: actor, at, counts: { plans: 1, guidance: 0, guardianGrants: 0 } });
+  expect(receipt).toMatchObject({ studentId, actorId: actor, at, counts: { plans: 1, guidance: 0, guardianGrants: 0, aiRuntimeCounters: 0 } });
   expect(await d.ok(admin, "admin.purgeStudentLearning", { params, body: { revision: 1, confirmStudentId: studentId } })).toEqual(receipt);
   expect(await d.stores.guardianRelationships.get(invited.relationship.id)).toEqual(relationshipBefore);
   expect(await d.stores.identityLinks.read()).toEqual(linksBefore);
@@ -104,7 +104,7 @@ for (const adapter of ["memory", "SQLite"] as const) describe(adapter, () => {
       await guidance.save({ type: "suggestion", id: crypto.randomUUID(), scope: NF.eng9, offeringId: NF.eng9 as never, revision: 1, studentId, guardianId: grant.guardianPrincipalId, guardianName: "Parent", relationshipId: grant.relationshipId, kind: "hobby", topic: "PRIVATE interest", status: "shared", createdAt: at, expiresAt: "2027-01-01T00:00:00Z" }, 0);
       await guidance.save({ type: "practice", id: crypto.randomUUID(), scope: NF.eng9, offeringId: NF.eng9 as never, revision: 1, studentId, authorId: actor, authorName: "Admin", skill: "planning", createdAt: at }, 0);
       await grants.save(grant, 0);
-      expect(lifecycle.preview(studentId, at).counts).toEqual({ plans: 2, guidance: 3, guardianGrants: 1 });
+      expect(lifecycle.preview(studentId, at).counts).toEqual({ plans: 2, guidance: 3, guardianGrants: 1, aiRuntimeCounters: 0 });
       lifecycle.configure(studentId, allowed, 0);
       // A hold committed after preview defeats a purge based on that preview.
       lifecycle.configure(studentId, { ...allowed, legalHold: true }, 1);
@@ -112,10 +112,10 @@ for (const adapter of ["memory", "SQLite"] as const) describe(adapter, () => {
       expect(() => lifecycle.purge(studentId, actor, at, 2)).toThrow(/blocked/);
       lifecycle.configure(studentId, allowed, 2);
       const receipt = lifecycle.purge(studentId, actor, at, 3);
-      expect(receipt.counts).toEqual({ plans: 2, guidance: 3, guardianGrants: 1 });
+      expect(receipt.counts).toEqual({ plans: 2, guidance: 3, guardianGrants: 1, aiRuntimeCounters: 0 });
       const restarted = adapter === "memory" ? lifecycle : durableStudentLearningLifecycle(storage);
       expect(restarted.purge(studentId, actor, at, 3)).toEqual(receipt);
-      expect(restarted.preview(studentId, at).counts).toEqual({ plans: 0, guidance: 0, guardianGrants: 0 });
+      expect(restarted.preview(studentId, at).counts).toEqual({ plans: 0, guidance: 0, guardianGrants: 0, aiRuntimeCounters: 0 });
       const reopenedPlanner = adapter === "memory" ? planner : new DurableObjectPlannerStore(storage);
       expect(await reopenedPlanner.list(NF.eng9)).toEqual([otherPlan]);
       expect(await guidance.list(NF.eng9)).toEqual([agenda]);

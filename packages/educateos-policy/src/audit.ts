@@ -35,7 +35,7 @@ export const PolicyAuditEvent = z.strictObject({
   /** Completed optional-learning erasure evidence. Counts and a receipt ID only; never content. */
   studentLearningDeletion: z.strictObject({
     receiptId: z.string().uuid(),
-    plans: z.int().nonnegative(), guidance: z.int().nonnegative(), guardianGrants: z.int().nonnegative(),
+    plans: z.int().nonnegative(), guidance: z.int().nonnegative(), guardianGrants: z.int().nonnegative(), aiRuntimeCounters: z.int().nonnegative().optional(),
   }).optional(),
   /** The delegation that bounded the request, when a client acted for the subject (SCHO-175). */
   delegationId: DelegationId.optional(),

@@ -94,10 +94,44 @@ planner evidence copy does not erase its source. Exports/offboarding currently d
 complete planner/guidance archive; arrange and verify any required lawful archive before setting
 `archiveSatisfied`. There is no admin UI, bulk deletion job, clinical/emotional profile or inference.
 
-SCHO-431 integration must also revoke/delete **only active subject AI consent grants**, preserving
-required consent/audit evidence and unrelated students' grants. Its dated consent/rate tables are
-not present on this base and are intentionally not modified here. Reuse the exported
-`StudentLearningLifecycle` / `StudentLearningPersistence` transaction contract and include consent
-revocation in the same transaction where possible; keep rate/accounting history under its own policy.
+The SCHO-431 runtime integration and its remaining deployment-configuration retention are detailed below.
 SCHO-432/SCHO-434 can drive the three typed routes above and assert hold denial, zero inventory,
 receipt and subsequent write conflict. This branch has no merge or deployment authorization.
+
+## Runtime AI consent and quota lifecycle (SCHO-431 / SCHO-433)
+
+The deletion receipt now also **revokes effective planner AI permission**. The runtime reads that
+same durable subject receipt before guard admission, immediately before every generative model
+call, after the response and before output screening/release. A still-valid deployment grant cannot
+override it. There is no re-enable route. The terminal fence survives Durable Object eviction,
+application reconstruction and receipts written before this integration. An unreadable lifecycle
+record fails closed. Revocation during an already dispatched call cannot unsend its prompt: the
+response is withheld, and known usage or unknown liability must still settle normally.
+
+Authorized purge atomically removes only `planner-ai-runtime` / `student:<principalId>` from the
+same district's SQLite, alongside the learning records and receipt. Preview, receipt and completion
+audit include `aiRuntimeCounters` (number of operational counter rows, not billed tokens or dollars).
+Other students' counters and the content-free district circuit breaker remain. Retrying an older
+receipt repairs a pre-integration leftover counter without changing the original receipt ID, actor,
+time or inventory; old receipt counts read as zero for this newly added field. After upgrading an
+already purged student, retry its authenticated purge to clear any leftover counter. AI is blocked
+before that cleanup too.
+
+**This does not delete deployment consent configuration.** `DISTRICT_CONFIG.plannerAi.grants`
+is installer-owned Worker binding data, not a mutable district record. An admin API cannot edit it.
+Remove the subject's grant from the deployment source and update the binding using the district's
+approved configuration process; separately review retained source revisions/backups under the
+consent evidence retention schedule. The durable receipt immediately overrides the old binding,
+including after restart or an ordinary configuration update. Do not report a removed deployment
+grant, full consent-record erasure, or whole-student erasure based on this API receipt. Restoring a
+backup from before the purge or rolling back to code that does not enforce the receipt also requires
+reapplying the disposition/revocation before enabling AI; those operations are outside this API.
+
+Financial ledger entries, reservations, settlements, guard liability, district billing totals, consent
+history and immutable audit records are **retained** under their separate mandatory schedules.
+Quota erasure never resets money spent or releases an outstanding reservation. The existing legal
+hold, retention deadline, deletion authorization and archive review gates still apply before purge;
+this integration does not infer permission to erase financial or consent evidence. A revoked
+explanation returns `consent-revoked` with a reviewed-lesson fallback when the plan still exists;
+a purged plan itself continues to return not-found/conflict as above. No admin response exposes
+goals, prompts, chats or model output.

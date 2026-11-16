@@ -1,8 +1,10 @@
+import { PLANNER_RUNTIME_COLLECTION as COLLECTION } from "./planner-runtime-lifecycle.ts";
 import type { PlannerRuntimePolicy } from "./planner-runtime-policy.ts";
 import { z } from "zod";
 import { definePriceBook, findPriceRate, normalizeTokenUsage, priceUsage, type AiSettlement } from "@educateos/ai-governance";
-import { PlannerExplanation, type PlannerAiOptions } from "@educateos/district-app";
+import { PlannerExplanation, type PlannerAiOptions, type StudentLearningLifecycle } from "@educateos/district-app";
 import type { AiCallGuard, AiCallDescriptor, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
+import type { DistrictId } from "@educateos/contracts";
 import type { RecordTable } from "@educateos/lti-district";
 
 /** One concrete Workers AI transport; no request may select another model or endpoint. */
@@ -34,7 +36,6 @@ const Counter = z.strictObject({ day: z.string(), count: z.int().nonnegative(), 
 const Breaker = z.strictObject({ failures: z.int().nonnegative(), until: z.number() });
 const Usage = z.object({ prompt_tokens: z.int().nonnegative(), completion_tokens: z.int().nonnegative() });
 const Reply = z.object({ response: z.union([z.string().max(10_000), PlannerExplanation]), usage: Usage });
-const COLLECTION = "planner-ai-runtime";
 
 async function boundedReply(value: unknown, signal: AbortSignal): Promise<z.infer<typeof Reply>> {
   if (!(value instanceof Response) || !value.ok || !value.body) throw new Error("planner model unavailable");
@@ -68,6 +69,7 @@ export function districtPlannerRuntime(
   readPolicy: () => PlannerRuntimePolicy | undefined,
   bindings: PlannerRuntimeBindings,
   table: RecordTable,
+  subject: { districtId: DistrictId; lifecycle: Pick<StudentLearningLifecycle, "aiRevoked"> },
   now: () => Date = () => new Date(),
 ): PlannerAiOptions | undefined {
   const initial = readPolicy();
@@ -82,17 +84,18 @@ export function districtPlannerRuntime(
   const enabledFor: PlannerAiOptions["enabledFor"] = async (offeringId, studentId) => {
     const policy = readPolicy();
     const at = now().toISOString();
-    return ["input_tokens", "output_tokens"].every((unit) => findPriceRate(book, model.provider, model.modelId, unit as "input_tokens" | "output_tokens", at))
+    return !subject.lifecycle.aiRevoked(studentId) && ["input_tokens", "output_tokens"].every((unit) => findPriceRate(book, model.provider, model.modelId, unit as "input_tokens" | "output_tokens", at))
       && policy?.enabled === true && policy.offeringIds.includes(offeringId)
       && policy.grants.some((g) => g.studentId === studentId && g.guardianAuthorized && !g.revokedAt && Date.parse(g.grantedAt) <= Date.parse(at) && Date.parse(at) < Date.parse(g.expiresAt));
   };
   return {
     model, estimatedMaxUsdNano: maximum.usdNano, enabledFor,
+    consentRevoked: async (studentId) => subject.lifecycle.aiRevoked(studentId) || readPolicy()?.grants.some((g) => g.studentId === studentId && g.revokedAt !== undefined) === true,
     provider: {
       async completeGuarded(input, parentSignal) {
         const signal = AbortSignal.any([parentSignal, AbortSignal.timeout(18_000)]);
         const { request } = input;
-        if (request.workspace.kind !== "course" || !await input.authorize() || !await enabledFor(request.workspace.offeringId, request.principal.principalId)) return { released: false, output: null };
+        if (request.principal.districtId !== subject.districtId || request.workspace.kind !== "course" || !await input.authorize() || !await enabledFor(request.workspace.offeringId, request.principal.principalId)) return { released: false, output: null };
         const data = JSON.stringify({ goal: input.goal, code: input.code, competencyUri: input.competencyUri, releaseDigest: input.releaseDigest, step: input.step, instruction: input.instruction });
         if (new TextEncoder().encode(data).length > MAX_INPUT_BYTES) return { released: false, output: null };
         // Synchronous transaction: retries, races and restarts cannot reset a student's quota.
@@ -102,7 +105,7 @@ export function districtPlannerRuntime(
           const key = `student:${request.principal.principalId}`;
           const counter = Counter.parse(table.get(COLLECTION, key)?.value ?? { day: "", count: 0, nextAt: 0 });
           const day = now().toISOString().slice(0, 10);
-          if (breaker.until > at || counter.nextAt > at || (counter.day === day && counter.count >= readPolicy()!.maxRequestsPerStudentDay)) return false;
+          if (subject.lifecycle.aiRevoked(request.principal.principalId) || breaker.until > at || counter.nextAt > at || (counter.day === day && counter.count >= readPolicy()!.maxRequestsPerStudentDay)) return false;
           table.put(COLLECTION, key, { day, count: (counter.day === day ? counter.count : 0) + 1, nextAt: at + 60_000 });
           return true;
         });
@@ -121,6 +124,12 @@ export function districtPlannerRuntime(
         let sent = false;
         let outcome: AiCallOutcome = { callId: call.callId, status: "aborted" };
         let settlement: AiSettlement | undefined;
+        const settleGuard = async () => {
+          if (!admitted) return;
+          admitted = false;
+          // Unknown usage keeps the guard's liability; unsent calls settle at zero.
+          await bindings.guard!.afterModelCall(sent ? outcome : { callId: call.callId, status: "failed", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } });
+        };
         try {
           signal.throwIfAborted();
           const decision = await bindings.guard!.beforeModelCall(call);
@@ -135,6 +144,8 @@ export function districtPlannerRuntime(
           if (new TextEncoder().encode(messages.map((m) => m.content).join("\n")).length > MAX_INPUT_BYTES) return { released: false, output: null };
           // No retries or tools; credentials belong to Cloudflare's binding, never prompts or logs.
           signal.throwIfAborted();
+          // No await between this durable fence and dispatch: a purge cannot interleave here.
+          if (subject.lifecycle.aiRevoked(request.principal.principalId)) return { released: false, output: null };
           sent = true;
           const raw = await bindings.model!.run(PLANNER_MODEL, {
             messages, max_tokens: MAX_OUTPUT_TOKENS, stream: false, temperature: 0.2, response_format: { type: "json_object" },
@@ -145,13 +156,18 @@ export function districtPlannerRuntime(
           const price = priceUsage(book, model, { usage }, pricedAt);
           settlement = price.ok ? { usage, actualUsdNano: price.usdNano, priceBookId: price.priceBookId } : { attempts: [{ attemptIndex: 0, state: "unknown" }] };
           if (usage.outputTokens > MAX_OUTPUT_TOKENS || usage.inputTokens > MAX_INPUT_BYTES + 4096) throw new Error("planner model exceeded limits");
+          // A sent call is still billed, but revoked text must not reach screening or the learner.
+          if (!await input.authorize() || !await enabledFor(request.workspace.offeringId, request.principal.principalId)) return { released: false, output: null, settlement };
           const output: unknown = typeof reply.response === "string" ? JSON.parse(reply.response) : reply.response;
           const parsed = PlannerExplanation.safeParse(output);
           if (!parsed.success || parsed.data.competencyUri !== input.competencyUri || parsed.data.releaseDigest !== input.releaseDigest || parsed.data.step !== input.step) throw new Error("planner invalid model output");
           const screening = await bindings.guard!.screenModelOutput(call.callId, { initiator, parts: [{ type: "text", text: JSON.stringify(parsed.data) }] });
           signal.throwIfAborted();
-          const released = screening.action === "release" && await input.authorize() && await enabledFor(request.workspace.offeringId, request.principal.principalId);
+          const released = screening.action === "release" && await input.authorize() && await enabledFor(request.workspace.offeringId, request.principal.principalId) && !subject.lifecycle.aiRevoked(request.principal.principalId);
           if (!released) throw new Error("planner response withheld");
+          await settleGuard();
+          // Settlement is I/O too: a purge during it must still withhold the response.
+          if (!await input.authorize() || !await enabledFor(request.workspace.offeringId, request.principal.principalId) || subject.lifecycle.aiRevoked(request.principal.principalId)) return { released: false, output: null, settlement };
           table.put(COLLECTION, "breaker", { failures: 0, until: 0 });
           return { released, output: parsed.data, settlement };
         } catch {
@@ -160,10 +176,7 @@ export function districtPlannerRuntime(
           table.put(COLLECTION, "breaker", { failures, until: failures >= 3 ? now().getTime() + 60_000 : 0 });
           return { released: false, output: null, ...(sent ? { settlement: settlement ?? { attempts: [{ attemptIndex: 0, state: "unknown" as const }] } } : {}) };
         } finally {
-          if (admitted) {
-            // Await settlement before releasing text. Unknown usage keeps the guard's liability.
-            await bindings.guard!.afterModelCall(sent ? outcome : { callId: call.callId, status: "failed", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } });
-          }
+          await settleGuard();
         }
       },
     },

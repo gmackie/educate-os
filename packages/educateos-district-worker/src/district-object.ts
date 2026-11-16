@@ -449,7 +449,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         productAnalytics: this.env.PRODUCT_ANALYTICS,
       },
       {
-        plannerRuntime: (policy, table) => districtPlannerRuntime(policy, { model: this.env.PLANNER_AI, guard: this.env.PLANNER_AI_GUARD }, table),
+        plannerRuntime: (policy, table, subject) => districtPlannerRuntime(policy, { model: this.env.PLANNER_AI, guard: this.env.PLANNER_AI_GUARD }, table, subject),
         importFetch: (url, init) => this.importFetch(url, init),
         ...(this.env.WORKSHOP_ASSESSMENT_RELEASES === undefined ? {} : {
           workshopReleases: this.env.WORKSHOP_ASSESSMENT_RELEASES,
