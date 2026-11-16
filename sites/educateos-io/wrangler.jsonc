@@ -42,6 +42,7 @@
     "INTEREST_ENABLED": "false",
     // Adult listening collection opens only after the separate listening/README.md rollout.
     "LISTENING_ENABLED": "false",
+    "LISTENING_TURNSTILE_SITE_KEY": "0x4AAAAAAGEJuErQSqWOCB_D",
     "INTEREST_OPTOUT_ENABLED": "false",
     // The Access application "EducateOS operator console" (9074c7b7) guards educateos.io/app: anyone
     // with a verified email (one-time PIN or GitHub). The Worker verifies each assertion with these.

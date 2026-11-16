@@ -106,6 +106,31 @@ issues, PRs, chat or this repo. Save files mode 0600 on private encrypted storag
 
 ## Checks
 
+### Isolated provider rehearsal
+
+`rehearsal/wrangler.jsonc` is a separate temporary Worker and SQLite namespace, without any
+production bindings or custom-domain routes. Never import its entrypoint into the public Worker.
+It accepts only fixed synthetic fixtures, two named objects and seven authenticated commands;
+it cannot dispatch arbitrary store actions, export respondent data or restore production objects.
+Use a separate random `REHEARSAL_TOKEN` in its own ForgeGraph stage. Its deadline closes commands
+automatically. Keep logs disabled and delete the temporary Worker/stage after recording results.
+
+Deploy the reviewed revision through an isolated `educateos-site` stage/target. With the scoped
+token held in memory, POST `/rehearsal/recovery/seed`, `/inspect`, `/restart`, then `/inspect` again:
+both submissions return 200 and exactly one row survives restart. Obtain `/bookmark`, `/erase`,
+verify zero rows, then `/restore` with the bookmark as the short text body. After its deferred
+restart, verify the synthetic row returned and suppression did not: recovery copies can undo
+deletions. Reapply `/erase` and verify zero rows plus suppression before considering recovery
+complete. Keep real collection closed during any production recovery and replay independently
+retained, verified deletion requests before reopening; also erase affected private exports.
+The rehearsal does not provide a production restore endpoint or claim backup erasure on demand.
+
+For expiry, `/rehearsal/retention/seed` backdates only its synthetic record to five seconds before
+the unchanged 90-day TTL; the real storage alarm runs six seconds later. `/inspect` must show
+zero stored/exported rows and `alarmDelivered:true`. `/clean` both objects, revoke the rehearsal
+credential and retire its stage/Worker. Local `rehearsal/check.mjs` verifies guards/restart/expiry
+but cannot prove provider PITR.
+
 ```sh
 node --test sites/educateos-io/listening/listening.test.mjs sites/educateos-io/intake/*.test.mjs
 node sites/educateos-io/build.mjs --check

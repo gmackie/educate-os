@@ -59,6 +59,23 @@ test("the isolated intake security and fake-Workers binding suites pass", async 
   ], {timeout: 60_000, stdio: "pipe"});
 });
 
+test("the isolated listening rehearsal protects dispatch and proves local SQLite/alarm behavior", async () => {
+  const {execFileSync} = await import("node:child_process");
+  const {mkdtempSync, rmSync} = await import("node:fs");
+  const {tmpdir} = await import("node:os");
+  const {join} = await import("node:path");
+  const {fileURLToPath} = await import("node:url");
+  const output = mkdtempSync(join(tmpdir(), "listening-rehearsal-"));
+  const root = fileURLToPath(new URL("../../", import.meta.url));
+  try {
+    execFileSync("pnpm", ["exec", "wrangler", "deploy", "-c",
+      "sites/educateos-io/listening/rehearsal/wrangler.jsonc", "--dry-run", "--outdir", output],
+    {cwd: root, timeout: 60_000, stdio: "pipe"});
+    execFileSync(process.execPath, [fileURLToPath(new URL("listening/rehearsal/check.mjs", import.meta.url)),
+      join(output, "worker.js")], {cwd: root, timeout: 60_000, stdio: "pipe"});
+  } finally { rmSync(output, {recursive: true, force: true}); }
+});
+
 test("the console has moved to the hosted admin, and the admin's export entrypoint is exported", () => {
   // ADMIN_URL moves the console to the hosted admin (SCHO-263), set once the admin was live and the
   // import had run.
