@@ -164,6 +164,8 @@ pnpm lint
 
 Existing `site-config.test.mjs` runs listening security tests in the current site CI path.
 Tests use fake Cloudflare storage and fake Siteverify, not production secrets or real people.
+The Siteverify runtime regression runs the actual verifier and fetch option parsing in workerd,
+with a synthetic outbound provider; it verifies success and refusal to follow redirects.
 
 The browser smoke uses installed Chrome and fixture API/Turnstile responses, with no live server.
 The runtime smoke uses the Wrangler-bundled real Worker in Miniflare/workerd and a temporary

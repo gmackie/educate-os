@@ -26,7 +26,7 @@ function setup() {
   };
   const deps = {now: () => now, fetch: async (url, init) => {
     verifies++; assert.equal(url, 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
-    assert.equal(init.redirect, 'error'); assert.ok(init.signal); assert.equal(init.body.get('remoteip'), '192.0.2.1');
+    assert.equal(init.redirect, 'manual'); assert.ok(init.signal); assert.equal(init.body.get('remoteip'), '192.0.2.1');
     return Response.json({success: true, hostname: 'educateos.io', action: 'listening', challenge_ts: new Date(now).toISOString()});
   }};
   const run = (body = valid(), {path = '/api/listening/survey', method = 'POST', headers = {}, origin = 'https://educateos.io'} = {}) => handleListening(new Request(origin + path, {
