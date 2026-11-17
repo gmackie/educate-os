@@ -126,6 +126,26 @@ test('expired records disappear from exports before cleanup and retention purges
   assert.equal((await s.exported('contact')).body.records.length, 0); await s.purge();
   assert.equal([...s.storages.values()].flatMap(v => [...v.values.keys()]).length, 0);
 });
+test('staff challenge preflight is private, bounded, read-only and usable while collection is paused', async () => {
+  const s = setup(); s.env.LISTENING_ENABLED = 'false';
+  const check = (body, token = s.env.LISTENING_PRIVACY_TOKEN) => s.run(body, {
+    path: '/api/listening/admin/challenge-check', headers: {authorization: 'Bearer ' + token},
+  });
+  for (const token of ['', 'wrong', s.env.LISTENING_EXPORT_TOKEN]) {
+    assert.equal((await check({turnstileToken: 'fixture-token'}, token)).status, 401);
+  }
+  for (const body of [{turnstileToken: ''}, {turnstileToken: 'x'.repeat(2049)}, {turnstileToken: 'fixture', student: 'never store'}]) {
+    assert.equal((await check(body)).status, 400);
+  }
+  const result = await check({turnstileToken: 'fixture-token'});
+  assert.equal(result.status, 200); assert.deepEqual(await result.json(), {verified: true,
+    provider: {responded: true, httpOk: true, success: true, hostnameMatches: true, actionMatches: true, timestampValid: true,
+      secretRejected: false, responseRejected: false, expiredOrReused: false}});
+  assert.equal(s.storages.size, 0);
+  s.deps.fetch = async () => {throw new Error('private provider failure');};
+  const failed = await check({turnstileToken: 'fixture-token'});
+  assert.equal((await failed.json()).verified, false); assert.equal(s.storages.size, 0);
+});
 test('pages have no analytics, keep closed defaults and expose only bounded controls', () => {
   const page = readFileSync(new URL('../public/have-your-say/index.html', import.meta.url), 'utf8');
   assert.doesNotMatch(page, /dataflare.js|<textarea|name="email"|localStorage/);

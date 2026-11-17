@@ -40,9 +40,9 @@
   "vars": {
     // Closed by default. See intake/README.md. No site key, secrets or review attestation shipped.
     "INTEREST_ENABLED": "false",
-    // Adult listening only: SCHO-430 rollout prerequisites and operator acceptance verified.
+    // Paused during SCHO-430 live challenge verification; operator acceptance remains recorded.
     // Pause by setting this false and deploying; private export/erasure remain available.
-    "LISTENING_ENABLED": "true",
+    "LISTENING_ENABLED": "false",
     "LISTENING_REVIEWED": "community-listening-2026-11-15-v1",
     "LISTENING_TURNSTILE_SITE_KEY": "0x4AAAAAAGEJuErQSqWOCB_D",
     "INTEREST_OPTOUT_ENABLED": "false",
