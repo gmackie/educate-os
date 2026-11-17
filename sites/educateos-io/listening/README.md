@@ -79,8 +79,10 @@ An isolated deployed SQLite rehearsal proved object-restart persistence, idempot
 export/erasure, real alarm expiry and actual provider PITR followed by deletion replay. Its
 synthetic rows, temporary credential and Workers were removed. Cloudflare's SQLite PITR keeps
 30 days of recovery history; it is not erased on demand by deleting an active record.
-The live launch check refused synthetic submissions, so collection is paused pending diagnosis;
-operator acceptance remains recorded. Final submit/export/erase acceptance remains on SCHO-430.
+PR #431 corrected workerd's unsupported `redirect: 'error'` in Siteverify; manual redirects
+remain rejected. A fresh real challenge passed the actual production verifier while paused at
+`d0923c776b02948758b2f0fadb0ba114eea04a18`. Operator acceptance remains recorded. The reviewed
+configuration enables collection; final live submit/export/erase evidence remains on SCHO-430.
 Staff can POST only `{turnstileToken}` to `/api/listening/admin/challenge-check` with the privacy
 credential to check a fresh challenge while collection is paused. It consumes that challenge,
 dispatches no storage action, and returns only verification booleans, never provider payloads,
