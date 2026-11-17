@@ -29,7 +29,7 @@ function setup() {
   const deps = {now: () => now, fetch: async (url, init) => {
     verifies++;
     assert.equal(url, 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
-    assert.equal(init.redirect, 'error'); assert.ok(init.signal instanceof AbortSignal);
+    assert.equal(init.redirect, 'manual'); assert.ok(init.signal instanceof AbortSignal);
     assert.equal(init.body.get('secret'), env.INTEREST_TURNSTILE_SECRET);
     return Response.json({success: true, hostname: 'educateos.io', action: 'interest', challenge_ts: new Date(now).toISOString()});
   }};

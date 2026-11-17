@@ -113,7 +113,8 @@ export function validate(input) {
 export async function verifyTurnstile(env, token, ip, now, send = fetch, action = 'interest') {
   try {
     const response = await send('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
+      // Workers supports manual/follow only. A redirect stays non-ok and fails below.
+      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(5000),
       body: new URLSearchParams({secret: env.INTEREST_TURNSTILE_SECRET, response: token, remoteip: ip}),
     });
     if (!response.ok) return false;

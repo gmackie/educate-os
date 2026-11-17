@@ -66,6 +66,7 @@ test("the isolated intake security and fake-Workers binding suites pass", async 
     fileURLToPath(new URL("intake/intake.test.mjs", import.meta.url)),
     fileURLToPath(new URL("intake/runtime.test.mjs", import.meta.url)),
     fileURLToPath(new URL("listening/listening.test.mjs", import.meta.url)),
+    fileURLToPath(new URL("listening/turnstile-runtime.test.mjs", import.meta.url)),
   ], {timeout: 60_000, stdio: "pipe"});
 });
 
