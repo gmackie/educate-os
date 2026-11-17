@@ -42,7 +42,7 @@
     "INTEREST_ENABLED": "false",
     // Paused during SCHO-430 live challenge verification; operator acceptance remains recorded.
     // Pause by setting this false and deploying; private export/erasure remain available.
-    "LISTENING_ENABLED": "false",
+    "LISTENING_ENABLED": "true",
     "LISTENING_REVIEWED": "community-listening-2026-11-15-v1",
     "LISTENING_TURNSTILE_SITE_KEY": "0x4AAAAAAGEJuErQSqWOCB_D",
     "INTEREST_OPTOUT_ENABLED": "false",

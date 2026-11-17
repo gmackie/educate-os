@@ -49,8 +49,8 @@ test("intake is isolated and production-disabled without keys or review", () => 
   assert.deepEqual(config.migrations[1], {tag: "interest-v1", new_sqlite_classes: ["InterestIntake"]});
 });
 
-test("the reviewed adult listening intake stays paused during live verification", () => {
-  assert.equal(config.vars.LISTENING_ENABLED, "false");
+test("the reviewed adult listening intake opens only with its verified launch configuration", () => {
+  assert.equal(config.vars.LISTENING_ENABLED, "true");
   assert.equal(config.vars.LISTENING_REVIEWED, NOTICE_VERSION);
   assert.equal(config.vars.LISTENING_TURNSTILE_SITE_KEY, "0x4AAAAAAGEJuErQSqWOCB_D");
   for (const name of ["LISTENING_HMAC_SECRET", "LISTENING_EXPORT_TOKEN", "LISTENING_PRIVACY_TOKEN", "LISTENING_TURNSTILE_SECRET"]) {
