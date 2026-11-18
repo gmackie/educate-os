@@ -1,6 +1,6 @@
 {
   "name": "launch-educate-os",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Install EducateOS, the district-owned K-12 LMS and AI Workshop, into your own Cloudflare account: npx launch-educate-os",
   "license": "Apache-2.0",
   "type": "module",

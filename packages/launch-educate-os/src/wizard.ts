@@ -88,6 +88,8 @@ async function askToken(deps: WizardDeps): Promise<{ token: string; cf: LaunchCl
     deps.out.line("and zone you install into, with a short expiry. Delete it once the install finishes.");
     deps.out.line(`  ${installTokenLink("EducateOS install (launch-educate-os)")}`);
     for (const p of INSTALL_TOKEN_PERMISSIONS) deps.out.line(`    ${p.scope}: ${p.name}: ${p.level}`);
+    deps.out.line("Check Access: Apps and Policies is under Account, not Zone (the names are identical).");
+    deps.out.line("Its account permission group is 1e13c5124ca64b72b1969a67e8829049; the prefill alone does not prove the scope.");
     deps.out.line(`(Or set ${DISTRICT_TOKEN_ENV} before running. The token is never saved or printed.)`);
   }
   for (let attempt = 1; ; attempt++) {
@@ -250,15 +252,27 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
     dataJurisdiction: "us",
   };
   const district = districtPackage(deps.manifest);
+  const school = Object.values(deps.manifest.workers).some((worker) => worker.kind === "router" && worker.assetsConfig?.variants["access-school"]);
+  if (school && district === undefined) throw new EducateOsError("validation-failed", "the school release is missing its district service");
   out.line();
   if (district !== undefined) {
     out.line("The district LMS serves your district at the root of the hostname, with the AI Workshop at /ai. It");
     out.line("starts from a district configuration (DISTRICT_CONFIG): your district, its trusted issuers and the");
     out.line("administrators who will import the roster (see packages/educateos-district-worker/README.md).");
-    out.line("Without it, this installs the AI Workshop alone; you can add the LMS on a later run.");
-    if (await prompter.confirm("Install the district LMS too?", false)) {
-      const text = await readDistrictConfig(prompter);
-      install.services = { [district]: { enabled: true, vars: { DISTRICT_CONFIG: text } } };
+    if (school) out.line("This school release requires the district LMS and district MCP services.");
+    else out.line("Without it, this installs the AI Workshop alone; you can add the LMS on a later run.");
+    if (school || await prompter.confirm("Install the district LMS too?", false)) {
+      const text = await readServiceConfig(prompter, "district");
+      const services: Record<string, { enabled: true; vars: Record<string, string> }> = {
+        [district]: { enabled: true, vars: { DISTRICT_CONFIG: text } },
+      };
+      if (school) {
+        out.line("The district MCP service also needs MCP_CONFIG: its origin, trusted issuer, current directory");
+        out.line("and allowed browser origins (see packages/educateos-external-mcp/README.md). Use a separate JSON");
+        out.line("file; the installer saves it privately with your answers and never prints its contents.");
+        services["educateos-external-mcp"] = { enabled: true, vars: { MCP_CONFIG: await readServiceConfig(prompter, "MCP") } };
+      }
+      install.services = services;
       const hasAdmin = Object.values(deps.manifest.workers).some((worker) => worker.kind === "admin");
       if (hasAdmin && baseDomain && await prompter.confirm(`Also install the open-source admin at admin.${baseDomain}?`, false)) {
         install.admin = { enabled: true };
@@ -278,9 +292,9 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
   return { install, token, cf, reused: false };
 }
 
-async function readDistrictConfig(prompter: Prompter): Promise<string> {
+async function readServiceConfig(prompter: Prompter, name: string): Promise<string> {
   for (;;) {
-    const path = await prompter.text("Path to the district configuration JSON file");
+    const path = await prompter.text(`Path to the ${name} configuration JSON file`);
     let json: unknown;
     try {
       json = JSON.parse(await readFile(path, "utf8"));
@@ -289,7 +303,7 @@ async function readDistrictConfig(prompter: Prompter): Promise<string> {
     }
     if (typeof json === "object" && json !== null && !Array.isArray(json)) return JSON.stringify(json);
     if (!(await prompter.confirm("That file isn't readable as a JSON object. Try another path?", true))) {
-      throw new EducateOsError("validation-failed", "no district configuration was given");
+      throw new EducateOsError("validation-failed", `no ${name} configuration was given`);
     }
   }
 }

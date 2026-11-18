@@ -24,6 +24,10 @@ You need:
   added. Everyone signs in through Cloudflare Access.
 - **A Cloudflare API token** with the permissions below. The wizard prints a link to Cloudflare's
   token editor with them prefilled.
+- **District and MCP configuration JSON files** for a school release (`DISTRICT_CONFIG` and
+  `MCP_CONFIG`). The wizard enables both required services and asks for each file; it does not
+  offer Workshop-only installation for a school release. Configuration formats are documented in
+  the district Worker and external MCP package READMEs. Keep the files and saved answers private.
 
 The installer checks all of this before it changes anything (preflight), and tells you what to do
 about anything missing.
@@ -50,6 +54,10 @@ finishes.
 | Zone | SSL and Certificates | Edit |
 
 Why each one is needed: [installer permissions](https://github.com/gmackie/educate-os/blob/main/docs/educateos/installer-permissions.md).
+
+Check that **Access: Apps and Policies** is under **Account**, not Zone. Cloudflare gives both
+groups the same name; the required account group is `1e13c5124ca64b72b1969a67e8829049`.
+The token-editor prefill alone does not verify this scope.
 
 ## What it costs
 

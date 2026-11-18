@@ -8,7 +8,8 @@
   measurements.
 - Issue: SCHO-363 (epic SCHO-358). Related: SCHO-378 (clean timed install), SCHO-241
   (second-account proof), SCHO-163 and SCHO-66 (installer fixes and permission probes), SCHO-439
-  (the wizard can't yet install a school release; use the answers file below).
+  (school-service wizard support is prepared for 0.3.1; publication and a live wizard check remain
+  pending, so use the answers file below with published 0.3.0).
 - Audience: a district IT administrator with Super Administrator on the district's Cloudflare
   account. Public version: <https://educateos.io/it/install/>.
 - Tool: [`npx launch-educate-os`](../launch-installer.md) ([package README](../../../packages/launch-educate-os/README.md)).
@@ -114,9 +115,12 @@ Make these before you run the installer. The wizard asks for each.
    and run the installer again (`packages/educateos-district-worker/README.md`). `MCP_CONFIG` names
    the district's authorization server (`packages/educateos-external-mcp/README.md`); until one
    exists, the Zero Trust team's URLs satisfy the schema, and the MCP tools stay unusable.
-   **The wizard doesn't ask for `MCP_CONFIG` yet (SCHO-439)**: install with
-   [the answers file](#a-complete-answers-file) and `--config`. Installing both services this way
-   was verified on 2026-11-18 (SCHO-378).
+   **Published 0.3.0 does not ask for `MCP_CONFIG` (SCHO-439)**: use
+   [the answers file](#a-complete-answers-file) and `--config`. The 0.3.1 candidate requires both
+   services and asks for a district JSON file and a separate MCP JSON file. Its school-manifest
+   terminal regression reaches preflight against the Cloudflare fake; publication and clean-account
+   wizard acceptance are still pending. Installing both services with an answers file was verified
+   on 2026-11-18 (SCHO-378).
 5. **AI Gateway.** Yes gives you one gateway for usage and cost logs; its core features are free.
 6. **Where to keep the answers file.** The wizard writes `educateos-install.json` (no token, no
    secrets) in the directory you run it from. Keep it, for example in the district's IT repository:

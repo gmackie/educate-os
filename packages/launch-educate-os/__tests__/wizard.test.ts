@@ -26,8 +26,19 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((c) => c.close()));
 });
 
-async function world() {
-  const release = await deriveRelease(await goldenRelease(), "r000001-aaaaaaa");
+async function world(school = false) {
+  const release = await deriveRelease(await goldenRelease(), "r000001-aaaaaaa", (manifest) => {
+    if (!school) return;
+    const variants = manifest.workers.router!.assetsConfig!.variants;
+    variants["access-school"] = variants.access!;
+    variants["access-school-ai"] = variants["access-ai"]!;
+    delete variants.access;
+    delete variants["access-ai"];
+    manifest.workers["workshop-backend"]!.bindings.push(
+      { type: "service", name: "PRINCIPAL_RESOLVER", service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" },
+      { type: "service", name: "WORKSHOP_CAPABILITY_POLICY", service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictWorkshopCapabilityPolicy" },
+    );
+  });
   const mirror: ReleaseServer = await serveReleases(release);
   const cloudflare: CloudflareBridge = await serveCloudflare(accountFor(NORTHFIELD));
   closing.push(mirror, cloudflare);
@@ -52,6 +63,43 @@ async function onTerminal(args: string[], answers: string[], options: { cwd: str
 }
 
 describe("the wizard", () => {
+  it("collects both required school services and reaches preflight without offering Workshop-only installation", async () => {
+    const { mirror, cloudflare, trust } = await world(true);
+    const dir = tempDir();
+    const districtConfig = join(dir, "district.json");
+    const mcpConfig = join(dir, "mcp.json");
+    writeFileSync(districtConfig, JSON.stringify({ synthetic: "private district configuration" }));
+    writeFileSync(mcpConfig, JSON.stringify({ synthetic: "private MCP configuration" }));
+
+    const result = await onTerminal(["--release-url", mirror.base, "--trust", trust], [
+      cloudflare.token,
+      "", // subdomain
+      "", // short name
+      "", // email domains
+      "", // individual emails
+      "it@northfield.example",
+      districtConfig,
+      mcpConfig,
+      "n", // no OSS admin
+      "", // AI Gateway
+      "n", // preflight and plan only
+    ], { cwd: dir, env: { [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url } });
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Preflight: ready.");
+    expect(result.stdout).not.toContain("Install the district LMS too?");
+    expect(result.stdout).not.toContain("Workshop alone");
+    for (const value of [cloudflare.token, "private district configuration", "private MCP configuration"]) {
+      expect(result.stdout).not.toContain(value);
+    }
+    const saved = JSON.parse(readFileSync(join(dir, "educateos-install.json"), "utf8"));
+    expect(saved.install.services).toEqual({
+      "educateos-district-worker": { enabled: true, vars: { DISTRICT_CONFIG: JSON.stringify({ synthetic: "private district configuration" }) } },
+      "educateos-external-mcp": { enabled: true, vars: { MCP_CONFIG: JSON.stringify({ synthetic: "private MCP configuration" }) } },
+    });
+    expect(cloudflare.fake.serving("educateos.northfield.example")).toBeUndefined();
+  });
+
   it("installs a one-origin district from its answers, saves them without the token, and prints the URLs", async () => {
     const { mirror, cloudflare, trust } = await world();
     const dir = tempDir();
