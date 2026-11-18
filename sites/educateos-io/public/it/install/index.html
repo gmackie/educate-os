@@ -82,7 +82,7 @@
 
   <section class="tight">
     <div class="wrap">
-      <div class="note-box" style="margin-top:0"><b>Where the evidence stands.</b> The installer has completed full installs into Cloudflare accounts the project owner runs (2026-10-26 and 2026-11-04). No district has run it yet, and there has not yet been a timed install into a clean, empty account. The times on this page say which run they come from. Steps that depend on you, such as moving a domain or adding your identity provider, are estimates.</div>
+      <div class="note-box" style="margin-top:0"><b>Where the evidence stands.</b> The installer has completed full installs into Cloudflare accounts the project owner runs (2026-10-26 and 2026-11-04), and on 2026-11-18 a timed install into a clean, empty account: about two minutes to install, with the district LMS, and 23 seconds to uninstall, leaving the account empty. No district has run it yet. The times on this page say which run they come from. Steps that depend on you, such as moving a domain or adding your identity provider, are estimates.</div>
     </div>
   </section>
 
@@ -97,10 +97,10 @@
         <tbody>
           <tr><td>Node.js 22.12 or later</td><td>The installer runs with <code>npx</code> on your administrator's machine.</td><td>Minutes</td></tr>
           <tr><td>A Cloudflare account the district owns<small>with a payment method</small></td><td>Everything EducateOS runs lives in this account and is billed to it by Cloudflare.</td><td>Minutes</td></tr>
-          <tr><td>Workers Paid<small>from $5 a month</small></td><td>EducateOS uses Durable Objects, Cron Triggers and the Worker Loader binding. Confirm Worker Loader is available on the account; the API can't check it.</td><td>Minutes</td></tr>
+          <tr><td>Workers Paid<small>from $5 a month</small></td><td>EducateOS uses Durable Objects, Cron Triggers and the Worker Loader binding. Confirm Worker Loader is available on the account; the API can't check it. On a new account, open Workers &amp; Pages once so Cloudflare creates its workers.dev subdomain; without it the first upload is refused (error 10063).</td><td>Minutes</td></tr>
           <tr><td>R2 enabled</td><td>Storage for files. Light use stays in Cloudflare's free tier. Without it, Cloudflare answers error 10042 and no token permission helps.</td><td>Minutes</td></tr>
           <tr><td>A domain on Cloudflare<small>an active zone in the account</small></td><td>EducateOS is served at <code>educateos.&lt;your-domain&gt;</code> by default, with a certificate Cloudflare issues.</td><td>Minutes to a day</td></tr>
-          <tr><td>Cloudflare Zero Trust with your identity provider</td><td>Everyone signs in through Cloudflare Access with the SAML or OIDC provider you already use. One-time email codes alone aren't enough.</td><td>Depends on your IdP</td></tr>
+          <tr><td>Cloudflare Zero Trust with your identity provider</td><td>Everyone signs in through Cloudflare Access with the SAML or OIDC provider you already use. One-time email codes alone aren't enough. Turning Zero Trust on also adds Cloudflare's own login, which lets the install proceed for a test, but your pilot needs your provider.</td><td>Depends on your IdP</td></tr>
           <tr><td>Zero Trust seats</td><td>Zero Trust Free admits 50 users, and every student and teacher who signs in takes a seat. Needed before the pilot opens, not for the install.</td><td>Before go-live</td></tr>
           <tr><td>A short-lived API token</td><td>The 13 permissions below, scoped to the one account and zone.</td><td>5 minutes</td></tr>
           <tr><td>AI Gateway<small>optional</small></td><td>Usage and cost logs for AI calls. The installer creates it if you say yes; its core features are free.</td><td>None</td></tr>
@@ -123,7 +123,7 @@
           <tr><td>Billing: Read</td><td>Confirm Workers Paid. Required: without it the plan check is refused and the install stops.</td><td>Account</td></tr>
           <tr><td>Workers Scripts: Edit</td><td>Deploy and update the Workers, their secrets and schedules, and roll back.</td><td>Account</td></tr>
           <tr><td>Workers KV Storage: Edit · Workers R2 Storage: Edit · D1: Edit</td><td>Create the storage EducateOS uses and apply database migrations.</td><td>Account</td></tr>
-          <tr><td>Access: Apps and Policies: Edit</td><td>Put Cloudflare Access in front of your hostname.</td><td>Account</td></tr>
+          <tr><td>Access: Apps and Policies: Edit</td><td>Put Cloudflare Access in front of your hostname. Choose it under Account: Cloudflare also lists a zone-level permission with the same name, and with only that one the install stops when it creates the Access policy (error 1010).</td><td>Account</td></tr>
           <tr><td>Access: Organizations, Identity Providers, and Groups: Read</td><td>Find your Zero Trust team and check that your identity provider is there.</td><td>Account</td></tr>
           <tr><td>AI Gateway: Edit</td><td>Create the optional AI Gateway.</td><td>Account</td></tr>
           <tr><td>Zone: Read · DNS: Edit</td><td>Find your domain and check the hostname is free.</td><td>Zone</td></tr>
@@ -154,9 +154,9 @@
           <p>One to twenty email addresses. They are stored only in your account.</p>
         </div>
         <div class="card feat">
-          <h3>AI Workshop first, LMS after</h3>
-          <p>With the district LMS, your hostname serves the LMS at <code>/</code> and the AI Workshop at <code>/ai</code>. The LMS configuration names administrators by their sign-in identity, so install the Workshop first, sign in once, then run the installer again to add the LMS. Adding the LMS through the installer hasn't been verified yet.</p>
-          <span class="status dev">LMS through the installer: In development</span>
+          <h3>The district LMS and its MCP service</h3>
+          <p>The school release installs the district LMS at <code>/</code> and the AI Workshop at <code>/ai</code>, with the district's MCP service. Each takes a small configuration file. The LMS names administrators by their sign-in identity, so start with a placeholder, sign in once, then run the installer again with the real one. Installing both from an answers file was verified on 2026-11-18; the step-by-step wizard doesn't ask for the MCP configuration yet, so we'll prepare the answers file with you.</p>
+          <span class="status dev">Wizard for the school release: In development</span>
         </div>
       </div>
     </div>
@@ -166,16 +166,16 @@
     <div class="wrap">
       <div class="eyebrow">Steps</div>
       <h2>Under an hour, once the prerequisites are in place.</h2>
-      <p class="lede">The installer's own time is under a minute. Most of the hour is reading the plan and checking the result. Moving a domain to Cloudflare or setting up your identity provider, if they aren't done yet, set the real schedule.</p>
+      <p class="lede">The installer's own time is about two minutes. Most of the hour is reading the plan and checking the result. Moving a domain to Cloudflare or setting up your identity provider, if they aren't done yet, set the real schedule.</p>
       <div class="table-scroll">
       <table class="spec">
         <thead><tr><th>Step</th><th>What happens</th><th>Time</th></tr></thead>
         <tbody>
-          <tr><td>1. Check<small><code>npx launch-educate-os doctor</code></small></td><td>Checks Node, downloads the newest release and verifies its signature against keys built into the installer, and checks the token can see the account. About 14 seconds of tool time (second account, 2026-11-13).</td><td>2 min</td></tr>
-          <tr><td>2. Plan<small><code>npx launch-educate-os plan</code></small></td><td>Asks its questions, checks the account (plan, R2, DNS, Zero Trust, permissions) and lists every resource it would create and what Cloudflare bills for. Changes nothing. About 11 seconds to the account check (2026-11-13). The 2026-11-04 plan listed 13 resources: 5 Workers, 3 KV namespaces, an R2 bucket, an Access application and policy, a custom domain and an AI Gateway.</td><td>10 min</td></tr>
+          <tr><td>1. Check<small><code>npx launch-educate-os doctor</code></small></td><td>Checks Node, downloads the newest release and verifies its signature against keys built into the installer, and checks the token can see the account. About 8 seconds of tool time (clean account, 2026-11-18).</td><td>2 min</td></tr>
+          <tr><td>2. Plan<small><code>npx launch-educate-os plan</code></small></td><td>Asks its questions, checks the account (plan, R2, DNS, Zero Trust, permissions) and lists every resource it would create and what Cloudflare bills for. Changes nothing. About 8 seconds (clean account, 2026-11-18). That plan listed 18 changes: 7 Workers, 3 KV namespaces, an R2 bucket, two Access applications and their policies, a generated secret, scheduled jobs and a custom domain.</td><td>10 min</td></tr>
           <tr><td>3. Fix<small>if the check blocks</small></td><td>Each blocking item says what to do. Run the plan again; it reuses your answers.</td><td>0 to a day</td></tr>
-          <tr><td>4. Install<small><code>npx launch-educate-os</code></small></td><td>Shows the plan again, asks you to confirm, then creates everything with live progress. About 35 seconds of tool time for 13 resources and 171 file uploads (owner account, 2026-10-26). A run that stops partway continues from where it stopped when you run the command again.</td><td>5 min</td></tr>
-          <tr><td>5. Verify</td><td>Run the plan once more: it should show nothing to change. Open your hostname in a private window: you should be sent to your district sign-in, then EducateOS. Someone outside the admitted domains should be refused.</td><td>10 min</td></tr>
+          <tr><td>4. Install<small><code>npx launch-educate-os</code></small></td><td>Shows the plan again, asks you to confirm, then creates everything with live progress. About 125 seconds of tool time for those 18 changes (clean account, 2026-11-18). A run that stops partway continues from where it stopped when you run the command again.</td><td>5 min</td></tr>
+          <tr><td>5. Verify</td><td>Run the plan once more: it should show nothing to change, as it did on 2026-11-18. Open your hostname in a private window: you should be sent to your district sign-in, then EducateOS. Someone outside the admitted domains should be refused.</td><td>10 min</td></tr>
           <tr><td>6. Connect<small><code>npx launch-educate-os connect</code></small></td><td>The installer offers it at the end: your LMS and your roster, one at a time, each ending with a live check. <a href="#connect">See below.</a> Not yet timed against a real LMS.</td><td>15 to 30 min each</td></tr>
           <tr><td>7. Delete the token</td><td>In Cloudflare, My Profile, API Tokens. Make a new short-lived one for each upgrade.</td><td>1 min</td></tr>
         </tbody>
@@ -215,7 +215,7 @@
       <ul class="checks">
         <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><code>upgrade</code> installs the newest signed release. The installer refuses an older release than the one you run unless you ask for a rollback.</span></li>
         <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><code>rollback</code> returns every Worker to the previous release, and first lists what it can't undo, such as database migrations already applied.</span></li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>To uninstall, run <code>npx launch-educate-os uninstall</code>: it shows exactly what it would delete, only what the installer made for your install, and deletes it once you type your install's ID. It never empties a storage bucket that still holds files; you do that first. This deletes the district's data too, so export first. Tested against a simulated Cloudflare account, not yet run on a live one.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>To uninstall, run <code>npx launch-educate-os uninstall</code>: it shows exactly what it would delete, only what the installer made for your install, and deletes it once you type your install's ID. It never empties a storage bucket that still holds files; you do that first. This deletes the district's data too, so export first. On 2026-11-18 it removed a live install from a clean account in 23 seconds and left nothing of it behind.</span></li>
       </ul>
     </div>
   </section>
@@ -249,6 +249,9 @@
         <tbody>
           <tr><td>The account is not on Workers Paid</td><td>Subscribe in Workers &amp; Pages, Plans. If it is subscribed, check the token has Billing: Read.</td><td><code>plan.workers-paid-required</code></td></tr>
           <tr><td>R2 is not enabled<small>Cloudflare error 10042</small></td><td>Enable R2 in the dashboard. It needs a payment method on the account.</td><td><code>product.r2-not-enabled</code></td></tr>
+          <tr><td>The Access policy can't be created<small>HTTP 403, error 1010</small></td><td>The token has the zone-level Access permission. Edit it to use the Account-level "Access: Apps and Policies: Edit", then run the install again.</td><td><code>forbidden</code></td></tr>
+          <tr><td>The first Worker upload is refused<small>HTTP 403, error 10063</small></td><td>Open Workers &amp; Pages in the dashboard once to create the account's workers.dev subdomain, check Workers Paid, then run the install again.</td><td><code>forbidden</code></td></tr>
+          <tr><td>"school release requires enabled service"</td><td>The answers don't include the district LMS and MCP service. Write us and we'll prepare the answers file with you.</td><td><code>validation-failed</code></td></tr>
           <tr><td>Zero Trust has no district identity provider</td><td>Add your SAML or OIDC provider under Zero Trust, Settings, Authentication.</td><td><code>access.idp-missing</code></td></tr>
           <tr><td>The domain isn't an active zone, or the hostname has DNS records</td><td>Add the domain and delegate its nameservers, or choose another subdomain.</td><td><code>dns.*</code></td></tr>
           <tr><td>A permission is missing<small>HTTP 401 or 403, code 10000</small></td><td>The message names the operation. Add the permission from the table above.</td><td><code>permission.missing</code></td></tr>
