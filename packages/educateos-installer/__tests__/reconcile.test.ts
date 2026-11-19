@@ -112,6 +112,9 @@ describe("test-account deploy", () => {
     expect(byName.get("CF_ACCESS_ISS")).toMatchObject({ text: "https://northfield.cloudflareaccess.com" });
     expect(byName.get("CF_ACCESS_AUD")?.text).toMatch(/^aud-/);
     expect(byName.get("ADMINS")).toMatchObject({ type: "json", json: ["avery.admin@northfield.example"] });
+    // Workers AI is on from the first sign-in, in the district's account (SCHO-445).
+    expect(byName.get("CF_AI_GATEWAY")).toMatchObject({ text: "educateos-northfield" });
+    expect(byName.get("CF_AI_GATEWAY_PROVIDERS")).toMatchObject({ type: "plain_text", text: "cloudflare" });
     expect(byName.get("CF_VERSION_METADATA")).toEqual({ type: "version_metadata", name: "CF_VERSION_METADATA" });
     expect(byName.get("BLUEPRINTS")?.namespace_id).toMatch(/^kv-/);
     expect(byName.get("BLUEPRINT_CONTENT")).toMatchObject({ bucket_name: "educateos-northfield-blueprint-content" });
