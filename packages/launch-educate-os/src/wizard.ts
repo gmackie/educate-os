@@ -288,7 +288,7 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
   out.line();
   out.line("AI: with an AI Gateway, the Workshop's AI runs in your account through Workers AI from the first");
   out.line("sign-in, billed to you per use, with no provider keys. Anthropic and OpenAI stay off until an");
-  out.line("administrator adds a key.");
+  out.line("administrator adds a key (`npx launch-educate-os ai add anthropic`, after the install).");
   install.aiGateway = await prompter.confirm("Turn on AI now (creates an AI Gateway in your account)?", true);
 
   out.line();

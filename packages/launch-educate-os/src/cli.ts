@@ -8,6 +8,7 @@
 //   launch-educate-os uninstall   plan the instance's removal; --confirm <instanceId> deletes it
 //   launch-educate-os connect     connect the district's LMS and roster (src/connect/)
 //   launch-educate-os status      what the district is connected to, and whether it works
+//   launch-educate-os ai ...      Anthropic or OpenAI with a key pasted once (src/ai.ts)
 //   launch-educate-os mcp ...     MCP setup: status, clients, add (src/mcp/command.ts)
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -33,6 +34,7 @@ import { deployedReleaseId, installRelease, LaunchSecrets, rollbackRelease, type
 import { DEFAULT_RELEASE_URL, EDUCATEOS_RELEASE_TRUST } from "./trust.ts";
 import { CONNECT_OPTIONS, CONNECT_USAGE, connectCommand, type ConnectDeps, connectFlags, offerConnect, statusCommand, statusIfDistrict } from "./connect/cli.ts";
 import { runWizard } from "./wizard.ts";
+import { AI_USAGE, aiCommand, type AiDeps } from "./ai.ts";
 
 declare const __LAUNCH_VERSION__: string | undefined;
 
@@ -42,7 +44,7 @@ export const LAUNCH_VERSION = typeof __LAUNCH_VERSION__ === "string" ? __LAUNCH_
 /** The Node versions the launcher runs on. */
 export const MINIMUM_NODE = [22, 12] as const;
 
-const COMMANDS = ["install", "plan", "upgrade", "rollback", "doctor", "uninstall", "connect", "status", "help"] as const;
+const COMMANDS = ["install", "plan", "upgrade", "rollback", "doctor", "uninstall", "connect", "status", "ai", "help"] as const;
 type Command = (typeof COMMANDS)[number];
 
 /** Everything the CLI touches outside itself, so tests can run it in process. */
@@ -69,6 +71,7 @@ Usage:
   npx launch-educate-os uninstall   show what removing this install deletes (district offboarding);
                                     --confirm <instanceId> deletes it. Export the district first.
 ${CONNECT_USAGE}
+${AI_USAGE}
   npx launch-educate-os mcp         set up MCP: status, clients (connect AI clients to your
                                     district), add (an MCP server for the AI Workshop); mcp --help
 
@@ -213,7 +216,7 @@ export async function main(io: CliIo): Promise<number> {
     io.stdout.write(`${USAGE}\n`);
     return 0;
   }
-  if (!COMMANDS.includes(command) || positionals.length > (command === "connect" ? 2 : 1)) {
+  if (!COMMANDS.includes(command) || positionals.length > (command === "ai" ? 3 : command === "connect" ? 2 : 1)) {
     io.stderr.write(`unknown command: ${positionals.join(" ")}\n\n${USAGE}\n`);
     return 2;
   }
@@ -232,6 +235,7 @@ export async function main(io: CliIo): Promise<number> {
     if (command === "uninstall") return await uninstallCommand(io, values, out, prompter);
     if (command === "connect") return await connectCommand(connectDeps(io, values, out, prompter), positionals[1]);
     if (command === "status") return await statusCommand(connectDeps(io, values, out, prompter));
+    if (command === "ai") return await aiCommand(aiDeps(io, values, out, prompter), positionals[1], positionals[2]);
     return await installCommand(io, values, out, prompter, command);
   } catch (error) {
     if (error instanceof PromptCancelled) {
@@ -458,6 +462,11 @@ async function doctor(io: CliIo, values: Values, out: Output): Promise<number> {
 }
 
 /** What `connect` and `status` need: the answers file, the account, and a way to apply a changed answers file. */
+function aiDeps(io: CliIo, values: Values, out: Output, prompter: Prompter | undefined): AiDeps {
+  const { flags: _flags, ...deps } = connectDeps(io, values, out, prompter);
+  return deps;
+}
+
 function connectDeps(io: CliIo, values: Values, out: Output, prompter: Prompter | undefined): ConnectDeps {
   const answersPath = resolve(io.cwd, values.config ?? ANSWERS_FILE);
   return {

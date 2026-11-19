@@ -239,6 +239,33 @@ roster sync and Google Classroom district roster sync have never imported a real
 Registration") is Canvas's documented Dynamic Registration entry, which the 2026-10-26 run could not
 use on a single-domain Canvas.
 
+## AI providers (SCHO-445, SCHO-446)
+
+With an AI Gateway (the wizard's default), Workers AI is on from the first sign-in: the backend's
+`CF_AI_GATEWAY_PROVIDERS` is `cloudflare`, and models run in the district's account through the
+`WORKERS_AI` binding with no key. Anthropic and OpenAI stay off until an administrator adds a key:
+
+```sh
+npx launch-educate-os ai add anthropic     # or: ai add openai
+npx launch-educate-os ai status
+npx launch-educate-os ai remove anthropic
+```
+
+`ai add` shows what turning the provider on means (what staff and students type goes to that
+provider), asks for the key without echo (or reads `EDUCATEOS_ANTHROPIC_API_KEY` /
+`EDUCATEOS_OPENAI_API_KEY` with `--yes`), and checks its shape. It then lists the provider's models
+through the district's own gateway with the key, which runs no model: a 401 or 403 is "that key was
+rejected" and nothing is stored. A good key is stored as the gateway's default key for the provider
+(`POST /accounts/{account}/ai-gateway/gateways/{gateway}/provider_configs`; Cloudflare keeps it in
+the account's Secrets Store), the provider is added to the answers' `ai.providers`, and the install
+is applied with the release the account runs. The key is never written to the answers file, a
+Worker var, or any output, and a provider's error body is never read, since it can echo the key.
+
+The token needs **AI Gateway: Edit** and **Secrets Store: Edit** besides the install's permissions.
+`ai remove` takes the provider out of `ai.providers` and applies, which turns it off at once; the
+key stays in the gateway until deleted in the dashboard (the command prints the link). A gateway
+that already holds a default key for the provider is not overwritten: replace it in the dashboard.
+
 ## Tests
 
 `packages/launch-educate-os/__tests__`:

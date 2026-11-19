@@ -268,6 +268,18 @@ export interface AiGateway {
   id: string;
 }
 
+/**
+ * A provider key stored in an AI Gateway (BYOK, SCHO-446). Cloudflare keeps the key in the
+ * account's Secrets Store and never returns it; `secretPreview` is the few characters it shows.
+ */
+export interface AiGatewayProviderKey {
+  id: string;
+  /** The provider's gateway path segment, e.g. `anthropic`. */
+  providerSlug: string;
+  alias: string;
+  secretPreview: string | undefined;
+}
+
 /** A Workers static-assets upload session. `buckets` lists the hashes Cloudflare still needs. */
 export interface AssetsUploadSession {
   jwt: string;
@@ -373,4 +385,11 @@ export interface CloudflareApi {
   createAiGateway(accountId: string, gatewayId: string): Promise<AiGateway>;
   /** Deletes an AI Gateway and its logs. Uninstall only (SCHO-368). */
   deleteAiGateway(accountId: string, gatewayId: string): Promise<void>;
+  /** The provider keys a gateway holds, never their values (SCHO-446). */
+  listAiGatewayProviderKeys(accountId: string, gatewayId: string): Promise<AiGatewayProviderKey[]>;
+  /**
+   * Stores `secret` as the gateway's default key for `providerSlug`, which every request without
+   * its own key then uses (SCHO-446). Needs Secrets Store: Edit besides AI Gateway: Edit.
+   */
+  storeAiGatewayProviderKey(accountId: string, gatewayId: string, providerSlug: string, secret: string): Promise<AiGatewayProviderKey>;
 }

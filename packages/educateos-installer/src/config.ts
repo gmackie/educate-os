@@ -72,6 +72,13 @@ export type ServiceInstallConfig = z.infer<typeof ServiceInstallConfig>;
  * {@link SecretSource}. Non-secret gatekeeper inputs are here, in `gatekeeperInputs`, and
  * non-secret service inputs in `services`.
  */
+/** The frontier model providers a district can turn on with its own key (SCHO-446). */
+export const FRONTIER_PROVIDERS = ["anthropic", "openai"] as const;
+/** A frontier provider, by its AI Gateway path segment. */
+export const FrontierProvider = z.enum(FRONTIER_PROVIDERS);
+/** A frontier provider. */
+export type FrontierProvider = z.infer<typeof FrontierProvider>;
+
 export const DistrictInstallConfig = z.strictObject({
   /** The instance ID the district registered with the root, or chose for a district-run install. */
   instanceId: InstanceId.refine(
@@ -151,7 +158,15 @@ export const DistrictInstallConfig = z.strictObject({
     enabled: z.boolean(),
     /** An AI-enabled district the "AI isn't enabled" page links to, such as a demo district. */
     demoUrl: z.url({ protocol: /^https$/ }).max(2048).optional(),
-  }).default({ enabled: true }),
+    /**
+     * Frontier providers turned on beside Workers AI (SCHO-446), each with a key an administrator
+     * stored in the district's own AI Gateway (`npx launch-educate-os ai add`). The key is never
+     * here: only which providers are on. Needs {@link DistrictInstallConfig.aiGateway}.
+     */
+    providers: z.array(FrontierProvider).max(FRONTIER_PROVIDERS.length)
+      .refine((providers) => new Set(providers).size === providers.length, "a provider repeats")
+      .default([]),
+  }).default({ enabled: true, providers: [] }),
   /**
    * The open-source EducateOS admin (SCHO-263, docs/educateos/admin.md), in the district's own
    * account: its Worker (`EDITION=oss`, managing only this install's origin), a D1 database with its

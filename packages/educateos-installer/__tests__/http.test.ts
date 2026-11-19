@@ -243,6 +243,20 @@ describe("Cloudflare HTTP client", () => {
     await expect(api.deleteWorkerScript(ACCOUNT, "w1")).rejects.toThrow("deleteWorkerScript: HTTP 200");
   });
 
+  it("stores a gateway's default provider key and lists keys without their values (SCHO-446)", async () => {
+    const KEY = `sk-ant-api03-${"k".repeat(40)}`;
+    const config = { id: "pk-1", provider_slug: "anthropic", alias: "default", default_config: true, secret_id: "s-1", secret_preview: "sk-a…kk", gateway_id: "educateos-prairie" };
+    const { fetchImpl, requests } = stubFetch((request) => ok(request.method === "POST" ? config : [config], { page: 1, total_pages: 1 }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    const stored = await api.storeAiGatewayProviderKey(ACCOUNT, "educateos-prairie", "anthropic", KEY);
+    expect(stored).toEqual({ id: "pk-1", providerSlug: "anthropic", alias: "default", secretPreview: "sk-a…kk" });
+    await expect(api.listAiGatewayProviderKeys(ACCOUNT, "educateos-prairie")).resolves.toEqual([stored]);
+    const path = `/client/v4/accounts/${ACCOUNT}/ai-gateway/gateways/educateos-prairie/provider_configs`;
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname])).toEqual([["POST", path], ["GET", path]]);
+    expect(await requests[0]!.json()).toEqual({ provider_slug: "anthropic", alias: "default", default_config: true, secret: KEY });
+  });
+
   it("deletes one secret by name", async () => {
     const { fetchImpl, requests } = stubFetch(() => ok(null));
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
