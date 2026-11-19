@@ -3,13 +3,16 @@
 - Status: Draft. No district has run this yet. On 2026-11-18 the installer ran **into a clean
   Cloudflare account** that held nothing else (SCHO-378): `launch-educate-os` 0.3.0, release
   `r000004-15febba`, the district LMS included. The install took 124.9 s and the uninstall 22.9 s;
-  the account was empty again afterwards. Durations below say which run they come from (see
+  the account was empty again afterwards. On 2026-11-19 release `r000005-836bb3f` (0.5.0) installed
+  into the same empty account in 120 s with the wizard's generated configuration (SCHO-441, 442,
+  445): the first administrator signed in by email, reached Workshop admin settings, created a
+  workspace and had a Workers AI reply, with no hand edits. Durations below say which run they come from (see
   [Evidence](#evidence)). Human steps (subscriptions, DNS, identity provider) are estimates, not
   measurements.
 - Issue: SCHO-363 (epic SCHO-358). Related: SCHO-378 (clean timed install), SCHO-241
   (second-account proof), SCHO-163 and SCHO-66 (installer fixes and permission probes), SCHO-439
-  (school-service wizard support is prepared for 0.3.1; publication and a live wizard check remain
-  pending, so use the answers file below with published 0.3.0).
+  (school-service wizard support, and the wizard-written configuration of SCHO-441, ship in
+  `launch-educate-os` 0.4.0; until it is on npm, use the answers file below with published 0.3.0).
 - Audience: a district IT administrator with Super Administrator on the district's Cloudflare
   account. Public version: <https://educateos.io/it/install/>.
 - Tool: [`npx launch-educate-os`](../launch-installer.md) ([package README](../../../packages/launch-educate-os/README.md)).
@@ -117,10 +120,8 @@ Make these before you run the installer. The wizard asks for each.
    the district's authorization server (`packages/educateos-external-mcp/README.md`); until one
    exists, the Zero Trust team's URLs satisfy the schema, and the MCP tools stay unusable.
    **Published 0.3.0 does not ask for `MCP_CONFIG` (SCHO-439)**: use
-   [the answers file](#a-complete-answers-file) and `--config`. The 0.3.1 candidate requires both
-   services and asks for a district JSON file and a separate MCP JSON file. Its school-manifest
-   terminal regression reaches preflight against the Cloudflare fake; publication and clean-account
-   wizard acceptance are still pending. Installing both services with an answers file was verified
+   [the answers file](#a-complete-answers-file) and `--config`. 0.4.0 writes both from the wizard's
+   answers, or takes your own JSON files. Installing both services with an answers file was verified
    on 2026-11-18 (SCHO-378).
 5. **AI Gateway (turns AI on).** Yes, the default, creates one gateway in your account and turns on
    Workers AI for the Workshop from the first sign-in (`CF_AI_GATEWAY_PROVIDERS=cloudflare`,
@@ -312,6 +313,7 @@ refusing `params` on multi-statement migration requests (SCHO-163, SCHO-66). Use
 | 2026-11-04 | Owner account | `npx launch-educate-os` 0.1.0 from npm, release `r000002-f690372`, at launch-trial.educateos.dev | 13 resources created; a second `plan` showed nothing to change. No duration recorded. |
 | 2026-11-13 | Second account (gmacko, f84fe044, zone hbtply.com), not clean: it holds the SCHO-241 proof rig | `doctor` (14 s) and `plan` (11 s) with launch-educate-os 0.1.0 and the SCHO-241 token | Release verified; preflight blocked on `plan.workers-paid-required` and `access.idp-missing`, warned on the 50-seat limit and Worker Loader. Nothing changed. R2 is enabled there now. |
 | 2026-11-18 | **Clean account** "EducateOS clean install (SCHO-378)" (304723ab), zone schoolos.dev, Zero Trust Free team `tight-paper-7186`, Workers Paid, R2 | `launch-educate-os` 0.3.0 from npm, release `r000004-15febba`, the answers file below with `--config --yes` | Install 03:37:38–03:39:43Z, **124.9 s**, 18 creates. `/` and `/ai/` redirected to the Access login, `/healthz` answered 200 `ok`, a second `plan` found nothing to change (19 resources). Uninstall 03:40:14–03:40:36Z, **22.9 s**, 16 deletes; the account then held none of the install's resources and the hostname answered 530. Two earlier attempts stopped partway and were cleared with `uninstall --confirm`: 1010 (zone-level Access permission) and 10063 (no workers.dev subdomain). |
+| 2026-11-19 | **Clean account** (304723ab, empty again after SCHO-440), zone schoolos.dev, team `tight-paper-7186` with one-time PIN | `launch-educate-os` from main 836bb3f45 (bundled, pre-0.4.0), release `r000005-836bb3f` from `--release-dir` before promotion, an answers file built with the wizard's `districtConfigText`/`mcpConfigText` (two `bootstrapAdmins`, no people), `--config --yes` | Preflight ready with the new `access.idp-pin-only` warning. Install 15:47:43–15:49:43Z, **120 s**, 19 creates. Backend `ADMINS` listed both `principal:prn_schoolos-clean-admin-N`, `CF_AI_GATEWAY_PROVIDERS=cloudflare`. `admin@agents.gmac.io` signed in by email PIN: `/api/me` → `prn_schoolos-clean-admin-2`, `district-admin`; `get-admin-api test-gateway-provider cloudflare` ok; `new-workspace` allowed; first Workers AI reply in 2 s. `ai add anthropic` with a made-up key: rejected through the district gateway, nothing stored. Left installed for SCHO-446's real-key check. |
 
 ### Reproducing the clean run
 
