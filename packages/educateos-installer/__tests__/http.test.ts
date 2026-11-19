@@ -354,6 +354,59 @@ describe("Cloudflare HTTP client", () => {
   });
 });
 
+describe("AI Gateway creation retries transient failures (SCHO-444)", () => {
+  const fail = (status: number, codes: number[], headers?: Record<string, string>) =>
+    Response.json({ success: false, errors: codes.map((code) => ({ code, message: "x" })), result: null }, { status, headers });
+
+  function client(handler: Handler) {
+    const stub = stubFetch(handler);
+    const waits: number[] = [];
+    const api = new CloudflareHttpApi({
+      tokens: staticTokenProvider("district-run", TOKEN),
+      fetch: stub.fetchImpl,
+      sleep: async (ms) => { waits.push(ms); },
+    });
+    return { api, waits, requests: stub.requests };
+  }
+
+  it("creates the gateway after a 503 with code 7015, honoring Retry-After", async () => {
+    let calls = 0;
+    const { api, waits, requests } = client(() =>
+      ++calls === 1 ? fail(503, [7015], { "retry-after": "2" }) : ok({ id: "educateos-northfield" }));
+
+    expect(await api.createAiGateway(ACCOUNT, "educateos-northfield")).toEqual({ id: "educateos-northfield" });
+    expect(requests.map((r) => r.method)).toEqual(["POST", "POST"]);
+    expect(waits).toEqual([2000]);
+  });
+
+  it("fails after four tries of a persistent 503, waiting with bounded backoff", async () => {
+    const { api, waits, requests } = client(() => fail(503, [7015]));
+
+    await expect(api.createAiGateway(ACCOUNT, "educateos-northfield")).rejects.toMatchObject({ status: 503, cloudflareCodes: [7015] });
+    expect(requests).toHaveLength(4);
+    expect(waits).toEqual([3000, 6000, 12000]);
+  });
+
+  it("does not retry a 400", async () => {
+    const { api, waits, requests } = client(() => fail(400, [7001]));
+
+    await expect(api.createAiGateway(ACCOUNT, "educateos-northfield")).rejects.toMatchObject({ status: 400 });
+    expect(requests).toHaveLength(1);
+    expect(waits).toEqual([]);
+  });
+
+  it("retries a 429 too, and reads a refused retry as done when the first try created the gateway", async () => {
+    let posts = 0;
+    const { api, waits } = client((request) => {
+      if (request.method === "GET") return ok([{ id: "educateos-northfield" }], { page: 1, total_pages: 1 });
+      return ++posts === 1 ? fail(429, []) : fail(400, [7001]);
+    });
+
+    expect(await api.createAiGateway(ACCOUNT, "educateos-northfield")).toEqual({ id: "educateos-northfield" });
+    expect(waits).toEqual([3000]);
+  });
+});
+
 describe("OAuth with PKCE", () => {
   it("computes the RFC 7636 S256 challenge: unpadded base64url of SHA-256(verifier)", async () => {
     const verifier = "synthetic-verifier-0123456789-abcdefghijklmnop";

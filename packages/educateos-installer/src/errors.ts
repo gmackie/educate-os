@@ -13,13 +13,16 @@ export class CloudflareApiError extends EducateOsError {
   readonly status: number;
   /** Cloudflare's numeric error codes from the response envelope. */
   readonly cloudflareCodes: readonly number[];
+  /** The response's `Retry-After`, in seconds, when it sent a usable one. */
+  readonly retryAfterSeconds?: number;
 
-  constructor(operation: string, status: number, cloudflareCodes: readonly number[]) {
+  constructor(operation: string, status: number, cloudflareCodes: readonly number[], retryAfterSeconds?: number) {
     super(codeFor(status, cloudflareCodes), describe(operation, status, cloudflareCodes));
     this.name = "CloudflareApiError";
     this.operation = operation;
     this.status = status;
     this.cloudflareCodes = cloudflareCodes;
+    if (retryAfterSeconds !== undefined) this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
