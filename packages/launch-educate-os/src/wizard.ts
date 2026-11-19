@@ -11,11 +11,13 @@ import {
   installTokenLink,
   MANAGED_ZONE,
   MAX_INSTANCE_SLUG_LENGTH,
+  publicHostname,
   type ReleaseManifest,
 } from "@educateos/installer";
 import { z } from "zod";
 import { type Answers, installConfig } from "./answers.ts";
 import type { AccountSummary, LaunchCloudflare } from "./cloudflare.ts";
+import { districtConfigText, type DistrictAnswers, type FirstAdmin, mcpConfigText, nameFromEmail } from "./district-config.ts";
 import type { Output } from "./output.ts";
 import type { Prompter } from "./prompter.ts";
 import { districtPackage, installUrls } from "./run.ts";
@@ -262,15 +264,19 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
     if (school) out.line("This school release requires the district LMS and district MCP services.");
     else out.line("Without it, this installs the AI Workshop alone; you can add the LMS on a later run.");
     if (school || await prompter.confirm("Install the district LMS too?", false)) {
-      const text = await readServiceConfig(prompter, "district");
-      const services: Record<string, { enabled: true; vars: Record<string, string> }> = {
-        [district]: { enabled: true, vars: { DISTRICT_CONFIG: text } },
-      };
-      if (school) {
-        out.line("The district MCP service also needs MCP_CONFIG: its origin, trusted issuer, current directory");
-        out.line("and allowed browser origins (see packages/educateos-external-mcp/README.md). Use a separate JSON");
-        out.line("file; the installer saves it privately with your answers and never prints its contents.");
-        services["educateos-external-mcp"] = { enabled: true, vars: { MCP_CONFIG: await readServiceConfig(prompter, "MCP") } };
+      const services: Record<string, { enabled: true; vars: Record<string, string> }> = {};
+      if (await prompter.confirm("Write the district's starting configuration from a few questions? (No: use your own JSON files)", true)) {
+        const answers = await askDistrict(deps, { slug, teamName, admins, install });
+        services[district] = { enabled: true, vars: { DISTRICT_CONFIG: districtConfigText(answers) } };
+        if (school) services["educateos-external-mcp"] = { enabled: true, vars: { MCP_CONFIG: mcpConfigText(answers) } };
+      } else {
+        services[district] = { enabled: true, vars: { DISTRICT_CONFIG: await readServiceConfig(prompter, "district") } };
+        if (school) {
+          out.line("The district MCP service also needs MCP_CONFIG: its origin, trusted issuer, current directory");
+          out.line("and allowed browser origins (see packages/educateos-external-mcp/README.md). Use a separate JSON");
+          out.line("file; the installer saves it privately with your answers and never prints its contents.");
+          services["educateos-external-mcp"] = { enabled: true, vars: { MCP_CONFIG: await readServiceConfig(prompter, "MCP") } };
+        }
       }
       install.services = services;
       const hasAdmin = Object.values(deps.manifest.workers).some((worker) => worker.kind === "admin");
@@ -294,6 +300,47 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
   out.line("Summary:");
   for (const line of summary(install, deps)) out.line(line);
   return { install, token, cf, reused: false };
+}
+
+// The district's name, time zone and its administrators' names: everything the starting
+// configuration needs beyond what the wizard already asked (district-config.ts).
+async function askDistrict(
+  deps: WizardDeps,
+  known: { slug: string; teamName: string; admins: string[]; install: Record<string, unknown> },
+): Promise<DistrictAnswers> {
+  const { prompter, out } = deps;
+  const origin = `https://${publicHostname(installConfig({ install: known.install }))}`;
+  const label = String(known.install.baseDomain ?? known.slug).split(".")[0]!;
+  const districtName = (await prompter.text("Your district's name", {
+    default: label.split("-").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "),
+    validate: (value) => (value.trim().length > 0 && value.trim().length <= 200 ? undefined : "Enter a name of up to 200 characters."),
+  })).trim();
+  const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeZone = await prompter.text("Its time zone (for term dates and deadlines)", {
+    ...(localZone ? { default: localZone } : {}),
+    validate: (value) => (isTimeZone(value) ? undefined : "Enter an IANA time zone, such as America/Chicago."),
+  });
+  const firstAdmins: FirstAdmin[] = [];
+  for (const email of known.admins) {
+    const displayName = (await prompter.text(`Name of the administrator ${email}`, {
+      default: nameFromEmail(email),
+      validate: (value) => (value.trim().length > 0 && value.trim().length <= 200 ? undefined : "Enter a name."),
+    })).trim();
+    firstAdmins.push({ email, displayName });
+  }
+  out.line("The district starts with no students or staff; import your roster after the install. Each");
+  out.line("administrator above becomes the district's administrator the first time they sign in with that");
+  out.line("email. Staff may create AI Workshop workspaces and chat; students stay off until you turn them on.");
+  return { slug: known.slug, districtName, timeZone, teamName: known.teamName, origin, admins: firstAdmins };
+}
+
+function isTimeZone(value: string): boolean {
+  if (value.trim() === "") return false;
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: value }).resolvedOptions().timeZone !== "";
+  } catch {
+    return false;
+  }
 }
 
 async function readServiceConfig(prompter: Prompter, name: string): Promise<string> {

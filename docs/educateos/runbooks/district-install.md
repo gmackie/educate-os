@@ -54,7 +54,7 @@ Have all of these before you start. The installer's preflight checks every item 
 | 9 | **Zero Trust seats**: Zero Trust Free admits 50 users, and every student and teacher who signs in takes a seat | preflight warns (`access.free-seat-limit`) | before the pilot opens, not before the install |
 | 10 | **A scoped API token** with the 13 permissions below | `doctor`, preflight | 5 minutes |
 | 11 | **AI Gateway**, which turns Workers AI on (free core features; Workers AI billed per use) | created by the installer unless you say no | none |
-| 12 | **`DISTRICT_CONFIG` and `MCP_CONFIG`**: a school release requires the district LMS and district MCP services, each with its JSON (see [Decisions](#decisions) and [the answers file](#a-complete-answers-file)) | `validation-failed` ("school release requires enabled service ..."), then preflight (`service.input-missing`) | 15 minutes |
+| 12 | **`DISTRICT_CONFIG` and `MCP_CONFIG`**: a school release requires the district LMS and district MCP services. The wizard writes both from answers; an answers file or your own JSON files also work (see [Decisions](#decisions) and [the answers file](#a-complete-answers-file)) | `validation-failed` ("school release requires enabled service ..."), then preflight (`service.input-missing`) | 2 minutes with the wizard |
 
 ### The API token
 
@@ -109,10 +109,11 @@ Make these before you run the installer. The wizard asks for each.
 4. **The district LMS and district MCP services.** A school release (r000004 and later) refuses
    to install without both `educateos-district-worker` (`DISTRICT_CONFIG`) and
    `educateos-external-mcp` (`MCP_CONFIG`), so an AI-Workshop-only install is no longer possible on
-   it. Your hostname serves the LMS at `/` and the AI Workshop at `/ai`. `DISTRICT_CONFIG` names
-   its administrators by their Access subject, which nobody knows before they first sign in: start
-   with a placeholder subject and `"authority": "local"`, sign in once, then put the real subject in
-   and run the installer again (`packages/educateos-district-worker/README.md`). `MCP_CONFIG` names
+   it. Your hostname serves the LMS at `/` and the AI Workshop at `/ai`. The wizard writes both
+   from a few answers (the district's name, time zone and administrators' names; SCHO-441). Each
+   administrator is a `bootstrapAdmins` entry, created as the district's administrator on their
+   first sign-in with that email, so no Access subject is needed in advance, and the default Workshop
+   policy lets staff create workspaces and chat (SCHO-442). `MCP_CONFIG` names
    the district's authorization server (`packages/educateos-external-mcp/README.md`); until one
    exists, the Zero Trust team's URLs satisfy the schema, and the MCP tools stay unusable.
    **Published 0.3.0 does not ask for `MCP_CONFIG` (SCHO-439)**: use
@@ -330,8 +331,9 @@ What the 2026-11-18 run needed, in order (SCHO-378):
 #### A complete answers file
 
 This is the shape of the file the run used (no secrets in it). `directory` appears twice, in both
-JSON strings, and both must be the same district. The administrator's subject is a placeholder until
-they first sign in. The `issuer` block points at the Zero Trust team only to satisfy `MCP_CONFIG`'s
+JSON strings, and both must be the same district. That run predates SCHO-441, so its administrator
+had a placeholder subject; the wizard now writes `bootstrapAdmins` instead, with no people in the
+directory. The `issuer` block points at the Zero Trust team only to satisfy `MCP_CONFIG`'s
 schema; a district with an authorization server (Nathan) names it there instead.
 
 ```json

@@ -78,6 +78,7 @@ describe("the wizard", () => {
       "", // email domains
       "", // individual emails
       "it@northfield.example",
+      "n", // the operator's own configuration files
       districtConfig,
       mcpConfig,
       "n", // no OSS admin
@@ -103,8 +104,6 @@ describe("the wizard", () => {
   it("installs a one-origin district from its answers, saves them without the token, and prints the URLs", async () => {
     const { mirror, cloudflare, trust } = await world();
     const dir = tempDir();
-    const districtConfig = join(dir, "district.json");
-    writeFileSync(districtConfig, JSON.stringify({ synthetic: "the district's own config, opaque to the installer" }));
     const answersPath = join(dir, "educateos-install.json");
 
     const result = await onTerminal(["--release-url", mirror.base, "--trust", trust], [
@@ -115,7 +114,10 @@ describe("the wizard", () => {
       "", // no individual emails
       "it@northfield.example", // administrators
       "y", // the district LMS
-      districtConfig,
+      "", // its starting configuration, written from answers
+      "", // district name: Northfield
+      "America/Chicago", // time zone
+      "", // the administrator's name: It
       "y", // the OSS admin
       "", // AI Gateway: yes
       "", // apply: yes
@@ -142,6 +144,18 @@ describe("the wizard", () => {
     expect(cloudflare.fake.worker("educateos-northfield-educateos-district-worker")?.bindings)
       .toContainEqual({ type: "plain_text", name: "DATA_JURISDICTION", text: "us" });
     expect(cloudflare.fake.d1Jurisdiction("educateos-northfield-admin-db")).toBe("us");
+    // The district's configuration was written from the answers (SCHO-441, SCHO-442): its first
+    // administrator is created on first sign-in, and the Workshop knows them as an admin.
+    const districtVar = cloudflare.fake.worker("educateos-northfield-educateos-district-worker")?.bindings
+      .find((b) => b.name === "DISTRICT_CONFIG") as { text: string } | undefined;
+    const written = JSON.parse(districtVar!.text);
+    expect(written.directory.district).toEqual({
+      id: "dst_northfield", name: "Northfield", timeZone: "America/Chicago", trustedIssuers: ["https://northfield.cloudflareaccess.com"],
+    });
+    expect(written.bootstrapAdmins).toEqual([{ principalId: "prn_northfield-admin-1", displayName: "It", email: "it@northfield.example" }]);
+    expect(written.workshopPolicy.workspaceActions).toEqual([{ kind: "staff", actions: expect.arrayContaining(["workspace.create.query", "agent.execute"]) }]);
+    expect(cloudflare.fake.worker("educateos-northfield-workshop-backend")?.bindings.find((b) => b.name === "ADMINS"))
+      .toMatchObject({ type: "json", json: ["it@northfield.example", "principal:prn_northfield-admin-1"] });
 
     const saved = readFileSync(answersPath, "utf8");
     expect(saved).not.toContain(cloudflare.token);

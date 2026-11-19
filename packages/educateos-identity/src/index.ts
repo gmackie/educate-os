@@ -7,3 +7,4 @@ export * from "./identity-linker.ts";
 export * from "./migration-plan.ts";
 export * from "./access-sign-in.ts";
 export * from "./workshop-user-link.ts";
+export * from "./bootstrap-admin.ts";

@@ -8,11 +8,15 @@ import { createSchoolMcpApi } from "@educateos/external-mcp";
 import { externalSchoolTools } from "@educateos/external-mcp/registry";
 import { DelegatedResourceAuthority } from "@educateos/external-mcp/resource-auth";
 import { AcademicDirectory } from "@educateos/academics";
-import { checkDirectoryIntegrity, DistrictDirectorySnapshot, EducateOsError, PrincipalId } from "@educateos/contracts";
+import { checkDirectoryIntegrity, DistrictDirectorySnapshot, EducateOsError, PrincipalId, type VerifiedIdentity } from "@educateos/contracts";
+import { createLogger } from "@gadgets/observability/logger";
 import type { ImportFetch } from "@educateos/content-studio";
 import {
+  AccessSignIn,
+  bootstrapAdminLink,
   CLEVER_ISSUER,
   createAccessSignInResolver,
+  identityFromAccessPayload,
   createDirectoryPrincipalResolver,
   matchEmailKeyedUsers,
   type AccessSignInResolution,
@@ -330,6 +334,8 @@ const CLASSROOM_WRITE_RETRY = { maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2_
 /** Two attempts, a short wait, and no long `Retry-After`: a page is waiting. */
 const CLASSROOM_GRADE_RETRY = { maxAttempts: 2, baseDelayMs: 250, maxDelayMs: 1_000, maxRetryAfterMs: 2_000 };
 
+const logger = createLogger<{ principalId: string }>({ component: "educateos.district.bootstrap-admin" });
+
 /**
  * Starts the district in `storage`: its stores (the directory seeded from the configuration on
  * first start), the application over them, and the directory's operations as school tools,
@@ -352,12 +358,29 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       await stores.directory.commit(next, version);
     }
   }
+  // The district's first administrators are linked on their first sign-in (SCHO-441), on every
+  // path a sign-in arrives by: the district's own requests and the Workshop's resolver seam.
+  const bootstrapAdmins = config.bootstrapAdmins ?? [];
+  const bootstrapSignIn = async (identity: VerifiedIdentity, email: string | undefined): Promise<void> => {
+    if (bootstrapAdmins.length === 0 || email === undefined) return;
+    const { snapshot, version } = await stores.directory.load();
+    const linked = bootstrapAdminLink(snapshot, { identity, email, bootstrapAdmins });
+    if (linked === undefined) return;
+    try {
+      await stores.directory.commit(linked.directory, version);
+      logger.info("linked a bootstrap administrator on first sign-in", { event: "district.bootstrap-admin.linked", principalId: linked.principalId });
+    } catch (error) {
+      // A concurrent change moved the directory: the next sign-in tries again against it.
+      logger.warn("could not link a bootstrap administrator", { event: "district.bootstrap-admin.failed", principalId: linked.principalId, error });
+    }
+  };
   const audiences = accessAudiences(settings.accessAudiences);
   const verifyRequest = accessRequestVerifier({
     issuer: settings.accessIssuer ?? "",
     audiences,
     ...(seams.accessKeys === undefined ? {} : { keys: seams.accessKeys }),
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
+    onVerified: bootstrapSignIn,
   });
   const authority = authorityFor(config.authority);
   const marketplaceTrust = readMarketplaceTrust(settings.marketplaceTrust);
@@ -487,6 +510,16 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const access = { issuer: settings.accessIssuer ?? "", ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }) };
   const principals: DistrictPrincipals = {
     async resolveAccessSignIn(signIn) {
+      const parsed = AccessSignIn.safeParse(signIn);
+      if (parsed.success && parsed.data.email !== undefined) {
+        let identity: VerifiedIdentity | undefined;
+        try {
+          identity = identityFromAccessPayload({ iss: parsed.data.issuer, sub: parsed.data.subject }, access);
+        } catch {
+          identity = undefined;
+        }
+        if (identity !== undefined) await bootstrapSignIn(identity, parsed.data.email);
+      }
       const directory = (await stores.directory.load()).snapshot;
       return createAccessSignInResolver({ directory, access }).resolveAccessSignIn(signIn);
     },

@@ -207,6 +207,24 @@ describe("one-origin desired state", () => {
     expect(districtMcpEnabled(undefined)).toBe(false);
   });
 
+  it("lists the district's bootstrap administrators in the backend's ADMINS by principal (SCHO-441)", async () => {
+    const release = await goldenRelease();
+    const admins = (config: string) => {
+      const backend = compile(release, { services: { [DISTRICT]: { enabled: true, vars: { DISTRICT_CONFIG: config } } } }).worker("workshop-backend");
+      return (binding(backend, "ADMINS") as { json?: unknown } | undefined)?.json;
+    };
+    const bootstrapAdmins = [
+      { principalId: "prn_first-admin", displayName: "Avery Admin", email: "avery.admin@northfield.example" },
+      { principalId: "not a principal id", displayName: "X", email: "x@northfield.example" },
+    ];
+    expect(admins(JSON.stringify({ synthetic: true, bootstrapAdmins })))
+      .toEqual(["avery.admin@northfield.example", "principal:prn_first-admin"]);
+    // Without bootstrapAdmins, or with a config that isn't JSON, ADMINS is the install's emails.
+    for (const config of [DISTRICT_VARS.DISTRICT_CONFIG, "not json", JSON.stringify({ bootstrapAdmins: "prn_x" })]) {
+      expect(admins(config), config).toEqual(["avery.admin@northfield.example"]);
+    }
+  });
+
   it("adds the MCP bypass to an installed district when DISTRICT_CONFIG gains mcp, and removes it when it loses it", async () => {
     const release = await goldenRelease();
     const { fake, options, run } = setup();

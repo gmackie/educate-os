@@ -78,3 +78,23 @@ describe("the Access cookie on the pairing relay's paths", () => {
     expect(await verify(new Request("https://district.example/api/pair/rooms", { headers: { cookie: `${ACCESS_COOKIE}=${token}x` } }))).toBeUndefined();
   });
 });
+
+// SCHO-441: the district links a bootstrap administrator from the verified token's email.
+describe("the verified-sign-in hook", () => {
+  it("passes each verified identity and its email to onVerified before returning it", async () => {
+    const issuer = "https://team.cloudflareaccess.example";
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256" };
+    const keys = createLocalJWKSet({ keys: [jwk] });
+    const token = await new SignJWT({ email: "first.admin@district.example" }).setProtectedHeader({ alg: "RS256", kid: "k1" })
+      .setIssuer(issuer).setAudience("district-aud").setSubject("access-uuid-first").setIssuedAt().setExpirationTime("5m").sign(privateKey);
+    const seen: unknown[] = [];
+    const verify = accessRequestVerifier({ issuer, audiences: ["district-aud"], keys, onVerified: async (identity, email) => { seen.push({ identity, email }); } });
+    const identity = await verify(new Request("https://district.example/", { headers: { [ACCESS_ASSERTION_HEADER]: token } }));
+    expect(identity).toStrictEqual({ issuer, subject: "access-uuid-first", credential: "person" });
+    expect(seen).toStrictEqual([{ identity, email: "first.admin@district.example" }]);
+    // An unverifiable request reaches no hook.
+    await verify(new Request("https://district.example/", { headers: { [ACCESS_ASSERTION_HEADER]: "not-a-token" } }));
+    expect(seen).toHaveLength(1);
+  });
+});
