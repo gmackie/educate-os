@@ -143,7 +143,7 @@ export async function preflight(
     });
   }
 
-  await checkAccess(probe, api, config, blocking);
+  await checkAccess(probe, api, config, blocking, warnings);
   // The public hostname, and the OSS admin's when the install has one; both in the base domain's zone.
   const others = desired.resources.flatMap((r) => (r.kind === "custom_domain" && r.hostname !== desired.hostname ? [r.hostname] : []));
   if (config.baseDomain === undefined) await checkManagedZone(probe, api, config, desired.hostname, blocking);
@@ -210,7 +210,7 @@ async function checkServiceInputs(
 type ProbeResult<T> = { failed: false; value: T } | { failed: true };
 type Probe = <T>(what: string, scope: string, call: () => Promise<T>, severity?: "blocking" | "warning") => Promise<ProbeResult<T>>;
 
-async function checkAccess(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, blocking: PreflightItem[]) {
+async function checkAccess(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, blocking: PreflightItem[], warnings: PreflightItem[]) {
   const account = config.accountId;
   const expected = `${config.access.teamName}.cloudflareaccess.com`;
   let organization;
@@ -236,11 +236,21 @@ async function checkAccess(probe: Probe, api: CloudflareApi, config: DistrictIns
     });
   }
   const idps = await probe("listing identity providers", "Access: Organizations, Identity Providers, and Groups: Read", () => api.listAccessIdentityProviders(account));
-  if (!idps.failed && !idps.value.some((idp) => idp.type !== "onetimepin")) {
+  if (idps.failed) return;
+  // `cloudflare` (sign in with a Cloudflare account) is added when Zero Trust is turned on, but no
+  // teacher or student has a Cloudflare account, so it doesn't count as a way in for a school.
+  const usable = idps.value.filter((idp) => idp.type !== "cloudflare");
+  if (usable.length === 0) {
     blocking.push({
       code: "access.idp-missing",
-      message: "Zero Trust has no district identity provider; only one-time email codes are configured.",
-      operatorAction: "Add the district's SAML or OIDC identity provider (Zero Trust → Settings → Authentication), so students and staff sign in with district SSO.",
+      message: "Zero Trust has no login method staff or students can use: Cloudflare-account login is the only one, or there is none.",
+      operatorAction: "Under Zero Trust → Settings → Authentication, add Google Workspace, Microsoft Entra ID, or the district's SAML or OIDC provider; or add one-time PIN for a small pilot.",
+    });
+  } else if (usable.every((idp) => idp.type === "onetimepin")) {
+    warnings.push({
+      code: "access.idp-pin-only",
+      message: "The only login method staff and students can use is one-time email codes. That works for a pilot, not a rollout.",
+      operatorAction: "Before rollout, add the district's SSO (Google Workspace, Microsoft Entra ID, SAML or OIDC) under Zero Trust → Settings → Authentication.",
     });
   }
 }
