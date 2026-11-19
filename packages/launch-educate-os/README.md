@@ -106,18 +106,22 @@ All in your account, all named `educateos-<name>-*`:
   email domains and addresses you named.
 - **A custom domain** for the hostname (Cloudflare creates its DNS record and certificate), and the
   admin's, if chosen.
-- **An AI Gateway**, if you choose one.
+- **An AI Gateway** (the default), which turns on Workers AI for the AI Workshop from the first
+  sign-in: it runs in your account, billed by Cloudflare per use, with no provider keys.
 
 The installer never touches a resource it didn't create: anything without its marker is reported,
 not changed.
 
 ### The district LMS
 
-With the district LMS, your hostname serves the LMS at `/` and the AI Workshop at `/ai`. It needs a
-district configuration: a JSON file with your district, its trusted issuers and the administrators
-who will import the roster (`DISTRICT_CONFIG`, documented in the EducateOS repository's
-`packages/educateos-district-worker/README.md`). Without one, the installer installs the AI
-Workshop on its own, and you can add the LMS on a later run. The open-source admin needs the LMS.
+With the district LMS, your hostname serves the LMS at `/` and the AI Workshop at `/ai`. The wizard
+writes its configuration from a few answers: your district's name, its time zone and each
+administrator's name. The district starts with no people. Each administrator you named becomes the
+district's administrator the first time they sign in with that email, and can open the AI
+Workshop's admin settings; nobody needs to know a sign-in ID in advance. Staff can create AI
+Workshop workspaces and chat from the start; students stay off until you turn them on. You can
+give your own JSON files instead (`DISTRICT_CONFIG`, documented in the EducateOS repository's
+`packages/educateos-district-worker/README.md`). The open-source admin needs the LMS.
 
 ## Commands
 
@@ -130,6 +134,7 @@ npx launch-educate-os doctor     # check Node, the release source, the token and
 npx launch-educate-os connect    # connect the district's LMS and roster (see below)
 npx launch-educate-os status     # what the district is connected to, and whether it works
 npx launch-educate-os mcp ...    # set up MCP: status, clients, add (see "MCP" below)
+npx launch-educate-os ai ...     # turn on Anthropic or OpenAI with your own key (see "AI providers" below)
 ```
 
 | Option | Meaning |
@@ -215,6 +220,25 @@ What is proven where: Canvas and Moodle registrations passed live runs (a self-h
 and Moodle 4.5, 2026-10-26), though not through this command. The Clever, Google Classroom and
 OneRoster flows, and `connect` itself, are tested against simulated providers and a simulated
 district only; no real roster has been imported through them yet.
+
+## AI providers
+
+Workers AI is on from the first sign-in. To add Anthropic or OpenAI, paste the district's API key
+once:
+
+```sh
+npx launch-educate-os ai add anthropic     # or: ai add openai
+npx launch-educate-os ai status            # what is on, and which keys your gateway holds
+npx launch-educate-os ai remove anthropic  # turn it off again
+```
+
+`ai add` tells you what turning the provider on means (what staff and students type in the AI
+Workshop goes to that provider), asks for the key without showing it, checks it with the provider
+through your AI Gateway (no model runs), stores it in that gateway in your Cloudflare account, and
+turns the provider on. The key is never saved in the answers file or printed. The Cloudflare API
+token needs **AI Gateway: Edit** and **Secrets Store: Edit** besides the install's permissions.
+Without a terminal, set `EDUCATEOS_ANTHROPIC_API_KEY` or `EDUCATEOS_OPENAI_API_KEY` and pass
+`--yes`.
 
 ## MCP
 
