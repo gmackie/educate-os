@@ -36,7 +36,10 @@
   },
   "devDependencies": {
     "@educateos/contracts": "workspace:*",
+    "@educateos/district-worker": "workspace:*",
+    "@educateos/external-mcp": "workspace:*",
     "@educateos/fleet": "workspace:*",
+    "@educateos/identity": "workspace:*",
     "@educateos/installer": "workspace:*",
     "@educateos/integrations": "workspace:*",
     "@educateos/provider-fakes": "workspace:*",

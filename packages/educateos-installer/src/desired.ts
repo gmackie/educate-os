@@ -5,7 +5,7 @@
 // database IDs, the Access audience tag) become references to the resource that will produce
 // them, which is also a dependency edge. A `$` token outside the vocabulary fails compilation,
 // as the deploy-side renderer must.
-import { EducateOsError } from "@educateos/contracts";
+import { EducateOsError, PrincipalId } from "@educateos/contracts";
 import { toBase64Url } from "@educateos/fleet";
 import type { AccessPolicySpec, DataJurisdiction } from "./cloudflare-api.ts";
 import {
@@ -310,6 +310,29 @@ export function districtMcpEnabled(text: string | undefined): boolean {
   }
   const mcp = typeof json === "object" && json !== null ? (json as Record<string, unknown>).mcp : undefined;
   return typeof mcp === "object" && mcp !== null && !Array.isArray(mcp);
+}
+
+/**
+ * The Workshop user names of the bootstrap administrators a district's `DISTRICT_CONFIG` text
+ * names (SCHO-441): `principal:<id>` for each `bootstrapAdmins` entry, which is how the Workshop
+ * names a user once a principal resolver is bound. The backend's `ADMINS` lists them beside the
+ * install's emails, so the district's first administrator can open Workshop admin settings. The
+ * entries' shape is the district Worker's to validate; anything malformed adds no one.
+ */
+export function districtBootstrapAdminNames(text: string | undefined): string[] {
+  if (text === undefined) return [];
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  const admins = typeof json === "object" && json !== null ? (json as Record<string, unknown>).bootstrapAdmins : undefined;
+  if (!Array.isArray(admins)) return [];
+  return admins.flatMap((admin) => {
+    const id = typeof admin === "object" && admin !== null ? (admin as Record<string, unknown>).principalId : undefined;
+    return PrincipalId.safeParse(id).success ? [`principal:${id as string}`] : [];
+  });
 }
 
 /**
@@ -781,7 +804,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
         vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
       }
-      vars.ADMINS = config.admins;
+      const principalAdmins = oneOrigin ? districtBootstrapAdminNames(config.services[districtPkg!]?.vars.DISTRICT_CONFIG) : [];
+      vars.ADMINS = [...config.admins, ...principalAdmins.filter((name) => !config.admins.includes(name))];
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       dependsOn.add(accessApplication.key);
       if (aiGateway) {

@@ -261,12 +261,20 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   the setting does not revoke persisted trust. It creates no identity links and does not change
   Access JWT issuer, signature or audience verification. Only the deployment operator can set it;
   it is absent from district configuration revisions and browser inputs.
+- `bootstrapAdmins` (SCHO-441) names the district's first administrators, who are not yet in the
+  directory: `[{ "principalId": "prn_…", "displayName": "…", "email": "…" }]`, up to 20. The first
+  verified person sign-in from a trusted issuer whose email matches exactly one entry (ignoring case)
+  creates that principal, linked to that identity and holding `district-admin`, on every sign-in path
+  (the LMS, school tools, LTI and the Workshop's resolver). An entry whose principal already exists is
+  ignored, so each is created at most once and an existing link is never replaced. `launch-educate-os`
+  writes these from the administrators' emails; see ADR-0003, "Bootstrap administrators".
 - `authority` names who owns the directory: `"oneroster"` (the default), `"clever"` or `"local"`, or a full
   `AuthorityMap` for a mixed district. A district with no roster, such as a homeschool co-op, sets
   `"local"`: its administrators then create schools, terms, courses, sections and students and enroll
   them through the admin API (`admin.createCourse`, `admin.enroll`, `admin.createPrincipal` and the
   rest, SCHO-186), and a roster import is refused. A local principal is created with the Access
-  subject that signs them in; inviting someone by email before they have signed in is not built yet.
+  subject that signs them in; inviting someone by email before they have signed in is not built yet,
+  except for the district's first administrators (`bootstrapAdmins`, below).
   Administrators then correct a person's name, email or kind (`admin.updatePrincipal`), deactivate
   or reactivate them (`admin.setPrincipalStatus`), and make staff district administrators or take
   that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always

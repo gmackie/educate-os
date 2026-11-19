@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkDirectoryIntegrity, type PrincipalId, type VerifiedIdentity } from "@educateos/contracts";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { BootstrapAdmin, bootstrapAdminLink, createDirectoryPrincipalResolver, type BootstrapAdminSignIn } from "../src/index.ts";
-import { AT, NF_ACCESS, NF_ADMIN, withAccess } from "./helpers.ts";
+import { NF_ACCESS, NF_ADMIN, withAccess } from "./helpers.ts";
 
 const FIRST = "prn_nf-first-admin" as PrincipalId;
 const RIVERA = "prn_nf-teacher-rivera" as PrincipalId;

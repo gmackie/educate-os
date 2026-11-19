@@ -100,9 +100,13 @@ unpinned: Cloudflare can't move existing storage, so the installer refuses to ad
 
 Limits:
 
-- **The district LMS needs a `DISTRICT_CONFIG` file.** Its seed directory names the administrators by
-  their Access subject, which nobody knows before they first sign in, so the wizard can't write one.
-  Without it the install is the Workshop alone, as the guided install's is.
+- **The district's starting configuration is written from answers (SCHO-441).** The wizard asks for
+  the district's name, time zone and each administrator's name, and writes `DISTRICT_CONFIG` (and, for
+  a school release, `MCP_CONFIG`): no people in the directory, the administrators as
+  `bootstrapAdmins` (each created on their first sign-in with that email, then never again), and a
+  Workshop policy that lets staff create workspaces and chat while students stay off (SCHO-442). The
+  backend's `ADMINS` lists each as `principal:<id>` beside the emails, so they reach Workshop admin
+  settings. Answer "no" to use your own JSON files instead.
 - **No cross-account managed hostname.** `<slug>.educateos.io` on another account needs educateos.io
   to publish its DNS records (`applyManagedZone`), which only educateos.io's own token can do. The
   wizard offers the managed hostname only when the account holds educateos.io.
