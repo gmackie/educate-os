@@ -55,6 +55,22 @@ describe("release manifest", () => {
       .toThrow("ambiguous Access asset variants");
   });
 
+  it("turns on each frontier provider whose key a district stored, beside Workers AI (SCHO-446)", async () => {
+    const release = await goldenRelease();
+    const providers = (overrides: Parameters<typeof configFor>[2]) => {
+      const backend = compileDesiredState(release.manifest, configFor(NORTHFIELD, release, overrides)).resources
+        .find((r) => r.key === "worker:workshop-backend") as { bindings: { name: string; text?: string }[] };
+      return backend.bindings.find((b) => b.name === "CF_AI_GATEWAY_PROVIDERS")?.text;
+    };
+    expect(providers({})).toBe("cloudflare");
+    expect(providers({ ai: { enabled: true, providers: ["anthropic", "openai"] } })).toBe("cloudflare,anthropic,openai");
+    // A provider key lives in the gateway, so there is no provider without one.
+    expect(() => compileDesiredState(release.manifest, configFor(NORTHFIELD, release, { aiGateway: false, ai: { enabled: true, providers: ["anthropic"] } })))
+      .toThrow(/ai.providers \(anthropic\) needs aiGateway/);
+    expect(DistrictInstallConfig.shape.ai.safeParse({ enabled: true, providers: ["anthropic", "anthropic"] }).success).toBe(false);
+    expect(DistrictInstallConfig.shape.ai.safeParse({ enabled: true, providers: ["google"] }).success).toBe(false);
+  });
+
   it("accepts the release pipeline's golden manifest against the root's signed statement", async () => {
     const release = await goldenRelease();
     expect(Object.keys(release.manifest.workers)).toContain("workshop-backend");

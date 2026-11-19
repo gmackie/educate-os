@@ -39,6 +39,9 @@ const Envelope = z.object({
 });
 
 const Id = z.object({ id: z.string() });
+const ProviderConfig = z.object({ id: z.string(), provider_slug: z.string(), alias: z.string(), secret_preview: z.string().nullish() });
+const providerKey = (config: z.infer<typeof ProviderConfig>) =>
+  ({ id: config.id, providerSlug: config.provider_slug, alias: config.alias, secretPreview: config.secret_preview ?? undefined });
 const Account = z.object({ id: z.string(), name: z.string() });
 const SubscriptionWire = z.object({ rate_plan: z.object({ id: z.string() }).optional() });
 const ZoneWire = z.object({ id: z.string(), name: z.string(), status: z.string() });
@@ -576,6 +579,19 @@ export class CloudflareHttpApi implements CloudflareApi {
         await this.#sleep(transientDelayMs(attempt, error));
       }
     }
+  }
+
+  async listAiGatewayProviderKeys(accountId: string, gatewayId: string) {
+    const keys = await this.#paged("listAiGatewayProviderKeys",
+      `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}/provider_configs`, ProviderConfig);
+    return keys.map(providerKey);
+  }
+
+  async storeAiGatewayProviderKey(accountId: string, gatewayId: string, providerSlug: string, secret: string) {
+    // The key goes in the body only; #result never logs or echoes a request body.
+    return providerKey(ProviderConfig.parse(await this.#result("storeAiGatewayProviderKey", "POST",
+      `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}/provider_configs`,
+      { json: { provider_slug: providerSlug, alias: "default", default_config: true, secret } })));
   }
 
   async deleteAiGateway(accountId: string, gatewayId: string) {

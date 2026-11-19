@@ -676,6 +676,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       },
     }
     : undefined;
+  if (config.ai.providers.length > 0 && !config.aiGateway) {
+    invalid(`ai.providers (${config.ai.providers.join(", ")}) needs aiGateway: their keys are stored in the district's AI Gateway`);
+  }
   const aiGateway: DesiredAiGateway | undefined = config.aiGateway
     ? { kind: "ai_gateway", key: RESOURCE_KEYS.aiGateway, dependsOn: [], gatewayId: prefix }
     : undefined;
@@ -814,7 +817,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         // Workers AI is on from the first sign-in (SCHO-445): it runs in the district's own account
         // through the WORKERS_AI binding, with no provider key. Frontier providers stay off until an
         // administrator adds one. A release that names its own providers keeps them.
-        if (entry.vars.CF_AI_GATEWAY_PROVIDERS === undefined) vars.CF_AI_GATEWAY_PROVIDERS = "cloudflare";
+        // Each frontier provider an administrator added a stored key for joins it (SCHO-446).
+        if (entry.vars.CF_AI_GATEWAY_PROVIDERS === undefined) {
+          vars.CF_AI_GATEWAY_PROVIDERS = ["cloudflare", ...config.ai.providers].join(",");
+        }
         dependsOn.add(aiGateway.key);
       }
       // The Workshop under /ai: the URLs the backend hands browsers carry the base path.
