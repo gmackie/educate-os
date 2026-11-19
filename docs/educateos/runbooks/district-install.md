@@ -50,7 +50,7 @@ Have all of these before you start. The installer's preflight checks every item 
 | 5 | **Worker Loader** (dynamic Workers) available on the account | not checkable by API; preflight warns (`product.worker-loader`) | confirm with Cloudflare if unsure |
 | 6 | **A domain as an active zone** in the account, with no DNS records yet at the hostname you'll use | preflight (`dns.zone-missing`, `dns.zone-pending`, `dns.record-conflict`) | minutes if already on Cloudflare; hours to a day if nameservers must move |
 | 7 | **Cloudflare Zero Trust** with a team (`<team>.cloudflareaccess.com`) | preflight (`access.organization-missing`, `access.team-mismatch`) | minutes |
-| 8 | **The district's identity provider** (SAML or OIDC: Google Workspace, Microsoft Entra ID, Clever, ...) added as a Zero Trust login method, besides one-time PIN | preflight (`access.idp-missing`) blocks only when every login method is one-time PIN. Turning Zero Trust on also adds Cloudflare's built-in login, which passes; that was enough for the SCHO-378 test, but a pilot needs the district IdP | depends on who administers the IdP |
+| 8 | **The district's identity provider** (SAML or OIDC: Google Workspace, Microsoft Entra ID, Clever, ...) added as a Zero Trust login method | preflight (`access.idp-missing`) blocks when the only login method is Cloudflare's own (sign in with a Cloudflare account, which Zero Trust adds when it is turned on), or there is none: no teacher or student has a Cloudflare account. One-time PIN alone, or with Cloudflare's login, passes with the warning `access.idp-pin-only`: email codes work for a small pilot, but add the district IdP before rollout | depends on who administers the IdP |
 | 9 | **Zero Trust seats**: Zero Trust Free admits 50 users, and every student and teacher who signs in takes a seat | preflight warns (`access.free-seat-limit`) | before the pilot opens, not before the install |
 | 10 | **A scoped API token** with the 13 permissions below | `doctor`, preflight | 5 minutes |
 | 11 | **AI Gateway**, which turns Workers AI on (free core features; Workers AI billed per use) | created by the installer unless you say no | none |
@@ -283,7 +283,8 @@ partway: it deletes what exists and reports the rest as gone.
 | `plan.workers-paid-required` | The account has no Workers Paid subscription. | Workers & Pages, Plans: subscribe. Also seen when the token lacks Billing: Read (below). |
 | `listSubscriptions` refused, HTTP 403 code 10000 | The token lacks **Billing: Read**. | Edit the token and add Billing: Read. |
 | `product.r2-not-enabled`, or HTTP 403 code **10042** on R2 calls | R2 isn't enabled on the account; no token permission fixes this. | R2 in the dashboard: enable it (needs a payment method). |
-| `access.idp-missing` | Zero Trust has only one-time PIN. | Zero Trust, Settings, Authentication: add the district's SAML or OIDC provider. |
+| `access.idp-missing` | Zero Trust has no login method a school can use: only Cloudflare's own login, or none. | Zero Trust, Settings, Authentication: add Google Workspace, Microsoft Entra ID or the district's SAML or OIDC provider; or add one-time PIN for a small pilot. |
+| `access.idp-pin-only` (warning) | One-time PIN is the only login method a school can use. | The install proceeds. Before rollout, add the district's SSO under Zero Trust, Settings, Authentication. |
 | `createAccessPolicy` refused, HTTP 403 code **1010** `auth.forbidden`, after preflight passed | The token has the **zone-level** "Access: Apps and Policies" permission, not the account-level one ([The API token](#the-api-token)). | Edit the token: replace it with the account-level permission. Then run `uninstall --confirm` to clear the partial run, or just run the install again. |
 | `uploadWorkerScript` refused, HTTP 403 code **10063** | The account has no workers.dev subdomain yet (`GET /workers/subdomain` answers code 10007). Also seen on an account without Workers Paid. | Open Workers & Pages in the dashboard once, which creates the subdomain; check Workers Paid. Run the install again. |
 | `validation-failed`: "school release requires enabled service educateos-district-worker" (or `educateos-external-mcp`) | The answers don't enable both district services, which a school release requires. The wizard can't add the MCP one yet (SCHO-439). | Use [the answers file](#a-complete-answers-file) with `--config`. |
@@ -319,7 +320,9 @@ What the 2026-11-18 run needed, in order (SCHO-378):
 1. A new Cloudflare account (dashboard, Create Account; `POST /accounts` is refused) with a payment
    method, then Workers Paid ($5/month), R2 (Get started; $0 base) and Zero Trust Free ($0, 50
    seats), each through its dashboard checkout. Turning on Zero Trust creates the team (a generated
-   name such as `tight-paper-7186`) and adds Cloudflare's built-in login, which satisfies preflight.
+   name such as `tight-paper-7186`) and adds Cloudflare's own login (sign in with a Cloudflare account).
+   That passed preflight then, but since SCHO-443 it blocks on `access.idp-missing`, because no
+   teacher or student has a Cloudflare account: add one-time PIN (a pilot) or the district IdP.
 2. A zone, active, with no record at the hostname (`educateos.<zone>`).
 3. Open Workers & Pages once, to create the workers.dev subdomain.
 4. A user API token with the 13 permissions, with the **account-level** "Access: Apps and

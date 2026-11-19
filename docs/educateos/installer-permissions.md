@@ -124,7 +124,8 @@ install still has no known scope for the origin record.
 | `product.r2-not-enabled` | R2 enabled (Cloudflare error code 10042 when it isn't, **unverified**) | Enable R2; it needs a payment method. |
 | `access.organization-missing` | A Zero Trust organization | Create the team named in the install config. |
 | `access.team-mismatch` | The configured team is the account's | Fix `access.teamName`. |
-| `access.idp-missing` | A district IdP besides one-time PIN | Add the district's SAML or OIDC provider. |
+| `access.idp-missing` | A login method a school can use: anything besides Cloudflare's own login (sign in with a Cloudflare account) | Add Google Workspace, Microsoft Entra ID or a SAML or OIDC provider; or one-time PIN for a small pilot. |
+| `access.idp-pin-only` (warning) | When one-time PIN is the only such method, the install proceeds | Add the district's SSO before rollout. |
 | `dns.zone-missing`, `dns.zone-pending` | The base domain is an active zone in the account | Add the zone and delegate its nameservers. |
 | `dns.record-conflict` | The EducateOS hostname, and the OSS admin's when `admin.enabled`, has no existing DNS records | Remove them, or pick another subdomain or `admin.hostname`. |
 | `dns.managed-only-cross-account` | A managed-only install (no `baseDomain`, SCHO-243) needs educateos.io as an active zone in the account. It replaces `dns.zone-*` and `dns.record-conflict`, which only apply to a base domain | Set `baseDomain` to a zone of the district's own, or install into the account that holds educateos.io. |
@@ -258,8 +259,8 @@ Run with `scripts/verify-account.ts` on the second account (gmacko, `f84fe044…
 Settled:
 
 - **Workers, zone and Access calls**: every one listed above as verified 2026-10-31 succeeded.
-  The account's only identity provider is one-time PIN, so a full install here would stop on
-  `access.idp-missing`.
+  The account's only identity provider is one-time PIN, so a full install here would warn with
+  `access.idp-pin-only` (before SCHO-443 it stopped on `access.idp-missing`).
 - **The `environment` field on `PUT /workers/domains`** is accepted: the attach succeeded with
   `environment: "production"`.
 - **Version detail exposes plain-text binding values** (`plainTextVarsExposed: true`), and service

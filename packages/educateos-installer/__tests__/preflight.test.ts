@@ -37,10 +37,10 @@ describe("preflight", () => {
     expect(report.warnings.map((w) => w.code)).toContain("access.free-seat-limit");
   });
 
-  it("blocks on a pending zone, a taken hostname, a team mismatch and one-time-PIN-only sign-in", async () => {
+  it("blocks on a pending zone, a taken hostname, a team mismatch and Cloudflare-login-only sign-in", async () => {
     const { report } = await check({
       accessTeam: "someone-else",
-      identityProviders: [{ name: "One-time PIN", type: "onetimepin" }],
+      identityProviders: [{ name: "Cloudflare", type: "cloudflare" }],
       zones: [{ name: "northfield.example", status: "pending" }],
       dnsRecords: [{ name: "educateos.northfield.example", type: "CNAME" }],
     });
@@ -50,6 +50,46 @@ describe("preflight", () => {
       "dns.zone-pending",
       "dns.record-conflict",
     ]);
+  });
+
+  describe("sign-in methods", () => {
+    const codes = async (identityProviders: { name: string; type: string }[]) => {
+      const { report } = await check({ identityProviders });
+      return {
+        blocking: report.blocking.map((b) => b.code),
+        warnings: report.warnings.map((w) => w.code),
+        idp: report.blocking.find((b) => b.code === "access.idp-missing"),
+      };
+    };
+    const CLOUDFLARE = { name: "Cloudflare", type: "cloudflare" };
+    const PIN = { name: "One-time PIN", type: "onetimepin" };
+
+    it("blocks when the only login is a Cloudflare account, naming the fix", async () => {
+      const result = await codes([CLOUDFLARE]);
+      expect(result.blocking).toEqual(["access.idp-missing"]);
+      expect(result.idp!.operatorAction).toMatch(/Google Workspace.*Microsoft Entra ID.*SAML or OIDC.*one-time PIN/s);
+      expect(result.idp!.operatorAction).toContain("Zero Trust → Settings → Authentication");
+    });
+
+    it("blocks when there is no login method at all", async () => {
+      expect((await codes([])).blocking).toEqual(["access.idp-missing"]);
+    });
+
+    it("warns, without blocking, when email codes are the only usable login", async () => {
+      for (const idps of [[CLOUDFLARE, PIN], [PIN]]) {
+        const result = await codes(idps);
+        expect(result.blocking).toEqual([]);
+        expect(result.warnings).toContain("access.idp-pin-only");
+      }
+    });
+
+    it("passes a district identity provider", async () => {
+      for (const type of ["google-apps", "saml", "azureAD"]) {
+        const result = await codes([CLOUDFLARE, PIN, { name: "District SSO", type }]);
+        expect(result.blocking).toEqual([]);
+        expect(result.warnings).not.toContain("access.idp-pin-only");
+      }
+    });
   });
 
   it("stops the install before observing or changing anything", async () => {
