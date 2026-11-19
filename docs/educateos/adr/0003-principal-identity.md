@@ -145,3 +145,19 @@ working, and nothing is moved or deleted.
 
 The procedure is in [the production instance runbook](../runbooks/production-instance.md#principal-identity-cutover-scho-259).
 
+
+## Bootstrap administrators (SCHO-441)
+
+A new district has no administrator who can sign in: Access mints a person's subject on their
+first sign-in, after the install seeded the directory, and every link needs an administrator to
+approve it. So `DISTRICT_CONFIG.bootstrapAdmins` may name administrators who are **not yet in the
+directory** (`principalId`, `displayName`, `email`). The first verified person sign-in from a
+trusted issuer whose email matches exactly one entry creates that principal, linked to that
+identity and holding `district-admin` at district scope, in one directory commit.
+
+The installer's operator, who controls the Cloudflare account and its Access policy, named the
+person: that is the approval this ADR asks for. It is the only place an email selects a principal,
+and it does so once. An entry whose principal already exists is ignored whatever that principal's
+state, so a principal still always holds at least one identity, no existing link is ever replaced,
+and a deactivated bootstrap administrator is not recreated. Ambiguous emails create no one. Remove
+the entry after first sign-in if the Access policy admits people the operator does not control.

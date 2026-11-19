@@ -8,6 +8,7 @@ import { PlannerRuntimePolicy } from "./planner-runtime-policy.ts";
 import { WorkshopPolicySettings } from "./workshop-policy.ts";
 import { googleclassroom } from "@educateos/integrations";
 import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
+import { BootstrapAdmin } from "@educateos/identity";
 import { AuthoritySetting } from "@educateos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@educateos/ai-governance";
 import { RetentionPolicy } from "@educateos/workspaces";
@@ -49,6 +50,15 @@ export const DistrictWorkerConfig = z.strictObject({
   plannerAi: PlannerRuntimePolicy.optional(),
   /** Explicit Workshop mint grants. Absent denies every capability request. */
   workshopPolicy: WorkshopPolicySettings.optional(),
+  /**
+   * The district's first administrators (SCHO-441), whom the installer named and who are not yet
+   * in `directory`. The first verified sign-in carrying one's email creates that principal with
+   * that identity and `district-admin`, once (see `BootstrapAdmin` in `@educateos/identity`). An
+   * entry whose principal already exists is ignored, so leaving this set after setup is harmless.
+   */
+  bootstrapAdmins: z.array(BootstrapAdmin).min(1).max(20)
+    .refine((admins) => new Set(admins.map((a) => a.principalId)).size === admins.length, "principal IDs repeat")
+    .optional(),
   /**
    * Deployment-controlled issuers to add to an existing directory at startup. Existing trust
    * and identity links are preserved; removing this setting does not revoke persisted trust.

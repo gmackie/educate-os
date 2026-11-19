@@ -46,6 +46,11 @@ export interface AccessVerifierOptions {
   keys?: JWTVerifyGetKey;
   /** Set when the district signs people in through Clever, behind Access (SCHO-203). */
   clever?: CleverSsoConfig;
+  /**
+   * Called with each verified identity and its token's email before the identity is returned, so
+   * the district can link a bootstrap administrator on first sign-in (SCHO-441) before resolving.
+   */
+  onVerified?: (identity: VerifiedIdentity, email: string | undefined) => Promise<void>;
 }
 
 /**
@@ -95,6 +100,8 @@ export function accessRequestVerifier(options: AccessVerifierOptions): RequestVe
     } catch {
       return undefined;
     }
-    return identityFromAccessPayload(payload, { issuer, ...(options.clever === undefined ? {} : { clever: options.clever }) });
+    const identity = identityFromAccessPayload(payload, { issuer, ...(options.clever === undefined ? {} : { clever: options.clever }) });
+    await options.onVerified?.(identity, typeof payload.email === "string" ? payload.email : undefined);
+    return identity;
   };
 }
