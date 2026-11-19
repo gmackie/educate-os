@@ -2,6 +2,8 @@
 // works, with the fix for anything that doesn't. Reads only: the district's public paths, the
 // district Worker's secret names (never values) with the install token, the answers file, and,
 // with a district administrator's Access token, the district's own LTI and roster status.
+import { EducateOsError } from "@educateos/contracts";
+import { CloudflareApiError, isCredentialFailure } from "@educateos/installer";
 import { adminSession, type ConnectContext, probe } from "./district.ts";
 import { readDistrictConfig } from "./district-config.ts";
 import type { StatusRow } from "./outcome.ts";
@@ -40,11 +42,13 @@ export async function districtStatus(context: ConnectContext, options: { cloudfl
     : { area: "lti-tool", state: "failing", detail: `${district.ltiOrigin}/lti/jwks answered HTTP ${jwks.status}`, fix: jwks.status >= 300 && jwks.status < 400 ? "Access is in front of /lti/*: run `npx launch-educate-os` to restore the bypass." : "Run `npx launch-educate-os plan` and apply what it shows." });
 
   let secrets: string[] | undefined;
+  // Why `secrets` is missing even though the token is set, so the rows say what failed (SCHO-444).
+  let secretsFailure: Omit<StatusRow, "area"> | undefined;
   if (options.cloudflare) {
     try {
       secrets = await (await context.cloudflare()).api.listWorkerSecrets(district.accountId, district.scriptName);
-    } catch {
-      secrets = undefined;
+    } catch (error) {
+      secretsFailure = secretsListFailure(error, district.accountId, district.scriptName);
     }
   }
   // The administrator's token from the environment only: a status report asks nothing.
@@ -73,6 +77,7 @@ export async function districtStatus(context: ConnectContext, options: { cloudfl
   // The roster: credentials on the Worker, the configuration, then the district's own view.
   const config = readDistrictConfig(context.answers) ?? {};
   const secretRow = (area: string, name: string, configured: boolean, fix: string): StatusRow => {
+    if (secretsFailure) return { ...secretsFailure, area };
     if (secrets === undefined) return { area, state: "unknown", detail: "Worker secrets need the Cloudflare API token", fix: "set CLOUDFLARE_API_TOKEN and run again" };
     if (!secrets.includes(name)) return { area, state: "not configured", detail: `no ${name} on ${district.scriptName}`, fix };
     return configured
@@ -96,4 +101,20 @@ export async function districtStatus(context: ConnectContext, options: { cloudfl
   }
   rows.push({ area: "oneroster-api", state: "not available", detail: "scheduled OneRoster API and ClassLink sync aren't wired into the district yet; import OneRoster CSV with `connect oneroster`" });
   return rows;
+}
+
+/**
+ * The row for a failed read of the district Worker's secret names. The token is set by then, so
+ * the row names the Cloudflare failure instead of asking for a token.
+ */
+function secretsListFailure(error: unknown, accountId: string, scriptName: string): Omit<StatusRow, "area"> {
+  const failure = error instanceof CloudflareApiError ? error : undefined;
+  const what = failure ? `listing ${scriptName}'s secrets failed: ${failure.message}` : `listing ${scriptName}'s secrets failed: ${error instanceof EducateOsError ? error.message : "unexpected error"}`;
+  if (isCredentialFailure(error)) {
+    return { state: "unknown", detail: `${what}; the Cloudflare API token can't read Worker secrets`, fix: "use a token with Workers Scripts: Read (the install token has it) and run again" };
+  }
+  if (failure?.status === 404) {
+    return { state: "unknown", detail: `${what}; account ${accountId} has no Worker named ${scriptName}`, fix: "check accountId and the district's scriptName in the answers file, or run `npx launch-educate-os plan`" };
+  }
+  return { state: "unknown", detail: what, fix: "run again; if it keeps failing, check the Cloudflare status page" };
 }

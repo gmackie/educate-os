@@ -116,6 +116,35 @@ export const SAAS_NO_QUOTA_CODE = 1404;
 /** Cloudflare's code for "R2 is not enabled on this account". */
 export const R2_NOT_ENABLED_CODE = 10042;
 
+/**
+ * Cloudflare's code on an HTTP 503 from creating an account's first AI Gateway (SCHO-440, 2026-11).
+ * The same request succeeded a minute later, so it is read as transient.
+ */
+export const AI_GATEWAY_UNAVAILABLE_CODE = 7015;
+
+/** How many times a transient failure is tried in all, and the first wait between tries. */
+export const TRANSIENT_ATTEMPTS = 4;
+const TRANSIENT_BASE_DELAY_MS = 3_000;
+// A Retry-After longer than this is capped, so the whole retry stays near half a minute.
+const TRANSIENT_MAX_DELAY_MS = 15_000;
+
+/**
+ * True for a failure worth trying again: any 5xx, a 429, or code 7015. Other 4xx answers (a bad
+ * request, a missing permission) would fail the same way again.
+ */
+export function isTransientFailure(error: unknown): error is CloudflareApiError {
+  if (!(error instanceof CloudflareApiError)) return false;
+  return error.status >= 500 || error.status === 429 || error.cloudflareCodes.includes(AI_GATEWAY_UNAVAILABLE_CODE);
+}
+
+/** The wait before try `attempt + 1` (attempt counts from 1): Retry-After when sent, else 3 s, 6 s, 12 s. */
+export function transientDelayMs(attempt: number, error: CloudflareApiError): number {
+  const requested = error.retryAfterSeconds === undefined ? undefined : error.retryAfterSeconds * 1000;
+  return Math.min(requested ?? TRANSIENT_BASE_DELAY_MS * 2 ** (attempt - 1), TRANSIENT_MAX_DELAY_MS);
+}
+
+const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 const MIME_BY_MODULE_TYPE: Record<ModuleType, string> = {
   esm: "application/javascript+module",
   text: "text/plain",
@@ -130,6 +159,8 @@ export interface CloudflareHttpApiOptions {
   fetch?: typeof fetch;
   /** Defaults to {@link CLOUDFLARE_API_BASE}. */
   baseUrl?: string;
+  /** Waits between retries of a transient failure. Defaults to a timer; tests pass one that returns at once. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 interface CallOptions {
@@ -152,6 +183,7 @@ export class CloudflareHttpApi implements CloudflareApi {
   readonly #tokens: TokenProvider;
   readonly #fetch: typeof fetch;
   readonly #base: string;
+  readonly #sleep: (ms: number) => Promise<void>;
 
   constructor(options: CloudflareHttpApiOptions) {
     this.#tokens = options.tokens;
@@ -159,6 +191,7 @@ export class CloudflareHttpApi implements CloudflareApi {
     // workerd refuses ("Illegal invocation"); bind it to the global object (SCHO-206).
     this.#fetch = options.fetch ?? fetch.bind(globalThis);
     this.#base = options.baseUrl ?? CLOUDFLARE_API_BASE;
+    this.#sleep = options.sleep ?? realSleep;
   }
 
   async getAccount(accountId: string) {
@@ -517,7 +550,7 @@ export class CloudflareHttpApi implements CloudflareApi {
   }
 
   async createAiGateway(accountId: string, gatewayId: string) {
-    return Id.parse(
+    const create = async () => Id.parse(
       await this.#result("createAiGateway", "POST", `/accounts/${seg(accountId)}/ai-gateway/gateways`, {
         // Logging stays off: gateway logs would hold prompts. A district may turn it on itself.
         json: {
@@ -530,6 +563,19 @@ export class CloudflareHttpApi implements CloudflareApi {
         },
       }),
     );
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await create();
+      } catch (error) {
+        // A 5xx may still have created the gateway, so a retry refused with a 4xx checks for it.
+        if (attempt > 1 && error instanceof CloudflareApiError && error.status >= 400 && error.status < 500 && !isTransientFailure(error)) {
+          const existing = await this.listAiGateways(accountId).catch(() => []);
+          if (existing.some((gateway) => gateway.id === gatewayId)) return { id: gatewayId };
+        }
+        if (!isTransientFailure(error) || attempt >= TRANSIENT_ATTEMPTS) throw error;
+        await this.#sleep(transientDelayMs(attempt, error));
+      }
+    }
   }
 
   async deleteAiGateway(accountId: string, gatewayId: string) {
@@ -573,10 +619,24 @@ export class CloudflareHttpApi implements CloudflareApi {
     if (response.ok && options.emptyBodyIsSuccess && text.trim() === "") return { success: true, errors: [], result: undefined };
     const parsed = Envelope.safeParse(parseJson(text));
     if (!response.ok || !parsed.success || !parsed.data.success) {
-      throw new CloudflareApiError(operation, response.status, parsed.success ? parsed.data.errors.map((e) => e.code) : []);
+      throw new CloudflareApiError(
+        operation,
+        response.status,
+        parsed.success ? parsed.data.errors.map((e) => e.code) : [],
+        retryAfterSeconds(response.headers.get("retry-after")),
+      );
     }
     return parsed.data;
   }
+}
+
+/** A `Retry-After` header in seconds; the HTTP-date form is read relative to now. */
+function retryAfterSeconds(header: string | null): number | undefined {
+  if (header === null || header.trim() === "") return undefined;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return seconds >= 0 ? seconds : undefined;
+  const at = Date.parse(header);
+  return Number.isNaN(at) ? undefined : Math.max(0, (at - Date.now()) / 1000);
 }
 
 function parseJson(text: string): unknown {
