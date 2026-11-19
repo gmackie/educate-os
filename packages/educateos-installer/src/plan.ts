@@ -159,7 +159,9 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
       }
       case "ai_gateway": {
         const found = gateways.some((g) => g.id === resource.gatewayId);
-        step(found ? "noop" : "create", found ? "gateway exists" : "gateway missing");
+        step(found ? "noop" : "create", found
+          ? "gateway exists"
+          : "gateway missing: the Workshop's AI runs in this account, through Workers AI, with no provider keys");
         break;
       }
       case "access_policy": {

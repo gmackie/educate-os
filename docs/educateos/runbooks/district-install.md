@@ -53,7 +53,7 @@ Have all of these before you start. The installer's preflight checks every item 
 | 8 | **The district's identity provider** (SAML or OIDC: Google Workspace, Microsoft Entra ID, Clever, ...) added as a Zero Trust login method, besides one-time PIN | preflight (`access.idp-missing`) blocks only when every login method is one-time PIN. Turning Zero Trust on also adds Cloudflare's built-in login, which passes; that was enough for the SCHO-378 test, but a pilot needs the district IdP | depends on who administers the IdP |
 | 9 | **Zero Trust seats**: Zero Trust Free admits 50 users, and every student and teacher who signs in takes a seat | preflight warns (`access.free-seat-limit`) | before the pilot opens, not before the install |
 | 10 | **A scoped API token** with the 13 permissions below | `doctor`, preflight | 5 minutes |
-| 11 | Optional: **AI Gateway** (free core features) | created by the installer if you say yes | none |
+| 11 | **AI Gateway**, which turns Workers AI on (free core features; Workers AI billed per use) | created by the installer unless you say no | none |
 | 12 | **`DISTRICT_CONFIG` and `MCP_CONFIG`**: a school release requires the district LMS and district MCP services, each with its JSON (see [Decisions](#decisions) and [the answers file](#a-complete-answers-file)) | `validation-failed` ("school release requires enabled service ..."), then preflight (`service.input-missing`) | 15 minutes |
 
 ### The API token
@@ -121,7 +121,11 @@ Make these before you run the installer. The wizard asks for each.
    terminal regression reaches preflight against the Cloudflare fake; publication and clean-account
    wizard acceptance are still pending. Installing both services with an answers file was verified
    on 2026-11-18 (SCHO-378).
-5. **AI Gateway.** Yes gives you one gateway for usage and cost logs; its core features are free.
+5. **AI Gateway (turns AI on).** Yes, the default, creates one gateway in your account and turns on
+   Workers AI for the Workshop from the first sign-in (`CF_AI_GATEWAY_PROVIDERS=cloudflare`,
+   SCHO-445): models run in your account, billed by Cloudflare per use, with no provider keys. The
+   gateway's core features are free. Anthropic and OpenAI stay off until an administrator adds a key.
+   No gives a Workshop with no AI models until you add a gateway on a later run.
 6. **Where to keep the answers file.** The wizard writes `educateos-install.json` (no token, no
    secrets) in the directory you run it from. Keep it, for example in the district's IT repository:
    upgrades and rollbacks reuse it.

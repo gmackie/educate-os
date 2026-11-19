@@ -787,6 +787,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       if (aiGateway) {
         vars.CF_AI_GATEWAY = aiGateway.gatewayId;
         vars.CF_AI_GATEWAY_ACCOUNT_ID = config.accountId;
+        // Workers AI is on from the first sign-in (SCHO-445): it runs in the district's own account
+        // through the WORKERS_AI binding, with no provider key. Frontier providers stay off until an
+        // administrator adds one. A release that names its own providers keeps them.
+        if (entry.vars.CF_AI_GATEWAY_PROVIDERS === undefined) vars.CF_AI_GATEWAY_PROVIDERS = "cloudflare";
         dependsOn.add(aiGateway.key);
       }
       // The Workshop under /ai: the URLs the backend hands browsers carry the base path.
