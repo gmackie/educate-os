@@ -181,7 +181,9 @@ describe("more grown-ups and retention", () => {
   });
 
   it("purges practice past the retention period only where it is set", async () => {
-    let at = Date.parse("2026-11-16T15:00:00.000Z");
+    // Starts now: the engine stamps audit decisions with the wall clock, so a fixed start date
+    // would leave them newer than the purge cutoff once that date passed (SCHO-448).
+    let at = Date.now();
     const d = await bootDistrict(WILLOWCREEK, { homeLearning: { signup: "open", retentionDays: 730 }, now: () => new Date(at) });
     const { rivers, maya } = await riversWithChild(d);
     const child = cookieFrom((await d.call(rivers, "family.startChildSession", { params: { learnerId: maya.id } })).setCookie);
