@@ -261,7 +261,10 @@ npx launch-educate-os ai remove anthropic
 provider), asks for the key without echo (or reads `EDUCATEOS_ANTHROPIC_API_KEY` /
 `EDUCATEOS_OPENAI_API_KEY` with `--yes`), and checks its shape. It then lists the provider's models
 through the district's own gateway with the key, which runs no model: a 401 or 403 is "that key was
-rejected" and nothing is stored. A good key is stored as the gateway's default key for the provider
+rejected" and nothing is stored. Cloudflare stores a key only in a gateway that names a Secrets
+Store (code 7001 otherwise; the dashboard sets one on first use, the API doesn't), so the first key
+attaches the account's store to the gateway, creating `default_secrets_store` if the account has
+none, and changes no other gateway setting. A good key is then stored as the gateway's default key for the provider
 (`POST /accounts/{account}/ai-gateway/gateways/{gateway}/provider_configs`; Cloudflare keeps it in
 the account's Secrets Store), the provider is added to the answers' `ai.providers`, and the install
 is applied with the release the account runs. The key is never written to the answers file, a

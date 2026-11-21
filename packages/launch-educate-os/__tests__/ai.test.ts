@@ -52,6 +52,7 @@ describe("ai add", () => {
     expect(saved).not.toContain(GOOD.anthropic);
     expect(JSON.parse(saved).install.ai).toMatchObject({ providers: ["anthropic"] });
     expect(result.stdout).toContain("Anthropic accepted the key.");
+    expect(result.stdout).toContain("Created your account's Secrets Store");
   });
 
   it("refuses a key the provider rejects, storing nothing and changing nothing", async () => {
@@ -75,11 +76,15 @@ describe("ai add", () => {
     expect(first.stderr).toBe("");
     expect(checks.map((c) => c.path)).toEqual([`/v1/${accountId()}/${GATEWAY}/openai/models`]);
     expect(backendProviders()).toBe("cloudflare,openai");
+    // A second provider reuses the store the first one attached.
+    const anthropic = await ai(["add", "anthropic", "--yes"], undefined, { EDUCATEOS_ANTHROPIC_API_KEY: GOOD.anthropic });
+    expect(anthropic.stdout).not.toContain("Created your account's Secrets Store");
+    expect(world.cloudflare.fake.storedProviderKey(GATEWAY, "anthropic")).toBe(GOOD.anthropic);
     const again = await ai(["add", "openai", "--yes"]);
     expect(again.code).toBe(0);
     expect(again.stdout).toContain("already holds a OpenAI key");
     expect(again.stdout).toContain("OpenAI is already on.");
-    expect(checks).toHaveLength(1);
+    expect(checks).toHaveLength(2);
   });
 
   it("changes nothing when the administrator declines the notice", async () => {

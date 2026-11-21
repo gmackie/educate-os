@@ -392,4 +392,11 @@ export interface CloudflareApi {
    * its own key then uses (SCHO-446). Needs Secrets Store: Edit besides AI Gateway: Edit.
    */
   storeAiGatewayProviderKey(accountId: string, gatewayId: string, providerSlug: string, secret: string): Promise<AiGatewayProviderKey>;
+  /**
+   * Makes the gateway name a Secrets Store, which Cloudflare requires before it stores a provider key
+   * (code 7001; the dashboard does it on first use, the API doesn't). Uses the account's first store,
+   * creating `default_secrets_store` if it has none, and changes no other gateway setting (SCHO-446).
+   * Needs Secrets Store: Edit besides AI Gateway: Edit.
+   */
+  attachAiGatewayStore(accountId: string, gatewayId: string): Promise<{ attached: boolean; storeCreated: boolean }>;
 }
