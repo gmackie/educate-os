@@ -416,8 +416,8 @@ describe("mcp enable and disable (built-in Cloudflare OAuth)", () => {
     const enabled = await run(["mcp", "enable", "--strict-writes", "--allowed-origin", "https://assistant.northfield.example", "--yes"], { cwd: dir });
     expect(enabled.code).toBe(0);
     expect(enabled.stdout).toContain("built-in Cloudflare OAuth");
-    const saved = await readAnswers(path);
-    const parsed = JSON.parse(saved.install.services!["educateos-district-worker"]!.vars!.DISTRICT_CONFIG!);
+    const services = (await readAnswers(path))!.install.services as Record<string, { vars: { DISTRICT_CONFIG: string } }>;
+    const parsed = JSON.parse(services["educateos-district-worker"]!.vars.DISTRICT_CONFIG);
     expect(parsed.mcp).toEqual({
       mode: "builtin",
       origin: ORIGIN,
@@ -436,8 +436,8 @@ describe("mcp enable and disable (built-in Cloudflare OAuth)", () => {
     // Disabling removes DISTRICT_CONFIG.mcp.
     const disabled = await run(["mcp", "disable", "--yes"], { cwd: dir });
     expect(disabled.code).toBe(0);
-    const afterDisable = await readAnswers(path);
-    const parsedAfter = JSON.parse(afterDisable.install.services!["educateos-district-worker"]!.vars!.DISTRICT_CONFIG!);
+    const servicesAfter = (await readAnswers(path))!.install.services as Record<string, { vars: { DISTRICT_CONFIG: string } }>;
+    const parsedAfter = JSON.parse(servicesAfter["educateos-district-worker"]!.vars.DISTRICT_CONFIG);
     expect(parsedAfter.mcp).toBeUndefined();
   });
 });
