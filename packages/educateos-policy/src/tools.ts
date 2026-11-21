@@ -356,7 +356,16 @@ export class SchoolToolRunner {
     if (options.digest !== undefined && options.digest !== action.digest) {
       return failure("conflict", "This is not the request you reviewed. Review it again.", correlationId);
     }
-    const context: SchoolToolContext = { principal: action.subject, channel: action.channel, correlationId: action.correlationId };
+    // A confirmation is decided by the requester themselves, in person (#mayDecide requires the
+    // HTTP channel), so the change is made under their own standing authority: a client's
+    // delegation bounds what it may ask for, and some actions (publishing) are never delegable, so
+    // applying under the delegation would refuse the very change the person just confirmed. It
+    // keeps the channel it was requested over. An approval by someone else applies as requested.
+    const context: SchoolToolContext = {
+      principal: action.needs === "confirmation" ? session.principal : action.subject,
+      channel: action.channel,
+      correlationId: action.correlationId,
+    };
     // Only an approver, who has authority over the target, is told why the change cannot be made here.
     if (action.needs === "approval") {
       const refusal = await this.#recheckRefusal(tool, input, context);

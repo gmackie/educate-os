@@ -160,7 +160,26 @@ describe("full LMS-lite MCP tool catalog", () => {
     expect(announcements.status).toBe("ok");
     expect((announcements as { status: "ok"; value: { announcement: { title: string } }[] }).value.some((a) => a.announcement.title === "Lab tomorrow")).toBe(true);
 
-    // 8. When allowDrafts: false (strict mode), even draft modules queue for confirmation
+    // 8. Publishing is never delegable, yet a teacher can still confirm a publish the client queued:
+    // the confirmed change runs as the teacher, under their own authority (found in production).
+    const quiz = await runner.invoke(mcpSession, "create_quiz", {
+      offeringId: BIO.id,
+      title: "ATP check-in",
+      items: [{ type: "true-false", prompt: "The electron transport chain makes most of the cell's ATP.", points: 1, correct: true }],
+    }, { confirmWrites: true, allowDrafts: true });
+    expect(quiz.status).toBe("ok");
+    const quizId = (quiz as { status: "ok"; value: { id: string } }).value.id;
+    const publish = await runner.invoke(mcpSession, "publish_quiz", { offeringId: BIO.id, quizId, published: true }, { confirmWrites: true, allowDrafts: true });
+    expect(publish.status).toBe("approval-required");
+    const publishApproval = publish as { status: "approval-required"; approvalId: string; digest: string };
+    const published = await app.callForTool(
+      "teacher.approveToolAction",
+      { params: { approvalId: publishApproval.approvalId }, body: { digest: publishApproval.digest } },
+      { principal: { districtId: MORGAN.districtId, principalId: MORGAN.id }, channel: "http", correlationId: "cor-publish", origin: ORIGIN },
+    );
+    expect(published).toMatchObject({ status: "applied", value: { id: quizId } });
+
+    // 9. When allowDrafts: false (strict mode), even draft modules queue for confirmation
     const strictDraft = await runner.invoke(
       mcpSession,
       "create_module",

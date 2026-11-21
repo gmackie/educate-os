@@ -229,6 +229,39 @@ describe("the school tool runner", () => {
     expect(await runner.invoke(mcp(P.amara), "draft_note", { text: "v2" }, { confirmWrites: true, allowDrafts: false }))
       .toMatchObject({ status: "approval-required", needs: "confirmation" });
   });
+
+  it("applies a confirmed change as the person who confirmed it in EducateOS, not under the client's session", async () => {
+    const { engine } = engineFor();
+    const seen: { principal: unknown; channel: string }[] = [];
+    const publish = defineSchoolTool({
+      name: "publish_note",
+      description: "Publish a note.",
+      inputSchema: z.strictObject({ text: z.string() }),
+      action: "update",
+      effect: "publish",
+      resource: async () => courseResource("off_nf-bio-fall-p2", "artifact", "course", { id: "art_amara-lab", owner: P.amara.principalId }),
+      handler: async ({ text }, { principal, channel }) => {
+        seen.push({ principal, channel });
+        return { published: text };
+      },
+    });
+    const runner = new SchoolToolRunner({ tools: [publish], engine, approvals: { store: new InMemoryToolApprovalStore() } });
+    const queued = await runner.invoke(mcp(P.amara), "publish_note", { text: "v1" }, { confirmWrites: true });
+    expect(queued).toMatchObject({ status: "approval-required", needs: "confirmation" });
+    const { approvalId, digest } = queued as { approvalId: string; digest: string };
+
+    // The client can't confirm its own request.
+    expect(await runner.approve(mcp(P.amara), approvalId, { digest })).toMatchObject({ status: "error" });
+    expect(seen).toHaveLength(0);
+
+    // The person confirms it directly; the change runs as them (their own session, not the
+    // client's), on the channel it was requested over.
+    const person = { principal: { ...P.amara }, channel: "http" as const };
+    expect(await runner.approve(person, approvalId, { digest })).toMatchObject({ status: "applied", value: { published: "v1" } });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.principal).toBe(person.principal);
+    expect(seen[0]!.channel).toBe("mcp-tool");
+  });
 });
 
 describe("defineSchoolTool", () => {
