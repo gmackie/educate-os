@@ -445,6 +445,35 @@ district Workers at their own `<slug>.educateos.io`; see [the demo districts run
   and `deployCommand` in the table above, `syncSecrets: true`, and `healthCheckUrl`
   `https://district.schoolos.gmac.io/healthz`.
 
+### Organization MCP endpoint
+
+Northfield and Harbor have had the built-in MCP server on since 2026-11-21.
+[mcp-validation](../mcp-validation/README.md) holds the evidence.
+
+- **Config.** Each district's `DISTRICT_CONFIG` secret has
+  `"mcp": {"mode": "builtin", "origin": "<https origin>", "allowDrafts": true}`:
+  - Northfield: app `educateos-district`, origin `https://northfield.educateos.io`.
+  - Harbor: app `educateos-harbor`, origin `https://harbor.educateos.io`.
+
+  A changed secret reaches the Worker only on the next deploy (`syncSecrets`), so run
+  `forge deploy create production` after `forge secret set DISTRICT_CONFIG --stage production --stdin`.
+- **Access.** These paths are destinations on the bypass applications:
+  - `/mcp`
+  - `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`
+  - `/.well-known/oauth-authorization-server`
+  - `/.well-known/jwks.json`
+  - `/oauth/register`, `/oauth/token` and `/oauth/revoke`
+
+  Northfield's are on "EducateOS Northfield (bypass)" and Harbor's on "EducateOS demo districts health
+  (bypass)". They were added with the API, as above. `/oauth/authorize` is deliberately not
+  bypassed, because the consent screen relies on the Access sign-in.
+- **Routing.** The same paths plus `/oauth/*` are in the district Worker's `run_worker_first`
+  (`DISTRICT_WORKER_ROUTES`), so its single-page fallback never answers them.
+- **Managing connections.** Teachers use `/teach/#/mcp` and administrators use `/admin/#/mcp`.
+  There they mint personal tokens, revoke connections and approve queued writes.
+- **Turning it off.** Remove `mcp` from the secret and redeploy. The endpoints then answer 404,
+  and the bypass destinations can stay.
+
 ## The Google connector
 
 SCHO-214 adds the Workshop's Google connector, `gatekeeper-google`, mounted at

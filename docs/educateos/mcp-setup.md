@@ -1,7 +1,7 @@
 # Setting up MCP
 
 - Audience: district/school owners and IT, using `npx launch-educate-os`.
-- Status: built and tested across `@educateos/external-mcp`, `@educateos/district-worker`, `@educateos/admin-ui`, `@educateos/teacher-ui`, `@educateos/installer`, and `launch-educate-os` (including full LMS-lite tools, built-in Cloudflare OAuth 2.1, scoped personal bearer tokens, and Management UI approval queues).
+- Status: built and tested across `@educateos/external-mcp`, `@educateos/district-worker`, `@educateos/admin-ui`, `@educateos/teacher-ui`, `@educateos/installer`, and `launch-educate-os` (including full LMS-lite tools, built-in Cloudflare OAuth 2.1, scoped personal bearer tokens, and Management UI approval queues). Validated in production on Northfield and Harbor on 2026-11-21 with a scripted OAuth client ([evidence](mcp-validation/README.md)); no Claude or ChatGPT app has connected to a district yet.
 - Commands: `npx launch-educate-os mcp status | enable | disable | clients | add` ([launch-installer.md](launch-installer.md#mcp-setup-scho-407)
   has how they work).
 
