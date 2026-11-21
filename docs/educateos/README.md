@@ -123,6 +123,12 @@ Northfield and Riverbend) landing on a different principal in each. `EDUCATEOS_H
 | `packages/educateos-admin-ui` | `@educateos/admin-ui`: the district admin console (U03), a Vite React app over `@educateos/api-client`. |
 | `packages/educateos-pilot-gate` | `@educateos/pilot-gate`: the synthetic pilot gate (H01). The security, availability, rollover, load, restore and accessibility suite over both districts' apps, and the G0/G1 gate report. Test-only. See [pilot-gate.md](pilot-gate.md). |
 
+## Course Commons design (proposed)
+
+- [Cross-institution curriculum collaboration RFC 0004](rfc/0004-cross-institution-course-collaboration.md) — exact OCS identities, detached contribution profiles, institutional permissions and safe updates.
+- [Course Commons technical delivery plan](course-commons-technical-delivery-plan.md) — state machines, exact contracts, APIs, CI gates, engineering work packages, pilot design and budget.
+- [Course Commons operating model](course-commons-operating-model.md) — publisher roles, end-to-end educator journeys, federation, licensing, curriculum review and the phased build gates.
+
 ## Decisions
 
 1. [District data ownership and root independence](adr/0001-district-data-ownership.md)
