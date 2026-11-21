@@ -1,9 +1,8 @@
 # Setting up MCP
 
-- Audience: district IT, after `npx launch-educate-os` has installed EducateOS.
-- Status: the commands are built and tested against simulated endpoints and Cloudflare (SCHO-407).
-  None of the steps below has been run against a live district yet; each section says what is proven.
-- Commands: `npx launch-educate-os mcp status | clients | add` ([launch-installer.md](launch-installer.md#mcp-setup-scho-407)
+- Audience: district/school owners and IT, using `npx launch-educate-os`.
+- Status: built and tested across `@educateos/external-mcp`, `@educateos/district-worker`, `@educateos/admin-ui`, `@educateos/teacher-ui`, `@educateos/installer`, and `launch-educate-os` (including full LMS-lite tools, built-in Cloudflare OAuth 2.1, scoped personal bearer tokens, and Management UI approval queues).
+- Commands: `npx launch-educate-os mcp status | enable | disable | clients | add` ([launch-installer.md](launch-installer.md#mcp-setup-scho-407)
   has how they work).
 
 MCP (the Model Context Protocol) is how AI tools reach outside services. EducateOS uses it two ways,
@@ -11,15 +10,45 @@ and they are set up separately:
 
 | | Your district's MCP endpoint | The Workshop's MCP connectors |
 | --- | --- | --- |
-| Direction | Outside AI clients call **your district** | **Workshop agents** call outside MCP servers |
-| Who uses it | Staff, from Claude, ChatGPT, Claude Code, VS Code, Cursor | District administrators connect servers; agents and Gadgets are granted them |
-| Where it lives | The district Worker's `/mcp`, turned on by `DISTRICT_CONFIG.mcp` | `gatekeeper-mcp` (MCP Server) and `gatekeeper-mcp-portal` (MCP Server Portal) |
-| Sign-in | OAuth tokens from the district's authorization server, not Cloudflare Access | Each server's own sign-in (OAuth), or none |
-| Proven | Harness-tested; not deployed (NATH-6) | Unit-tested in Cloudflare OS; not yet used by a district |
+| Direction | Outside AI clients call **your district's LMS-lite** | **Workshop agents** call outside MCP servers |
+| Who uses it | Staff, from Claude, ChatGPT, Claude Code, VS Code, Cursor, or CLI tools | District administrators connect servers; agents and Gadgets are granted them |
+| Where it lives | The district Worker's `/mcp` (55+ LMS-lite tools), turned on by `DISTRICT_CONFIG.mcp` | `gatekeeper-mcp` (MCP Server) and `gatekeeper-mcp-portal` (MCP Server Portal) |
+| Sign-in | **Built-in Cloudflare OAuth 2.1** backed by your school's Cloudflare Access login (zero external IdP) + optional scoped personal bearer tokens in the Management UI; or an external OAuth issuer | Each server's own sign-in (OAuth), or none |
+| Management UI | Built-in at `https://<your hostname>/admin/#/mcp` (district admins) and `/teach/#/mcp` (teachers) | Workshop `/ai/admin?tab=gatekeepers` |
 
 Start with `npx launch-educate-os mcp status` in the directory holding `educateos-install.json`. It
 reports both sides and checks the endpoint live. Set `CLOUDFLARE_API_TOKEN` to also check the
 connectors' Workers in your account.
+
+## Minimal setup: School LMS Lite + MCP Server on Cloudflare
+
+A school or district owner can deploy the entire LMS-lite + full MCP server + Management UI into their
+own Cloudflare account with one command and **no external identity server**:
+
+```sh
+npx launch-educate-os
+```
+
+1. In the wizard, install the district LMS and let the wizard write your starting configuration from a
+   few questions. Built-in Cloudflare OAuth 2.1 MCP (`mode: "builtin"`, `allowDrafts: true`) is enabled
+   automatically.
+2. When asked whether to turn on the AI Workshop / AI Gateway:
+   - Choose **No** for **LMS-lite + MCP-only mode** (just the district LMS, full `/mcp` server, and
+     Management UI — no AI Gateway or AI Workshop needed).
+   - Choose **Yes** to also run the AI Workshop at `/ai`.
+3. Once installed, open `https://<your hostname>/admin/#/mcp` (or `/teach/#/mcp` for teachers) to copy
+   ready-to-paste client configs, mint scoped personal tokens for CLI tools, revoke delegations, and
+   approve or decline queued MCP writes.
+
+For an existing install that does not yet have `DISTRICT_CONFIG.mcp`:
+
+```sh
+npx launch-educate-os mcp enable
+npx launch-educate-os --config educateos-install.json
+```
+
+Pass `--strict-writes` to `mcp enable` if you want draft tools (new draft modules, activities and
+quizzes, teacher-only feedback and scores) to also wait in the approval queue instead of running immediately.
 
 ## 1. Add an MCP server to the AI Workshop
 
@@ -94,20 +123,22 @@ npx launch-educate-os mcp clients --client chatgpt   # one: claude, chatgpt, cla
 It prints the endpoint's URL (`https://<your hostname>/mcp`), checks it live, and then shows each
 client's steps with the URL filled in.
 
-**Not usable yet.** The endpoint is built and tested end to end with the official MCP client against
-a simulated authorization server, but:
-
-- the district's authorization server, Nathan, doesn't issue tokens for it yet (NATH-6);
-- issuing a delegation has an API (`POST /api/teacher/delegations`) and no page yet (SCHO-176);
-- no outside client has connected to a district.
-
-`mcp clients` reports each of these as it finds it. The rest of this section is how it works once
-they are done.
-
 ### Turning it on
 
-Add an `mcp` block to the district service's `DISTRICT_CONFIG` in the answers file (documented in
-`packages/educateos-district-worker/README.md`), then apply:
+New installs written by `npx launch-educate-os` enable built-in Cloudflare OAuth 2.1 MCP by default.
+To turn it on (or switch to strict write confirmation) on an existing install, run
+`npx launch-educate-os mcp enable` and apply, which writes:
+
+```json
+"mcp": {
+  "mode": "builtin",
+  "origin": "https://educateos.northfield.example",
+  "allowDrafts": true
+}
+```
+
+If you prefer to use a separate external OAuth authorization server instead of the built-in server,
+supply `issuer`, `jwksUri` and `algorithms` in `DISTRICT_CONFIG.mcp`:
 
 ```json
 "mcp": {
@@ -118,40 +149,48 @@ Add an `mcp` block to the district service's `DISTRICT_CONFIG` in the answers fi
 }
 ```
 
-`issuer` must be in the directory's `trustedIssuers` (or `additionalTrustedIssuers`), with each
-person's subject there linked to them; `mcp status` fails an issuer the district doesn't trust.
-`allowedOrigins` lists the browser origins allowed to call it; clients that send no `Origin` header
-(desktop apps, editors, and services such as claude.ai and ChatGPT that call from their servers) need
-none.
+`allowedOrigins` lists exact browser origins allowed to call `/mcp`; clients that send no `Origin`
+header (desktop apps, editors, and services such as claude.ai and ChatGPT that call from their
+servers) need none.
 
-On a one-origin install, applying answers whose `DISTRICT_CONFIG` has `mcp` also exempts `/mcp`,
-`/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp` from
-Cloudflare Access (on every hostname the install serves), since MCP clients bring their own token and
-can't complete an Access sign-in. Without `mcp`, those paths stay behind Access, and taking `mcp` out
-removes the exemption on the next apply.
+On a one-origin install, applying answers whose `DISTRICT_CONFIG` has `mcp` exempts `/mcp`,
+`/.well-known/oauth-protected-resource`, `/.well-known/oauth-protected-resource/mcp`,
+`/.well-known/oauth-authorization-server`, `/.well-known/jwks.json`, `/oauth/register`,
+`/oauth/token` and `/oauth/revoke` from Cloudflare Access, while keeping `/oauth/authorize` strictly
+**behind Cloudflare Access** so staff sign in with their school SSO before approving any connection.
 
 ### How sign-in works
 
-MCP clients don't sign in through Cloudflare Access. The endpoint is an OAuth protected resource: it
-publishes RFC 9728 metadata naming the district's authorization server, and answers an
-unauthenticated request with 401 pointing at it. The client signs the person in there (authorization
-code with PKCE), asking for `resource=https://<your hostname>/mcp` and the scope `mcp:tools`, and
-sends the short-lived token. The endpoint checks the signature, issuer, audience, lifetime and scope,
-then finds the person through the district's identity links: the token names no role.
+- **Built-in Cloudflare OAuth 2.1 (default):** The district Worker publishes RFC 9728 protected
+  resource metadata pointing to itself as the OAuth 2.1 authorization server (RFC 8414, RFC 7591
+  Dynamic Client Registration, Client ID Metadata Documents, PKCE S256, RFC 8707 resource binding,
+  RFC 9207 `iss`). When an AI client opens `/oauth/authorize`, Cloudflare Access authenticates the
+  staff member with the school's IdP, the district shows a consent screen to pick scope (whole
+  district, school, or individual class), access level, and expiry (up to 90 days), creates a live
+  IF-06 delegation, and issues short-lived ES256 access tokens (10 min) plus rotating refresh tokens.
+- **Scoped personal bearer tokens:** Staff and admins can also mint scoped `edum_*` bearer tokens in
+  the Management UI (`/admin/#/mcp` or `/teach/#/mcp`) for headless CLI tools and scripts. Each token
+  is bound to a real delegation, stored only as a SHA-256 digest, and revocable in one click.
 
-`mcp clients` checks the authorization server's metadata: an exact issuer, authorization and token
-endpoints, PKCE S256, and whether clients can register themselves (dynamic client registration or
-client ID metadata documents). Without either, each client needs a client ID issued for it.
-
-### Who may use it
+### Who may use it and write safety
 
 Staff only: district, school and curriculum administrators, teachers and co-teachers. Students can't
-delegate, so no student can use it. Each person issues a **delegation** to the client: the client
-(the authorization server's issuer and the client ID it assigned), a ceiling (scope, actions, kinds
-of records, classifications) and a duration of at most 90 days. Every call is held to that
-delegation and to the person's standing in the roster now. Revoking it, deactivating the person or
-unlinking their sign-in stops the next call. Writes wait in the district's approval queue, and MCP
-can't approve anything.
+delegate, so no student can use it. Every call is evaluated against the person's live directory
+standing and active delegation ceiling:
+
+- **Reads** (directory, rosters, modules, pages, activities, assignments, submissions, feedback,
+  gradebook, quizzes, discussions, announcements, resources, workspaces, planner, guidance) run
+  immediately.
+- **Low-risk drafts** (new draft modules, activities and quizzes; teacher-only feedback comments,
+  criterion scores and quiz-item scores) run immediately when `allowDrafts: true`, or wait in the
+  approval queue when `allowDrafts: false`. Nothing a student or family can see changes this way.
+- **Consequential writes** (creating/updating courses/offerings/enrollments, adding or editing course
+  pages, editing quizzes, publishing modules, activities, quizzes or feedback, discussion topics,
+  announcements and weekly family notes, moderating posts, proposing grades) always
+  wait in the Management UI approval queue (`/admin/#/mcp` or `/teach/#/mcp`). MCP can never approve
+  its own requests.
+- **Human-only operations** (official grade approval/release, identity links, district-admin grants,
+  delegation management, IEP/504 accommodations, audit logs, bulk exports) are never exposed over MCP.
 
 ### Per client
 

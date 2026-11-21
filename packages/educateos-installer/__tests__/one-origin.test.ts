@@ -192,9 +192,19 @@ describe("one-origin desired state", () => {
 
     const on = withMcp(mcpVars, { managedHostname: { slug: "northfield" } });
     expect(on.destinations.toSorted()).toEqual(hosts.flatMap((host) => [
-      ...ACCESS_BYPASS_PATHS, "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+      ...ACCESS_BYPASS_PATHS,
+      "/mcp",
+      "/.well-known/oauth-protected-resource",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/jwks.json",
+      "/oauth/register",
+      "/oauth/token",
+      "/oauth/revoke",
     ].map((path) => host + path)).toSorted());
-    expect(ACCESS_MCP_BYPASS_PATHS).toHaveLength(3);
+    expect(ACCESS_MCP_BYPASS_PATHS).toHaveLength(8);
+    // /oauth/authorize stays behind Cloudflare Access so staff authenticate before consenting.
+    expect(on.destinations.some((d) => d.includes("/oauth/authorize"))).toBe(false);
     // The main application doesn't list them, so nothing more specific puts them back behind Access.
     expect(compile(release, { services: { [DISTRICT]: { enabled: true, vars: mcpVars } } }).app("access:application")!.destinations
       .some((d) => d.includes("/mcp") || d.includes("oauth-protected-resource"))).toBe(false);

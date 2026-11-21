@@ -132,6 +132,8 @@ describe("the wizard", () => {
     expect(result.stdout).toContain("Preflight: ready.");
     expect(result.stdout).toMatch(/Apply these \d+ change\(s\) to your account\?/);
     expect(result.stdout).toContain("District (LMS)   https://educateos.northfield.example/");
+    expect(result.stdout).toContain("MCP server       https://educateos.northfield.example/mcp");
+    expect(result.stdout).toContain("MCP management   https://educateos.northfield.example/admin/#/mcp");
     expect(result.stdout).toContain("AI Workshop      https://educateos.northfield.example/ai/");
     expect(result.stdout).toContain("OSS admin        https://admin.northfield.example/");
     expect(result.stdout).toContain("Delete the Cloudflare API token");
@@ -176,6 +178,44 @@ describe("the wizard", () => {
     expect(again.stdout).toContain("What should the district connect?");
     expect(again.stdout).toContain("3) Schoology         LMS      (not available yet)");
     expect(again.stdout).toContain("Schoology isn't available yet.");
+  });
+
+  it("supports LMS-lite + MCP-only installation when the school declines AI Workshop", async () => {
+    const { mirror, cloudflare, trust } = await world();
+    const dir = tempDir();
+    const answersPath = join(dir, "educateos-install.json");
+
+    const result = await onTerminal(["--release-url", mirror.base, "--trust", trust], [
+      cloudflare.token,
+      "", // subdomain: educateos
+      "", // short name: northfield
+      "", // email domains: northfield.example
+      "", // no individual emails
+      "it@northfield.example", // administrators
+      "y", // the district LMS
+      "", // starting config written from answers
+      "", // district name: Northfield
+      "America/Chicago", // time zone
+      "", // administrator name
+      "n", // no OSS admin
+      "n", // decline AI Workshop / AI Gateway -> LMS-lite + MCP only
+      "", // apply: yes
+      "n", // connect roster later
+    ], { cwd: dir, env: { [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url } });
+
+    expect(result.stderr).toBe("");
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("MCP server       https://educateos.northfield.example/mcp");
+    expect(result.stdout).toContain("MCP management   https://educateos.northfield.example/admin/#/mcp");
+    const saved = JSON.parse(readFileSync(answersPath, "utf8"));
+    expect(saved.install.ai).toEqual({ enabled: false, providers: [] });
+    const districtVar = cloudflare.fake.worker("educateos-northfield-educateos-district-worker")?.bindings
+      .find((b) => b.name === "DISTRICT_CONFIG") as { text: string } | undefined;
+    expect(JSON.parse(districtVar!.text).mcp).toEqual({
+      mode: "builtin",
+      origin: "https://educateos.northfield.example",
+      allowDrafts: true,
+    });
   });
 
   it("asks again for a refused token, and asks, hidden, for the secrets the release needs", async () => {

@@ -101,7 +101,7 @@ describe("mcp: usage", () => {
     expect(help.code).toBe(0);
     expect(help.stdout).toContain("npx launch-educate-os mcp clients");
     expect((await run(["mcp"], { cwd: dir })).code).toBe(2);
-    expect((await run(["mcp", "enable"], { cwd: dir })).code).toBe(2);
+    expect((await run(["mcp", "bogus"], { cwd: dir })).code).toBe(2);
     expect((await run(["mcp", "clients", "--client", "nope"], { cwd: dir })).code).toBe(2);
     expect((await run(["mcp", "add", "--connector", "zapier"], { cwd: dir })).code).toBe(2);
     expect((await run(["mcp", "status", "--bogus"], { cwd: dir })).code).toBe(2);
@@ -205,8 +205,8 @@ describe("mcp clients", () => {
     expect(result.stdout).toContain(`claude mcp add --transport http educateos ${RESOURCE}`);
     expect(result.stdout).toContain(`"educateos": { "type": "http", "url": "${RESOURCE}" }`);
     expect(result.stdout).toContain("Students");
-    expect(result.stdout).toContain("Not yet proven live");
-    expect(result.stdout).toContain("NATH-6");
+    expect(result.stdout).toContain("Built-in Cloudflare OAuth 2.1");
+    expect(result.stdout).toContain("/admin/#/mcp");
   });
 
   it("shows one client with --client, and emits JSON events", async () => {
@@ -405,5 +405,39 @@ describe("mcp add --connector portal", () => {
     expect(result.stdout).toMatch(new RegExp(`ok\\s+portal\\s+portal ${PORTAL.replaceAll(".", "\\.")}$`, "m"));
     expect(result.stdout).toMatch(/FAIL\s+token\s+sign-in is token, but the Worker has no MCP_PORTAL_TOKEN/);
     expect(result.code).toBe(1);
+  });
+});
+
+describe("mcp enable and disable (built-in Cloudflare OAuth)", () => {
+  it("enables built-in Cloudflare OAuth MCP on an existing district, supports --strict-writes and --allowed-origin, and disables it cleanly", async () => {
+    const { mcp: _off, ...noMcp } = districtConfig();
+    const { dir, path } = writeAnswersFile(oneOriginAnswers(noMcp));
+
+    const enabled = await run(["mcp", "enable", "--strict-writes", "--allowed-origin", "https://assistant.northfield.example", "--yes"], { cwd: dir });
+    expect(enabled.code).toBe(0);
+    expect(enabled.stdout).toContain("built-in Cloudflare OAuth");
+    const saved = await readAnswers(path);
+    const parsed = JSON.parse(saved.install.services!["educateos-district-worker"]!.vars!.DISTRICT_CONFIG!);
+    expect(parsed.mcp).toEqual({
+      mode: "builtin",
+      origin: ORIGIN,
+      allowDrafts: false,
+      allowedOrigins: ["https://assistant.northfield.example"],
+    });
+
+    // Built-in mode reports ok in offline status without requiring external trustedIssuers.
+    const status = await run(["mcp", "status", "--offline"], { cwd: dir });
+    expect(status.code).toBe(0);
+    expect(status.stdout).toMatch(/ok\s+endpoint\s+on in DISTRICT_CONFIG \(built-in Cloudflare OAuth 2\.1\)/);
+    expect(status.stdout).toMatch(/ok\s+issuer\s+built-in Cloudflare Access-backed OAuth 2\.1 at https:\/\/educateos\.northfield\.example/);
+    // --strict-writes: drafts wait in the queue too.
+    expect(status.stdout).toMatch(/--\s+writes\s+reads run immediately; every write waits/);
+
+    // Disabling removes DISTRICT_CONFIG.mcp.
+    const disabled = await run(["mcp", "disable", "--yes"], { cwd: dir });
+    expect(disabled.code).toBe(0);
+    const afterDisable = await readAnswers(path);
+    const parsedAfter = JSON.parse(afterDisable.install.services!["educateos-district-worker"]!.vars!.DISTRICT_CONFIG!);
+    expect(parsedAfter.mcp).toBeUndefined();
   });
 });

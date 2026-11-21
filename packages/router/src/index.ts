@@ -122,7 +122,10 @@ export default {
       }
       if (redirect) return redirect;
     }
-    if (env.EDUCATEOS_EXTERNAL_MCP && ["/mcp", "/token",
+    // Only forward `/mcp` to the standalone external-mcp Worker when no live `DISTRICT` Worker is
+    // bound. On a one-origin district install, `DISTRICT` owns `/mcp` and built-in OAuth over the
+    // district's authoritative Durable Object stores, delegations, and human approval queue.
+    if (!env.DISTRICT && env.EDUCATEOS_EXTERNAL_MCP && ["/mcp", "/token",
       "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"].includes(url.pathname)) {
       return env.EDUCATEOS_EXTERNAL_MCP.fetch(req);
     }
