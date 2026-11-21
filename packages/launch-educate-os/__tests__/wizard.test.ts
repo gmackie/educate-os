@@ -26,7 +26,7 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((c) => c.close()));
 });
 
-async function world(school = false) {
+async function world(school = false, account: Parameters<typeof accountFor>[1] = {}) {
   const release = await deriveRelease(await goldenRelease(), "r000001-aaaaaaa", (manifest) => {
     if (!school) return;
     const variants = manifest.workers.router!.assetsConfig!.variants;
@@ -40,7 +40,7 @@ async function world(school = false) {
     );
   });
   const mirror: ReleaseServer = await serveReleases(release);
-  const cloudflare: CloudflareBridge = await serveCloudflare(accountFor(NORTHFIELD));
+  const cloudflare: CloudflareBridge = await serveCloudflare(accountFor(NORTHFIELD, account));
   closing.push(mirror, cloudflare);
   return { release, mirror, cloudflare, trust: writeTrustFile() };
 }
@@ -99,6 +99,46 @@ describe("the wizard", () => {
       "educateos-external-mcp": { enabled: true, vars: { MCP_CONFIG: JSON.stringify({ synthetic: "private MCP configuration" }) } },
     });
     expect(cloudflare.fake.serving("educateos.northfield.example")).toBeUndefined();
+  });
+
+  it("offers Google or Microsoft sign-in, with the dashboard link, when the team has only Cloudflare-account login and codes", async () => {
+    const { mirror, cloudflare, trust } = await world(false, {
+      identityProviders: [{ name: "Cloudflare", type: "cloudflare" }, { name: "One-time PIN", type: "onetimepin" }],
+    });
+    const dir = tempDir();
+    const result = await onTerminal(["--release-url", mirror.base, "--trust", trust], [
+      cloudflare.token,
+      "", // subdomain
+      "", // short name
+      "2", // Microsoft Entra ID
+      "", // Enter once added (it isn't, in this account)
+      "", // asked again: the default keeps one-time codes for a pilot
+      "", // email domains
+      "", // individual emails
+      "it@northfield.example",
+      "n", // no district LMS
+      "n", // no OSS admin
+      "", // AI Gateway
+      "n", // preflight and plan only
+    ], { cwd: dir, env: { [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url } });
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("The team's only login method is one-time email codes.");
+    expect(result.stdout).toContain("  1) Google Workspace\n  2) Microsoft Entra ID\n  3) Not now: keep one-time codes for a pilot\nChoose a number [3]");
+    expect(result.stdout).toContain(`Add Microsoft Entra ID in Zero Trust: https://one.dash.cloudflare.com/${JSON.parse(readFileSync(join(dir, "educateos-install.json"), "utf8")).install.accountId}/settings/authentication`);
+    expect(result.stdout).toContain("idp-integration/entra-id/");
+    expect(result.stdout).toContain("Zero Trust doesn't list it yet.");
+    expect(result.stdout).toContain("access.idp-pin-only");
+  });
+
+  it("doesn't offer sign-in when the team already has the district's own", async () => {
+    const { mirror, cloudflare, trust } = await world(false);
+    const dir = tempDir();
+    const result = await onTerminal(["--release-url", mirror.base, "--trust", trust],
+      [cloudflare.token, "", "", "", "", "it@northfield.example", "n", "n", "", "n"],
+      { cwd: dir, env: { [TEST_CLOUDFLARE_RPC_ENV]: cloudflare.url } });
+    expect(result.stderr).toBe("");
+    expect(result.stdout).not.toContain("Add your district's sign-in now?");
   });
 
   it("installs a one-origin district from its answers, saves them without the token, and prints the URLs", async () => {
