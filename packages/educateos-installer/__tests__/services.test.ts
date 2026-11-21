@@ -212,6 +212,37 @@ describe("optional backend services", () => {
     expect((await dryRunDrift(options, release.sha256)).changes).toEqual([]);
   });
 
+  it("detects a hand-edited, removed or added var as drift without quoting values, and repairs it", async () => {
+    const release = await goldenRelease();
+    const { fake, api, run } = setup();
+    await run(release, { enabled: true, vars: GUARD_VARS });
+    const options = {
+      api,
+      config: guardConfig(release, { enabled: true, vars: GUARD_VARS }),
+      manifest: release.manifest,
+      artifacts: release.artifacts,
+      secrets: SECRETS_WITH_GUARD,
+    };
+    const someVar = fake.worker(BACKEND_SCRIPT)!.bindings.find((b) => b.type === "plain_text" && !b.name.startsWith("EDUCATEOS_"))!;
+
+    fake.editWorkerBindings(BACKEND_SCRIPT, (bindings) =>
+      [...bindings.map((b) => (b.name === someVar.name ? { ...b, text: "hand-edited@example.org" } : b)), { type: "plain_text", name: "EXTRA", text: "x" }]);
+    const edited = await dryRunDrift(options, release.sha256);
+    expect(edited.changes).toEqual([expect.objectContaining({
+      resource: "worker:workshop-backend",
+      action: "update",
+      reason: `drift: resets var ${someVar.name}, which was edited; removes var EXTRA, which the release doesn't set`,
+    })]);
+    expect(JSON.stringify(edited)).not.toContain("hand-edited@example.org");
+
+    fake.editWorkerBindings(BACKEND_SCRIPT, (bindings) => bindings.filter((b) => b.name !== someVar.name && b.name !== "EXTRA"));
+    expect((await dryRunDrift(options, release.sha256)).changes[0]?.reason).toBe(`drift: sets var ${someVar.name}, which is missing`);
+
+    expect((await run(release, { enabled: true, vars: GUARD_VARS })).status).toBe("applied");
+    expect(fake.worker(BACKEND_SCRIPT)!.bindings.find((b) => b.name === someVar.name)?.text).toBe(someVar.text);
+    expect((await dryRunDrift(options, release.sha256)).changes).toEqual([]);
+  });
+
   it("blocks in preflight, before any change, when the guard's secret or a var is missing", async () => {
     const release = await goldenRelease();
     const { fake, run } = setup();

@@ -10,6 +10,7 @@
 // Nothing here sends a token, a cookie or anything from the answers file but a hostname. Redirects
 // are never followed: a redirect to `<team>.cloudflareaccess.com` is the answer (Cloudflare Access
 // sits in front of the path), not a hop to take. Bodies are read up to 64 KiB.
+import { isDnsMiss } from "../dns.ts";
 import { isBlockedHost } from "@gadgets/mcp-shared/endpoint";
 
 /** How long one request may take. */
@@ -31,9 +32,12 @@ interface Answer {
 /** A request that did not get an HTTP answer. */
 export class ProbeUnreachable extends Error {
   readonly url: string;
-  constructor(url: string) {
+  /** The lookup of the URL's hostname failed on this computer (see dns.ts). */
+  readonly dnsMiss: boolean;
+  constructor(url: string, dnsMiss = false) {
     super(`no answer from ${url}`);
     this.url = url;
+    this.dnsMiss = dnsMiss;
     this.name = "ProbeUnreachable";
   }
 }
@@ -60,8 +64,8 @@ async function request(fetchImpl: typeof fetch, url: string, init: RequestInit =
   let response: Response;
   try {
     response = await fetchImpl(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
-  } catch {
-    throw new ProbeUnreachable(url);
+  } catch (error) {
+    throw new ProbeUnreachable(url, isDnsMiss(error));
   }
   const contentType = response.headers.get("content-type") ?? "";
   const text = await readBounded(response).catch(() => "");
@@ -124,7 +128,7 @@ export type EndpointProbe =
   | { state: "off" }
   | { state: "access"; status: number }
   | { state: "unexpected"; status: number }
-  | { state: "unreachable" };
+  | { state: "unreachable"; dnsMiss: boolean };
 
 /** The district's MCP endpoint at `resource` (`<origin>/mcp`), probed without credentials. */
 export async function probeDistrictEndpoint(fetchImpl: typeof fetch, resource: string): Promise<EndpointProbe> {
@@ -133,8 +137,8 @@ export async function probeDistrictEndpoint(fetchImpl: typeof fetch, resource: s
   let answer: Answer;
   try {
     answer = await request(fetchImpl, metadataUrl, { headers: { accept: "application/json" } });
-  } catch {
-    return { state: "unreachable" };
+  } catch (error) {
+    return { state: "unreachable", dnsMiss: error instanceof ProbeUnreachable && error.dnsMiss };
   }
   if (answer.status >= 300 && answer.status < 400 && isAccessRedirect(answer.location)) return { state: "access", status: answer.status };
   if (answer.status === 404) return { state: "off" };
