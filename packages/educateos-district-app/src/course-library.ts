@@ -9,6 +9,7 @@
 // carries. The district's own domains (`localDomains`) publish unsigned; every other part needs its
 // publisher's signature by a pinned key. The library checks every part again as it stores it.
 import { EducateOsError, PrincipalId } from "@educateos/contracts";
+import { CoursePageId, ModuleItemId } from "@educateos/curriculum";
 import {
   type ActivityExportSource,
   composeCourse,
@@ -87,6 +88,9 @@ export const InstalledUnit = z.strictObject({
     assignmentId: z.string().optional(),
     /** Whether the activity is placed in the module yet. */
     placed: z.boolean().optional(),
+    /** Stable local page and module-item mappings for future course updates. Older installs omit them. */
+    pageId: CoursePageId.optional(),
+    moduleItemId: ModuleItemId.optional(),
   })),
 });
 /** An installed unit. */

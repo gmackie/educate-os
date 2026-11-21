@@ -347,16 +347,16 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
   async addPage(moduleId: string, page: PlannedPage): Promise<void> {
     const unit = this.#unitOfModule(moduleId);
     if (unit.items[page.key] !== undefined) return;
-    await this.#services.content.addPage(this.#subject, this.#services.offering.offeringId, moduleId, { title: page.title, body: page.body });
-    unit.items[page.key] = {};
+    const created = await this.#services.content.addPage(this.#subject, this.#services.offering.offeringId, moduleId, { title: page.title, body: page.body });
+    unit.items[page.key] = { pageId: created.page.id, moduleItemId: created.item.id };
     await this.save();
   }
 
   async addTeacherNote(moduleId: string, note: PlannedTeacherNote): Promise<void> {
     const unit = this.#unitOfModule(moduleId);
     if (unit.items[note.key] !== undefined) return;
-    await this.#services.content.addTeacherNote(this.#subject, this.#services.offering.offeringId, moduleId, { title: note.title, body: note.body, purpose: note.purpose });
-    unit.items[note.key] = {};
+    const created = await this.#services.content.addTeacherNote(this.#subject, this.#services.offering.offeringId, moduleId, { title: note.title, body: note.body, purpose: note.purpose });
+    unit.items[note.key] = { pageId: created.page.id, moduleItemId: created.item.id };
     await this.save();
   }
 
@@ -389,13 +389,23 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
       unit.items[item.key] = record;
       await this.save();
     }
-    if (record.placed !== true) {
-      try {
-        await this.#services.content.placeActivity(this.#subject, offering.offeringId, moduleId, { activityId: record.activityId });
-      } catch (error) {
-        // Placed by a request that stopped before it could say so.
-        if (!(error instanceof EducateOsError && error.code === "conflict")) throw error;
+    if (record.placed !== true || record.moduleItemId === undefined) {
+      if (record.placed !== true) {
+        try {
+          await this.#services.content.placeActivity(this.#subject, offering.offeringId, moduleId, { activityId: record.activityId });
+        } catch (error) {
+          // Placed by a request that stopped before it could save its mapping.
+          if (!(error instanceof EducateOsError && error.code === "conflict")) throw error;
+        }
       }
+      // Resolve the actual module item from the trusted local outline, even after a retry.
+      // Never guess which classroom item belongs to a source from its title.
+      const current = (await this.#services.content.outline(this.#subject, offering.offeringId)).outline;
+      const local = current.modules.find((module) => module.id === moduleId)?.items.find(
+        (placed) => placed.kind === "activity" && placed.activityId === record.activityId,
+      );
+      if (local === undefined) throw new EducateOsError("conflict", "The course install cannot find its placed activity; review the class before continuing.");
+      record.moduleItemId = local.id;
       record.placed = true;
       await this.save();
     }

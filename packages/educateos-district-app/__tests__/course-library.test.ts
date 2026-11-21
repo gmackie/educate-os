@@ -93,6 +93,14 @@ describe("course library (SCHO-331)", () => {
     expect(outline.modules.map((module) => module.title)).toStrictEqual(UNITS);
     expect(outline.modules.every((module) => !module.published)).toBe(true);
     const [unit1] = outline.modules;
+    // Every source item installed in this module is mapped to the exact local module item.
+    // This is necessary to offer safe teacher-approved course upgrades later.
+    const stored = await district.stores.courseLibrary.loadInstalls(NF.eng9);
+    const installed = stored!.courses.find((c) => c.packageId === COURSE.packageId && c.version === COURSE.version)!;
+    const tracked = installed.units.find((u) => u.unitKey === rest.units[0]!.key)!;
+    expect(new Set(Object.values(tracked.items).map((record) => record.moduleItemId))).toStrictEqual(new Set(unit1!.items.map((item) => item.id)));
+    const localPages = unit1!.items.flatMap((item) => item.kind === "page" || item.kind === "teacher-note" ? [item.pageId] : []);
+    expect(new Set(Object.values(tracked.items).flatMap((record) => record.pageId === undefined ? [] : [record.pageId]))).toStrictEqual(new Set(localPages));
     expect(unit1!.source).toMatchObject({ kind: "course", ...COURSE, unitKey: rest.units[0]!.key });
     expect(unit1!.items.map((item) => item.kind)).toStrictEqual(["page", "teacher-note", "activity", "activity", "activity", "teacher-note"]);
     expect(unit1!.items.filter((item) => item.kind === "teacher-note").map((item) => item.purpose)).toStrictEqual(["context", "answer-key"]);
