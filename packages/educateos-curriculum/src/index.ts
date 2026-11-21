@@ -11,3 +11,6 @@ export * from "./codex.ts";
 export * from "./storage.ts";
 export * from "./service.ts";
 export * from "./course-content.ts";
+
+// Experimental detached course-quality metadata; not part of normative OCS 1.1.
+export * from "./course-quality-profiles.ts";
