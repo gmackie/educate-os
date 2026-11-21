@@ -544,9 +544,15 @@ export const DISTRICT_UI_DIR = "./dist/ui";
 /**
  * The district Worker's own routes, which run before its assets: the API (the pairing relay's
  * `/api/pair/*` among it), the liveness probe, the LTI Tool's endpoints (SCHO-177), the public school
- * manifest (ADR-0014) and the pairing relay's `/connect-phone` page (SCHO-261).
+ * manifest (ADR-0014), the pairing relay's `/connect-phone` page (SCHO-261), and the organization
+ * MCP endpoint with its OAuth metadata and built-in authorization server (SCHO-174). Without these
+ * last ones the assets' single-page fallback answers `/mcp` and its metadata with the UI's HTML.
  */
-export const DISTRICT_WORKER_ROUTES: readonly string[] = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"];
+export const DISTRICT_WORKER_ROUTES: readonly string[] = [
+  "/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone",
+  "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+  "/.well-known/oauth-authorization-server", "/.well-known/jwks.json", "/oauth/*",
+];
 
 /**
  * The district Worker's static assets: its UIs, as a single-page app the Worker runs before only on

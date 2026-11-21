@@ -59,6 +59,12 @@
       "/lti/*",
       "/.well-known/educateos.json",
       "/connect-phone",
+      "/mcp",
+      "/.well-known/oauth-protected-resource",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/jwks.json",
+      "/oauth/*",
       "/ai",
       "/ai/*"
     ]

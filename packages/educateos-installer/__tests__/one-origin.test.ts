@@ -111,7 +111,7 @@ describe("one-origin desired state", () => {
       manifest: ui.variants.spa!.manifest,
       config: { not_found_handling: "single-page-application", run_worker_first: ui.run_worker_first },
     });
-    expect(ui.run_worker_first).toEqual(["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"]);
+    expect(ui.run_worker_first).toEqual(["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone", "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server", "/.well-known/jwks.json", "/oauth/*"]);
     // A release from before the district carried its UIs installs it without assets, as before.
     const old = await deriveRelease(release, "r000002-noui", (manifest) => {
       delete manifest.workers[DISTRICT]!.assetsConfig;
