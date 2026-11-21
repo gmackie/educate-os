@@ -3,6 +3,7 @@
 // required ones fail. Every error is a CloudflareApiError carrying the operation, HTTP status and
 // Cloudflare's numeric codes; the bearer token never appears in an error, a log line or a return
 // value.
+import { EducateOsError } from "@educateos/contracts";
 import { z } from "zod";
 import type {
   AccessApplication,
@@ -47,6 +48,7 @@ const GATEWAY_SETTINGS = [
   "logpush", "logpush_public_key", "multiprovider_enabled", "otel", "rate_limiting_technique", "retry_backoff",
   "retry_delay", "retry_max_attempts", "spend_limits", "workers_ai_billing_mode", "zdr",
 ] as const;
+const StoreSecret = z.object({ id: z.string(), name: z.string() });
 const providerKey = (config: z.infer<typeof ProviderConfig>) =>
   ({ id: config.id, providerSlug: config.provider_slug, alias: config.alias, secretPreview: config.secret_preview ?? undefined });
 const Account = z.object({ id: z.string(), name: z.string() });
@@ -595,10 +597,32 @@ export class CloudflareHttpApi implements CloudflareApi {
   }
 
   async storeAiGatewayProviderKey(accountId: string, gatewayId: string, providerSlug: string, secret: string) {
-    // The key goes in the body only; #result never logs or echoes a request body.
-    return providerKey(ProviderConfig.parse(await this.#result("storeAiGatewayProviderKey", "POST",
-      `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}/provider_configs`,
-      { json: { provider_slug: providerSlug, alias: "default", default_config: true, secret } })));
+    // Through the API the key goes into the gateway's Secrets Store first, as the secret
+    // `<gateway>_<provider>_<alias>`, which is how the gateway finds it (code 7001 otherwise); the
+    // provider config then references it. The key goes in request bodies only; #result never logs
+    // or echoes a request body.
+    const gatewayPath = `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}`;
+    const gateway = z.object({ store_id: z.string().nullish() }).passthrough().parse(await this.#result("getAiGateway", "GET", gatewayPath));
+    if (!gateway.store_id) {
+      throw new EducateOsError("conflict", `AI Gateway ${gatewayId} has no Secrets Store to keep the key in: attach one first`);
+    }
+    const secretsPath = `/accounts/${seg(accountId)}/secrets_store/stores/${seg(gateway.store_id)}/secrets`;
+    const name = `${gatewayId}_${providerSlug}_default`;
+    const found = z.array(StoreSecret).parse((await this.#envelope("listStoreSecrets", "GET", secretsPath,
+      { query: { search: name, per_page: "100" } })).result ?? []).find((s) => s.name === name);
+    let secretId: string;
+    if (found) {
+      // Left by a run that stopped before the provider config, which the caller checked is absent.
+      await this.#result("putStoreSecret", "PATCH", `${secretsPath}/${seg(found.id)}`, { json: { value: secret, scopes: ["ai_gateway"] } });
+      secretId = found.id;
+    } else {
+      const created = z.array(StoreSecret).parse(await this.#result("putStoreSecret", "POST", secretsPath,
+        { json: [{ name, value: secret, scopes: ["ai_gateway"], comment: "AI Gateway provider key, stored by launch-educate-os" }] }));
+      if (!created[0]) throw new EducateOsError("unavailable", "Secrets Store returned no secret");
+      secretId = created[0].id;
+    }
+    return providerKey(ProviderConfig.parse(await this.#result("storeAiGatewayProviderKey", "POST", `${gatewayPath}/provider_configs`,
+      { json: { provider_slug: providerSlug, alias: "default", default_config: true, secret_id: secretId } })));
   }
 
   async attachAiGatewayStore(accountId: string, gatewayId: string) {
