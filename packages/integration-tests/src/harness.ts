@@ -59,8 +59,8 @@ const WORKER_CONFIG = z.looseObject({
     service: z.string(),
     entrypoint: z.string().optional(),
   })).optional(),
-  vars: z.record(z.string(), z.unknown()).optional(),
-  worker_loaders: z.unknown().optional(),
+  vars: z.record(z.string(), z.json()).optional(),
+  worker_loaders: z.array(z.object({ binding: z.string() })).optional(),
 });
 
 /** A parsed wrangler.jsonc, typed on the fields the harness (or a `patch` callback) works with. */
