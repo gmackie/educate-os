@@ -20,7 +20,12 @@ export const MyClassesPage = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeading>My classes</PageHeading>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageHeading>My classes</PageHeading>
+        <a href={routeHref({ screen: "mcp" })} className="rounded text-sm focus-visible:ring-2 focus-visible:ring-kumo-brand">
+          AI &amp; MCP access
+        </a>
+      </div>
       {classes.status === "loading" && <Loading label="Loading your classes…" />}
       {classes.status === "error" && <Problem error={classes.error} onRetry={classes.reload} />}
       {classes.status === "ready" && classes.data.length === 0 && (
