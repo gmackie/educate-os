@@ -14,7 +14,6 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { convertToWranglerConfig, resolveAndParseConfig } from "@cloudflare/config";
-import type { WranglerConfig } from "./release/manifest-lib.ts";
 import type { WranglerExtras } from "./worker-config.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -66,7 +65,7 @@ export async function renderWorkerConfig(dir: string): Promise<string> {
     throw new Error(`${rel}/cloudflare.config.ts is invalid:\n` +
         parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n"));
   }
-  const config: WranglerConfig = convertToWranglerConfig(parsed.data);
+  const config = convertToWranglerConfig(parsed.data);
 
   const extras: WranglerExtras = mod.wrangler ?? {};
   for (const [binding, id] of Object.entries(extras.kvPreviewIds ?? {})) {
