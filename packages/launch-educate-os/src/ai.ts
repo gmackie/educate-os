@@ -146,6 +146,10 @@ async function add(deps: AiDeps, provider: FrontierProvider): Promise<number> {
       throw new EducateOsError("validation-failed", `that doesn't look like a ${name} API key (${provider === "anthropic" ? "sk-ant-…" : "sk-…"})`);
     }
     await checkKey(deps, provider, config.accountId, gatewayId, key);
+    // Cloudflare keeps the key in a Secrets Store the gateway names; the installer creates the
+    // gateway without one, so the first key attaches it.
+    const store = await cf.api.attachAiGatewayStore(config.accountId, gatewayId).catch(translate);
+    if (store.storeCreated) out.line("Created your account's Secrets Store, where Cloudflare keeps the key.");
     await cf.api.storeAiGatewayProviderKey(config.accountId, gatewayId, provider, key).catch(translate);
     out.line(`Stored the ${name} key in your AI Gateway.`);
   }

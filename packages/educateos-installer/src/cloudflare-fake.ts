@@ -79,7 +79,7 @@ const MUTATIONS = new Set([
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
   "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
   "deleteKvNamespace", "deleteR2Bucket", "deleteD1Database", "deleteAccessPolicy", "deleteAccessApplication", "deleteAiGateway",
-  "storeAiGatewayProviderKey",
+  "storeAiGatewayProviderKey", "attachAiGatewayStore",
 ]);
 
 const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \('([0-9a-z_]+)', '[0-9a-f]{64}'\)\s*$/;
@@ -104,6 +104,9 @@ export class FakeCloudflare {
   readonly #policies = new Map<string, AccessPolicy>();
   readonly #apps = new Map<string, AccessApplication>();
   readonly #gateways = new Set<string>();
+  /** Gateways that name a Secrets Store; Cloudflare stores no provider key in one that doesn't. */
+  readonly #gatewayStores = new Set<string>();
+  #secretsStores = 0;
   /** Stored provider keys, by `<gateway>/<provider>`: the default alias only, as the installer stores them. */
   readonly #providerKeys = new Map<string, { id: string; secret: string }>();
   readonly #assets = new Set<string>();
@@ -681,11 +684,20 @@ export class FakeCloudflare {
     gateways: () => [...this.#gateways].map((id) => ({ id })),
     deleteGateway: (id: string) => {
       if (!this.#gateways.delete(id)) throw new CloudflareApiError("deleteAiGateway", 404, []);
+      this.#gatewayStores.delete(id);
     },
     createGateway: (id: string) => {
       if (this.#gateways.has(id)) throw new CloudflareApiError("createAiGateway", 400, [7001]);
       this.#gateways.add(id);
       return { id };
+    },
+    attachStore: (gatewayId: string) => {
+      if (!this.#gateways.has(gatewayId)) throw new CloudflareApiError("attachAiGatewayStore", 404, []);
+      if (this.#gatewayStores.has(gatewayId)) return { attached: false, storeCreated: false };
+      const storeCreated = this.#secretsStores === 0;
+      if (storeCreated) this.#secretsStores = 1;
+      this.#gatewayStores.add(gatewayId);
+      return { attached: true, storeCreated };
     },
     providerKeys: (gatewayId: string) => {
       if (!this.#gateways.has(gatewayId)) throw new CloudflareApiError("listAiGatewayProviderKeys", 404, []);
@@ -693,6 +705,7 @@ export class FakeCloudflare {
     },
     storeProviderKey: (gatewayId: string, providerSlug: string, secret: string) => {
       if (!this.#gateways.has(gatewayId)) throw new CloudflareApiError("storeAiGatewayProviderKey", 404, []);
+      if (!this.#gatewayStores.has(gatewayId)) throw new CloudflareApiError("storeAiGatewayProviderKey", 400, [7001]);
       const key = `${gatewayId}/${providerSlug}`;
       // Cloudflare refuses a second default key for one provider; it is replaced in the dashboard.
       if (this.#providerKeys.has(key)) throw new CloudflareApiError("storeAiGatewayProviderKey", 409, []);
@@ -892,6 +905,7 @@ class FakeCloudflareApi implements CloudflareApi {
   createAiGateway(a: string, id: string) { return this.#call(a, "createAiGateway", () => this.#fake.op.createGateway(id)); }
   deleteAiGateway(a: string, id: string) { return this.#call(a, "deleteAiGateway", () => this.#fake.op.deleteGateway(id)); }
   listAiGatewayProviderKeys(a: string, g: string) { return this.#call(a, "listAiGatewayProviderKeys", () => this.#fake.op.providerKeys(g)); }
+  attachAiGatewayStore(a: string, g: string) { return this.#call(a, "attachAiGatewayStore", () => this.#fake.op.attachStore(g)); }
   storeAiGatewayProviderKey(a: string, g: string, p: string, secret: string) {
     return this.#call(a, "storeAiGatewayProviderKey", () => this.#fake.op.storeProviderKey(g, p, secret));
   }

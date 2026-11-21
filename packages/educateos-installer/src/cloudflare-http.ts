@@ -40,6 +40,13 @@ const Envelope = z.object({
 
 const Id = z.object({ id: z.string() });
 const ProviderConfig = z.object({ id: z.string(), provider_slug: z.string(), alias: z.string(), secret_preview: z.string().nullish() });
+/** The gateway settings an update sends back unchanged (the first five are required by the PUT). */
+const GATEWAY_SETTINGS = [
+  "cache_invalidate_on_update", "cache_ttl", "collect_logs", "rate_limiting_interval", "rate_limiting_limit",
+  "authentication", "byok_only", "dlp", "guardrails", "log_classification", "log_management", "log_management_strategy",
+  "logpush", "logpush_public_key", "multiprovider_enabled", "otel", "rate_limiting_technique", "retry_backoff",
+  "retry_delay", "retry_max_attempts", "spend_limits", "workers_ai_billing_mode", "zdr",
+] as const;
 const providerKey = (config: z.infer<typeof ProviderConfig>) =>
   ({ id: config.id, providerSlug: config.provider_slug, alias: config.alias, secretPreview: config.secret_preview ?? undefined });
 const Account = z.object({ id: z.string(), name: z.string() });
@@ -592,6 +599,22 @@ export class CloudflareHttpApi implements CloudflareApi {
     return providerKey(ProviderConfig.parse(await this.#result("storeAiGatewayProviderKey", "POST",
       `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}/provider_configs`,
       { json: { provider_slug: providerSlug, alias: "default", default_config: true, secret } })));
+  }
+
+  async attachAiGatewayStore(accountId: string, gatewayId: string) {
+    const path = `/accounts/${seg(accountId)}/ai-gateway/gateways/${seg(gatewayId)}`;
+    const gateway = z.record(z.string(), z.unknown()).parse(await this.#result("getAiGateway", "GET", path));
+    if (typeof gateway.store_id === "string" && gateway.store_id !== "") return { attached: false, storeCreated: false };
+    const stores = await this.#paged("listSecretsStores", `/accounts/${seg(accountId)}/secrets_store/stores`, Id);
+    let storeId = stores[0]?.id;
+    const storeCreated = storeId === undefined;
+    storeId ??= Id.parse(await this.#result("createSecretsStore", "POST", `/accounts/${seg(accountId)}/secrets_store/stores`,
+      { json: { name: "default_secrets_store" } })).id;
+    // The update is a PUT: send the gateway's settings back as read, so only store_id changes.
+    const update: Record<string, unknown> = { store_id: storeId };
+    for (const field of GATEWAY_SETTINGS) if (gateway[field] !== undefined && gateway[field] !== null) update[field] = gateway[field];
+    await this.#result("attachAiGatewayStore", "PUT", path, { json: update });
+    return { attached: true, storeCreated };
   }
 
   async deleteAiGateway(accountId: string, gatewayId: string) {

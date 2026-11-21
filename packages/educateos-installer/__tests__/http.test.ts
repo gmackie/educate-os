@@ -257,6 +257,38 @@ describe("Cloudflare HTTP client", () => {
     expect(await requests[0]!.json()).toEqual({ provider_slug: "anthropic", alias: "default", default_config: true, secret: KEY });
   });
 
+  it("attaches a Secrets Store to a gateway without one, keeping its other settings (SCHO-446, code 7001)", async () => {
+    // The clean account's gateway as Cloudflare returned it on 2026-11-21, with no store_id.
+    const gateway = {
+      id: "educateos-prairie", cache_ttl: 0, cache_invalidate_on_update: false, collect_logs: false, rate_limiting_interval: 0,
+      rate_limiting_limit: 0, rate_limiting_technique: null, authentication: true, byok_only: false, log_management: 10000000,
+      log_management_strategy: "DELETE_OLDEST", logpush: false, logpush_public_key: null, wholesale: true, store_id: "",
+      workers_ai_billing_mode: "postpaid", zdr: false, retry_max_attempts: null,
+    };
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/secrets_store/stores")) return request.method === "GET" ? ok([], { page: 1, total_pages: 1 }) : ok({ id: "store-1", name: "default_secrets_store" });
+      return ok(request.method === "PUT" ? { ...gateway, store_id: "store-1" } : gateway);
+    });
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    await expect(api.attachAiGatewayStore(ACCOUNT, "educateos-prairie")).resolves.toEqual({ attached: true, storeCreated: true });
+    const gw = `/client/v4/accounts/${ACCOUNT}/ai-gateway/gateways/educateos-prairie`;
+    const stores = `/client/v4/accounts/${ACCOUNT}/secrets_store/stores`;
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname])).toEqual([["GET", gw], ["GET", stores], ["POST", stores], ["PUT", gw]]);
+    expect(await requests[2]!.json()).toEqual({ name: "default_secrets_store" });
+    expect(await requests[3]!.json()).toEqual({
+      store_id: "store-1", cache_invalidate_on_update: false, cache_ttl: 0, collect_logs: false, rate_limiting_interval: 0,
+      rate_limiting_limit: 0, authentication: true, byok_only: false, log_management: 10000000,
+      log_management_strategy: "DELETE_OLDEST", logpush: false, workers_ai_billing_mode: "postpaid", zdr: false,
+    });
+
+    const attached = stubFetch(() => ok({ ...gateway, store_id: "store-1" }));
+    const again = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: attached.fetchImpl });
+    await expect(again.attachAiGatewayStore(ACCOUNT, "educateos-prairie")).resolves.toEqual({ attached: false, storeCreated: false });
+    expect(attached.requests).toHaveLength(1);
+  });
+
   it("deletes one secret by name", async () => {
     const { fetchImpl, requests } = stubFetch(() => ok(null));
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
