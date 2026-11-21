@@ -92,6 +92,12 @@ instance ID `ins_<name>`, the Zero Trust team read from the account, the admitte
 addresses, the administrators, an optional AI Gateway, and optionally the district service with its
 `DISTRICT_CONFIG` (one origin: the LMS at `/`, the Workshop at `/ai`) and the OSS admin.
 
+When the team's only login methods are Cloudflare-account login or one-time email codes, the
+wizard offers Google Workspace or Microsoft Entra ID (SCHO-443): it prints the account's Zero Trust
+Authentication page (`https://one.dash.cloudflare.com/<account>/settings/authentication`) and
+Cloudflare's setup steps, waits while you add it, and checks again. Declining keeps going; preflight
+still blocks a team nobody at a school can sign in to, and warns on one-time codes alone.
+
 A new install's answers also carry `"dataJurisdiction": "us"`: the district's Durable Object and the
 install's KV namespaces, R2 buckets and D1 databases are created in Cloudflare's US jurisdiction
 ([ADR-0015](adr/0015-us-data-jurisdiction.md)). Answers saved before that have none, and stay

@@ -170,8 +170,9 @@ npx launch-educate-os plan
 ```
 
 The wizard asks for the account (it lists the ones the token sees), the hostname (it lists the
-account's zones), a short installation name, the Zero Trust team (read from the account), who may
-sign in, the administrators, and whether to add the LMS, the OSS admin and an AI Gateway. It then
+account's zones), a short installation name, the Zero Trust team (read from the account), and, if
+the team has no login method a school can use beyond one-time codes, offers Google Workspace or
+Microsoft Entra ID with a link to the dashboard page that adds it, then who may sign in, the administrators, and whether to add the LMS, the OSS admin and an AI Gateway. It then
 runs preflight and prints the plan: every resource it will create, and what Cloudflare bills for.
 Nothing changes. Your answers are saved to `educateos-install.json`.
 

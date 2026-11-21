@@ -216,8 +216,10 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
   } catch {
     teamName = undefined;
   }
-  if (teamName) out.line(`Zero Trust team: ${teamName} (found in the account). Students and staff sign in through it.`);
-  else {
+  if (teamName) {
+    out.line(`Zero Trust team: ${teamName} (found in the account). Students and staff sign in through it.`);
+    await offerSchoolSignIn(cf, account.id, out, prompter);
+  } else {
     out.line("This account has no Zero Trust team yet. Create one at https://one.dash.cloudflare.com/ and add your");
     out.line("district's identity provider (SAML or OIDC); preflight stops until both exist.");
     teamName = await prompter.text("Zero Trust team name (<team>.cloudflareaccess.com)", {
@@ -367,5 +369,55 @@ async function readServiceConfig(prompter: Prompter, name: string): Promise<stri
     if (!(await prompter.confirm("That file isn't readable as a JSON object. Try another path?", true))) {
       throw new EducateOsError("validation-failed", `no ${name} configuration was given`);
     }
+  }
+}
+
+/** Login methods a school signs in with, and where Cloudflare documents adding each. */
+const SCHOOL_SIGN_IN = [
+  { label: "Google Workspace", docs: "https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/gsuite/" },
+  { label: "Microsoft Entra ID", docs: "https://developers.cloudflare.com/cloudflare-one/identity/idp-integration/entra-id/" },
+] as const;
+
+/**
+ * Zero Trust's login methods, by who can use them: Cloudflare-account login (added when Zero Trust
+ * is turned on) is no way in for a teacher or student, and one-time email codes suit only a pilot.
+ */
+async function schoolSignIn(cf: LaunchCloudflare, accountId: string): Promise<"sso" | "pin-only" | "none" | "unknown"> {
+  try {
+    const usable = (await cf.api.listAccessIdentityProviders(accountId)).filter((idp) => idp.type !== "cloudflare");
+    if (usable.length === 0) return "none";
+    return usable.every((idp) => idp.type === "onetimepin") ? "pin-only" : "sso";
+  } catch {
+    return "unknown"; // Preflight checks again, and says what the token lacks.
+  }
+}
+
+/**
+ * SCHO-443: when nobody at a school could sign in with the team's login methods (or only with
+ * one-time codes), offers Google Workspace or Microsoft Entra ID with a dashboard deep link, then
+ * checks again. Preflight still blocks a team with no usable method.
+ */
+async function offerSchoolSignIn(cf: LaunchCloudflare, accountId: string, out: Output, prompter: Prompter): Promise<void> {
+  let state = await schoolSignIn(cf, accountId);
+  if (state === "sso" || state === "unknown") return;
+  const page = `https://one.dash.cloudflare.com/${accountId}/settings/authentication`;
+  for (;;) {
+    out.line(state === "none"
+      ? "Nobody at a school can sign in yet: the team's only login method is a Cloudflare account, which teachers and students don't have."
+      : "The team's only login method is one-time email codes. That works for a pilot; a rollout needs the district's own sign-in.");
+    const choice = await prompter.select("Add your district's sign-in now?", [
+      ...SCHOOL_SIGN_IN.map((method) => ({ label: method.label, value: method as (typeof SCHOOL_SIGN_IN)[number] | undefined })),
+      { label: state === "none" ? "Not now (preflight will stop until a login method is added)" : "Not now: keep one-time codes for a pilot", value: undefined },
+    ], state === "none" ? 0 : SCHOOL_SIGN_IN.length);
+    if (choice === undefined) return;
+    out.line(`Add ${choice.label} in Zero Trust: ${page}`);
+    out.line(`(Settings → Authentication → Login methods → Add new; Cloudflare's steps: ${choice.docs})`);
+    await prompter.text("Press Enter once it's added", { default: "" });
+    state = await schoolSignIn(cf, accountId);
+    if (state === "sso" || state === "unknown") {
+      if (state === "sso") out.line("Found it: staff and students can sign in with the district's account.");
+      return;
+    }
+    out.line("Zero Trust doesn't list it yet.");
   }
 }

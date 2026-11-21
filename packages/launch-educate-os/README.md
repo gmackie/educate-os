@@ -79,7 +79,8 @@ The plan the installer shows ends with every billable resource it will create.
    (or `--release <id>`, or a directory with `--release-dir`), and verifies it (see "Security").
 2. **Questions.** The Cloudflare token (typed hidden, or `CLOUDFLARE_API_TOKEN`), the account
    (it lists the ones the token can see), the hostname (it lists the account's zones), a short name
-   for the installation, the Zero Trust team (found in the account), which email domains and
+   for the installation, the Zero Trust team (found in the account; with only Cloudflare-account
+   login or one-time codes, it offers to add Google Workspace or Microsoft Entra ID sign-in), which email domains and
    addresses may sign in, the administrators, and whether to install the district LMS and the
    open-source admin.
 3. **Preflight.** Checks the plan, products, quotas, DNS, Zero Trust and the token's permissions.
