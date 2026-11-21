@@ -123,6 +123,10 @@ Northfield and Riverbend) landing on a different principal in each. `EDUCATEOS_H
 | `packages/educateos-admin-ui` | `@educateos/admin-ui`: the district admin console (U03), a Vite React app over `@educateos/api-client`. |
 | `packages/educateos-pilot-gate` | `@educateos/pilot-gate`: the synthetic pilot gate (H01). The security, availability, rollover, load, restore and accessibility suite over both districts' apps, and the G0/G1 gate report. Test-only. See [pilot-gate.md](pilot-gate.md). |
 
+## Architecture proposals
+
+- [RFC 0003: Federated Learning, Local Authority, and Portable Evidence](rfc/0003-federated-learning-and-evidence.md) — proposed contracts for locally governed competency evidence, crosswalk review, interest-led learning opportunities, and consented cross-district recognition. Design only; not a released capability.
+
 ## Decisions
 
 1. [District data ownership and root independence](adr/0001-district-data-ownership.md)
