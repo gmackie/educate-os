@@ -30,7 +30,7 @@ import { Output } from "../output.ts";
 import { type Prompter, PromptCancelled, streamPrompter } from "../prompter.ts";
 import { secretEnvName } from "../run.ts";
 import { CLIENT_GUIDES, withUrl } from "./clients.ts";
-import { MCP_GATEKEEPERS, type McpFacts, mcpFacts, mcpResource } from "./facts.ts";
+import { isBuiltInMcp, MCP_GATEKEEPERS, type McpFacts, mcpFacts, mcpIssuerOf, mcpResource } from "./facts.ts";
 import { endpointProblem, type EndpointProbe, probeAuthorizationServer, probeDistrictEndpoint, probeMcpServer } from "./probe.ts";
 
 declare const __LAUNCH_VERSION__: string | undefined;
@@ -50,6 +50,9 @@ Usage:
   npx launch-educate-os mcp status    the district MCP endpoint and the Workshop's MCP connectors:
                                       what the answers file says, what the account runs, and a
                                       live check of the endpoint
+  npx launch-educate-os mcp enable    turn on the built-in Cloudflare OAuth 2.1 MCP server for all
+                                      LMS-lite tools in your answers file (no external IdP needed)
+  npx launch-educate-os mcp disable   turn off the district's /mcp endpoint in your answers file
   npx launch-educate-os mcp clients   connect AI clients (Claude, ChatGPT, Claude Code, VS Code,
                                       Cursor, others) to your district's /mcp: the URL, each
                                       client's steps, how sign-in works, who may use it
@@ -63,6 +66,8 @@ Usage:
 
 Options:
   --config <file>       the answers file (default ./${ANSWERS_FILE})
+  --strict-writes       enable: require human approval for draft tools too (default allows drafts)
+  --allowed-origin <u>  enable: allow browser MCP calls from this exact https:// origin
   --url <url>           clients: the MCP endpoint, instead of the one the answers file gives
   --client <id>         clients: one client only (${CLIENT_GUIDES.map((guide) => guide.id).join(", ")})
   --server-url <url>    add: the MCP server to check and add (otherwise asked on a terminal)
@@ -71,7 +76,7 @@ Options:
   --portal-name <name>  add --connector portal: its display name (default "MCP Server Portal (<host>)")
   --portal-auth <mode>  add --connector portal: ${PORTAL_AUTH_MODES.join(", ")} (default oauth). For token,
                         set ${PORTAL_TOKEN_ENV} when you apply
-  --yes                 add: save the changes without asking (needed without a terminal)
+  --yes                 enable/disable/add: save the changes without asking (needed without a terminal)
   --offline             no live checks: read the answers file only
   --json                one JSON event per line on stdout; human text goes to stderr
   -h, --help            this help
@@ -79,8 +84,8 @@ Options:
 Environment:
   ${DISTRICT_TOKEN_ENV}  optional for status: also checks the connectors' Workers in the account
 
-Nothing here changes Cloudflare. "add" changes only the answers file, which never holds a secret;
-apply it with npx launch-educate-os --config <file>.`;
+Nothing here changes Cloudflare. "enable", "disable" and "add" change only the answers file, which
+never holds a secret; apply it with npx launch-educate-os --config <file>.`;
 
 function parse(argv: string[]) {
   return parseArgs({
@@ -89,6 +94,8 @@ function parse(argv: string[]) {
     strict: true,
     options: {
       config: { type: "string" },
+      "strict-writes": { type: "boolean" },
+      "allowed-origin": { type: "string", multiple: true },
       url: { type: "string" },
       client: { type: "string" },
       "server-url": { type: "string" },
@@ -150,7 +157,7 @@ export async function mcpMain(io: CliIo, argv: string[]): Promise<number> {
     (sub === undefined && !values.help ? io.stderr : io.stdout).write(`${MCP_USAGE}\n`);
     return sub === undefined && !values.help ? 2 : 0;
   }
-  if (!["status", "clients", "add"].includes(sub) || positionals.length > 1) {
+  if (!["status", "clients", "add", "enable", "disable"].includes(sub) || positionals.length > 1) {
     io.stderr.write(`unknown command: mcp ${positionals.join(" ")}\n\n${MCP_USAGE}\n`);
     return 2;
   }
@@ -184,6 +191,8 @@ export async function mcpMain(io: CliIo, argv: string[]): Promise<number> {
     if (io.env[TEST_CLOUDFLARE_RPC_ENV]) out.line(`NOTE: ${TEST_CLOUDFLARE_RPC_ENV} is set: talking to a test Cloudflare, not api.cloudflare.com.`);
     if (sub === "status") return await status(context);
     if (sub === "clients") return await clients(context);
+    if (sub === "enable") return await enableEndpoint(context);
+    if (sub === "disable") return await disableEndpoint(context);
     return await add(context);
   } catch (error) {
     if (error instanceof PromptCancelled) {
@@ -224,10 +233,19 @@ function reportEndpointConfig(report: Report, facts: McpFacts): void {
     report.check("endpoint", "info", "off: DISTRICT_CONFIG has no \"mcp\" settings, so /mcp answers 404 (the default)");
     return;
   }
-  report.check("endpoint", "ok", `on in DISTRICT_CONFIG: ${mcp.origin}/mcp`);
-  report.check("issuer", district.trustedIssuers.includes(mcp.issuer) ? "ok" : "fail", district.trustedIssuers.includes(mcp.issuer)
-    ? `tokens come from ${mcp.issuer}, which the district trusts`
-    : `tokens come from ${mcp.issuer}, which is not in the directory's trustedIssuers or additionalTrustedIssuers: no one's sign-in there links to a person, so every call is refused`);
+  const builtIn = isBuiltInMcp(mcp);
+  const issuer = mcpIssuerOf(mcp);
+  report.check("endpoint", "ok", `on in DISTRICT_CONFIG (${builtIn ? "built-in Cloudflare OAuth 2.1" : "external OAuth"}): ${mcp.origin}/mcp`);
+  if (builtIn) {
+    report.check("issuer", "ok", `built-in Cloudflare Access-backed OAuth 2.1 at ${issuer} (zero external IdP required); scoped personal bearer tokens also enabled`);
+  } else {
+    report.check("issuer", district.trustedIssuers.includes(issuer) ? "ok" : "fail", district.trustedIssuers.includes(issuer)
+      ? `tokens come from ${issuer}, which the district trusts`
+      : `tokens come from ${issuer}, which is not in the directory's trustedIssuers or additionalTrustedIssuers: no one's sign-in there links to a person, so every call is refused`);
+  }
+  report.check("writes", "info", mcp.allowDrafts === true
+    ? "reads and draft tools run immediately; consequential writes wait in the Management UI approval queue"
+    : "reads run immediately; every write waits in the Management UI approval queue");
   if (mcp.origin !== facts.origin) {
     report.check("origin", "warn", `mcp.origin is ${mcp.origin}, not the install's ${facts.origin}: tokens must be issued for ${mcp.origin}/mcp, and that hostname must route to this district`);
   }
@@ -398,7 +416,7 @@ async function clients(context: Context): Promise<number> {
 
   report.heading("Is it ready?");
   if (facts !== undefined) reportEndpointConfig(report, facts);
-  let issuer = facts?.district?.mcp?.issuer;
+  let issuer = facts?.district?.mcp ? mcpIssuerOf(facts.district.mcp) : undefined;
   let live: EndpointProbe | undefined;
   if (values.offline) {
     report.check("live", "info", "skipped (--offline)");
@@ -427,11 +445,13 @@ async function clients(context: Context): Promise<number> {
   }
 
   report.heading("How sign-in works");
-  paragraph(out, `MCP clients don't sign in through Cloudflare Access. Each person signs in at the district's OAuth authorization server${issuer ? ` (${issuer})` : ""}, and the client sends the endpoint a short-lived access token for exactly ${resource} with the scope mcp:tools. The endpoint checks the token, then looks the person up through the district's identity links: the token names no role.`);
+  paragraph(out, facts?.district?.mcp && isBuiltInMcp(facts.district.mcp)
+    ? `Built-in Cloudflare OAuth 2.1: clients discover ${issuer}/.well-known/oauth-authorization-server, register dynamically, and open ${issuer}/oauth/authorize behind your school's Cloudflare Access login. You sign in with your normal school SSO, pick a class/district scope and duration, and approve. For CLI tools or scripts without OAuth, mint a scoped personal token in the Management UI (${facts.origin}/admin/#/mcp or ${facts.origin}/teach/#/mcp).`
+    : `MCP clients don't sign in through Cloudflare Access directly on /mcp. Each person signs in at the district's OAuth authorization server${issuer ? ` (${issuer})` : ""}, and the client sends the endpoint a short-lived access token for exactly ${resource} with the scope mcp:tools. The endpoint checks the token, then looks the person up through the district's identity links: the token names no role.`);
   report.heading("Who may use it");
   paragraph(out, "Staff only: district, school and curriculum administrators, teachers and co-teachers. Students can't delegate, so no student can use it.");
-  paragraph(out, "Each person first issues a delegation to the client: which client (the authorization server's client ID for it), the most it may do (scope, actions, kinds of records), and for how long (90 days at most). Every call is held to that delegation and to the person's standing in the roster now. Revoking it, deactivating the person or unlinking their sign-in stops the next call. Writes wait in the district's approval queue; MCP can't approve anything.");
-  paragraph(out, "Delegations are issued through the district API (POST /api/teacher/delegations); there is no page for them yet (SCHO-176).");
+  paragraph(out, "Each connection acts under an explicit delegation (scope, allowed actions, and duration up to 90 days) bounded by the person's live standing in the roster. Revoking a delegation, deactivating the person or unlinking their sign-in stops the next call. Consequential writes wait in the Management UI approval queue; MCP can never approve anything.");
+  paragraph(out, `Manage delegations, scoped personal bearer tokens, and queued write approvals in the Management UI at ${facts?.origin ?? new URL(resource).origin}/admin/#/mcp (administrators) or ${facts?.origin ?? new URL(resource).origin}/teach/#/mcp (teachers).`);
 
   report.heading("Connect a client");
   for (const guide of CLIENT_GUIDES.filter((item) => values.client === undefined || item.id === values.client)) {
@@ -447,10 +467,96 @@ async function clients(context: Context): Promise<number> {
     }
   }
   out.line();
-  out.line("Not yet proven live: no outside MCP client has connected to an EducateOS district. The endpoint");
-  out.line("is tested end to end with the official MCP client against a simulated authorization server;");
-  out.line("the district's real one (Nathan) doesn't issue tokens for it yet (NATH-6).");
+  out.line("Built-in Cloudflare OAuth 2.1 requires no external authorization server: apply your answers and");
+  out.line("open /admin/#/mcp (or /teach/#/mcp) to manage tokens, delegations, and pending write approvals.");
   return report.failed === 0 ? 0 : 1;
+}
+
+// ---- enable / disable district MCP -------------------------------------------------------------
+
+async function enableEndpoint(context: Context): Promise<number> {
+  const { values, out } = context;
+  const report = new Report(out);
+  const answers = await loadAnswers(context, "mcp enable");
+  const facts = mcpFacts(answers);
+  const district = facts.district;
+  if (district === undefined) {
+    throw new EducateOsError("validation-failed", "This install has no district LMS service enabled; install the district LMS first.");
+  }
+  if (district.config === undefined) {
+    throw new EducateOsError("validation-failed", "the district service's DISTRICT_CONFIG in the answers is not JSON");
+  }
+  const allowDrafts = values["strict-writes"] !== true;
+  const allowedOrigins = (values["allowed-origin"] ?? []).map((raw) => {
+    const problem = endpointProblem(raw);
+    if (problem !== undefined) throw new EducateOsError("validation-failed", `--allowed-origin ${raw}: ${problem}`);
+    return new URL(raw).origin;
+  });
+  const desired = {
+    mode: "builtin" as const,
+    origin: facts.origin,
+    allowDrafts,
+    ...(allowedOrigins.length > 0 ? { allowedOrigins } : {}),
+  };
+  const changes: Change[] = [];
+  if (JSON.stringify(district.mcp) !== JSON.stringify(desired)) {
+    changes.push({
+      description: `DISTRICT_CONFIG.mcp: set built-in Cloudflare OAuth 2.1 at ${facts.origin}/mcp (allowDrafts: ${allowDrafts})`,
+      apply: (install) => {
+        const services = install.services as Record<string, { vars: Record<string, string> }>;
+        const vars = services[district.pkg]!.vars;
+        const text = vars.DISTRICT_CONFIG!;
+        const json = JSON.parse(text) as Record<string, unknown>;
+        json.mcp = desired;
+        vars.DISTRICT_CONFIG = JSON.stringify(json, null, text.includes("\n") ? 2 : undefined);
+      },
+    });
+  }
+  report.heading(`Changes to ${context.answersPath}`);
+  const result = await saveChanges(context, answers, changes, "the answers already enable the built-in Cloudflare MCP server with these settings.");
+  if ("code" in result) return result.code;
+  report.heading("Next steps");
+  const steps = [
+    ...(result.saved ? [applyStep(context)] : []),
+    `Open ${facts.origin}/admin/#/mcp to copy client configs, mint scoped tokens, and review queued MCP writes.`,
+    `Connect Claude, ChatGPT, Claude Code, Cursor or VS Code to ${facts.origin}/mcp (run \`npx launch-educate-os mcp clients\` for exact steps).`,
+    "Check live: npx launch-educate-os mcp status",
+  ];
+  steps.forEach((step, index) => out.line(`  ${index + 1}. ${step}`));
+  return 0;
+}
+
+async function disableEndpoint(context: Context): Promise<number> {
+  const { out } = context;
+  const report = new Report(out);
+  const answers = await loadAnswers(context, "mcp disable");
+  const facts = mcpFacts(answers);
+  const district = facts.district;
+  if (district === undefined || district.config === undefined) {
+    throw new EducateOsError("validation-failed", "This install has no readable DISTRICT_CONFIG.");
+  }
+  const changes: Change[] = [];
+  if (district.mcp !== undefined) {
+    changes.push({
+      description: "DISTRICT_CONFIG.mcp: remove (turns off /mcp and removes its Cloudflare Access bypass on next apply)",
+      apply: (install) => {
+        const services = install.services as Record<string, { vars: Record<string, string> }>;
+        const vars = services[district.pkg]!.vars;
+        const text = vars.DISTRICT_CONFIG!;
+        const json = JSON.parse(text) as Record<string, unknown>;
+        delete json.mcp;
+        vars.DISTRICT_CONFIG = JSON.stringify(json, null, text.includes("\n") ? 2 : undefined);
+      },
+    });
+  }
+  report.heading(`Changes to ${context.answersPath}`);
+  const result = await saveChanges(context, answers, changes, "the district MCP endpoint is already off.");
+  if ("code" in result) return result.code;
+  if (result.saved) {
+    report.heading("Next steps");
+    out.line(`  1. ${applyStep(context)}`);
+  }
+  return 0;
 }
 
 // ---- add ---------------------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import {
   type CostLine,
   describeUninstall,
   DISTRICT_EXPORT_REMINDER,
+  districtMcpEnabled,
   uninstall,
   type DesiredWorkerSecret,
   type DistrictInstallConfig,
@@ -124,7 +125,12 @@ export function installUrls(config: DistrictInstallConfig, manifest: ReleaseMani
   const urls: Record<string, string> = {};
   if (isOneOrigin(config, manifest)) {
     const router = Object.values(manifest.workers).find((worker) => worker.kind === "router");
+    const pkg = districtPackage(manifest);
     urls.district = `${host}/`;
+    if (pkg && districtMcpEnabled(config.services[pkg]?.vars.DISTRICT_CONFIG)) {
+      urls.mcp = `${host}/mcp`;
+      urls.mcpAdmin = `${host}/admin/#/mcp`;
+    }
     if (config.ai.enabled) urls.ai = `${host}${router?.districtOrigin?.basePath ?? "/ai"}/`;
   } else {
     urls.workshop = `${host}/`;
@@ -137,6 +143,8 @@ export function installUrls(config: DistrictInstallConfig, manifest: ReleaseMani
 
 const URL_LABELS: Record<string, string> = {
   district: "District (LMS)",
+  mcp: "MCP server",
+  mcpAdmin: "MCP management",
   ai: "AI Workshop",
   workshop: "AI Workshop",
   admin: "OSS admin",
@@ -150,6 +158,9 @@ export function nextSteps(config: DistrictInstallConfig, manifest: ReleaseManife
   const steps = [`Sign in at ${urls.district ?? urls.workshop} through Cloudflare Access (${who} may sign in). The administrators are ${config.admins.join(", ")}.`];
   if (urls.district) {
     steps.push(`Set up the district at ${urls.district}admin: import your roster or add people and classes there. For demo content, add sample courses from the district course library.`);
+  }
+  if (urls.mcp) {
+    steps.push(`Connect Claude, ChatGPT, Claude Code, Cursor or VS Code to ${urls.mcp} (uses your Cloudflare Access sign-in), or manage tokens, delegations and approvals at ${urls.mcpAdmin}.`);
   }
   steps.push(...adminSteps);
   steps.push("Delete the Cloudflare API token you used: https://dash.cloudflare.com/profile/api-tokens. Create a new one when you next upgrade.");

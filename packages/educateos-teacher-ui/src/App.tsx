@@ -7,6 +7,7 @@ import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./Announcer.tsx";
 import { ClassPage } from "./classes/ClassPage.tsx";
 import { MyClassesPage } from "./classes/MyClassesPage.tsx";
+import { TeacherMcpPage } from "./mcp/TeacherMcpPage.tsx";
 import { NotAddedYet } from "./NotAddedYet.tsx";
 import { APP_NAME } from "./PageHeading.tsx";
 import { RubricShelfProvider } from "./activities/RubricShelf.tsx";
@@ -49,7 +50,13 @@ export const App = ({ shell }: AppProps = {}) => {
   useRouteTitle(documentTitle(routeName(route), APP_NAME), routeHref(route));
   const me = useLoad("me", (client) => client.call("me.get"));
   const unlinked = me.status === "error" ? unlinkedSignInOf(me.error) : undefined;
-  const screen = unlinked !== undefined ? <NotAddedYet signIn={unlinked} /> : route.screen === "classes" ? <MyClassesPage /> : <ClassPage route={route} />;
+  const screen = unlinked !== undefined
+    ? <NotAddedYet signIn={unlinked} />
+    : route.screen === "classes"
+      ? <MyClassesPage />
+      : route.screen === "mcp"
+        ? <TeacherMcpPage />
+        : <ClassPage route={route} />;
   if (shell !== undefined) {
     return (
       <ShellContext value={shell}>

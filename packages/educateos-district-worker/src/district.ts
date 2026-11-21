@@ -4,8 +4,14 @@ import { plannerRuntimeLifecycle } from "./planner-runtime-lifecycle.ts";
 // with the rest of the EducateOS libraries it composes (ADR-0009); `district-object.ts` is the
 // Durable Object shell around it.
 import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
-import { createSchoolMcpApi } from "@educateos/external-mcp";
-import { externalSchoolTools } from "@educateos/external-mcp/registry";
+import { createSchoolMcpApi, type McpAuthenticator } from "@educateos/external-mcp";
+import { describeMcpCatalog, lmsSchoolToolDescriptors } from "@educateos/external-mcp/lms-tools";
+import {
+  BUILTIN_OAUTH_AUTHORIZE_PATH,
+  BUILTIN_OAUTH_BYPASS_PATHS,
+  createBuiltInMcpOAuth,
+  DurableObjectMcpOAuthStorage,
+} from "@educateos/external-mcp/oauth-server";
 import { DelegatedResourceAuthority } from "@educateos/external-mcp/resource-auth";
 import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot, EducateOsError, PrincipalId, type VerifiedIdentity } from "@educateos/contracts";
@@ -25,7 +31,7 @@ import {
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
 import { analyticsSettings, authorityFor, classroomCourseOf, cloudflareAnalytics, createDistrictApp, PublisherTrust, readProductAnalyticsDeployment, type ClassroomGradeSource, type DistrictApp, type DistrictAppOptions, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
-import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
+import { durableDistrictStores, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
 import { accessAudiences, accessRequestVerifier } from "./access.ts";
 import { readDistrictWorkerConfig, type DistrictWorkerConfig } from "./config.ts";
@@ -60,8 +66,14 @@ export interface District {
   demoOperator: DemoOperator | undefined;
 }
 
-/** The paths the organization MCP endpoint answers (SCHO-174). */
-export const MCP_PATHS: readonly string[] = ["/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"];
+/** The paths the organization MCP endpoint and its built-in OAuth 2.1 server answer. */
+export const MCP_PATHS: readonly string[] = [
+  "/mcp",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-protected-resource/mcp",
+  ...BUILTIN_OAUTH_BYPASS_PATHS,
+  BUILTIN_OAUTH_AUTHORIZE_PATH,
+];
 
 /** The scope every MCP access token must carry. It opens the transport; the delegation and policy decide the rest. */
 export const MCP_SCOPE = "mcp:tools";
@@ -469,21 +481,22 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const runner = new SchoolToolRunner({
     engine: app.engine,
     tools: academicSchoolTools(stores.directory, directory),
-    approvals: { store: new DurableObjectToolApprovalStore(storage) },
+    approvals: { store: stores.toolApprovals },
   });
+  const authenticateBrowser = async (request: Request) => {
+    try {
+      const identity = await verifyRequest(request);
+      if (identity === undefined) return null;
+      const resolved = await createDirectoryPrincipalResolver((await stores.directory.load()).snapshot).resolve(identity);
+      return { principalId: resolved.principalId, districtId: resolved.districtId };
+    } catch {
+      return null;
+    }
+  };
   const tools = createSchoolToolService({
     districtId: app.districtId,
     runner,
-    authenticate: async (request) => {
-      try {
-        const identity = await verifyRequest(request);
-        if (identity === undefined) return null;
-        const resolved = await createDirectoryPrincipalResolver((await stores.directory.load()).snapshot).resolve(identity);
-        return { principalId: resolved.principalId, districtId: resolved.districtId };
-      } catch {
-        return null;
-      }
-    },
+    authenticate: authenticateBrowser,
     serveAs: (principal, request) => app.serveAs(principal, request),
     gadgetAssessmentRead: (principal, assignmentId) => app.gadgetAssessmentRead(principal, assignmentId),
     gadgetAssessmentSubmit: (principal, assignmentId, request) => app.gadgetAssessmentSubmit(principal, assignmentId, request),
@@ -542,7 +555,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     tools,
     lti,
     principals,
-    mcp: startDistrictMcp(storage, config, stores, app, directory, seams.mcpKeys),
+    mcp: startDistrictMcp(storage, config, stores, app, directory, authenticateBrowser, seams.mcpKeys),
     showcase: showcase === undefined ? undefined : startDistrictShowcase({
       app,
       verifyRequest,
@@ -560,12 +573,11 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
 }
 
 /**
- * The organization MCP endpoint (SCHO-174), or `undefined` when the configuration does not turn it
- * on. It is an OAuth protected resource for the one configured issuer: each request's token is
- * verified against that issuer's keys, its `(iss, sub)` resolved through the directory as it
- * stands, and its `client_id` matched to the one delegation in force from that person, which then
- * bounds every call. Its curated tools queue writes in the same approval store as the district's
- * own, for a person to approve through the district.
+ * The organization MCP endpoint (full LMS-lite tool catalog), or `undefined` when `DISTRICT_CONFIG.mcp`
+ * is absent. Supports built-in Cloudflare Access-backed OAuth 2.1 + scoped personal bearer tokens
+ * (zero external IdP) as well as an external OAuth authorization server. Every call runs through
+ * the district's real `SchoolToolRunner`, `PolicyEngine`, live directory standing, active IF-06
+ * delegation ceiling, and shared durable human approval queue.
  */
 function startDistrictMcp(
   storage: DistrictSqlStorage,
@@ -573,30 +585,109 @@ function startDistrictMcp(
   stores: ReturnType<typeof durableDistrictStores>,
   app: DistrictApp,
   directory: AcademicDirectory,
+  authenticateBrowser: (request: Request) => Promise<{ principalId: import("@educateos/contracts").PrincipalId; districtId: import("@educateos/contracts").DistrictId } | null>,
   keys: JWTVerifyGetKey | undefined,
 ): District["mcp"] {
+  const descriptors = lmsSchoolToolDescriptors(app, stores.directory, directory);
   const settings = config.mcp;
-  if (settings === undefined) return undefined;
-  const tokens = new DelegatedResourceAuthority({
-    resource: `${settings.origin}/mcp`,
-    issuer: {
-      issuer: settings.issuer,
-      keys: keys ?? createRemoteJWKSet(new URL(settings.jwksUri), { timeoutDuration: 5000, cooldownDuration: 30_000 }),
-      algorithms: settings.algorithms,
-    },
-    requiredScopes: [MCP_SCOPE],
-    resolver: async () => createDirectoryPrincipalResolver((await stores.directory.load()).snapshot),
-    delegations: stores.delegations,
+  const allowDrafts = settings?.allowDrafts === true;
+  const mcpRunner = new SchoolToolRunner({
+    engine: app.engine,
+    tools: descriptors.map((d) => d.tool),
+    approvals: { store: stores.toolApprovals },
   });
-  return createSchoolMcpApi({
+  const catalogEntries = describeMcpCatalog(descriptors, allowDrafts);
+
+  if (settings === undefined) {
+    app.configureMcp({
+      status: {
+        enabled: false,
+        endpoint: null,
+        authMode: "off",
+        issuer: null,
+        allowDrafts: false,
+        allowedOrigins: [],
+        toolCount: catalogEntries.length,
+      },
+      tools: () => catalogEntries,
+      runner: () => mcpRunner,
+    });
+    return undefined;
+  }
+
+  const isExternal = "issuer" in settings;
+  const oauthStorage = new DurableObjectMcpOAuthStorage(storage);
+  const externalAuth: McpAuthenticator | undefined = isExternal
+    ? new DelegatedResourceAuthority({
+      resource: `${settings.origin}/mcp`,
+      issuer: {
+        issuer: settings.issuer,
+        keys: keys ?? createRemoteJWKSet(new URL(settings.jwksUri), { timeoutDuration: 5000, cooldownDuration: 30_000 }),
+        algorithms: settings.algorithms,
+      },
+      requiredScopes: [MCP_SCOPE],
+      resolver: async () => createDirectoryPrincipalResolver((await stores.directory.load()).snapshot),
+      delegations: stores.delegations,
+    })
+    : undefined;
+
+  const builtInOAuth = createBuiltInMcpOAuth({
+    origin: settings.origin,
     districtId: app.districtId,
-    runner: new SchoolToolRunner({
-      engine: app.engine,
-      tools: externalSchoolTools(stores.directory, directory),
-      approvals: { store: new DurableObjectToolApprovalStore(storage) },
-    }),
+    allowedOrigins: settings.allowedOrigins ?? [],
+    storage: oauthStorage,
+    directory: async () => (await stores.directory.load()).snapshot,
+    delegations: stores.delegations,
+    policy: app.engine,
+    mcpTokens: stores.mcpTokens,
+    authenticateBrowser,
+    ...(externalAuth === undefined ? {} : { externalAuthenticator: externalAuth }),
+  });
+
+  const authorizationServer = isExternal ? settings.issuer : settings.origin;
+  const tokens: McpAuthenticator = isExternal
+    ? {
+      authenticate: async (token: string) => {
+        // Scoped personal bearer tokens (`edum_*`) still work alongside external OAuth issuers.
+        if (token.startsWith("edum_")) return builtInOAuth.authenticate(token);
+        return externalAuth!.authenticate(token);
+      },
+    }
+    : builtInOAuth;
+
+  app.configureMcp({
+    status: {
+      enabled: true,
+      endpoint: `${settings.origin}/mcp`,
+      authMode: isExternal ? "external" : "builtin",
+      issuer: authorizationServer,
+      allowDrafts,
+      allowedOrigins: settings.allowedOrigins ?? [],
+      toolCount: catalogEntries.length,
+    },
+    tools: () => catalogEntries,
+    runner: () => mcpRunner,
+    registeredClients: () => builtInOAuth.listClients(),
+  });
+
+  const mcpApi = createSchoolMcpApi({
+    districtId: app.districtId,
+    runner: mcpRunner,
     tokens,
     allowedOrigins: settings.allowedOrigins ?? [],
-    resource: { origin: settings.origin, authorizationServers: [settings.issuer], scopes: [MCP_SCOPE] },
+    allowDrafts,
+    resource: { origin: settings.origin, authorizationServers: [authorizationServer], scopes: [MCP_SCOPE] },
   });
+
+  const oauthPaths = new Set([...BUILTIN_OAUTH_BYPASS_PATHS, BUILTIN_OAUTH_AUTHORIZE_PATH]);
+  return {
+    fetch(request: Request): Promise<Response> {
+      const { pathname } = new URL(request.url);
+      if (oauthPaths.has(pathname)) {
+        if (isExternal) return Promise.resolve(new Response(null, { status: 404 }));
+        return builtInOAuth.fetch(request);
+      }
+      return mcpApi.fetch(request);
+    },
+  };
 }

@@ -286,10 +286,21 @@ export async function runWizard(deps: WizardDeps): Promise<WizardResult> {
     }
   }
   out.line();
-  out.line("AI: with an AI Gateway, the Workshop's AI runs in your account through Workers AI from the first");
-  out.line("sign-in, billed to you per use, with no provider keys. Anthropic and OpenAI stay off until an");
-  out.line("administrator adds a key (`npx launch-educate-os ai add anthropic`, after the install).");
-  install.aiGateway = await prompter.confirm("Turn on AI now (creates an AI Gateway in your account)?", true);
+  const hasDistrict = install.services !== undefined && district !== undefined && (install.services as Record<string, { enabled?: boolean }>)[district]?.enabled === true;
+  if (hasDistrict) {
+    out.line("AI Workshop: with an AI Gateway, the Workshop runs at /ai through Workers AI from the first");
+    out.line("sign-in (no provider keys needed). Answer No to run in LMS-lite + MCP-only mode (just the");
+    out.line("district LMS, built-in Cloudflare MCP server at /mcp, and Management UI at /admin).");
+  } else {
+    out.line("AI: with an AI Gateway, the Workshop's AI runs in your account through Workers AI from the first");
+    out.line("sign-in, billed to you per use, with no provider keys. Anthropic and OpenAI stay off until an");
+    out.line("administrator adds a key (`npx launch-educate-os ai add anthropic`, after the install).");
+  }
+  const enableAi = await prompter.confirm("Turn on AI now (creates an AI Gateway in your account)?", true);
+  install.aiGateway = enableAi;
+  if (hasDistrict && !enableAi) {
+    install.ai = { enabled: false, providers: [] };
+  }
 
   out.line();
   out.line("Registering this installation with educateos.io is optional and off. educateos.io's registry");

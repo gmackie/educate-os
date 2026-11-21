@@ -18,16 +18,28 @@ export const MCP_GATEKEEPERS = {
   portal: { pkg: "gatekeeper-mcp-portal", vendorId: "mcpportal", name: "MCP Server Portal" },
 } as const;
 
-/** The district Worker's `DISTRICT_CONFIG.mcp`: the organization MCP endpoint (SCHO-174). */
+/** The district Worker's `DISTRICT_CONFIG.mcp`: built-in Cloudflare OAuth 2.1 or an external issuer. */
 const McpSettings = z.object({
+  mode: z.enum(["builtin", "external"]).optional(),
   origin: z.string(),
-  issuer: z.string(),
-  jwksUri: z.string(),
-  algorithms: z.array(z.string()),
+  issuer: z.string().optional(),
+  jwksUri: z.string().optional(),
+  algorithms: z.array(z.string()).optional(),
+  allowDrafts: z.boolean().optional(),
   allowedOrigins: z.array(z.string()).optional(),
 });
 /** The district's MCP endpoint settings, as far as the launcher reads them. */
 export type McpSettings = z.infer<typeof McpSettings>;
+
+/** Whether `mcp` uses the district Worker's built-in Cloudflare Access-backed OAuth 2.1 server. */
+export function isBuiltInMcp(mcp: McpSettings): boolean {
+  return mcp.mode === "builtin" || mcp.issuer === undefined;
+}
+
+/** The effective authorization server issuer URL for `mcp`. */
+export function mcpIssuerOf(mcp: McpSettings): string {
+  return isBuiltInMcp(mcp) ? mcp.origin : mcp.issuer!;
+}
 
 const ConnectorGrant = z.object({ vendorId: z.string() }).loose();
 

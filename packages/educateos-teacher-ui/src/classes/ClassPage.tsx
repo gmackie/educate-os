@@ -23,7 +23,7 @@ import { classLabel } from "./classLabel.ts";
 import { PlannerPage } from "../planner/PlannerPage.tsx";
 import { GuidancePage } from "../guidance/GuidancePage.tsx";
 
-type ClassRoute = Exclude<Route, { screen: "classes" }>;
+type ClassRoute = Exclude<Route, { screen: "classes" } | { screen: "mcp" }>;
 
 const sectionOf = (route: ClassRoute): (typeof CLASS_SECTIONS)[number]["screen"] => {
   switch (route.screen) {

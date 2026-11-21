@@ -57,7 +57,7 @@ function directory(answers: DistrictAnswers) {
   };
 }
 
-/** The district Worker's `DISTRICT_CONFIG` text. */
+/** The district Worker's `DISTRICT_CONFIG` text, with built-in Cloudflare OAuth 2.1 MCP enabled by default. */
 export function districtConfigText(answers: DistrictAnswers): string {
   return JSON.stringify({
     directory: directory(answers),
@@ -67,6 +67,11 @@ export function districtConfigText(answers: DistrictAnswers): string {
       displayName: admin.displayName,
       email: admin.email,
     })),
+    mcp: {
+      mode: "builtin",
+      origin: answers.origin,
+      allowDrafts: true,
+    },
     workshopPolicy: {
       personalCreation: true,
       personalBlueprints: [],

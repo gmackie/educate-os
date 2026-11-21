@@ -16,6 +16,7 @@ export const SCREENS = [
   { path: "ai-usage", label: "AI usage" },
   { path: "ai-budgets", label: "AI budgets" },
   { path: "term-rollover", label: "Term rollover" },
+  { path: "mcp", label: "MCP & AI access" },
   { path: "operations", label: "Operations" },
   // IT review (SCHO-376)
   { path: "safety-decisions", label: "Safety decisions" },

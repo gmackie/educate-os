@@ -19,6 +19,12 @@ describe("the district's starting configuration", () => {
     expect(adminPrincipalIdFor("northfield", 1)).toBe("prn_northfield-admin-2");
     // Students hold no Workshop actions until the district grants them.
     expect(config.workshopPolicy.workspaceActions.map((grant: { kind: string }) => grant.kind)).toEqual(["staff"]);
+    // Built-in Cloudflare OAuth MCP server is enabled by default for the district LMS.
+    expect(config.mcp).toEqual({
+      mode: "builtin",
+      origin: "https://educateos.northfield.example",
+      allowDrafts: true,
+    });
   });
 
   it("gives the MCP service the same district with no administrator email", () => {

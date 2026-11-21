@@ -26,6 +26,7 @@ import { CourseLibraryPage } from "./courses/CourseLibraryPage.tsx";
 import { SchoolPage } from "./schools/SchoolPage.tsx";
 import { AiUsagePage } from "./usage/AiUsagePage.tsx";
 import { OperationsPage } from "./operations/OperationsPage.tsx";
+import { McpPage } from "./mcp/McpPage.tsx";
 import { AdminAuditLogPage } from "./audit/AdminAuditLogPage.tsx";
 import { SafetyDecisionsPage } from "./audit/SafetyDecisionsPage.tsx";
 import { SignInPage } from "./signin/SignInPage.tsx";
@@ -45,6 +46,7 @@ const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigStat
     case "ai-usage": return <AiUsagePage state={config} />;
     case "ai-budgets": return <AiBudgetsPage />;
     case "term-rollover": return <TermRolloverPage />;
+    case "mcp": return <McpPage />;
     case "operations": return <OperationsPage />;
     case "safety-decisions": return <SafetyDecisionsPage />;
     case "audit-log": return <AdminAuditLogPage />;
@@ -84,7 +86,7 @@ const ShellContext = createContext<DistrictShell | undefined>(undefined);
 const SCREEN_ICONS: Record<ScreenPath, NavIcon> = {
   dashboard: "dashboard", roster: "roster", "roster-sync": "roster", classes: "classes", "classes-people": "roster", guardians: "guardians", modules: "studio",
   "learning-standards": "grades", "course-library": "studio", policies: "policies", "ai-usage": "usage", "ai-budgets": "budgets", "term-rollover": "rollover",
-  operations: "policies", "safety-decisions": "policies", "audit-log": "policies", "sign-in": "policies",
+  mcp: "studio", operations: "policies", "safety-decisions": "policies", "audit-log": "policies", "sign-in": "policies",
 };
 
 /**

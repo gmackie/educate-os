@@ -548,6 +548,73 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   const revisions = [revision(initialDesired())];
   const headDesired = () => revisions.at(-1)!.desired as DesiredStateView;
 
+  const mcpDelegations: {
+    id: string;
+    districtId: string;
+    grantorPrincipalId: string;
+    grantorName?: string;
+    client: { issuer: string; clientId: string };
+    ceiling: { scope: Record<string, unknown>; actions: string[]; kinds: string[]; classifications: string[] };
+    issuedAt: string;
+    expiresAt: string;
+    revoked?: { by: string; at: string };
+  }[] = [
+    {
+      id: "dlg_fake-0",
+      districtId: "dst_fake",
+      grantorPrincipalId: "prn_fk-admin",
+      grantorName: "Avery Admin",
+      client: { issuer: "https://educateos.fake.example", clientId: "mcpc_claude-desktop" },
+      ceiling: {
+        scope: { level: "district", districtId: "dst_fake" },
+        actions: ["read", "list", "create", "update", "review", "invoke-tool"],
+        kinds: ["offering", "enrollment", "course-content", "activity", "submission"],
+        classifications: ["public", "district-internal", "course", "teacher-only"],
+      },
+      issuedAt: "2026-11-15T10:00:00.000Z",
+      expiresAt: "2026-12-15T10:00:00.000Z",
+    },
+  ];
+  const mcpTokens: {
+    id: string;
+    districtId: string;
+    principalId: string;
+    principalName?: string;
+    delegationId: string;
+    label: string;
+    prefix: string;
+    createdAt: string;
+    expiresAt: string;
+    lastUsedAt?: string;
+    revoked?: { by: string; at: string };
+  }[] = [];
+  const mcpPendingApprovals: {
+    id: string;
+    tool: string;
+    summary: string;
+    effect: string;
+    state: "pending" | "applied" | "declined" | "failed";
+    principalId: string;
+    principalName?: string;
+    createdAt: string;
+    decidedBy?: string;
+    decidedByName?: string;
+    decidedAt?: string;
+    declineReason?: string;
+  }[] = [
+    {
+      id: "tap_fake-1",
+      tool: "create_announcement",
+      summary: "Post an announcement in Biology · Section A: Lab notebooks due Friday",
+      effect: "write",
+      state: "pending",
+      principalId: "prn_fk-admin",
+      principalName: "Avery Admin",
+      createdAt: "2026-11-20T11:30:00.000Z",
+    },
+  ];
+  const mcpRecentApprovals: typeof mcpPendingApprovals = [];
+
   const standards = STANDARDS.map((entry) => structuredClone(entry));
   const standardsFor = (input: Record<string, unknown>) => {
     const entry = standards.find((s) => s.frameworkKey === (input.params as Record<string, string>).frameworkKey);
@@ -838,6 +905,101 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       pendingLinks: 1,
       deployment: { verifier: "cloudflare-access", teamDomain: "https://fake.cloudflareaccess.com", applications: 2 },
     }) as never,
+    "admin.mcpOverview": () => ({
+      status: {
+        enabled: true,
+        endpoint: "https://educateos.fake.example/mcp",
+        authMode: "builtin",
+        issuer: "https://educateos.fake.example",
+        allowDrafts: true,
+        allowedOrigins: [],
+        toolCount: 57,
+      },
+      delegations: mcpDelegations,
+      tokens: mcpTokens,
+      pendingApprovals: mcpPendingApprovals,
+      recentApprovals: mcpRecentApprovals,
+      registeredClients: [
+        { clientId: "mcpc_claude-desktop", clientName: "Claude Desktop", redirectUris: ["https://claude.ai/api/mcp/auth_callback"], createdAt: "2026-11-15T10:00:00.000Z" },
+      ],
+      scopes: [
+        { label: "Whole district (Fake Unified)", scope: { level: "district", districtId: "dst_fake" } },
+        { label: "Class: Biology · Section A (Fall 2026)", scope: { level: "offering", districtId: "dst_fake", schoolId: "sch_fk-high", offeringId: "off_fk-bio-a" } },
+      ],
+      tools: [
+        { name: "list_offerings", description: "List course offerings.", domain: "Directory", action: "list", effect: "read", requiresApproval: false },
+        { name: "create_module", description: "Create a new draft module in a class offering.", domain: "Modules & Pages", action: "create", effect: "draft", requiresApproval: false },
+        { name: "create_announcement", description: "Post an announcement to a class offering.", domain: "Announcements", action: "create", effect: "write", requiresApproval: true },
+        { name: "propose_grade", description: "Propose a grade for a student submission.", domain: "Assignments & Gradebook", action: "review", effect: "write", requiresApproval: true },
+      ],
+    }) as never,
+    "teacher.createMcpToken": (input) => {
+      const body = input.body as { label: string; scope: Record<string, unknown>; access: string; durationHours: number };
+      const id = `mkt_fake-${mcpTokens.length + 1}`;
+      const delegationId = `dlg_fake-${mcpDelegations.length + 1}`;
+      const nowIso = "2026-11-20T12:00:00.000Z";
+      const expiresAt = new Date(Date.parse(nowIso) + body.durationHours * 3_600_000).toISOString();
+      const delegation = {
+        id: delegationId,
+        districtId: "dst_fake",
+        grantorPrincipalId: "prn_fk-admin",
+        grantorName: "Avery Admin",
+        client: { issuer: "https://educateos.fake.example", clientId: `token:${id}` },
+        ceiling: {
+          scope: body.scope,
+          actions: body.access === "read-only" ? ["read", "list", "invoke-tool"] : ["read", "list", "create", "update", "review", "invoke-tool"],
+          kinds: ["offering", "enrollment", "course-content", "activity"],
+          classifications: ["public", "district-internal", "course", "teacher-only"],
+        },
+        issuedAt: nowIso,
+        expiresAt,
+      };
+      const record = {
+        id,
+        districtId: "dst_fake",
+        principalId: "prn_fk-admin",
+        principalName: "Avery Admin",
+        delegationId,
+        label: body.label,
+        prefix: "edum_12345678…",
+        createdAt: nowIso,
+        expiresAt,
+      };
+      mcpDelegations.unshift(delegation);
+      mcpTokens.unshift(record);
+      return { token: `edum_${"a".repeat(64)}`, record, delegation } as never;
+    },
+    "teacher.revokeMcpToken": (input) => {
+      const id = (input.params as { tokenId: string }).tokenId;
+      const found = mcpTokens.find((t) => t.id === id);
+      if (!found) throw new DistrictApiError(404, { code: "not-found", message: "No such token." });
+      found.revoked = { by: "prn_fk-admin", at: "2026-11-20T12:05:00.000Z" };
+      return found as never;
+    },
+    "teacher.revokeDelegation": (input) => {
+      const id = (input.params as { delegationId: string }).delegationId;
+      const found = mcpDelegations.find((d) => d.id === id);
+      if (!found) throw new DistrictApiError(404, { code: "not-found", message: "No such delegation." });
+      found.revoked = { by: "prn_fk-admin", at: "2026-11-20T12:05:00.000Z" };
+      return found as never;
+    },
+    "teacher.approveToolAction": (input) => {
+      const id = (input.params as { approvalId: string }).approvalId;
+      const idx = mcpPendingApprovals.findIndex((a) => a.id === id);
+      if (idx === -1) throw new DistrictApiError(404, { code: "not-found", message: "No such approval." });
+      const [item] = mcpPendingApprovals.splice(idx, 1);
+      mcpRecentApprovals.unshift({ ...item!, state: "applied", decidedBy: "prn_fk-admin", decidedByName: "Avery Admin", decidedAt: "2026-11-20T12:10:00.000Z" });
+      return { status: "applied", approvalId: id, value: { ok: true }, correlationId: "cor_fake-1" } as never;
+    },
+    "teacher.declineToolAction": (input) => {
+      const id = (input.params as { approvalId: string }).approvalId;
+      const reason = (input.body as { reason: string }).reason;
+      const idx = mcpPendingApprovals.findIndex((a) => a.id === id);
+      if (idx === -1) throw new DistrictApiError(404, { code: "not-found", message: "No such approval." });
+      const [item] = mcpPendingApprovals.splice(idx, 1);
+      mcpRecentApprovals.unshift({ ...item!, state: "declined", decidedBy: "prn_fk-admin", decidedByName: "Avery Admin", decidedAt: "2026-11-20T12:10:00.000Z", declineReason: reason });
+      return { status: "declined", approvalId: id, correlationId: "cor_fake-2" } as never;
+    },
     // A route that names students. The aggregate screens must never call it.
     "teacher.roster": () => STUDENT_NAMES.map((displayName) => ({ displayName })) as never,
   };

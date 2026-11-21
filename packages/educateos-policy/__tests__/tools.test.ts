@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ArtifactId, OfferingId, PrincipalId, type DistrictDirectorySnapshot } from "@educateos/contracts";
 import { NORTHFIELD } from "@educateos/fixtures";
-import { defineSchoolTool, SchoolToolRunner, type ToolTarget } from "../src/index.ts";
+import { defineSchoolTool, InMemoryToolApprovalStore, SchoolToolRunner, type ToolTarget } from "../src/index.ts";
 import { courseResource, engineFor, P } from "./setup.ts";
 
 /** A stored artifact: the trusted record a tool resolves its target from. */
@@ -197,6 +197,37 @@ describe("the school tool runner", () => {
       annotations: { readOnlyHint: true },
       inputSchema: { additionalProperties: false },
     });
+  });
+
+  it("lets low-risk draft tools run immediately under allowDrafts while still queuing consequential writes", async () => {
+    const { engine } = engineFor();
+    const draftTool = defineSchoolTool({
+      name: "draft_note",
+      description: "Save a draft.",
+      inputSchema: z.strictObject({ text: z.string() }),
+      action: "update",
+      effect: "draft",
+      resource: async () => courseResource("off_nf-bio-fall-p2", "artifact", "course", { id: "art_amara-lab", owner: P.amara.principalId }),
+      handler: async ({ text }) => ({ saved: text }),
+    });
+    const writeTool = defineSchoolTool({
+      name: "publish_note",
+      description: "Publish a note.",
+      inputSchema: z.strictObject({ text: z.string() }),
+      action: "update",
+      effect: "publish",
+      resource: async () => courseResource("off_nf-bio-fall-p2", "artifact", "course", { id: "art_amara-lab", owner: P.amara.principalId }),
+      handler: async ({ text }) => ({ published: text }),
+    });
+    const runner = new SchoolToolRunner({ tools: [draftTool, writeTool], engine, approvals: { store: new InMemoryToolApprovalStore() } });
+    // With allowDrafts: true, drafts run immediately while publishes queue.
+    expect(await runner.invoke(mcp(P.amara), "draft_note", { text: "v1" }, { confirmWrites: true, allowDrafts: true }))
+      .toMatchObject({ status: "ok", value: { saved: "v1" } });
+    expect(await runner.invoke(mcp(P.amara), "publish_note", { text: "v1" }, { confirmWrites: true, allowDrafts: true }))
+      .toMatchObject({ status: "approval-required", needs: "confirmation" });
+    // With allowDrafts: false, drafts also queue.
+    expect(await runner.invoke(mcp(P.amara), "draft_note", { text: "v2" }, { confirmWrites: true, allowDrafts: false }))
+      .toMatchObject({ status: "approval-required", needs: "confirmation" });
   });
 });
 

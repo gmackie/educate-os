@@ -40,7 +40,8 @@ import { InMemoryDiscussionStorage, type DiscussionStorage } from "@educateos/di
 // Quizzes (SCHO-191)
 import { InMemoryQuizStorage, type QuizStorage } from "@educateos/quizzes";
 import { assertWorkshopUserLinkAvailable, type WorkshopUserLink } from "@educateos/identity";
-import { InMemoryDelegationStore, InMemoryGuardianGuidanceGrantStore, InMemoryGuardianRelationshipStore, type DelegationStore, type GuardianRelationshipStore } from "@educateos/policy";
+import { InMemoryDelegationStore, InMemoryGuardianGuidanceGrantStore, InMemoryGuardianRelationshipStore, InMemoryToolApprovalStore, type DelegationStore, type GuardianRelationshipStore, type ToolApprovalStore } from "@educateos/policy";
+import { InMemoryMcpBearerTokenStore, type McpBearerTokenStore } from "./mcp-tokens.ts";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@educateos/identity-links";
 import type { FundingAllocationRevision } from "./routes.ts";
 // Communication (SCHO-189)
@@ -339,6 +340,10 @@ export interface DistrictAppStores {
   // Delegations (SCHO-175)
   /** Staff members' delegations to registered clients, which bound every request a client makes for them. */
   delegations: DelegationStore;
+  /** Durable queue of MCP/agent tool calls waiting for a human decision. */
+  toolApprovals: ToolApprovalStore;
+  /** Scoped personal MCP bearer tokens, each bound to a delegation and stored hashed. */
+  mcpTokens: McpBearerTokenStore;
   // Student archive (SCHO-371)
   /** How each student archive's export-local IDs map back to district IDs; kept here, never in the archive. */
   exportMappings: ExportMappingStore;
@@ -410,6 +415,8 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     courseLibrary: new InMemoryCourseLibraryStore(),
     // Delegations (SCHO-175)
     delegations: new InMemoryDelegationStore(),
+    toolApprovals: new InMemoryToolApprovalStore(),
+    mcpTokens: new InMemoryMcpBearerTokenStore(),
     // Student archive (SCHO-371)
     exportMappings: new InMemoryExportMappingStore(),
     // Home learning (ADR-0016)

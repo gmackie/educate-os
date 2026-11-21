@@ -4,6 +4,7 @@ import { assignHash, readHash, subscribeToHash } from "@gadgets/ui/hash-location
 /** A Teacher Studio screen and the identifiers it shows. */
 export type Route =
   | { screen: "classes" }
+  | { screen: "mcp" }
   | { screen: "setup"; offeringId: string }
   | { screen: "roster"; offeringId: string }
   | { screen: "modules"; offeringId: string }
@@ -48,6 +49,8 @@ export const routeHref = (route: Route): string => {
   switch (route.screen) {
     case "classes":
       return "#/";
+    case "mcp":
+      return "#/mcp";
     case "setup":
     case "roster":
     case "modules":
@@ -79,6 +82,7 @@ export const routeHref = (route: Route): string => {
 /** The route a hash names. Anything unrecognized is the class list. */
 export const parseRoute = (hash: string): Route => {
   const parts = hash.replace(/^#\/?/, "").split("/").filter((part) => part !== "").map(decodeURIComponent);
+  if (parts[0] === "mcp") return { screen: "mcp" };
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
@@ -100,6 +104,7 @@ export const parseRoute = (hash: string): Route => {
 
 
 const SCREEN_NAMES: Record<Exclude<Route["screen"], "classes">, string> = {
+  mcp: "AI & MCP access",
   setup: "Classroom setup",
   planner: "Learning planner",
   guidance: "Guidance and evidence",
@@ -122,7 +127,8 @@ const SCREEN_NAMES: Record<Exclude<Route["screen"], "classes">, string> = {
  * What a route is called before its screen has loaded what it shows: the document title while it
  * loads or fails. The screen's heading then names it fully, with its class (WCAG 2.4.2).
  */
-export const routeName = (route: Route): string => (route.screen === "classes" ? "My classes" : SCREEN_NAMES[route.screen]);
+export const routeName = (route: Route): string =>
+  route.screen === "classes" ? "My classes" : route.screen === "mcp" ? "AI & MCP access" : SCREEN_NAMES[route.screen];
 
 /** The current route, kept in the URL hash so the back button and bookmarks work. */
 export const useRoute = (): Route => parseRoute(useSyncExternalStore(subscribeToHash, readHash));

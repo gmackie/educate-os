@@ -285,14 +285,22 @@ export const ACCESS_BYPASS_PATHS: readonly string[] = [
 ];
 
 /**
- * The district's organization MCP endpoint (SCHO-174) and its OAuth protected resource metadata
- * (RFC 9728), which a one-origin install also exempts from Access when the district's
- * `DISTRICT_CONFIG` has `mcp` (SCHO-409). MCP clients bring an access token from the district's
- * authorization server and can't complete an Access sign-in; the endpoint verifies the token
- * itself. Without `mcp` the district answers these paths 404, and they stay behind Access.
+ * The district's organization MCP endpoint (SCHO-174), its RFC 9728 protected-resource metadata,
+ * and its built-in OAuth 2.1 public/token endpoints, which a one-origin install exempts from Access
+ * when the district's `DISTRICT_CONFIG` has `mcp`. MCP clients bring their own bearer tokens or
+ * PKCE token requests and can't complete an Access sign-in on these paths; `/oauth/authorize` stays
+ * behind Cloudflare Access so staff sign in with their school SSO before approving a connection.
+ * Without `mcp` the district answers these paths 404, and they stay behind Access.
  */
 export const ACCESS_MCP_BYPASS_PATHS: readonly string[] = [
-  "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+  "/mcp",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-protected-resource/mcp",
+  "/.well-known/oauth-authorization-server",
+  "/.well-known/jwks.json",
+  "/oauth/register",
+  "/oauth/token",
+  "/oauth/revoke",
 ];
 
 /**

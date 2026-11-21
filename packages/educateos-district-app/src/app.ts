@@ -17,13 +17,14 @@ import {
   type PolicySettings,
   type Principal,
   type PrincipalId,
+  type RequestChannel,
   type ResourceRef,
   type VerifiedIdentity,
   type VerifiedPrincipal,
 } from "@educateos/contracts";
 import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
 import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName, type AcademicStore } from "@educateos/academics";
-import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule, type RelationshipSource, type SubjectSource } from "@educateos/policy";
+import { DelegableKind, directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule, type RelationshipSource, type SchoolToolRunner, type SubjectSource } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
 import { AssessmentService, GradebookService, AssignmentId } from "@educateos/assessment";
@@ -43,7 +44,8 @@ import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, fileResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type FileDownload, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface, type WithCookie } from "./routes.ts";
+import { ROUTES, STUDENT_ARCHIVE_MEDIA_TYPE, type AssignmentViewBody, type DistrictExportManifest, type FileDownload, type McpDelegationScopeOption, type McpRegisteredClientView, type McpStatusBody, type McpToolCatalogEntry, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface, type WithCookie } from "./routes.ts";
+import { McpBearerTokenId, McpBearerTokenRecord, mintMcpBearerSecret, toMcpBearerTokenView } from "./mcp-tokens.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
@@ -307,6 +309,18 @@ export interface GadgetAssessmentResponse {
   correlationId: string | null;
 }
 
+/** Live MCP hooks registered by the Worker/runtime so the Management UI can inspect MCP and decide tool approvals. */
+export interface McpRuntimeHooks {
+  /** Current MCP server status (endpoint URL, auth mode, draft policy, allowed origins, tool count). */
+  status: McpStatusBody;
+  /** Tool catalog entries shown in the Management UI. */
+  tools: () => McpToolCatalogEntry[];
+  /** The active SchoolToolRunner whose durable approval queue human approvers decide over HTTP. */
+  runner: () => SchoolToolRunner | undefined;
+  /** OAuth clients registered via Dynamic Client Registration on the built-in authorization server. */
+  registeredClients?: () => Promise<McpRegisteredClientView[]>;
+}
+
 /** One district's running application. */
 export interface DistrictApp {
   /** The district. */
@@ -327,6 +341,18 @@ export interface DistrictApp {
    * the calendar feed is not served, since a token alone authorizes it.
    */
   serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response>;
+  /**
+   * Invokes one typed district route directly for an already-verified tool caller (`mcp-tool`,
+   * `agent`, etc.), preserving `principal.delegationId`, `channel` and `correlationId` through
+   * every inner domain service and policy check.
+   */
+  callForTool<N extends RouteName>(
+    name: N,
+    input: { params?: unknown; query?: unknown; body?: unknown },
+    context: { principal: VerifiedPrincipal; channel: RequestChannel; correlationId: string; origin?: string },
+  ): Promise<RouteResponse<N>>;
+  /** Attaches the live MCP runner, status and catalog to the Management UI routes after construction. */
+  configureMcp(hooks: McpRuntimeHooks): void;
   /** Narrow gatekeeper read for the verified student's configured assignment. */
   gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse>;
   /** Applies a student-approved submission; no grade, role, model or other student can be selected. */
@@ -531,6 +557,105 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       (await stores.directory.load()).snapshot.principals.some((p) => p.id === principalId && p.status === "active"),
   });
 
+  let mcpHooks: McpRuntimeHooks | undefined;
+
+  const DEFAULT_MCP_STATUS: McpStatusBody = {
+    enabled: false,
+    endpoint: null,
+    authMode: "off",
+    issuer: null,
+    allowDrafts: false,
+    allowedOrigins: [],
+    toolCount: 0,
+  };
+
+  function principalNameOf(snapshot: DistrictDirectorySnapshot, id: PrincipalId): string {
+    return snapshot.principals.find((p) => p.id === id)?.displayName ?? id;
+  }
+
+  function delegableScopesFor(snapshot: DistrictDirectorySnapshot, principalId: PrincipalId, at: Date): McpDelegationScopeOption[] {
+    const facts = subjectFactsFrom(snapshot, principalId, at);
+    if (facts === undefined || !facts.active) return [];
+    const options: McpDelegationScopeOption[] = [];
+    const seen = new Set<string>();
+    const add = (label: string, scope: McpDelegationScopeOption["scope"]) => {
+      const key = JSON.stringify(scope);
+      if (seen.has(key)) return;
+      seen.add(key);
+      options.push({ label, scope });
+    };
+    const admin = isDistrictAdmin(snapshot, principalId, at);
+    if (admin || facts.roles.some((r) => r.scope.level === "district" && ["district-admin", "curriculum-admin"].includes(r.role))) {
+      add(`Whole district (${snapshot.district.name})`, { level: "district", districtId: snapshot.district.id });
+    }
+    for (const school of snapshot.schools) {
+      if (admin || facts.roles.some((r) => ["school-admin", "curriculum-admin"].includes(r.role) && (r.scope.level === "district" || (r.scope.level === "school" && r.scope.schoolId === school.id)))) {
+        add(`School: ${school.name}`, { level: "school", districtId: snapshot.district.id, schoolId: school.id });
+      }
+    }
+    for (const offering of snapshot.offerings) {
+      const teaches = snapshot.enrollments.some((e) => e.offeringId === offering.id && e.principalId === principalId && (e.role === "teacher" || e.role === "co-teacher") && e.status === "active");
+      const overSchool = facts.roles.some((r) => ["school-admin", "curriculum-admin"].includes(r.role) && r.scope.level === "school" && r.scope.schoolId === offering.schoolId);
+      if (!admin && !teaches && !overSchool) continue;
+      const course = snapshot.courses.find((c) => c.id === offering.courseId);
+      const term = snapshot.terms.find((t) => t.id === offering.termId);
+      const title = `${course?.title ?? offering.courseId} · ${offering.sectionName}${term ? ` (${term.name})` : ""}`;
+      add(`Class: ${title}`, { level: "offering", districtId: offering.districtId, schoolId: offering.schoolId, offeringId: offering.id });
+    }
+    return options;
+  }
+
+  async function approvalListsFor(ctx: RequestContext, adminView: boolean) {
+    const runner = mcpHooks?.runner();
+    const session = { principal: ctx.subject, channel: ctx.caller.channel };
+    const pendingRaw = runner === undefined ? [] : await runner.pendingFor(session);
+    const allStored = await stores.toolApprovals.list();
+    const isAdmin = adminView && isDistrictAdmin(ctx.snapshot, ctx.subject.principalId, now());
+    const recentRaw = allStored
+      .filter((a) => a.state !== "pending" && (isAdmin || a.subject.principalId === ctx.subject.principalId || a.decidedBy === ctx.subject.principalId))
+      .toReversed()
+      .slice(0, 30);
+    return {
+      pending: pendingRaw.map((item) => ({
+        ...item,
+        requesterName: principalNameOf(ctx.snapshot, item.subject.principalId),
+      })),
+      recent: recentRaw.map((item) => ({
+        ...item,
+        requesterName: principalNameOf(ctx.snapshot, item.subject.principalId),
+        ...(item.decidedBy === undefined ? {} : { decidedByName: principalNameOf(ctx.snapshot, item.decidedBy) }),
+      })),
+    };
+  }
+
+  async function mcpOverviewFor(ctx: RequestContext, adminView: boolean) {
+    if (adminView) {
+      await ctx.require(
+        "read",
+        { kind: "delegation", scope: { level: "district", districtId }, classification: "restricted" },
+        "Only a district administrator can view district-wide MCP settings.",
+      );
+    }
+    const delegationsRaw = await new Delegations({ store: stores.delegations, policy: ctx.decider, now }).list(ctx.caller);
+    const visibleDelegations = adminView
+      ? delegationsRaw
+      : delegationsRaw.filter((d) => d.grantorPrincipalId === ctx.subject.principalId);
+    const tokensRaw = await stores.mcpTokens.list();
+    const visibleTokens = tokensRaw.filter((t) => adminView || t.principalId === ctx.subject.principalId);
+    const approvals = await approvalListsFor(ctx, adminView);
+    const registeredClients = adminView ? (await mcpHooks?.registeredClients?.() ?? []) : [];
+    return {
+      status: mcpHooks?.status ?? DEFAULT_MCP_STATUS,
+      delegations: visibleDelegations.toReversed().map((d) => ({ ...d, grantorName: principalNameOf(ctx.snapshot, d.grantorPrincipalId) })),
+      tokens: visibleTokens.toReversed().map((t) => ({ ...toMcpBearerTokenView(t), principalName: principalNameOf(ctx.snapshot, t.principalId) })),
+      pendingApprovals: approvals.pending,
+      recentApprovals: approvals.recent,
+      registeredClients,
+      scopes: delegableScopesFor(ctx.snapshot, ctx.subject.principalId, now()),
+      tools: mcpHooks?.tools() ?? [],
+    };
+  }
+
   // Operations (SCHO-263): AI figures come from the district's own ledger, authoritative for budgets.
   const aiUsage: OpsAiUsage = {
     async month() {
@@ -638,12 +763,27 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     /** The browser's open child session (ADR-0016), resolved before any handler runs. */
     childSession: ChildSession | undefined = undefined;
 
-    constructor(correlationId: string, principal: RequestPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
+    constructor(
+      correlationId: string,
+      principal: RequestPrincipal,
+      snapshot: DistrictDirectorySnapshot,
+      origin: string,
+      channel: RequestChannel = "http",
+      delegationId?: VerifiedPrincipal["delegationId"],
+    ) {
       this.correlationId = correlationId;
       this.principal = principal;
       this.snapshot = snapshot;
       this.origin = origin;
-      this.caller = { principal: { principalId: principal.principalId, districtId: principal.districtId }, channel: "http" };
+      this.caller = {
+        principal: {
+          principalId: principal.principalId,
+          districtId: principal.districtId,
+          ...(delegationId === undefined ? {} : { delegationId }),
+        },
+        channel,
+        correlationId,
+      };
       this.decider = { decide: (request) => engine.decide(request, { correlationId }) };
       this.authorizer = { authorize: async (request) => (await this.decider.decide(request)).decision };
     }
@@ -706,7 +846,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         districtId,
         storage: stores.contentStudio,
         authorizer: this.authorizer,
-        channel: "http",
+        channel: this.caller.channel,
         fetch,
         // Uploads are not offered by this application yet, so no malware scanner is configured.
         scanner: undefined,
@@ -721,7 +861,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         districtId,
         directory: this.snapshot,
         authorizer: this.authorizer,
-        channel: "http",
+        channel: this.caller.channel,
         releases: contentStudioReleases(stores.contentStudio),
         alignments: this.alignments,
         aiHelpPolicy: options.aiHelp ?? { layersFor: async () => ({ district: "full" }) },
@@ -855,7 +995,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         subject: this.subject,
         action,
         resource,
-        context: { channel: "http", ...(term === undefined ? {} : { termState: term.state }) },
+        context: { channel: this.caller.channel, ...(term === undefined ? {} : { termState: term.state }) },
       });
       if (decision.effect !== "allow") throw new EducateOsError("forbidden", message);
     }
@@ -895,7 +1035,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         districtId,
         directory: this.snapshot,
         authorizer: this.authorizer,
-        channel: "http",
+        channel: this.caller.channel,
         storage: stores.courseContent,
         installations: stores.curriculum,
         now: () => now().toISOString(),
@@ -926,7 +1066,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         districtId,
         directory: this.snapshot,
         authorizer: this.authorizer,
-        channel: "http",
+        channel: this.caller.channel,
         storage: stores.discussions,
         courseContent: stores.courseContent,
         assignmentsIn: async (offeringId) => (await stores.assessment.load()).state.assignments.filter((a) => a.offeringId === offeringId).map((a) => a.id),
@@ -942,7 +1082,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         districtId,
         directory: this.snapshot,
         authorizer: this.authorizer,
-        channel: "http",
+        channel: this.caller.channel,
         storage: stores.quizzes,
         courseContent: stores.courseContent,
         grading: quizGrading({
@@ -1892,6 +2032,84 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.issueDelegation": (ctx, { body }) => new Delegations({ store: stores.delegations, policy: ctx.decider, now }).issue(ctx.caller, body),
     "teacher.revokeDelegation": (ctx, { params }) =>
       new Delegations({ store: stores.delegations, policy: ctx.decider, now }).revoke(ctx.caller, params.delegationId),
+    // MCP management, scoped personal bearer tokens, and human tool-approval queue.
+    "teacher.mcpOverview": (ctx) => mcpOverviewFor(ctx, false),
+    "admin.mcpOverview": (ctx) => mcpOverviewFor(ctx, true),
+    "teacher.createMcpToken": async (ctx, { body }) => {
+      if (ctx.caller.channel !== "http") {
+        throw new EducateOsError("forbidden", "Personal MCP tokens can only be minted directly in EducateOS.");
+      }
+      const tokenId = McpBearerTokenId.parse(`mkt_${crypto.randomUUID()}`);
+      // Always the district's own origin: these delegations belong to the built-in authenticator,
+      // never to an external issuer whose tokens could otherwise name a `token:` client ID.
+      const endpoint = mcpHooks?.status.endpoint;
+      const issuer = endpoint ? new URL(endpoint).origin : ctx.origin;
+      const actions = body.access === "read-only"
+        ? (["read", "list", "invoke-tool"] as const)
+        : (["read", "list", "create", "update", "review", "invoke-tool"] as const);
+      const delegation = await new Delegations({ store: stores.delegations, policy: ctx.decider, now }).issue(ctx.caller, {
+        client: { issuer, clientId: `token:${tokenId}` },
+        ceiling: {
+          scope: body.scope,
+          actions: [...actions],
+          kinds: [...DelegableKind.options],
+          classifications: ["public", "district-internal", "course", "teacher-only"],
+        },
+        durationHours: body.durationHours,
+      });
+      const { secret, digest, prefix } = await mintMcpBearerSecret();
+      const record = McpBearerTokenRecord.parse({
+        id: tokenId,
+        districtId,
+        principalId: ctx.subject.principalId,
+        delegationId: delegation.id,
+        label: body.label,
+        prefix,
+        digest,
+        createdAt: delegation.issuedAt,
+        expiresAt: delegation.expiresAt,
+      });
+      await stores.mcpTokens.put(record);
+      return { token: secret, record: toMcpBearerTokenView(record), delegation };
+    },
+    "teacher.revokeMcpToken": async (ctx, { params }) => {
+      if (ctx.caller.channel !== "http") {
+        throw new EducateOsError("forbidden", "Personal MCP tokens can only be revoked directly in EducateOS.");
+      }
+      const record = await stores.mcpTokens.get(params.tokenId);
+      const admin = isDistrictAdmin(ctx.snapshot, ctx.subject.principalId, now());
+      if (record === undefined || (record.principalId !== ctx.subject.principalId && !admin)) {
+        throw new EducateOsError("not-found", `token ${params.tokenId} was not found.`);
+      }
+      if (record.revoked === undefined) {
+        const updated = { ...record, revoked: { by: ctx.subject.principalId, at: now().toISOString() } };
+        await stores.mcpTokens.put(updated);
+        await new Delegations({ store: stores.delegations, policy: ctx.decider, now }).revoke(ctx.caller, record.delegationId).catch(() => undefined);
+        return toMcpBearerTokenView(updated);
+      }
+      return toMcpBearerTokenView(record);
+    },
+    "teacher.listToolApprovals": (ctx) => approvalListsFor(ctx, isDistrictAdmin(ctx.snapshot, ctx.subject.principalId, now())),
+    "teacher.approveToolAction": async (ctx, { params, body }) => {
+      if (ctx.caller.channel !== "http") {
+        throw new EducateOsError("forbidden", "Queued MCP actions can only be decided directly in EducateOS.");
+      }
+      const runner = mcpHooks?.runner();
+      if (runner === undefined) throw new EducateOsError("unavailable", "No MCP tool approval queue is active.");
+      const outcome = await runner.approve({ principal: ctx.subject, channel: ctx.caller.channel }, params.approvalId, body);
+      if (outcome.status === "error") throw new EducateOsError(outcome.error.code, outcome.error.message, outcome.error.correlationId);
+      return outcome;
+    },
+    "teacher.declineToolAction": async (ctx, { params, body }) => {
+      if (ctx.caller.channel !== "http") {
+        throw new EducateOsError("forbidden", "Queued MCP actions can only be decided directly in EducateOS.");
+      }
+      const runner = mcpHooks?.runner();
+      if (runner === undefined) throw new EducateOsError("unavailable", "No MCP tool approval queue is active.");
+      const outcome = await runner.decline({ principal: ctx.subject, channel: ctx.caller.channel }, params.approvalId, body.reason);
+      if (outcome.status === "error") throw new EducateOsError(outcome.error.code, outcome.error.message, outcome.error.correlationId);
+      return outcome;
+    },
     "me.calendar": async (ctx, { query }) => {
       const at = now().getTime();
       const from = new Date(query.from ?? at - 7 * 86_400_000);
@@ -2241,6 +2459,47 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
 
+  async function callForTool<N extends RouteName>(
+    name: N,
+    rawInput: { params?: unknown; query?: unknown; body?: unknown },
+    context: { principal: VerifiedPrincipal; channel: RequestChannel; correlationId: string; origin?: string },
+  ): Promise<RouteResponse<N>> {
+    const spec = ROUTES[name] as RouteSpec;
+    if (spec.surface === "onboarding" || spec.download !== undefined || spec.cookie !== undefined) {
+      throw new EducateOsError("forbidden", "This route is not available to tool callers.");
+    }
+    const { snapshot } = await stores.directory.load();
+    const principal = principalServedAs(snapshot, context.principal);
+    if (!SURFACE_KINDS[spec.surface].includes(principal.kind)) {
+      throw new EducateOsError("forbidden", "This part of EducateOS is not available to your account.");
+    }
+    const input = {
+      params: spec.params === undefined ? undefined : parsePart("path", spec.params, rawInput.params ?? {}),
+      query: spec.query === undefined ? undefined : parsePart("query", spec.query, rawInput.query ?? {}),
+      body: spec.body === undefined ? undefined : parsePart("body", spec.body, rawInput.body ?? {}),
+    };
+    const ctx = new RequestContext(
+      context.correlationId,
+      principal,
+      snapshot,
+      context.origin ?? "https://district.invalid",
+      context.channel,
+      context.principal.delegationId,
+    );
+    if (options.homeLearning === undefined && (spec.surface === "family" || spec.surface === "learner")) {
+      throw new EducateOsError("not-found", "Home learning isn't offered here.");
+    }
+    const { operation } = spec;
+    if (operation !== undefined) {
+      return await runOperation(ctx, operation, input as { params?: object; body?: object }) as RouteResponse<N>;
+    }
+    const handler = (handlers[name as keyof Handlers]
+      ?? guardianRoutes[name as GuardianRouteName]
+      ?? guidanceRoutes[name as GuidanceRouteName]
+      ?? homeLearningRoutes[name as HomeLearningRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
+    return await handler(ctx, input) as RouteResponse<N>;
+  }
+
   async function serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
     try {
       return await respond(request, (correlationId) => handle(request, correlationId, principal));
@@ -2385,6 +2644,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     gadgetAssessmentRead: (principal, assignmentId) => gadgetAssessment(principal, assignmentId),
     gadgetAssessmentSubmit: (principal, assignmentId, request) => gadgetAssessment(principal, assignmentId, request),
     serveAs,
+    callForTool,
+    configureMcp: (hooks) => { mcpHooks = hooks; },
   };
 }
 

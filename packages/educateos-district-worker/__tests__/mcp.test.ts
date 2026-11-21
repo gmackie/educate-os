@@ -9,6 +9,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 import { NORTHFIELD } from "@educateos/fixtures";
 import { ROUTES, routePath } from "@educateos/district-app/routes";
 import worker from "../src/worker.ts";
+import { startDistrict } from "../src/district.ts";
 import { ACCESS_AUDIENCE, ACCESS_ISSUER, MCP_ISSUER, MCP_ORIGIN, mcpSubject, TEST_CONFIG } from "./fixtures.ts";
 
 const MORGAN = NORTHFIELD.principals.find((p) => p.id === "prn_nf-morgan-lee")!;
@@ -120,9 +121,9 @@ describe("the organization MCP endpoint (SCHO-174)", () => {
     const { client } = await connect(await token(MORGAN, clientId));
     expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
     const names = (await client.listTools()).tools.map((t) => t.name);
-    expect(names).toEqual(expect.arrayContaining(["get_offering", "get_roster", "update_course"]));
-    // The curated catalog leaves out approvals, deletes, identity links and exports.
-    expect(names.some((n) => /approve|delete|identity|export|grade/.test(n))).toBe(false);
+    expect(names).toEqual(expect.arrayContaining(["get_offering", "get_roster", "update_course", "list_modules", "list_quizzes", "get_gradebook"]));
+    // The curated catalog leaves out human-only approvals, deletes, identity links, delegations, accommodations, and exports.
+    expect(names.some((n) => /approve|delete|identity|export|delegation|accommodation|release_quiz|grant_district_admin/.test(n))).toBe(false);
     expect(await outcome(client, "get_roster", { offeringId: BIO.id })).toMatchObject({ status: "ok" });
     // Morgan may list the district's schools herself, but the delegation covers only her class.
     expect(await outcome(client, "list_schools", {})).toMatchObject({ status: "error", error: { code: "not-found" } });
@@ -170,5 +171,78 @@ describe("the organization MCP endpoint (SCHO-174)", () => {
     expect((await post(bearer)).status).toBe(401);
     await changeMorgan({ status: "active", externalIdentities: SEEDED_MORGAN.externalIdentities.filter((i) => i.issuer !== MCP_ISSUER) });
     expect((await post(bearer)).status).toBe(401);
+  });
+
+  it("supports built-in Cloudflare OAuth 2.1, scoped personal bearer tokens, and the HTTP approval queue over Durable Object storage", async () => {
+    // The Worker's DistrictObject reads DISTRICT_CONFIG from its own binding (external mode here), so
+    // built-in mode is started in-process over a Durable Object's real SQLite storage instead.
+    await runInDurableObject(env.DISTRICT.getByName("mcp-builtin"), async (_instance, state) => {
+      const built = await startDistrict(state.storage, {
+        config: JSON.stringify({ ...TEST_CONFIG, mcp: { mode: "builtin", origin: MCP_ORIGIN, allowDrafts: true } }),
+        accessIssuer: ACCESS_ISSUER,
+        accessAudiences: ACCESS_AUDIENCE,
+      }, { importFetch: async () => new Response(null, { status: 404 }) });
+      const mcp = built.mcp!;
+      const asMorgan = { principal: { districtId: MORGAN.districtId, principalId: MORGAN.id }, channel: "http" as const, correlationId: "cor-builtin", origin: MCP_ORIGIN };
+
+      // 1. Discovery metadata & JWKS
+      const asMeta = await mcp.fetch(new Request(`${MCP_ORIGIN}/.well-known/oauth-authorization-server`));
+      expect(asMeta.status).toBe(200);
+      expect(await asMeta.json()).toMatchObject({
+        issuer: MCP_ORIGIN,
+        authorization_endpoint: `${MCP_ORIGIN}/oauth/authorize`,
+        token_endpoint: `${MCP_ORIGIN}/oauth/token`,
+        registration_endpoint: `${MCP_ORIGIN}/oauth/register`,
+        code_challenge_methods_supported: ["S256"],
+      });
+      const jwks = await mcp.fetch(new Request(`${MCP_ORIGIN}/.well-known/jwks.json`));
+      expect(jwks.status).toBe(200);
+      expect((await jwks.json() as { keys: unknown[] }).keys.length).toBeGreaterThanOrEqual(1);
+      const resourceMeta = await mcp.fetch(new Request(`${MCP_ORIGIN}/.well-known/oauth-protected-resource/mcp`));
+      expect(await resourceMeta.json()).toMatchObject({ resource: RESOURCE, authorization_servers: [MCP_ORIGIN] });
+
+      // 2. Morgan mints a scoped personal bearer token in the Management UI
+      const minted = await built.app.callForTool("teacher.createMcpToken", {
+        body: {
+          label: "Workerd E2E Token",
+          scope: { level: "offering", districtId: BIO.districtId, schoolId: BIO.schoolId, offeringId: BIO.id },
+          access: "read-write",
+          durationHours: 24,
+        },
+      }, asMorgan);
+      expect(minted.token.startsWith("edum_")).toBe(true);
+      expect(minted.delegation.client.issuer).toBe(MCP_ORIGIN);
+
+      // 3. /mcp with the token: a draft runs at once, a consequential write queues
+      const mcpCall = async (method: string, params: Record<string, unknown>) => {
+        const res = await mcp.fetch(new Request(RESOURCE, {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${minted.token}` },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        }));
+        expect(res.status).toBe(200);
+        return res.json() as Promise<{ result: { content?: { text: string }[]; tools?: { name: string }[] } }>;
+      };
+      const listed = await mcpCall("tools/list", {});
+      expect(listed.result.tools!.map((t) => t.name)).toEqual(expect.arrayContaining(["list_modules", "create_module", "create_announcement"]));
+      const draft = JSON.parse((await mcpCall("tools/call", { name: "create_module", arguments: { offeringId: BIO.id, title: "Built-in MCP Draft Module" } })).result.content![0]!.text) as { status: string };
+      expect(draft.status).toBe("ok");
+      const queued = JSON.parse((await mcpCall("tools/call", { name: "create_announcement", arguments: { offeringId: BIO.id, title: "Hello class", body: "Quiz Friday." } })).result.content![0]!.text) as { status: string; approvalId: string; digest: string };
+      expect(queued.status).toBe("approval-required");
+
+      // 4. Morgan approves it in the Management UI; the MCP channel cannot.
+      await expect(built.app.callForTool("teacher.approveToolAction", { params: { approvalId: queued.approvalId }, body: { digest: queued.digest } }, { ...asMorgan, channel: "mcp-tool" })).rejects.toThrow();
+      const approved = await built.app.callForTool("teacher.approveToolAction", { params: { approvalId: queued.approvalId }, body: { digest: queued.digest } }, asMorgan);
+      expect(approved).toMatchObject({ status: "applied" });
+
+      // 5. Revoking the token stops the next call
+      await built.app.callForTool("teacher.revokeMcpToken", { params: { tokenId: minted.record.id } }, asMorgan);
+      const afterRevoke = await mcp.fetch(new Request(RESOURCE, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${minted.token}` },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
+      }));
+      expect(afterRevoke.status).toBe(401);
+    });
   });
 });
