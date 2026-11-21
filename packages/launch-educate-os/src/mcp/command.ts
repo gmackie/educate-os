@@ -19,6 +19,7 @@
 // inside the district service's `DISTRICT_CONFIG`. The portal's token is a secret, so it is never
 // written there: the apply reads it from the environment like every other secret. What lives in the Workshop (which connectors are offered, which servers are
 // connected) it can't read or write, so it names the page and the steps instead.
+import { dnsMissHint } from "../dns.ts";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EducateOsError } from "@educateos/contracts";
@@ -281,7 +282,9 @@ function reportEndpointProbe(report: Report, facts: McpFacts, probe: EndpointPro
       report.check(label, "warn", `the metadata request got HTTP ${probe.status}`);
       return;
     case "unreachable":
-      report.check(label, "warn", `no answer from ${new URL(resource).origin} (is it installed, and is this machine online?)`);
+      report.check(label, "warn", probe.dnsMiss
+        ? `no answer from ${new URL(resource).origin}: ${dnsMissHint(new URL(resource).hostname)}`
+        : `no answer from ${new URL(resource).origin} (is it installed, and is this machine online?)`);
   }
 }
 

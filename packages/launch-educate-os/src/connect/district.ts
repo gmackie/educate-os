@@ -8,6 +8,7 @@
 // a district administrator's own Access token (`cloudflared access token --app <origin>`), sent as
 // `cf-access-token`, which Access exchanges for the assertion the district verifies. The token is
 // sent to the district's origin only, redirects are never followed, and it is never saved or printed.
+import { noResponse } from "../dns.ts";
 import { EducateOsError, type ErrorCode } from "@educateos/contracts";
 import { type DistrictInstallConfig, publicHostname, workerScriptName } from "@educateos/installer";
 import type { Answers } from "../answers.ts";
@@ -142,8 +143,8 @@ export class DistrictAdmin {
         },
         ...(method === "POST" ? { body: JSON.stringify(body ?? {}) } : {}),
       });
-    } catch {
-      throw new EducateOsError("unavailable", `no response from ${this.#origin}`);
+    } catch (error) {
+      throw new EducateOsError("unavailable", noResponse(this.#origin, error));
     }
     if (response.status >= 300 && response.status < 400) {
       throw new EducateOsError("unauthenticated",

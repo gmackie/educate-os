@@ -3,7 +3,7 @@
 // running again, and a second machine (the district's own CI after the root's OAuth grant is
 // revoked) reconciles exactly as the first would.
 import { EducateOsError } from "@educateos/contracts";
-import { type AccessRule, type CloudflareApi, DATA_JURISDICTIONS, type KvNamespace, type ObservedBinding } from "./cloudflare-api.ts";
+import { type AccessRule, type CloudflareApi, DATA_JURISDICTIONS, type KvNamespace, type ObservedBinding, type UploadBinding } from "./cloudflare-api.ts";
 import { stableStringify } from "./digest.ts";
 import type { SecretSource } from "./config.ts";
 import {
@@ -309,11 +309,36 @@ async function planWorker(
   const digest = await workerDigest(worker, bindings);
   const current = observed.find((b) => b.type === "plain_text" && b.name === MARKER_VARS.digest)?.text;
   if (current !== digest) return { ...base, action: "update", reason: `release content or configuration changed${suffix}` };
-  // The digest marker survives a dashboard edit, so service bindings are also compared directly:
-  // a removed or retargeted binding (such as AI_CALL_GUARD) is drift the next apply repairs.
-  return serviceChanges.length > 0
-    ? { ...base, action: "update", reason: `drift: ${serviceChanges.join("; ")}` }
+  // The digest marker survives a dashboard edit, so service bindings and vars are also compared
+  // directly: a removed or retargeted binding (such as AI_CALL_GUARD) or a hand-edited var (such as
+  // ADMINS) is drift the next apply repairs.
+  const drift = [...serviceChanges, ...varChanges(bindings, observed)];
+  return drift.length > 0
+    ? { ...base, action: "update", reason: `drift: ${drift.join("; ")}` }
     : { ...base, action: "noop", reason: "deployed version matches the release" };
+}
+
+/**
+ * How a Worker's deployed plain-text and JSON vars differ from the release's, by name only: a var's
+ * value can be district configuration (ADMINS lists people), so the plan never quotes it. A var
+ * added by hand is drift too, since the next upload drops it. The installer's markers are compared
+ * by the digest and ownership checks, not here.
+ */
+export function varChanges(desired: UploadBinding[], observed: ObservedBinding[]): string[] {
+  const markers = new Set<string>(Object.values(MARKER_VARS));
+  const value = (b: { type: string } & Record<string, unknown>) =>
+    b.type === "json" ? `json:${stableStringify(b.json)}` : `text:${String(b.text)}`;
+  const isVar = (b: { type: string; name: string }) => (b.type === "plain_text" || b.type === "json") && !markers.has(b.name);
+  const want = new Map(desired.filter(isVar).map((b) => [b.name, value(b)]));
+  const have = new Map(observed.filter(isVar).map((b) => [b.name, value(b)]));
+  const changes: string[] = [];
+  for (const [name, wanted] of want) {
+    const current = have.get(name);
+    if (current === undefined) changes.push(`sets var ${name}, which is missing`);
+    else if (current !== wanted) changes.push(`resets var ${name}, which was edited`);
+  }
+  for (const name of have.keys()) if (!want.has(name)) changes.push(`removes var ${name}, which the release doesn't set`);
+  return changes;
 }
 
 /** What a create step's reason adds for storage made in a jurisdiction; nothing for unpinned storage. */

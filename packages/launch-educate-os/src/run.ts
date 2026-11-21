@@ -155,7 +155,8 @@ const URL_LABELS: Record<string, string> = {
 export function nextSteps(config: DistrictInstallConfig, manifest: ReleaseManifest, adminSteps: string[]): string[] {
   const urls = installUrls(config, manifest);
   const who = [...config.access.allowedEmailDomains.map((domain) => `anyone @${domain}`), ...config.access.allowedEmails].join(", ");
-  const steps = [`Sign in at ${urls.district ?? urls.workshop} through Cloudflare Access (${who} may sign in). The administrators are ${config.admins.join(", ")}.`];
+  const steps = [`Sign in at ${urls.district ?? urls.workshop} through Cloudflare Access (${who} may sign in). The administrators are ${config.admins.join(", ")}. ` +
+    "A new address can take a few minutes to open on this computer, longer if it was looked up before the install; other computers see it sooner."];
   if (urls.district) {
     steps.push(`Set up the district at ${urls.district}admin: import your roster or add people and classes there. For demo content, add sample courses from the district course library.`);
   }
