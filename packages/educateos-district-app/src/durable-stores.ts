@@ -1,4 +1,5 @@
 import { StudentLearningLifecycle, StudentLearningState, type StudentLearningRuntimePersistence } from "./student-learning-lifecycle.ts";
+import { McpBearerTokenRecord, type McpBearerTokenId, type McpBearerTokenStore } from "./mcp-tokens.ts";
 import { revokedGuardianGuidanceGrant } from "@educateos/policy";
 import {
   ChildSession,
@@ -252,6 +253,7 @@ export const DISTRICT_TABLES = {
   courseInstalls: "educateos_course_installs",
   // Delegations (SCHO-175)
   delegations: "educateos_delegations",
+  mcpTokens: "educateos_mcp_tokens",
   // Student archive (SCHO-371)
   exportMappings: "educateos_export_mappings",
   // Home learning (ADR-0016)
@@ -1247,6 +1249,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     courseLibrary: new DurableObjectCourseLibraryStore(storage),
     // Delegations (SCHO-175)
     delegations: new DurableObjectDelegationStore(storage),
+    toolApprovals: new DurableObjectToolApprovalStore(storage),
+    mcpTokens: new DurableObjectMcpBearerTokenStore(storage),
     // Student archive (SCHO-371)
     exportMappings: new DurableObjectExportMappingStore(storage),
     // Home learning (ADR-0016)
@@ -2626,6 +2630,66 @@ export class DurableObjectDelegationStore implements DelegationStore {
         parsed.id,
         JSON.stringify(parsed),
       );
+    });
+  }
+}
+
+/**
+ * A {@link McpBearerTokenStore} in a Durable Object's SQLite: stores only SHA-256 digests of
+ * scoped personal MCP bearer tokens, never plaintext secrets. Rows are kept after revocation.
+ */
+export class DurableObjectMcpBearerTokenStore implements McpBearerTokenStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.mcpTokens} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, digest TEXT NOT NULL UNIQUE, token_json TEXT NOT NULL
+      )`,
+    ], []);
+  }
+
+  async get(id: McpBearerTokenId): Promise<McpBearerTokenRecord | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT token_json FROM ${DISTRICT_TABLES.mcpTokens} WHERE id = ?`, id).toArray();
+      return row === undefined ? undefined : parseStored(McpBearerTokenRecord, row.token_json, "an MCP bearer token");
+    });
+  }
+
+  async findByDigest(digest: string): Promise<McpBearerTokenRecord | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT token_json FROM ${DISTRICT_TABLES.mcpTokens} WHERE digest = ?`, digest).toArray();
+      return row === undefined ? undefined : parseStored(McpBearerTokenRecord, row.token_json, "an MCP bearer token");
+    });
+  }
+
+  async list(): Promise<McpBearerTokenRecord[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT token_json FROM ${DISTRICT_TABLES.mcpTokens} ORDER BY seq`).toArray()
+        .map((row) => parseStored(McpBearerTokenRecord, row.token_json, "an MCP bearer token"))
+    );
+  }
+
+  async put(record: McpBearerTokenRecord): Promise<void> {
+    const parsed = McpBearerTokenRecord.parse(record);
+    this.#tables.transaction((sql) => {
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.mcpTokens} (id, digest, token_json) VALUES (?, ?, ?)
+          ON CONFLICT (id) DO UPDATE SET digest = excluded.digest, token_json = excluded.token_json`,
+        parsed.id,
+        parsed.digest,
+        JSON.stringify(parsed),
+      );
+    });
+  }
+
+  async touch(id: McpBearerTokenId, at: string): Promise<void> {
+    this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT token_json FROM ${DISTRICT_TABLES.mcpTokens} WHERE id = ?`, id).toArray();
+      if (row === undefined) return;
+      const record = parseStored(McpBearerTokenRecord, row.token_json, "an MCP bearer token");
+      if (record.revoked !== undefined) return;
+      sql.exec(`UPDATE ${DISTRICT_TABLES.mcpTokens} SET token_json = ? WHERE id = ?`, JSON.stringify({ ...record, lastUsedAt: at }), id);
     });
   }
 }

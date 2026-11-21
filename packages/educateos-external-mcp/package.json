@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./resource-auth": "./src/resource-auth.ts",
     "./registry": "./src/registry.ts",
-    "./discovery": "./src/discovery.ts"
+    "./discovery": "./src/discovery.ts",
+    "./oauth-server": "./src/oauth-server.ts",
+    "./lms-tools": "./src/lms-tools.ts"
   },
   "scripts": {
     "test:run": "vitest run && vitest run --config vitest.worker.config.ts",

@@ -185,8 +185,9 @@ import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type 
 import type { ConfigProblem, ConfigurationPlan } from "@educateos/config";
 import type { IntegrationHealth, oneroster } from "@educateos/integrations";
 // Guardians (ADR-0012, SCHO-188)
-import { Action, DecisionReason, DelegationId, GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus, RequestChannel, ResourceRef } from "@educateos/contracts";
-import { Delegation, GuardianRelationshipAuditEvent, GuardianRelationshipScope, NewDelegation } from "@educateos/policy";
+import { Action, DecisionReason, DelegationId, GuardianRelationship, GuardianRelationshipId, OpaqueCode, OperationEffect, PrincipalStatus, RequestChannel, ResourceRef, Scope } from "@educateos/contracts";
+import { DeclineReason, Delegation, GuardianRelationshipAuditEvent, GuardianRelationshipScope, MAX_DELEGATION_HOURS, NewDelegation, PendingToolAction, ToolApprovalId } from "@educateos/policy";
+import { McpBearerTokenId, McpBearerTokenView } from "./mcp-tokens.ts";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@educateos/identity-links";
 import { WorkshopUserKey, WorkshopUserLink } from "@educateos/identity";
 // Communication (SCHO-189). Imported from the model alone, which this browser-safe module can carry.
@@ -1203,6 +1204,118 @@ export const LibraryCourseBody = z.strictObject({
 });
 /** A library course version. */
 export type LibraryCourseBody = z.infer<typeof LibraryCourseBody>;
+
+/** One MCP tool entry advertised to the Management UI catalog browser. */
+export const McpToolCatalogEntry = z.strictObject({
+  name: z.string(),
+  description: z.string(),
+  domain: z.string(),
+  action: Action,
+  effect: OperationEffect,
+  /** True when calls wait in the human approval queue under the district's current MCP policy. */
+  requiresApproval: z.boolean(),
+});
+/** An MCP tool catalog entry. */
+export type McpToolCatalogEntry = z.infer<typeof McpToolCatalogEntry>;
+
+/** Current MCP server status as the district Management UI displays it. */
+export const McpStatusBody = z.strictObject({
+  enabled: z.boolean(),
+  endpoint: z.string().nullable(),
+  authMode: z.enum(["builtin", "external", "off"]),
+  issuer: z.string().nullable(),
+  allowDrafts: z.boolean(),
+  allowedOrigins: z.array(z.string()),
+  toolCount: z.int().nonnegative(),
+});
+/** Current MCP server status. */
+export type McpStatusBody = z.infer<typeof McpStatusBody>;
+
+/** One scope option the caller holds a staff role over and may delegate to an MCP client or token. */
+export const McpDelegationScopeOption = z.strictObject({
+  label: z.string(),
+  scope: Scope,
+});
+/** A delegable scope option. */
+export type McpDelegationScopeOption = z.infer<typeof McpDelegationScopeOption>;
+
+/** One OAuth client registered with the built-in MCP authorization server. */
+export const McpRegisteredClientView = z.strictObject({
+  clientId: z.string(),
+  clientName: z.string(),
+  redirectUris: z.array(z.string()),
+  createdAt: z.string(),
+});
+/** A registered OAuth MCP client. */
+export type McpRegisteredClientView = z.infer<typeof McpRegisteredClientView>;
+
+/** A delegation annotated with its grantor's display name for management screens. */
+export const DelegationWithNames = Delegation.extend({ grantorName: z.string() });
+/** A delegation with grantor name. */
+export type DelegationWithNames = z.infer<typeof DelegationWithNames>;
+
+/** A scoped personal bearer token annotated with its owner's display name. */
+export const McpBearerTokenWithNames = McpBearerTokenView.extend({ principalName: z.string() });
+/** A bearer token with owner name. */
+export type McpBearerTokenWithNames = z.infer<typeof McpBearerTokenWithNames>;
+
+/** A queued or decided tool action annotated with display names for the approval queue UI. */
+export const ToolApprovalWithNames = PendingToolAction.extend({
+  requesterName: z.string(),
+  decidedByName: z.string().optional(),
+});
+/** A tool approval with display names. */
+export type ToolApprovalWithNames = z.infer<typeof ToolApprovalWithNames>;
+
+/** Everything the Admin or Teacher MCP Management UI displays on load. */
+export const McpOverviewBody = z.strictObject({
+  status: McpStatusBody,
+  delegations: z.array(DelegationWithNames),
+  tokens: z.array(McpBearerTokenWithNames),
+  pendingApprovals: z.array(ToolApprovalWithNames),
+  recentApprovals: z.array(ToolApprovalWithNames),
+  registeredClients: z.array(McpRegisteredClientView),
+  scopes: z.array(McpDelegationScopeOption),
+  tools: z.array(McpToolCatalogEntry),
+});
+/** MCP overview payload. */
+export type McpOverviewBody = z.infer<typeof McpOverviewBody>;
+
+/** Input to mint a new scoped MCP personal bearer token bound to a fresh delegation. */
+export const CreateMcpTokenInput = z.strictObject({
+  label: z.string().trim().min(1).max(120),
+  scope: Scope,
+  access: z.enum(["read-only", "read-drafts", "read-write"]),
+  durationHours: z.int().min(1).max(MAX_DELEGATION_HOURS),
+});
+/** Input to mint a scoped MCP bearer token. */
+export type CreateMcpTokenInput = z.infer<typeof CreateMcpTokenInput>;
+
+/** Response when a scoped MCP bearer token is minted; `token` is shown once and never stored plaintext. */
+export const CreatedMcpTokenBody = z.strictObject({
+  token: z.string(),
+  record: McpBearerTokenView,
+  delegation: Delegation,
+});
+/** Created MCP bearer token payload. */
+export type CreatedMcpTokenBody = z.infer<typeof CreatedMcpTokenBody>;
+
+/** Response from approving or declining a queued tool call over HTTP. */
+export const ToolApprovalDecisionBody = z.discriminatedUnion("status", [
+  z.strictObject({ status: z.literal("applied"), approvalId: ToolApprovalId, value: z.unknown(), correlationId: z.string() }),
+  z.strictObject({ status: z.literal("already-applied"), approvalId: ToolApprovalId, correlationId: z.string() }),
+  z.strictObject({ status: z.literal("declined"), approvalId: ToolApprovalId, correlationId: z.string() }),
+]);
+/** Tool approval decision response. */
+export type ToolApprovalDecisionBody = z.infer<typeof ToolApprovalDecisionBody>;
+
+/** Pending and recent tool approvals visible to the caller. */
+export const ToolApprovalListBody = z.strictObject({
+  pending: z.array(ToolApprovalWithNames),
+  recent: z.array(ToolApprovalWithNames),
+});
+/** Tool approval list response. */
+export type ToolApprovalListBody = z.infer<typeof ToolApprovalListBody>;
 
 /**
  * A library course as a teacher browses it for one class: the latest version of each course, and
@@ -2255,6 +2368,36 @@ export const ROUTES = {
   "teacher.revokeDelegation": route({
     method: "POST", path: "/api/teacher/delegations/:delegationId/revoke", surface: "teacher",
     params: params({ delegationId: DelegationId }), body: NoBody, response: Delegation,
+  }),
+  // MCP management, scoped personal bearer tokens, and human tool-approval queue.
+  "teacher.mcpOverview": route({
+    method: "GET", path: "/api/teacher/mcp", surface: "teacher", response: McpOverviewBody,
+  }),
+  "admin.mcpOverview": route({
+    method: "GET", path: "/api/admin/mcp", surface: "admin", response: McpOverviewBody,
+  }),
+  "teacher.createMcpToken": route({
+    method: "POST", path: "/api/teacher/mcp/tokens", surface: "teacher", status: 201,
+    body: CreateMcpTokenInput, response: CreatedMcpTokenBody,
+  }),
+  "teacher.revokeMcpToken": route({
+    method: "POST", path: "/api/teacher/mcp/tokens/:tokenId/revoke", surface: "teacher",
+    params: params({ tokenId: McpBearerTokenId }), body: NoBody, response: McpBearerTokenView,
+  }),
+  "teacher.listToolApprovals": route({
+    method: "GET", path: "/api/teacher/tool-approvals", surface: "teacher", response: ToolApprovalListBody,
+  }),
+  "teacher.approveToolAction": route({
+    method: "POST", path: "/api/teacher/tool-approvals/:approvalId/approve", surface: "teacher",
+    params: params({ approvalId: ToolApprovalId }),
+    body: z.strictObject({ digest: z.string().regex(/^[0-9a-f]{64}$/).optional() }),
+    response: ToolApprovalDecisionBody,
+  }),
+  "teacher.declineToolAction": route({
+    method: "POST", path: "/api/teacher/tool-approvals/:approvalId/decline", surface: "teacher",
+    params: params({ approvalId: ToolApprovalId }),
+    body: z.strictObject({ reason: DeclineReason }),
+    response: ToolApprovalDecisionBody,
   }),
   "me.calendar": route({
     method: "GET", path: "/api/me/calendar", surface: "me",

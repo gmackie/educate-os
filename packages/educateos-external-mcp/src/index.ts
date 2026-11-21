@@ -57,13 +57,15 @@ export function createSchoolMcpApi(options: {
   tokens: McpAuthenticator;
   /** Exact browser origins allowed; absent Origin permits non-browser clients. */
   allowedOrigins: readonly string[];
+  /** When true, tools marked `effect: "draft"` execute immediately while consequential writes still queue for human approval. */
+  allowDrafts?: boolean;
   /** Canonical public origin and trusted authorization servers for RFC 9728 discovery. */
   resource?: { origin: string; authorizationServers: readonly string[]; scopes: readonly string[] };
 }) {
   /** One request's server, acting for the subject the bearer token was verified as. */
   function serverFor(principal: VerifiedPrincipal): Server {
     const server = new Server(
-      { name: "educateos-school-tools", version: "0.2.0" },
+      { name: "educateos-school-tools", version: "0.3.0" },
       {
         capabilities: { tools: {} },
         supportedProtocolVersions: [...MCP_PROTOCOL_VERSIONS],
@@ -81,7 +83,7 @@ export function createSchoolMcpApi(options: {
           { principal, channel: "mcp-tool" },
           call.data.name,
           call.data.arguments,
-          { confirmWrites: true },
+          { confirmWrites: true, ...(options.allowDrafts === true ? { allowDrafts: true } : {}) },
         );
       } catch {
         throw new ProtocolError(ProtocolErrorCode.InternalError, "Tool service unavailable");
@@ -216,3 +218,5 @@ async function limitedBody(request: Request): Promise<string> {
   }
 }
 export * from "./token-store.ts";
+export * from "./oauth-server.ts";
+export * from "./lms-tools.ts";

@@ -280,13 +280,15 @@ export class SchoolToolRunner {
    *
    * With an approval queue, a `require-approval` decision queues the call for someone the policy
    * lets approve it. `confirmWrites` also queues every allowed call whose action is not a read, for
-   * the requester to confirm as a person: that is how an agent's writes wait for a human.
+   * the requester to confirm as a person: that is how an agent's writes wait for a human. When
+   * `allowDrafts` is also true, tools whose `effect` is `"draft"` (and whose `approval` is not
+   * `"approver"`) run immediately after policy approval, while consequential writes still queue.
    */
   async invoke(
     session: { principal: VerifiedPrincipal; channel: ToolChannel },
     name: unknown,
     args: unknown,
-    options: { confirmWrites?: boolean } = {},
+    options: { confirmWrites?: boolean; allowDrafts?: boolean } = {},
   ): Promise<SchoolToolOutcome> {
     if (options.confirmWrites === true && this.#approvals === undefined) {
       throw new Error("confirmWrites needs an approval queue");
@@ -316,7 +318,10 @@ export class SchoolToolRunner {
         if (this.#approvals === undefined) return { status: "approval-required", correlationId };
         return await this.#enqueue(context, tool, parsed.data, "approval", target);
       }
-      if (options.confirmWrites === true && !READ_LIKE.has(tool.action) && !tool.readOnly) {
+      const skipConfirmation = READ_LIKE.has(tool.action)
+        || tool.readOnly
+        || (options.allowDrafts === true && tool.effect === "draft");
+      if (options.confirmWrites === true && !skipConfirmation) {
         return await this.#enqueue(context, tool, parsed.data, "confirmation", target);
       }
       return { status: "ok", value: await tool.handler(parsed.data, context), correlationId };

@@ -17,14 +17,33 @@ import { DiscussionScreeningSettings } from "@educateos/discussions";
 const HttpsOrigin = z.url({ protocol: /^https$/ }).refine((value) => new URL(value).origin === value, "expected a bare https origin");
 
 /**
- * The district's organization MCP endpoint (SCHO-174): `/mcp` as an OAuth protected resource for
- * one authorization server, with RFC 9728 metadata. Absent, the district serves neither.
+ * Built-in Cloudflare-native MCP mode: the district Worker itself acts as the OAuth 2.1
+ * authorization server (PKCE S256, Dynamic Client Registration, Client ID Metadata Documents,
+ * ES256 access tokens + rotating refresh tokens) backed by Cloudflare Access on `/oauth/authorize`,
+ * plus scoped personal bearer tokens minted in the Management UI. Zero external IdP required.
  */
-export const DistrictMcpSettings = z.strictObject({
+export const BuiltInDistrictMcpSettings = z.strictObject({
+  /** Built-in Cloudflare Access-backed OAuth 2.1 + scoped personal tokens. */
+  mode: z.literal("builtin").default("builtin"),
+  /** The district's public origin. The resource, and every token's only audience, is `<origin>/mcp`. */
+  origin: HttpsOrigin,
+  /** When true, low-risk draft tools (draft modules, pages, activities, quizzes, feedback) run immediately while consequential writes wait in the approval queue. */
+  allowDrafts: z.boolean().default(true),
+  /** Exact browser origins allowed to call `/mcp`. Absent, only clients that send no Origin. */
+  allowedOrigins: z.array(HttpsOrigin).max(30).optional(),
+});
+
+/**
+ * External OAuth issuer mode (SCHO-174): `/mcp` as an OAuth protected resource for a separate
+ * authorization server, with RFC 9728 metadata.
+ */
+export const ExternalDistrictMcpSettings = z.strictObject({
+  /** External authorization server mode. */
+  mode: z.literal("external").optional(),
   /** The district's public origin. The resource, and every token's only audience, is `<origin>/mcp`. */
   origin: HttpsOrigin,
   /**
-   * The authorization server's issuer (Nathan, NATH-6), compared exactly with each token's `iss`.
+   * The authorization server's issuer (e.g. Nathan), compared exactly with each token's `iss`.
    * The district must list it in `trustedIssuers` and link people's subjects under it.
    */
   issuer: z.url({ protocol: /^https$/ }).max(2048),
@@ -32,9 +51,17 @@ export const DistrictMcpSettings = z.strictObject({
   jwksUri: z.url({ protocol: /^https$/ }).max(2048),
   /** The asymmetric algorithms it signs access tokens with. */
   algorithms: z.array(z.enum(["RS256", "PS256", "ES256", "EdDSA"])).min(1),
+  /** When true, low-risk draft tools run immediately while consequential writes wait in the approval queue. */
+  allowDrafts: z.boolean().optional(),
   /** Exact browser origins allowed to call `/mcp`. Absent, only clients that send no Origin. */
   allowedOrigins: z.array(HttpsOrigin).max(30).optional(),
 }).refine((mcp) => new URL(mcp.jwksUri).origin === new URL(mcp.issuer).origin, { message: "jwksUri must be on the issuer's origin", path: ["jwksUri"] });
+
+/**
+ * The district's organization MCP endpoint: either built-in Cloudflare OAuth 2.1 (zero external
+ * IdP) or an external OAuth authorization server. Absent, `/mcp` and its metadata answer 404.
+ */
+export const DistrictMcpSettings = z.union([ExternalDistrictMcpSettings, BuiltInDistrictMcpSettings]);
 /** The district's MCP endpoint settings. */
 export type DistrictMcpSettings = z.infer<typeof DistrictMcpSettings>;
 

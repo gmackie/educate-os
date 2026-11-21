@@ -34,3 +34,4 @@ export * from "./planner-ai.ts";
 export * from "./student-learning-lifecycle.ts";
 // Harbor grade return to Classroom (SCHO-428)
 export * from "./classroom-course.ts";
+export * from "./mcp-tokens.ts";
