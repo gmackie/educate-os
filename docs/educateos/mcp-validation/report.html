@@ -1,0 +1,317 @@
+<title>LMS-lite MCP vs Google Classroom</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~72ch) with full-width tables that scroll inside their own frames. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --ink: #17201d;
+  --muted: #5b6763;
+  --line: #d9dfdc;
+  --accent: #0f6b5c;
+  --accent-soft: #e2f0ec;
+  --yes: #1d7a46; --yes-bg: #e3f3e9;
+  --part: #8a5a00; --part-bg: #fbefd6;
+  --no: #a2322a; --no-bg: #f8e3e1;
+  --font-display: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111715; --surface: #18201d; --ink: #e5ebe8; --muted: #9aa7a2; --line: #2c3632;
+    --accent: #5cc7ae; --accent-soft: #19302a;
+    --yes: #6fd39a; --yes-bg: #173222; --part: #f0c46a; --part-bg: #352a12; --no: #f08f86; --no-bg: #3a1c19;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111715; --surface: #18201d; --ink: #e5ebe8; --muted: #9aa7a2; --line: #2c3632;
+  --accent: #5cc7ae; --accent-soft: #19302a;
+  --yes: #6fd39a; --yes-bg: #173222; --part: #f0c46a; --part-bg: #352a12; --no: #f08f86; --no-bg: #3a1c19;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font-body); }
+.wrap { max-width: 1060px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 72px; display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.45rem; font-weight: 650; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+.prose { display: grid; gap: 12px; }
+.eyebrow { font: 500 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; word-break: break-word; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+header { display: grid; gap: 14px; }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.verdict > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.verdict b { font-family: var(--font-display); font-size: 1.02rem; }
+section { display: grid; gap: 16px; }
+.frame { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+thead th { font: 600 0.78rem/1.3 var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); background: var(--bg); position: sticky; top: 0; }
+tbody th { font-weight: 600; width: 22%; }
+td.t { white-space: nowrap; font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.matrix td { width: 26%; }
+.chip { display: inline-block; font: 600 0.72rem/1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; }
+.yes { color: var(--yes); background: var(--yes-bg); }
+.part { color: var(--part); background: var(--part-bg); }
+.no { color: var(--no); background: var(--no-bg); }
+.group td { background: var(--accent-soft); font: 600 0.8rem/1 var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); padding-block: 9px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+.cols > div { display: grid; gap: 10px; align-content: start; min-width: 0; }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 72ch; }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 10px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 2rem 1fr; gap: 10px; align-items: start; }
+.steps li::before { content: counter(s); font: 600 0.85rem/2rem var(--font-mono); text-align: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); width: 2rem; height: 2rem; }
+pre { margin: 0; font: 0.82rem/1.55 var(--font-mono); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">EducateOS · production validation · 21 Nov 2026</span>
+  <h1>LMS-lite MCP vs Google Classroom</h1>
+  <p class="muted">A school's own MCP server, deployed on Cloudflare from the <code>launch-educate-os</code> CLI, validated live on two production districts. Northfield runs the native LMS-lite. Harbor's classes and grades come from real Google Classroom courses on the <code>gedu.demo.educateos.io</code> tenant. All accounts and students are synthetic.</p>
+  <div class="verdict">
+    <div><span class="eyebrow">Shipped</span><b>Full LMS-lite MCP server</b><span class="muted">85 tools, built-in OAuth 2.1 with no outside identity provider, personal tokens, and an approval queue in the admin and teacher UIs. PRs #443, #444, #447.</span></div>
+    <div><span class="eyebrow">Validated live</span><b>Both districts, end to end</b><span class="muted">A real OAuth connect, reads, drafts, queued writes approved by the teacher, the student's view, and refusals.</span></div>
+    <div><span class="eyebrow">Bottom line</span><b>Native LMS-lite does more over MCP</b><span class="muted">Over Google Classroom, MCP reads Classroom's roster and grades live, but anything an AI client authors stays in EducateOS. Google's API rules limit what can be written back.</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">What was compared</span>
+    <h2>Three ways an AI client can reach a class</h2>
+    <p><b>A. EducateOS LMS-lite (Northfield).</b> The district Worker is the system of record. Its <code>/mcp</code> endpoint exposes the whole LMS: classes, rosters, modules, pages, activities, assignments, submissions, feedback, gradebook, quizzes, discussions, announcements and planner.</p>
+    <p><b>B. EducateOS over Google Classroom (Harbor).</b> It's the same server and tool catalog. The roster is imported from Google Classroom, Classroom grades are read live, and approved grades are returned to Classroom through the passback gate.</p>
+    <p><b>C. Google Classroom API on its own.</b> This is what a district would have if an AI client talked to Classroom directly with Google OAuth. It is shown from Google's documented rules (cited in <code>docs/educateos/integrations/google-classroom.md</code>), not from a live client.</p>
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">Feature comparison</span>
+    <h2>What each one can do</h2>
+  </div>
+  <div class="frame">
+    <table class="matrix">
+      <thead><tr><th>Capability</th><th>A · LMS-lite (Northfield)</th><th>B · Over Classroom (Harbor)</th><th>C · Classroom API alone</th></tr></thead>
+      <tbody>
+        <tr class="group"><td colspan="4">Setup and sign-in</td></tr>
+        <tr><th>What a school needs</th>
+          <td><span class="chip yes">Yes</span>A Cloudflare account and <code>npx launch-educate-os</code>. MCP is on by default for new installs.</td>
+          <td><span class="chip part">Partial</span>The same, plus a Google Cloud project, a service account with domain-wide delegation, and a Workspace admin who turns on Classroom data access.</td>
+          <td><span class="chip part">Partial</span>A Google Cloud project, an OAuth client, and Google verification for sensitive scopes once outside users connect.</td></tr>
+        <tr><th>How an AI client signs in</th>
+          <td><span class="chip yes">Yes</span>The district's own OAuth 2.1 server, with discovery, dynamic client registration, PKCE S256 and ES256 tokens. Consent is behind Cloudflare Access and the school's SSO.</td>
+          <td><span class="chip yes">Yes</span>Identical. Harbor is its own issuer. The client never holds a Google token.</td>
+          <td><span class="chip part">Partial</span>Google OAuth per user. The client holds Classroom-scoped Google tokens.</td></tr>
+        <tr><th>Limiting a client's reach</th>
+          <td><span class="chip yes">Yes</span>Each connection is a delegation limited to one class, school or district, read-only or read-write, and lasting up to 90 days. It can be revoked in one click.</td>
+          <td><span class="chip yes">Yes</span>Identical. Verified: Kwame's connection saw only Marine Science.</td>
+          <td><span class="chip part">Partial</span>OAuth scopes are per API, not per class. A token reaches every course the user can see.</td></tr>
+        <tr><th>Students kept out</th>
+          <td><span class="chip yes">Yes</span>Staff only. A student gets <code>403</code> at <code>/oauth/authorize</code>.</td>
+          <td><span class="chip yes">Yes</span>Identical. Verified live with Nia Fontaine.</td>
+          <td><span class="chip part">Partial</span>Under-18 access is controlled by the Workspace admin's app trust settings.</td></tr>
+        <tr><th>Headless and CLI tools</th>
+          <td><span class="chip yes">Yes</span>Personal <code>edum_</code> tokens minted in <code>/teach/#/mcp</code>. Each is bound to its own delegation and stored as a hash.</td>
+          <td><span class="chip yes">Yes</span>Identical.</td>
+          <td><span class="chip part">Partial</span>Service accounts with domain-wide delegation. These are very broad.</td></tr>
+
+        <tr class="group"><td colspan="4">Reading the class</td></tr>
+        <tr><th>Roster</th>
+          <td><span class="chip yes">Yes</span><code>get_roster</code> from the district directory.</td>
+          <td><span class="chip yes">Yes</span>The same tool. The roster was imported from four listed Classroom courses.</td>
+          <td><span class="chip yes">Yes</span><code>courses.students.list</code> and <code>courses.teachers.list</code>.</td></tr>
+        <tr><th>Assignments and gradebook</th>
+          <td><span class="chip yes">Yes</span><code>list_assignments</code> and <code>get_gradebook</code>, with rubrics, late policy, attempts and a letter scale.</td>
+          <td><span class="chip yes">Yes</span>The EducateOS gradebook, plus <code>get_classroom_grades</code>: each student's live Classroom state and grade for every EducateOS-owned coursework item.</td>
+          <td><span class="chip part">Partial</span>Coursework and submissions are readable. There are no terms, schools, grade bands or weighted categories.</td></tr>
+        <tr><th>Modules, pages, discussions, planner</th>
+          <td><span class="chip yes">Yes</span>Native.</td>
+          <td><span class="chip yes">Yes</span>Native in EducateOS. Classroom has no equivalent to sync.</td>
+          <td><span class="chip no">No</span>Topics and materials only. There are no discussions, modules or planner.</td></tr>
+
+        <tr class="group"><td colspan="4">Writing (what students and families can see)</td></tr>
+        <tr><th>Drafts nobody else sees</th>
+          <td><span class="chip yes">Yes</span>Run immediately: new draft modules, activities and quizzes, teacher-only feedback, criterion scores.</td>
+          <td><span class="chip yes">Yes</span>Identical, kept in EducateOS.</td>
+          <td><span class="chip part">Partial</span>Draft coursework exists, with no approval step around it.</td></tr>
+        <tr><th>Announcements</th>
+          <td><span class="chip yes">Yes</span>Queued, then approved by the teacher. Verified: Lucía saw it.</td>
+          <td><span class="chip part">Partial</span>Queued and approved, then posted in EducateOS. Verified: Nia saw it. It is not posted to the Classroom stream, because the announcement scope isn't requested.</td>
+          <td><span class="chip yes">Yes</span><code>courses.announcements</code>, with no human approval step.</td></tr>
+        <tr><th>Publishing quizzes, activities, modules</th>
+          <td><span class="chip yes">Yes</span>Queued, then confirmed by the teacher. This needed the #447 fix, found during this validation.</td>
+          <td><span class="chip part">Partial</span>Published in EducateOS. Classroom coursework is created only as grade columns, by an administrator route.</td>
+          <td><span class="chip part">Partial</span>Only coursework the calling Cloud project created can be changed.</td></tr>
+        <tr><th>Grades</th>
+          <td><span class="chip yes">Yes</span><code>propose_grade</code> always waits for approval. The official grade and its release are human-only.</td>
+          <td><span class="chip yes">Yes</span>Approved grades reach Classroom as <code>assignedGrade</code> through the passback gate. Returning work stays the teacher's action in Classroom.</td>
+          <td><span class="chip part">Partial</span>Only on the project's own coursework. Two decimal places. No rubric grading through the API.</td></tr>
+
+        <tr class="group"><td colspan="4">Safety and operations</td></tr>
+        <tr><th>Human approval of AI writes</th>
+          <td><span class="chip yes">Yes</span>A queue in <code>/teach/#/mcp</code> and <code>/admin/#/mcp</code>. Each entry is pinned to a digest. MCP can't approve its own writes.</td>
+          <td><span class="chip yes">Yes</span>Identical.</td>
+          <td><span class="chip no">No</span>None. A write goes through as soon as the token allows it.</td></tr>
+        <tr><th>Never exposed to AI</th>
+          <td><span class="chip yes">Yes</span>Official grade approval and release, identity links, admin grants, delegation management, IEP/504, audit, bulk export.</td>
+          <td><span class="chip yes">Yes</span>Identical. Roster-sync tools are admin-only (Kwame got <code>not-found</code>).</td>
+          <td><span class="chip no">No</span>Whatever the scopes allow.</td></tr>
+        <tr><th>Rate limits</th>
+          <td><span class="chip yes">Yes</span>Cloudflare Workers and Durable Objects. No per-user API quota.</td>
+          <td><span class="chip part">Partial</span>Reads from Classroom count against Google's quota.</td>
+          <td><span class="chip part">Partial</span>4,000,000 queries a day and 3,000 a minute per client, 1,200 a minute per user.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">Limitations</span>
+    <h2>What each one can't do yet</h2>
+  </div>
+  <div class="cols">
+    <div>
+      <h3>A · LMS-lite (Northfield)</h3>
+      <ul>
+        <li>The catalog has 85 tools, including directory tools such as <code>create_school</code>. A teacher's class-scoped delegation refuses them (<code>not-found</code>), but a district admin's district-wide delegation can queue them.</li>
+        <li>Grades proposed over MCP wait for another approver. The official grade is never set over MCP.</li>
+        <li>No external client has used it yet. The client in this validation was a scripted OAuth client using the same calls Claude Code makes, not the Claude or ChatGPT apps.</li>
+        <li>Access tokens last 10 minutes. Refresh tokens last until the delegation ends, which is at most 90 days.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>B · Over Classroom (Harbor)</h3>
+      <ul>
+        <li>Announcements, quizzes, modules and discussions an AI client authors appear in EducateOS, not in Classroom.</li>
+        <li>Grade return covers only coursework EducateOS created (<code>[educateos-approved]</code> titles). Assignments a teacher made in the Classroom UI can be read, but not graded.</li>
+        <li>Rubric scores stay in EducateOS. Only the total reaches Classroom.</li>
+        <li>The roster comes from a complete sync on a schedule (Classroom has no change feed), so a dropped student disappears at the next sync.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>C · Classroom API alone</h3>
+      <ul>
+        <li>An app can modify only the coursework its own Cloud project created (<code>@ProjectPermissionDenied</code>).</li>
+        <li>There is no class-level scoping, no approval queue and no audit of what the AI did.</li>
+        <li>Classroom has no terms, schools or grade bands, and no discussions, modules, quizzes engine or planner.</li>
+        <li>Sensitive scopes need Google verification, and under-18 accounts need the admin to trust the app.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">Production evidence · Northfield</span>
+    <h2>Morgan Lee, Biology I Period 2</h2>
+    <p class="muted">Times are UTC. Signed in through Cloudflare Access with the <code>teacher-912@</code> test identity. Tokens are redacted in the saved evidence.</p>
+  </div>
+  <div class="frame">
+    <table>
+      <thead><tr><th>Time</th><th>Step</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="t">21:18:06</td><td>Discovery</td><td>RFC 9728 resource metadata names the district as its own authorization server. An unauthenticated <code>/mcp</code> gets <code>401</code> with <code>WWW-Authenticate</code>.</td></tr>
+        <tr><td class="t">21:18:06</td><td>Dynamic client registration</td><td>Client <code>mcpc_013f8c6f…</code> was registered with a loopback redirect.</td></tr>
+        <tr><td class="t">21:18:06</td><td>Authorize with no session</td><td><code>302</code> to the Cloudflare Access login.</td></tr>
+        <tr><td class="t">21:18:08</td><td>Consent screen</td><td>It showed "Signed in as: Morgan Lee", the redirect host <code>127.0.0.1:8765</code>, and two class choices (Biology P2 and P4).</td></tr>
+        <tr><td class="t">21:18:08</td><td>Token exchange</td><td>A PKCE S256 code was exchanged for an ES256 access token (600 s) bound to delegation <code>dlg_a3431022…</code>, plus a rotating refresh token.</td></tr>
+        <tr><td class="t">21:18:18</td><td><code>tools/list</code></td><td>85 tools.</td></tr>
+        <tr><td class="t">21:18:41</td><td>Profile, my classes, roster, assignments, gradebook</td><td>All <code>ok</code>. Only Period 2 is listed, because the delegation is scoped to it. The gradebook includes "The Naked Egg: Osmosis Lab".</td></tr>
+        <tr><td class="t">21:18:44</td><td><code>create_module</code> (draft)</td><td>Ran immediately: "Unit 4: Cellular Respiration", unpublished.</td></tr>
+        <tr><td class="t">21:18:45</td><td><code>create_quiz</code> (draft)</td><td>Ran immediately: "ATP check-in" with three items (multiple choice, true/false, short answer).</td></tr>
+        <tr><td class="t">21:18:45</td><td><code>create_announcement</code></td><td><code>approval-required</code>. Queued for Morgan.</td></tr>
+        <tr><td class="t">21:18:46</td><td>Period 4 roster (out of scope)</td><td><code>not-found</code>. Nothing is disclosed.</td></tr>
+        <tr><td class="t">21:18:56</td><td><code>create_school</code> (admin action)</td><td><code>not-found</code>. Refused by policy.</td></tr>
+        <tr><td class="t">21:18:56</td><td><code>publish_quiz</code></td><td><code>approval-required</code>.</td></tr>
+        <tr><td class="t">21:19:06</td><td>Management UI queue</td><td>Showed both pending writes, attributed to the MCP channel and the delegation.</td></tr>
+        <tr><td class="t">21:19:31</td><td>Morgan approves the announcement</td><td><code>applied</code>: <code>ann_c1706614…</code>.</td></tr>
+        <tr><td class="t">21:19:32</td><td>Morgan approves the quiz publish</td><td><code>403</code>. The bug was found here: the approved change ran under the client's delegation, which can never publish. Fixed in #447.</td></tr>
+        <tr><td class="t">22:10:36</td><td>Morgan approves the quiz publish again, after #447</td><td><code>applied</code>. Lucía now sees "ATP check-in (MCP demo)" as published.</td></tr>
+        <tr><td class="t">21:32:18</td><td>Student view (Lucía Delgado)</td><td>"Unit 4 starts Monday" is visible in her class. She gets <code>403</code> on the MCP admin API and on <code>/oauth/authorize</code>.</td></tr>
+        <tr><td class="t">22:10:53</td><td>Refresh</td><td><code>200</code>. The token rotated, and <code>tools/list</code> works with the new access token.</td></tr>
+        <tr><td class="t">22:10:55</td><td>Replay of the old refresh token</td><td><code>400 invalid_grant</code>. The replay revoked the delegation, so the live access token now gets <code>403</code> on <code>/mcp</code>, and the Management UI shows the connection as revoked.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">Production evidence · Harbor (Google Classroom)</span>
+    <h2>Kwame Asante, Marine Science Block 1</h2>
+    <p class="muted">The roster comes from Classroom course <code>896140534378</code>. Signed in through Access with the <code>teacher@</code> test identity.</p>
+  </div>
+  <div class="frame">
+    <table>
+      <thead><tr><th>Time</th><th>Step</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="t">21:32:21</td><td>Discovery, registration, consent, tokens</td><td>Same flow, with Harbor as its own issuer. The consent offered Marine Science and US Government, and the client was scoped to Marine Science (<code>dlg_a1c55293…</code>).</td></tr>
+        <tr><td class="t">21:32:32</td><td><code>get_roster</code></td><td><code>ok</code>. Enrollments IDs start <code>enr_or-…</code>, meaning they were imported from Classroom.</td></tr>
+        <tr><td class="t">21:32:34</td><td><code>get_classroom_grades</code></td><td>Live from Google: three EducateOS-owned coursework items with their Classroom links. Nia Fontaine is returned 9, 8 and 9. Owen Kerr is assigned, turned in, and returned 7. Pia Lund is assigned, returned 9, and returned 8.</td></tr>
+        <tr><td class="t">21:32:36</td><td>Assignments and gradebook</td><td><code>ok</code>: "Rocky Shore Field Notes", 10 points.</td></tr>
+        <tr><td class="t">21:32:38</td><td><code>get_roster_sync_status</code></td><td><code>not-found</code>. It's admin-only, and Kwame is a teacher.</td></tr>
+        <tr><td class="t">21:32:39</td><td><code>create_announcement</code></td><td><code>approval-required</code>.</td></tr>
+        <tr><td class="t">21:32:47</td><td>Kwame approves</td><td><code>applied</code>: <code>ann_92640a00…</code>.</td></tr>
+        <tr><td class="t">21:33:11</td><td>Student view (Nia Fontaine)</td><td>"Tide-pool field trip Friday" is visible in EducateOS. She gets <code>403</code> on <code>/oauth/authorize</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">Found and fixed while validating</span>
+    <h2>Problems found in production and the security review</h2>
+  </div>
+  <div class="frame">
+    <table>
+      <thead><tr><th>Issue</th><th>Effect</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><th>Metadata-document clients weren't checked</th><td>An attacker could reuse a real client's URL with their own redirect and take the code.</td><td>The document is fetched over HTTPS only, with no redirects, a 5 s timeout and a 5 KB limit, and the redirect must be one it lists (#443).</td></tr>
+        <tr><th>Refresh-token replay</th><td>A stolen refresh chain stayed usable.</td><td>A replay revokes the delegation, and <code>client_id</code> is required (#443).</td></tr>
+        <tr><th>Revoked personal token came back</th><td>A race on the last-used update undid the revoke.</td><td>An atomic <code>touch()</code> skips revoked tokens (#443).</td></tr>
+        <tr><th>Student-visible "drafts"</th><td>Page edits, quiz edits, topics and weekly notes skipped the approval queue.</td><td>Reclassified as writes, so they queue (#443).</td></tr>
+        <tr><th>Assets answered <code>/mcp</code></th><td>The single-page app answered the OAuth metadata, and <code>POST /mcp</code> returned 405 in production.</td><td>Added to the Worker's run-first routes for production, the demo districts and releases (#444).</td></tr>
+        <tr><th>A confirmed publish was refused</th><td>A teacher's own approval ran under the client's delegation, which can never publish.</td><td>A confirmation now applies under the person's own authority (#447).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="eyebrow">For a school owner</span>
+    <h2>Setting it up</h2>
+  </div>
+  <ol class="steps">
+    <li><span>Run <code>npx launch-educate-os</code> with a Cloudflare account. The wizard writes the district's config, and MCP is on by default (<code>mode: "builtin"</code>, drafts allowed).</span></li>
+    <li><span>The installer exempts <code>/mcp</code>, the OAuth metadata, JWKS, register, token and revoke paths from Access. <code>/oauth/authorize</code> stays behind it.</span></li>
+    <li><span>Teachers open <code>/teach/#/mcp</code> and admins open <code>/admin/#/mcp</code>. There they copy client setup, mint personal tokens, revoke connections and approve queued writes.</span></li>
+    <li><span>An existing install runs <code>npx launch-educate-os mcp enable</code>. Adding <code>--strict-writes</code> queues drafts too.</span></li>
+  </ol>
+<pre>claude mcp add --transport http educateos https://&lt;your district&gt;/mcp</pre>
+</section>
+
+<footer>
+  <span>Production: <span class="mono">northfield.educateos.io</span> and <span class="mono">harbor.educateos.io</span> on Cloudflare, deployed by ForgeGraph.</span>
+  <span>Code: PRs #443 (server, OAuth, UI, CLI), #444 (Worker routing) and #447 (confirmations) on git.forgegraf.com/gmackie/educate-os.</span>
+  <span>The Classroom API rules come from Google's documentation, as cited in the repository's Google Classroom integration notes.</span>
+</footer>
+
+</div>
