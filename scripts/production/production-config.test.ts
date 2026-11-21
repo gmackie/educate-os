@@ -188,7 +188,7 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   assert.deepEqual(district.assets, {
     directory: "./dist/ui",
     not_found_handling: "single-page-application",
-    run_worker_first: ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"],
+    run_worker_first: ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone", "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server", "/.well-known/jwks.json", "/oauth/*"],
   });
   // Discussion screening reaches the guard's Hall Monitor by the same binding, signing as it does
   // (SCHO-308).
@@ -534,7 +534,7 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
     assert.equal(config.name, before.name);
     assert.deepEqual(config.routes, before.routes);
     assert.deepEqual(config.assets?.run_worker_first,
-        ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone", "/ai", "/ai/*"]);
+        ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone", "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server", "/.well-known/jwks.json", "/oauth/*", "/ai", "/ai/*"]);
     assert.deepEqual(config.vars, {
       LTI_TOOL_ORIGIN: `https://${slug}.educateos.io`,
       AI_DEMO_URL,
