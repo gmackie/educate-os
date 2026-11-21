@@ -246,15 +246,51 @@ describe("Cloudflare HTTP client", () => {
   it("stores a gateway's default provider key and lists keys without their values (SCHO-446)", async () => {
     const KEY = `sk-ant-api03-${"k".repeat(40)}`;
     const config = { id: "pk-1", provider_slug: "anthropic", alias: "default", default_config: true, secret_id: "s-1", secret_preview: "sk-a…kk", gateway_id: "educateos-prairie" };
-    const { fetchImpl, requests } = stubFetch((request) => ok(request.method === "POST" ? config : [config], { page: 1, total_pages: 1 }));
+    const gw = `/client/v4/accounts/${ACCOUNT}/ai-gateway/gateways/educateos-prairie`;
+    const secrets = `/client/v4/accounts/${ACCOUNT}/secrets_store/stores/store-1/secrets`;
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (path === gw) return ok({ id: "educateos-prairie", store_id: "store-1" });
+      if (path === secrets) return ok(request.method === "POST" ? [{ id: "s-1", name: "educateos-prairie_anthropic_default" }] : [{ id: "x", name: "other" }]);
+      return ok(request.method === "POST" ? config : [config], { page: 1, total_pages: 1 });
+    });
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
 
     const stored = await api.storeAiGatewayProviderKey(ACCOUNT, "educateos-prairie", "anthropic", KEY);
     expect(stored).toEqual({ id: "pk-1", providerSlug: "anthropic", alias: "default", secretPreview: "sk-a…kk" });
     await expect(api.listAiGatewayProviderKeys(ACCOUNT, "educateos-prairie")).resolves.toEqual([stored]);
-    const path = `/client/v4/accounts/${ACCOUNT}/ai-gateway/gateways/educateos-prairie/provider_configs`;
-    expect(requests.map((r) => [r.method, new URL(r.url).pathname])).toEqual([["POST", path], ["GET", path]]);
-    expect(await requests[0]!.json()).toEqual({ provider_slug: "anthropic", alias: "default", default_config: true, secret: KEY });
+    const path = `${gw}/provider_configs`;
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname]))
+      .toEqual([["GET", gw], ["GET", secrets], ["POST", secrets], ["POST", path], ["GET", path]]);
+    expect(new URL(requests[1]!.url).searchParams.get("search")).toBe("educateos-prairie_anthropic_default");
+    // Cloudflare's 7001 on 2026-11-21: the gateway finds the key by this secret name.
+    expect(await requests[2]!.json()).toEqual([{
+      name: "educateos-prairie_anthropic_default", value: KEY, scopes: ["ai_gateway"], comment: "AI Gateway provider key, stored by launch-educate-os",
+    }]);
+    expect(await requests[3]!.json()).toEqual({ provider_slug: "anthropic", alias: "default", default_config: true, secret_id: "s-1" });
+  });
+
+  it("gives a leftover secret of the provider's name the new key, and refuses a gateway without a store", async () => {
+    const KEY = `sk-proj-${"p".repeat(40)}`;
+    const config = { id: "pk-2", provider_slug: "openai", alias: "default", secret_preview: "sk-p…pp" };
+    const secrets = `/client/v4/accounts/${ACCOUNT}/secrets_store/stores/store-1/secrets`;
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/gateways/educateos-prairie")) return ok({ store_id: "store-1" });
+      if (path === secrets) return ok([{ id: "s-old", name: "educateos-prairie_openai_default" }]);
+      if (path === `${secrets}/s-old`) return ok({ id: "s-old", name: "educateos-prairie_openai_default" });
+      return ok(config);
+    });
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    await api.storeAiGatewayProviderKey(ACCOUNT, "educateos-prairie", "openai", KEY);
+    expect([requests[2]!.method, new URL(requests[2]!.url).pathname]).toEqual(["PATCH", `${secrets}/s-old`]);
+    expect(await requests[2]!.json()).toEqual({ value: KEY, scopes: ["ai_gateway"] });
+    expect((await requests[3]!.json()).secret_id).toBe("s-old");
+
+    const bare = stubFetch(() => ok({ store_id: "" }));
+    const none = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: bare.fetchImpl });
+    await expect(none.storeAiGatewayProviderKey(ACCOUNT, "educateos-prairie", "openai", KEY)).rejects.toThrow("has no Secrets Store");
+    expect(bare.requests).toHaveLength(1);
   });
 
   it("attaches a Secrets Store to a gateway without one, keeping its other settings (SCHO-446, code 7001)", async () => {

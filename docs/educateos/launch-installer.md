@@ -264,9 +264,10 @@ through the district's own gateway with the key, which runs no model: a 401 or 4
 rejected" and nothing is stored. Cloudflare stores a key only in a gateway that names a Secrets
 Store (code 7001 otherwise; the dashboard sets one on first use, the API doesn't), so the first key
 attaches the account's store to the gateway, creating `default_secrets_store` if the account has
-none, and changes no other gateway setting. A good key is then stored as the gateway's default key for the provider
-(`POST /accounts/{account}/ai-gateway/gateways/{gateway}/provider_configs`; Cloudflare keeps it in
-the account's Secrets Store), the provider is added to the answers' `ai.providers`, and the install
+none, and changes no other gateway setting. A good key then goes into that store as the secret
+`<gateway>_<provider>_default`, scoped to AI Gateway (the gateway finds it by that name), and the
+gateway's default provider config for the provider references it
+(`POST /accounts/{account}/ai-gateway/gateways/{gateway}/provider_configs` with `secret_id`). The provider is added to the answers' `ai.providers`, and the install
 is applied with the release the account runs. The key is never written to the answers file, a
 Worker var, or any output, and a provider's error body is never read, since it can echo the key.
 
