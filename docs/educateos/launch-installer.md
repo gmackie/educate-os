@@ -272,8 +272,10 @@ is applied with the release the account runs. The key is never written to the an
 Worker var, or any output, and a provider's error body is never read, since it can echo the key.
 
 The token needs **AI Gateway: Edit** and **Secrets Store: Edit** besides the install's permissions.
-`ai remove` takes the provider out of `ai.providers` and applies, which turns it off at once; the
-key stays in the gateway until deleted in the dashboard (the command prints the link). A gateway
+`ai remove` takes the provider out of `ai.providers` and applies. The Workshop's Durable Objects
+pick up the new version within minutes (about five on the clean account, 2026-11-21), and until
+then staff can still pick and use the provider's models. To cut it off at once, delete its key in
+the gateway's dashboard as well. The key stays in the gateway until deleted in the dashboard (the command prints the link). A gateway
 that already holds a default key for the provider is not overwritten: replace it in the dashboard.
 
 ## Tests

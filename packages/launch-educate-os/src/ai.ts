@@ -198,7 +198,9 @@ async function remove(deps: AiDeps, provider: FrontierProvider): Promise<number>
     return 0;
   }
   setProviders(answers, providers.filter((p) => p !== provider));
-  deps.out.line(`${name} turns off for the AI Workshop once the install is applied.`);
+  // Measured on the clean account (2026-11-21): the Workshop's Durable Objects took about five
+  // minutes to pick up the new version, and kept offering the provider's models until then.
+  deps.out.line(`${name} turns off for the AI Workshop once the install is applied; chats already open can use it for a few more minutes.`);
   deps.out.line(`The key stays in your AI Gateway; delete it at ${gatewayDashboard(config.accountId, gatewayId)} (Provider Keys).`);
   const cloudflareToken = await token(deps, "Applying the change needs a Cloudflare API token with Workers Scripts: Edit.");
   return await applyChange(deps, answers, cloudflareToken);
