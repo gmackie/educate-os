@@ -1,0 +1,10 @@
+{"at":"2026-11-22T00:31:47.669Z","step":"sdk-registered-client","data":{"client_id":"mcpc_c459e8b1-ff72-44be-a897-e27003018609"}}
+{"at":"2026-11-22T00:31:47.671Z","step":"sdk-authorization-url","data":{"endpoint":"https://northfield.educateos.io/oauth/authorize","params":["response_type","client_id","code_challenge","code_challenge_method","redirect_uri","scope","resource"],"method":"S256","resource":"https://northfield.educateos.io/mcp"}}
+{"at":"2026-11-22T00:31:47.904Z","step":"consent-screen","data":{"status":200,"signedInAs":"Morgan Lee","client":"Official MCP SDK client (production check)","chosen":{"id":"offering:off_nf-bio-fall-p2","label":"Class: Biology I · Period 2 (Fall 2026)"}}}
+{"at":"2026-11-22T00:31:48.119Z","step":"consent-approved","data":{"status":302,"hasCode":true,"iss":"https://northfield.educateos.io"}}
+{"at":"2026-11-22T00:31:48.120Z","step":"sdk-got-401-started-oauth","data":{"error":"UnauthorizedError"}}
+{"at":"2026-11-22T00:31:48.680Z","step":"sdk-saved-tokens","data":{"token_type":"Bearer","expires_in":600,"has_refresh":true,"scope":"mcp:tools"}}
+{"at":"2026-11-22T00:31:49.062Z","step":"sdk-connected","data":{"server":{"name":"educateos-school-tools","version":"0.3.0"},"protocol":"2025-11-25"}}
+{"at":"2026-11-22T00:31:49.941Z","step":"sdk-list-tools","data":{"count":85,"readOnly":45}}
+{"at":"2026-11-22T00:31:50.099Z","step":"sdk-call-list_my_teaching_offerings","data":{"status":"ok","classes":["Biology I · Period 2"]}}
+{"at":"2026-11-22T00:31:50.255Z","step":"sdk-call-create_module-on-read-only","data":{"status":"error","error":"forbidden"}}
