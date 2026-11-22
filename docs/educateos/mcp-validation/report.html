@@ -191,7 +191,7 @@ footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
       <ul>
         <li>The catalog has 85 tools, including directory tools such as <code>create_school</code>. A teacher's class-scoped delegation refuses them (<code>not-found</code>), but a district admin's district-wide delegation can queue them.</li>
         <li>Grades proposed over MCP wait for another approver. The official grade is never set over MCP.</li>
-        <li>No external client has used it yet. The client in this validation was a scripted OAuth client using the same calls Claude Code makes, not the Claude or ChatGPT apps.</li>
+        <li>No Claude or ChatGPT app has connected yet. The official MCP client SDK they build on has connected; the only stand-in was the browser consent step, done with the teacher's Access session.</li>
         <li>Access tokens last 10 minutes. Refresh tokens last until the delegation ends, which is at most 90 days.</li>
       </ul>
     </div>
@@ -243,6 +243,7 @@ footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
         <tr><td class="t">21:19:31</td><td>Morgan approves the announcement</td><td><code>applied</code>: <code>ann_c1706614…</code>.</td></tr>
         <tr><td class="t">21:19:32</td><td>Morgan approves the quiz publish</td><td><code>403</code>. The bug was found here: the approved change ran under the client's delegation, which can never publish. Fixed in #447.</td></tr>
         <tr><td class="t">22:10:36</td><td>Morgan approves the quiz publish again, after #447</td><td><code>applied</code>. Lucía now sees "ATP check-in (MCP demo)" as published.</td></tr>
+        <tr><td class="t">00:31:47</td><td>Official MCP client SDK (<code>@modelcontextprotocol/client</code> 2.4.0)</td><td>The SDK ran OAuth itself (401, discovery, registration, PKCE, token exchange). It connected over <code>2025-11-25</code>, listed 85 tools and called one. A write on the read-only connection got <code>forbidden</code>.</td></tr>
         <tr><td class="t">21:32:18</td><td>Student view (Lucía Delgado)</td><td>"Unit 4 starts Monday" is visible in her class. She gets <code>403</code> on the MCP admin API and on <code>/oauth/authorize</code>.</td></tr>
         <tr><td class="t">22:10:53</td><td>Refresh</td><td><code>200</code>. The token rotated, and <code>tools/list</code> works with the new access token.</td></tr>
         <tr><td class="t">22:10:55</td><td>Replay of the old refresh token</td><td><code>400 invalid_grant</code>. The replay revoked the delegation, so the live access token now gets <code>403</code> on <code>/mcp</code>, and the Management UI shows the connection as revoked.</td></tr>

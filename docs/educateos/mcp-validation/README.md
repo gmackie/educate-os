@@ -11,6 +11,7 @@ All accounts are synthetic. The client was `scripts/demo/mcp-production-demo.ts`
 | --- | --- |
 | `report.html` | The comparison report: native LMS-lite, LMS-lite over Google Classroom, and the Classroom API alone, plus the evidence tables. It is a standalone page, so open it in a browser. |
 | `evidence-northfield.jsonl` | Every step as Morgan Lee (Biology I P2), in UTC. Tokens are redacted. |
+| `evidence-northfield-sdk.jsonl` | The official MCP client SDK (`@modelcontextprotocol/client` 2.4.0) on Northfield. It ran OAuth itself: the 401, discovery, registration, PKCE and token exchange. |
 | `evidence-harbor.jsonl` | Every step as Kwame Asante (Marine Science B1), in UTC. Tokens are redacted. |
 
 ## What passed
@@ -29,6 +30,14 @@ All accounts are synthetic. The client was `scripts/demo/mcp-production-demo.ts`
   - Admin tools (`create_school`, `get_roster_sync_status`) answered `not-found` for a teacher.
   - Students got 403 at `/oauth/authorize` and on the MCP management API.
 
+- **The official client SDK.** `@modelcontextprotocol/client` 2.4.0 connected with only a stand-in for the browser, which was the teacher's Access session approving consent:
+  - it negotiated protocol `2025-11-25`;
+  - it listed 85 tools, 45 of them read-only;
+  - it called `list_my_teaching_offerings`, which returned only Biology I P2;
+  - on the read-only connection, its `create_module` call was refused with `forbidden`.
+
+Every demo connection was revoked afterwards. Neither district has an active delegation from these runs.
+
 ## Found and fixed during the run
 
 - **#444:** the district Worker's assets answered `/mcp` and the OAuth metadata with the UI's single-page fallback. `DISTRICT_WORKER_ROUTES` now lists those paths.
@@ -36,7 +45,7 @@ All accounts are synthetic. The client was `scripts/demo/mcp-production-demo.ts`
 
 ## Not covered
 
-- No Claude, ChatGPT or Cursor app has connected yet.
+- No Claude, ChatGPT or Cursor app has connected yet. The official SDK they build on has, and the only thing it didn't do itself was the browser consent step.
 - On Harbor, announcements, quizzes and modules an AI client authors stay in EducateOS and are not posted to Google Classroom.
 - Grades go to Classroom only through the passback gate, on coursework EducateOS created.
 
