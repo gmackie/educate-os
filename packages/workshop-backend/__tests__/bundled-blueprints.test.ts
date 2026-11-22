@@ -12,6 +12,8 @@ import type { OverseerDurableObject } from "../src/overseer.js";
 import { parseBlueprintKvRecord } from "../src/storage-schema/blueprints-kv.js";
 import { bundledBlueprintsManifestVersion, installBundledBlueprints } from "../src/bundled-blueprints.js";
 import { BUNDLED_BLUEPRINTS } from "../src/generated/bundled-blueprints.js";
+import BUNDLED_CONTENT_KEYS from "../src/generated/bundled-content-keys.json";
+import { bundledContentKey } from "@gadgets/bundled-blueprints/snapshot";
 
 declare module "cloudflare:workers" {
   interface ProvidedEnv {
@@ -166,9 +168,18 @@ describe("bundled blueprints", () => {
       let key = `${entry.blueprintId}/${commitId}`;
       expect(blueprintContentKey(entry.blueprintId, record.metadata)).toBe(key);
       expect(await storedKeys(entry.blueprintId)).toEqual([key]);
+      // The build computes the same key without the backend (SCHO-444): the release lists these,
+      // and uninstall deletes exactly them.
+      expect(bundledContentKey(entry.blueprintId, new Map(entry.files))).toBe(key);
+      expect(BUNDLED_CONTENT_KEYS).toContain(key);
       let objects = await readReleasePack(await storedContent(key), commitId);
       expect(listReleaseFiles(objects, commitId)).toEqual(new Map(entry.files));
     }
+  });
+
+  it("lists one content key per bundled blueprint for the release", () => {
+    expect(BUNDLED_CONTENT_KEYS).toHaveLength(BUNDLED_BLUEPRINTS.length);
+    expect(BUNDLED_CONTENT_KEYS).toEqual([...BUNDLED_CONTENT_KEYS].toSorted());
   });
 
   it("installs blueprints that instantiate", async () => {

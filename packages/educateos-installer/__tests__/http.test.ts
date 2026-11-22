@@ -325,6 +325,17 @@ describe("Cloudflare HTTP client", () => {
     expect(attached.requests).toHaveLength(1);
   });
 
+  it("deletes one R2 object by exact key, in its bucket's jurisdiction (SCHO-444)", async () => {
+    const { fetchImpl, requests } = stubFetch(() => ok(null));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    await api.deleteR2Object(ACCOUNT, "educateos-northfield-blueprint-content", `educateos.tutor-k2/${"a".repeat(40)}`, "us");
+    expect(requests[0]!.method).toBe("DELETE");
+    // The key's slash is encoded, so it is one path segment: the object, not a prefix.
+    expect(new URL(requests[0]!.url).pathname).toBe(
+      `/client/v4/accounts/${ACCOUNT}/r2/buckets/educateos-northfield-blueprint-content/objects/educateos.tutor-k2%2F${"a".repeat(40)}`);
+    expect(requests[0]!.headers.get("cf-r2-jurisdiction")).toBe("us");
+  });
+
   it("deletes one secret by name", async () => {
     const { fetchImpl, requests } = stubFetch(() => ok(null));
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });

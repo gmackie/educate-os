@@ -21,3 +21,4 @@ export {
 } from "./manifest.ts";
 export type { GeneratedModule, GenerateOptions } from "./generate.ts";
 export { BUNDLED_BLUEPRINTS_DIR, generateBundledBlueprintsModule } from "./generate.ts";
+export { bundledContentKey, snapshotCommitId } from "./snapshot.ts";

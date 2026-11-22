@@ -76,8 +76,10 @@ guess.
 deletes above, it uses `deleteWorkerScript` (never `force`), `detachWorkerDomain`,
 `deleteCustomHostname` and `deleteWorkerRoute`, which installs already call. It reads the same lists
 as planning, plus each prefixed Worker's settings (for its instance marker) and the backend's secret
-names (to say whether it registered). It never reads or deletes an R2 object, KV value or D1 row, so
-it cannot empty a bucket: the operator does. None of the uninstall's calls has run against a live
+names (to say whether it registered). It never reads an R2 object, KV value or D1 row. The one
+object it deletes is one its own release seeded: `deleteR2Object`, by the exact keys the manifest's
+`seededR2Objects` lists (the backend's bundled blueprints, SCHO-444), never by listing or prefix. So
+it cannot empty a bucket that holds anything else: the operator does. None of the uninstall's calls has run against a live
 account yet (SCHO-378); the fake models them, and the not-found and not-empty codes are assumed.
 
 A pinned install (`dataJurisdiction: "us"`, [ADR-0015](adr/0015-us-data-jurisdiction.md)) calls the
@@ -196,7 +198,9 @@ Cloudflare's permission groups are coarser than the installer's needs. Workers K
 can read KV values. Workers R2 Storage: Edit can read objects. D1: Edit can query any table. So
 ADR-0001's rule that the installer never holds data access rests on three things, not on scopes:
 
-- The `CloudflareApi` port has no KV value, R2 object or Worker tail operation. `queryD1` runs only
+- The `CloudflareApi` port has no KV value read, R2 object read or listing, or Worker tail
+  operation. Its one object operation, uninstall's `deleteR2Object`, deletes by exact key only the
+  objects the release manifest says its Workers seeded (SCHO-444). `queryD1` runs only
   the release's migration SQL and reads only the `_educateos_migrations` ledger, which holds
   migration IDs.
 - OAuth grants are for the install session. The district revokes them when it is done, and a

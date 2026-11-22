@@ -31,8 +31,13 @@ function fullConfig(release: TestRelease, overrides: Overrides = {}) {
   });
 }
 
-async function installed(options: { overrides?: Overrides; fake?: FakeCloudflare; registry?: ReturnType<typeof makeRoot> } = {}) {
-  const release = await goldenRelease();
+async function installed(options: {
+  overrides?: Overrides; fake?: FakeCloudflare; registry?: ReturnType<typeof makeRoot>; seeded?: string[];
+} = {}) {
+  const golden = await goldenRelease();
+  // A release whose backend seeds bundled blueprints into BLUEPRINT_CONTENT lists their keys (SCHO-444).
+  const release = options.seeded === undefined ? golden : { ...golden, manifest: structuredClone(golden.manifest) };
+  if (options.seeded) release.manifest.workers["workshop-backend"]!.seededR2Objects = [{ binding: "BLUEPRINT_CONTENT", keys: options.seeded }];
   // The managed zone in the district's account: the same-account path, as the owner's districts use.
   const fake = options.fake ?? accountFor(NORTHFIELD, { zones: [{ name: "northfield.example" }, { name: "educateos.io" }] });
   const api = fake.api(tokenFor(fake, "district-run").tokens);
@@ -186,6 +191,49 @@ describe("uninstall apply", () => {
     fake.emptyR2Bucket(bucket.name, bucket.jurisdiction);
     const finished = await run({ dryRun: false, confirm: "ins_northfield" });
     expect(finished.status).toBe("removed");
+    expect(empty(fake)).toBe(true);
+  });
+
+  it("deletes exactly the objects the release seeded, before the bucket, and leaves a district's own (SCHO-444)", async () => {
+    const seeded = [`educateos.tutor-k2/${"a".repeat(40)}`, `educateos.workspace-docs/${"b".repeat(40)}`];
+    const { fake, config, release, run } = await installed({ seeded });
+    const bucket = compileDesiredState(release.manifest, config).resources
+      .find((r) => r.kind === "r2_bucket" && r.name.endsWith("-blueprint-content"))!;
+    if (bucket.kind !== "r2_bucket") throw new Error("expected a bucket");
+    expect(bucket.seededKeys).toEqual(seeded);
+    // The backend seeded one of the two at first start, and a teacher published a blueprint.
+    const published = `educateos.tutor-k2/${"c".repeat(40)}`;
+    fake.putR2Objects(bucket.name, [seeded[0]!, published], bucket.jurisdiction);
+
+    const plan = await run();
+    const keys = plan.plan.steps.map((s) => s.key);
+    expect(keys.indexOf(`r2-seeded:${bucket.name}`)).toBe(keys.indexOf(`r2:${bucket.name}`) - 1);
+    expect(plan.plan.steps.find((s) => s.key === `r2-seeded:${bucket.name}`)).toMatchObject({
+      action: "delete", target: { kind: "r2_seeded_objects", bucket: bucket.name, keys: seeded },
+    });
+
+    const report = await run({ dryRun: false, confirm: "ins_northfield" });
+    // The published blueprint is the district's: it stays, so the bucket does too.
+    expect(fake.r2ObjectKeys(bucket.name, bucket.jurisdiction)).toEqual([published]);
+    expect(report.status).toBe("incomplete");
+    expect(report.result!.deleted).toContain(`r2-seeded:${bucket.name}`);
+    expect(report.result!.failed).toEqual([{ key: `r2:${bucket.name}`, reason: expect.stringContaining("objects the release didn't seed") }]);
+    // One delete per listed key, the never-seeded one included (R2 deletes a missing key quietly).
+    expect(fake.calls.filter((c) => c.operation === "deleteR2Object" && c.outcome === "ok")).toHaveLength(seeded.length);
+
+    fake.emptyR2Bucket(bucket.name, bucket.jurisdiction);
+    expect((await run({ dryRun: false, confirm: "ins_northfield" })).status).toBe("removed");
+    expect(empty(fake)).toBe(true);
+  });
+
+  it("finishes in one run when the bucket holds only seeded objects", async () => {
+    const seeded = [`educateos.tutor-k2/${"a".repeat(40)}`];
+    const { fake, config, release, run } = await installed({ seeded });
+    const bucket = compileDesiredState(release.manifest, config).resources
+      .find((r) => r.kind === "r2_bucket" && r.name.endsWith("-blueprint-content"))!;
+    if (bucket.kind !== "r2_bucket") throw new Error("expected a bucket");
+    fake.putR2Objects(bucket.name, seeded, bucket.jurisdiction);
+    expect((await run({ dryRun: false, confirm: "ins_northfield" })).status).toBe("removed");
     expect(empty(fake)).toBe(true);
   });
 

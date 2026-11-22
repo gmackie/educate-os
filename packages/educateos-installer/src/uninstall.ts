@@ -15,8 +15,9 @@
 // Anything else named with the instance's prefix is listed as `unclaimed`, for a person to check,
 // and never deleted. The district's data goes with its Workers (their Durable Objects), D1
 // databases, KV namespaces and R2 buckets, so applying needs the operator to confirm with the
-// instance ID, and an R2 bucket that still holds objects is reported rather than emptied: the
-// installer has no object operation, by design (installer-permissions.md).
+// instance ID. In an R2 bucket it deletes only the objects the release's Workers seeded at first
+// start, by the exact keys the manifest lists (the backend's bundled blueprints, SCHO-444); a
+// bucket that still holds anything else is reported rather than emptied (installer-permissions.md).
 import { EducateOsError } from "@educateos/contracts";
 import { type CloudflareApi, DATA_JURISDICTIONS, type DataJurisdiction } from "./cloudflare-api.ts";
 import { type DistrictInstallConfig, resourcePrefix } from "./config.ts";
@@ -52,6 +53,7 @@ export type UninstallTarget =
   | { kind: "ai_gateway"; gatewayId: string }
   | { kind: "kv_namespace"; title: string; namespaceId?: string }
   | { kind: "r2_bucket"; name: string; jurisdiction?: DataJurisdiction }
+  | { kind: "r2_seeded_objects"; bucket: string; jurisdiction?: DataJurisdiction; keys: string[] }
   | { kind: "d1_database"; name: string; databaseId?: string }
   | { kind: "dns_record"; name: string };
 
@@ -259,10 +261,16 @@ export async function planUninstall(api: CloudflareApi, desired: DesiredState): 
       case "r2_bucket": {
         claimed.add(`r2:${resource.jurisdiction ?? "default"}/${resource.name}`);
         const found = r2.some((b) => b.name === resource.name && b.jurisdiction === resource.jurisdiction);
+        const seeded = resource.seededKeys ?? [];
+        if (found && seeded.length > 0) {
+          step("storage", "delete", `r2-seeded:${resource.name}`,
+            { kind: "r2_seeded_objects", bucket: resource.name, ...(resource.jurisdiction ? { jurisdiction: resource.jurisdiction } : {}), keys: seeded },
+            `deletes the ${seeded.length} object(s) the release seeded into it (its bundled blueprints), by exact key; nothing a district wrote`);
+        }
         step("storage", found ? "delete" : "gone", `r2:${resource.name}`,
           { kind: "r2_bucket", name: resource.name, ...(resource.jurisdiction ? { jurisdiction: resource.jurisdiction } : {}) },
           found
-            ? "deletes the bucket once it is empty: the installer never deletes objects, so empty it first (a lifecycle rule that expires every object)"
+            ? "deletes the bucket once it is empty: the installer deletes only objects the release seeded, so empty anything else first (a lifecycle rule that expires every object)"
             : "bucket not in the account");
         break;
       }
@@ -392,6 +400,10 @@ async function deleteTarget(api: CloudflareApi, account: string, instanceId: str
       return await guarded(() => api.deleteKvNamespace(account, target.namespaceId!));
     case "r2_bucket":
       return await guarded(() => api.deleteR2Bucket(account, target.name, target.jurisdiction));
+    case "r2_seeded_objects":
+      // One at a time and by exact key; a key already gone is fine, so a re-run continues.
+      for (const key of target.keys) await guarded(() => api.deleteR2Object(account, target.bucket, key, target.jurisdiction));
+      return;
     case "d1_database":
       return await guarded(() => api.deleteD1Database(account, target.databaseId!));
     case "dns_record":
@@ -403,8 +415,9 @@ function failureReason(step: UninstallStep, error: CloudflareApiError): string {
   const codes = error.cloudflareCodes.length > 0 ? `, code ${error.cloudflareCodes.join(", ")}` : "";
   const what = error.status === 0 ? "no response from Cloudflare" : `Cloudflare refused (HTTP ${error.status}${codes})`;
   if (step.target.kind === "r2_bucket" && error.cloudflareCodes.includes(R2_BUCKET_NOT_EMPTY_CODE)) {
-    return `${what}: the bucket still holds objects. Copy what the district must keep, empty it (a lifecycle rule that ` +
-      `expires every object does it for a large bucket; a Bucket Lock rule keeps objects until it expires), then run uninstall again`;
+    return `${what}: the bucket still holds objects the release didn't seed: the district's own, or bundled blueprints an ` +
+      `earlier release seeded. Copy what the district must keep, empty it (a lifecycle rule that expires every object does it ` +
+      `for a large bucket; a Bucket Lock rule keeps objects until it expires), then run uninstall again`;
   }
   if (step.target.kind === "worker_script" && error.cloudflareCodes.includes(10142)) {
     return `${what}: another Worker still binds it. Delete that Worker first, or run uninstall again once it is gone`;

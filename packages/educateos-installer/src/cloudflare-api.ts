@@ -359,6 +359,11 @@ export interface CloudflareApi {
    * objects. Uninstall only (SCHO-368).
    */
   deleteR2Bucket(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<void>;
+  /**
+   * Deletes one object by exact key. Uninstall only, and only for the keys a release's manifest says
+   * its Workers seed (SCHO-444): never a listing, never a prefix, never a district's object.
+   */
+  deleteR2Object(accountId: string, bucket: string, key: string, jurisdiction?: DataJurisdiction): Promise<void>;
   listD1Databases(accountId: string): Promise<D1Database[]>;
   /** Creates a D1 database, restricted to `jurisdiction` when one is given. */
   createD1Database(accountId: string, name: string, jurisdiction?: DataJurisdiction): Promise<D1Database>;

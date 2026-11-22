@@ -78,7 +78,7 @@ const MUTATIONS = new Set([
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
   "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
-  "deleteKvNamespace", "deleteR2Bucket", "deleteD1Database", "deleteAccessPolicy", "deleteAccessApplication", "deleteAiGateway",
+  "deleteKvNamespace", "deleteR2Bucket", "deleteR2Object", "deleteD1Database", "deleteAccessPolicy", "deleteAccessApplication", "deleteAiGateway",
   "storeAiGatewayProviderKey", "attachAiGatewayStore",
 ]);
 
@@ -99,7 +99,7 @@ export class FakeCloudflare {
   /** R2 buckets, as `<jurisdiction>/<name>`: R2 names buckets per jurisdiction (`default` for none). */
   readonly #r2 = new Set<string>();
   /** How many objects each R2 bucket holds, by the same key. Absent means empty. */
-  readonly #r2Objects = new Map<string, number>();
+  readonly #r2Objects = new Map<string, Set<string>>();
   readonly #d1 = new Map<string, { uuid: string; jurisdiction?: string; ledger: Set<string> | undefined; statements: string[] }>();
   readonly #policies = new Map<string, AccessPolicy>();
   readonly #apps = new Map<string, AccessApplication>();
@@ -268,12 +268,20 @@ export class FakeCloudflare {
   }
 
   /**
-   * Puts `count` objects in an R2 bucket, as the district's own Workers would. The installer has no
-   * object operation, so only a test (standing in for the operator) can add or remove them.
+   * Puts objects in an R2 bucket, as the district's own Workers would: `count` district objects, or
+   * the given keys (a release's seeded ones, say). The installer deletes only objects a release
+   * seeds (SCHO-444), so only a test, standing in for the operator, removes the rest.
    */
-  putR2Objects(name: string, count: number, jurisdiction?: string): void {
-    if (!this.#r2.has(r2Key(name, jurisdiction))) throw new Error(`no R2 bucket ${name}`);
-    this.#r2Objects.set(r2Key(name, jurisdiction), count);
+  putR2Objects(name: string, objects: number | string[], jurisdiction?: string): void {
+    const key = r2Key(name, jurisdiction);
+    if (!this.#r2.has(key)) throw new Error(`no R2 bucket ${name}`);
+    const keys = typeof objects === "number" ? Array.from({ length: objects }, (_, i) => `district/object-${i}`) : objects;
+    this.#r2Objects.set(key, new Set([...(this.#r2Objects.get(key) ?? []), ...keys]));
+  }
+
+  /** The keys of the objects an R2 bucket holds, sorted. */
+  r2ObjectKeys(name: string, jurisdiction?: string): string[] {
+    return [...(this.#r2Objects.get(r2Key(name, jurisdiction)) ?? [])].toSorted();
   }
 
   /** Empties an R2 bucket, as an operator's lifecycle rule or dashboard deletion would. */
@@ -620,8 +628,15 @@ export class FakeCloudflare {
       const key = r2Key(name, jurisdiction);
       if (!this.#r2.has(key)) throw new CloudflareApiError("deleteR2Bucket", 404, [10006]);
       // R2 refuses to delete a bucket that still holds objects: HTTP 409, code 10008 (BucketNotEmpty).
-      if ((this.#r2Objects.get(key) ?? 0) > 0) throw new CloudflareApiError("deleteR2Bucket", 409, [10008]);
+      if ((this.#r2Objects.get(key)?.size ?? 0) > 0) throw new CloudflareApiError("deleteR2Bucket", 409, [10008]);
       this.#r2.delete(key);
+    },
+    deleteR2Object: (name: string, object: string, jurisdiction?: string) => {
+      this.#requireR2("deleteR2Object");
+      const key = r2Key(name, jurisdiction);
+      if (!this.#r2.has(key)) throw new CloudflareApiError("deleteR2Object", 404, [10006]);
+      // R2's object delete succeeds for a key that isn't there.
+      this.#r2Objects.get(key)?.delete(object);
     },
     deleteD1: (uuid: string) => {
       const entry = [...this.#d1].find(([, db]) => db.uuid === uuid);
@@ -887,6 +902,7 @@ class FakeCloudflareApi implements CloudflareApi {
   listR2Buckets(a: string, j?: DataJurisdiction) { return this.#call(a, "listR2Buckets", () => this.#fake.op.r2(j)); }
   createR2Bucket(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "createR2Bucket", () => this.#fake.op.createR2(n, j)); }
   deleteR2Bucket(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "deleteR2Bucket", () => this.#fake.op.deleteR2(n, j)); }
+  deleteR2Object(a: string, n: string, k: string, j?: DataJurisdiction) { return this.#call(a, "deleteR2Object", () => this.#fake.op.deleteR2Object(n, k, j)); }
   listD1Databases(a: string) { return this.#call(a, "listD1Databases", () => this.#fake.op.d1()); }
   createD1Database(a: string, n: string, j?: DataJurisdiction) { return this.#call(a, "createD1Database", () => this.#fake.op.createD1(n, j)); }
   deleteD1Database(a: string, id: string) { return this.#call(a, "deleteD1Database", () => this.#fake.op.deleteD1(id)); }
