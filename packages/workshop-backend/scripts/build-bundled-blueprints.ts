@@ -26,7 +26,7 @@ const sourceDir = process.env.BUNDLED_BLUEPRINTS_DIR
     : BUNDLED_BLUEPRINTS_DIR;
 const outFile = resolve(pkgRoot, parseOutFlag() ?? join("src", "generated", "bundled-blueprints.ts"));
 
-const { text: generated, count, totalBytes } = await generateBundledBlueprintsModule(sourceDir, {
+const { text: generated, count, totalBytes, contentKeys } = await generateBundledBlueprintsModule(sourceDir, {
   builtFrom: process.env.BUNDLED_BLUEPRINTS_DIR ? "BUNDLED_BLUEPRINTS_DIR" : "blueprints/",
 });
 
@@ -48,6 +48,22 @@ if (unchanged) {
   await writeFile(outFile, generated);
   console.log(`Bundled ${count} blueprint(s) from ${sourceDir}, ` +
       `${(totalBytes / 1024).toFixed(0)} KiB of files -> ${outFile}`);
+}
+
+// Beside the module: the BLUEPRINT_CONTENT keys the backend writes these blueprints under at first
+// start. The release build lists them in the manifest, so uninstall can delete exactly these
+// objects and nothing a district wrote (SCHO-444; scripts/release/manifest-lib.ts).
+const keysFile = join(dirname(outFile), "bundled-content-keys.json");
+const keysText = `${JSON.stringify(contentKeys, null, 2)}\n`;
+let keysUnchanged = false;
+try {
+  keysUnchanged = await readFile(keysFile, "utf8") === keysText;
+} catch (err) {
+  if (!isErrorCode(err, "ENOENT")) throw err;
+}
+if (!keysUnchanged) {
+  await mkdir(dirname(keysFile), { recursive: true });
+  await writeFile(keysFile, keysText);
 }
 
 function isErrorCode(err: unknown, code: string): boolean {

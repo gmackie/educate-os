@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { collectAssets, collectModules, stableStringify } from "./hash-lib.ts";
 import {
   ADMIN_PACKAGE, ASSET_VARIANTS, releaseAssetVariants, COMPONENT_ASSET_VARIANT, DISTRICT_ORIGIN, DISTRICT_SERVICE_PACKAGE,
-  DISTRICT_WORKER_ROUTES, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs, readReleasePackages,
+  DISTRICT_WORKER_ROUTES, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs, readReleasePackages, readSeededR2Objects,
   releaseShortName, type WorkerBuild,
 } from "./manifest-lib.ts";
 
@@ -465,6 +465,43 @@ test("a D1 database becomes a $D1_<B>_ID binding and its migrations content-addr
   }
   // Local-dev identifiers never reach a customer manifest.
   assert.doesNotMatch(JSON.stringify(entry), /local-id/);
+});
+
+// SCHO-444: the backend seeds its bundled blueprints into BLUEPRINT_CONTENT; its build writes their
+// exact keys beside the generated module, and the manifest lists them for uninstall.
+function seedingPackage(keys: string[] | undefined) {
+  const dir = mkdtempSync(join(tmpdir(), "manifest-lib-seeded-"));
+  if (keys) {
+    mkdirSync(join(dir, "src", "generated"), { recursive: true });
+    writeFileSync(join(dir, "src", "generated", "bundled-content-keys.json"), JSON.stringify(keys));
+  }
+  const config = { name: "educateos-ai-guard", main: "src/index.ts", r2_buckets: [{ binding: "BLUEPRINT_CONTENT", bucket_name: "local" }] };
+  return { name: "educateos-ai-guard", dir, config };
+}
+
+test("a worker's seeded R2 objects reach its manifest entry by exact key, sorted", () => {
+  const keys = [`educateos.tutor-k2/${"b".repeat(40)}`, `educateos.docs/${"a".repeat(40)}`];
+  const pkg = seedingPackage(keys);
+  const seeded = readSeededR2Objects(pkg);
+  assert.deepEqual(seeded, [{ binding: "BLUEPRINT_CONTENT", keys }]);
+  const { mainModule, modules } = collectModules(join(TESTDATA, "fixture-bundles", "educateos-ai-guard"));
+  const entry = buildTestManifest([{ pkgName: pkg.name, config: pkg.config, mainModule, modules, seededR2Objects: seeded }])
+    .workers["educateos-ai-guard"];
+  assert.deepEqual(entry.seededR2Objects, [{ binding: "BLUEPRINT_CONTENT", keys: keys.toSorted() }]);
+});
+
+test("a BLUEPRINT_CONTENT binding without the build's key list fails the release build", () => {
+  assert.throws(() => readSeededR2Objects(seedingPackage(undefined)), /bundled-content-keys\.json is missing/);
+  assert.equal(readSeededR2Objects({ ...seedingPackage(undefined), config: { name: "x", main: "src/index.ts" } }), undefined);
+});
+
+test("seeded objects must name one of the worker's buckets and be <id>/<commit> keys", () => {
+  const pkg = seedingPackage([]);
+  const { mainModule, modules } = collectModules(join(TESTDATA, "fixture-bundles", "educateos-ai-guard"));
+  const build = (seededR2Objects: { binding: string; keys: string[] }[]) =>
+    buildTestManifest([{ pkgName: pkg.name, config: pkg.config, mainModule, modules, seededR2Objects }]);
+  assert.throws(() => build([{ binding: "OTHER", keys: [] }]), /not one of its r2_buckets/);
+  assert.throws(() => build([{ binding: "BLUEPRINT_CONTENT", keys: ["educateos.docs/"] }]), /is not <id>\/<commit>/);
 });
 
 test("workers without D1 carry no d1Migrations field, so existing manifests are unchanged", () => {

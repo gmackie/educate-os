@@ -49,7 +49,7 @@ import {
   SIGNED_MANIFEST_FILE, signReleaseManifest, type ReleaseSigningOptions,
 } from "./release-signing.ts";
 import {
-  DISTRICT_UI_DIR, releaseAssetVariants, generateManifest, readD1Migrations, readDeployInputs,
+  DISTRICT_UI_DIR, releaseAssetVariants, generateManifest, readD1Migrations, readDeployInputs, readSeededR2Objects,
   readReleasePackages, type DeployablePackage, type WorkerBuild,
 } from "./manifest-lib.ts";
 import { assembleDistrictUi, DISTRICT_UIS } from "../production/assemble-district-ui.ts";
@@ -446,6 +446,7 @@ async function main() {
       writeFileSync(join(args.out, "assets", hash), blob.bytes);
     }
     const d1Migrations = readD1Migrations(pkg);
+    const seededR2Objects = readSeededR2Objects(pkg);
     for (const blob of [...modules, ...d1Migrations]) {
       writeFileSync(join(args.out, "modules", blob.sha256), blob.bytes);
     }
@@ -456,6 +457,7 @@ async function main() {
       modules,
       deployInputs: readDeployInputs(pkg.dir),
       d1Migrations,
+      ...(seededR2Objects ? { seededR2Objects } : {}),
       ...(ownAssets ? { ownAssets } : {}),
     };
   });

@@ -472,6 +472,12 @@ export class CloudflareHttpApi implements CloudflareApi {
     });
   }
 
+  async deleteR2Object(accountId: string, bucket: string, key: string, jurisdiction?: DataJurisdiction) {
+    await this.#result("deleteR2Object", "DELETE", `/accounts/${seg(accountId)}/r2/buckets/${seg(bucket)}/objects/${seg(key)}`, {
+      headers: r2JurisdictionHeader(jurisdiction),
+    });
+  }
+
   async listD1Databases(accountId: string) {
     return await this.#paged("listD1Databases", `/accounts/${seg(accountId)}/d1/database`, D1Wire);
   }

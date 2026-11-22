@@ -62,6 +62,12 @@ export interface DesiredR2Bucket extends ResourceBase {
   name: string;
   /** The jurisdiction it is created in, and bound in (ADR-0015); none when the install is unpinned. */
   jurisdiction?: DataJurisdiction;
+  /**
+   * The exact keys of the objects the release's Workers write into it at first start (the
+   * backend's bundled blueprints, SCHO-444): the release's, not the district's, so uninstall
+   * deletes these before the bucket, and nothing else in it.
+   */
+  seededKeys?: string[];
 }
 
 /** A D1 database and the release's migrations for it, in order. */
@@ -768,6 +774,11 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         resolved.jurisdiction = config.dataJurisdiction;
       }
       bindings.push(resolved);
+    }
+    for (const seeded of entry.seededR2Objects ?? []) {
+      const bucket = storage.get(storageKey("r2", seeded.binding));
+      if (bucket?.kind !== "r2_bucket") invalid(`${pkgName} seeds objects into ${seeded.binding}, which it does not bind to an install bucket`);
+      bucket.seededKeys = [...new Set([...(bucket.seededKeys ?? []), ...seeded.keys])].toSorted();
     }
 
     // Gatekeepers are reached through GATEKEEPER_<SLUG> service bindings on the backend and router.

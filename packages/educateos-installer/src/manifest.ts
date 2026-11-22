@@ -184,6 +184,16 @@ export const WorkerEntry = z.strictObject({
   }).optional(),
   inputs: z.array(DeployInput).optional(),
   d1Migrations: z.array(D1Migration).optional(),
+  /**
+   * Objects the worker writes into the bucket one of its `r2_bucket` bindings names, at first start,
+   * by exact key (manifest-lib's `SeededR2Objects`): the backend's bundled blueprints. Uninstall
+   * deletes exactly these before deleting the bucket (SCHO-444). A launcher older than this field
+   * refuses a manifest carrying it, so publish the launcher before the first release that does.
+   */
+  seededR2Objects: z.array(z.strictObject({
+    binding: BindingName,
+    keys: z.array(z.string().regex(/^[A-Za-z0-9._-]+\/[0-9a-f]{40}$/, "expected <id>/<commit>")).max(500),
+  })).optional(),
 });
 /** A worker entry. */
 export type WorkerEntry = z.infer<typeof WorkerEntry>;

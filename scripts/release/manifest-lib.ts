@@ -346,6 +346,19 @@ export interface WorkerEntry {
    * worker that declares D1 databases, so manifests of releases without D1 are unchanged.
    */
   d1Migrations?: D1MigrationEntry[];
+  /**
+   * Objects the worker writes into its own R2 buckets when it first starts, by exact key: the
+   * backend's bundled blueprints in BLUEPRINT_CONTENT (SCHO-444). They are the release's, not the
+   * district's, so uninstall deletes exactly these before deleting the bucket. Absent when the
+   * worker seeds nothing.
+   */
+  seededR2Objects?: SeededR2Objects[];
+}
+
+/** The objects a worker seeds into the bucket one of its `r2_bucket` bindings names. */
+export interface SeededR2Objects {
+  binding: string;
+  keys: string[];
 }
 
 /** The release manifest: the contract between this repo's CI and the deploy service. */
@@ -380,6 +393,8 @@ export interface WorkerBuild {
   deployInputs?: DeployInput[];
   /** The package's D1 migration files (see {@link readD1Migrations}). */
   d1Migrations?: CollectedD1Migration[];
+  /** The objects the worker seeds into its buckets (see {@link readSeededR2Objects}). */
+  seededR2Objects?: SeededR2Objects[];
   /**
    * A worker's own static assets (a release component's SPA, or the district Worker's UIs), recorded
    * as its one {@link COMPONENT_ASSET_VARIANT} variant. Without them, a worker that serves assets gets the
@@ -731,6 +746,23 @@ export function readDeployInputs(pkgDir: string): DeployInput[] | undefined {
 }
 
 /**
+ * The objects a package's worker seeds into its R2 buckets at first start. Today only the Workshop
+ * backend, whose bundled blueprints go into BLUEPRINT_CONTENT under the keys its build wrote to
+ * `src/generated/bundled-content-keys.json` (scripts/build-bundled-blueprints.ts, SCHO-444).
+ * A backend that binds BLUEPRINT_CONTENT without that file fails the build: run `pnpm build` first.
+ */
+export function readSeededR2Objects(pkg: DeployablePackage): SeededR2Objects[] | undefined {
+  if (!(pkg.config.r2_buckets ?? []).some((r2) => r2.binding === "BLUEPRINT_CONTENT")) return undefined;
+  const path = join(pkg.dir, "src", "generated", "bundled-content-keys.json");
+  if (!existsSync(path)) {
+    throw new Error(`${pkg.name} binds BLUEPRINT_CONTENT but ${path} is missing: build the package first`);
+  }
+  const keys = JSON.parse(readFileSync(path, "utf8")) as unknown;
+  if (!Array.isArray(keys) || !keys.every((key) => typeof key === "string")) throw new Error(`${path} is not a list of keys`);
+  return keys.length > 0 ? [{ binding: "BLUEPRINT_CONTENT", keys }] : undefined;
+}
+
+/**
  * Read the migration files of every D1 database a package declares, ordered by binding and then
  * ID. A `.sql` file whose name is not a migration ID fails the build: the installer would refuse
  * the manifest on every customer instance.
@@ -785,7 +817,7 @@ function workerKind(pkgName: string): WorkerEntry["kind"] {
  * `modules` entries are { name, type, sha256, size } (bytes stripped by the caller).
  */
 export function buildWorkerEntry(
-  { pkgName, config, mainModule, modules, deployInputs, d1Migrations }: WorkerBuild,
+  { pkgName, config, mainModule, modules, deployInputs, d1Migrations, seededR2Objects }: WorkerBuild,
 ): WorkerEntry {
   const kind = workerKind(pkgName);
   const unknownKeys = Object.keys(config).filter((k) => !HANDLED_CONFIG_KEYS.has(k));
@@ -985,7 +1017,20 @@ export function buildWorkerEntry(
     ...(databases.length > 0
       ? { d1Migrations: d1MigrationEntries(pkgName, databases, d1Migrations ?? []) }
       : {}),
+    ...(seededR2Objects?.length ? { seededR2Objects: seededEntries(pkgName, config, seededR2Objects) } : {}),
   };
+}
+
+// A seeded bucket must be one the worker binds, and a key must be a plain object key.
+function seededEntries(pkgName: string, config: WranglerConfig, seeded: SeededR2Objects[]): SeededR2Objects[] {
+  const buckets = new Set((config.r2_buckets ?? []).map((r2) => r2.binding));
+  return seeded.map(({ binding, keys }) => {
+    if (!buckets.has(binding)) throw new Error(`${pkgName} seeds objects into ${binding}, which is not one of its r2_buckets`);
+    for (const key of keys) {
+      if (!/^[A-Za-z0-9._-]+\/[0-9a-f]{40}$/.test(key)) throw new Error(`${pkgName}: seeded object key ${JSON.stringify(key)} is not <id>/<commit>`);
+    }
+    return { binding, keys: [...keys].toSorted() };
+  });
 }
 
 /**

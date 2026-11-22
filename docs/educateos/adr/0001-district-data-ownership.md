@@ -59,3 +59,11 @@ Unchanged:
 - Rule 4 and the root-outage test: an unreachable `educateos.io`, or a revoked installer grant,
   never interrupts classroom activity.
 - The `districtId` scoping and the `cross-district` denial.
+
+## Note (SCHO-444, 2026-11-22): seeded objects on uninstall
+
+Uninstall deletes the objects a release's own Workers seed into the district's R2 at first start
+(the Workshop backend's bundled blueprints), by the exact keys the signed release manifest lists
+(`seededR2Objects`). It reads no object and deletes nothing by listing or prefix, so a district's
+records, and a blueprint a teacher published under a bundled ID, are untouched. The installer still
+holds no data access (installer-permissions.md); it removes only what the release itself put there.

@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./snapshot": "./src/snapshot.ts",
     "./libraries/*/client": "./libraries/*/client.ts",
     "./libraries/*/server": "./libraries/*/server.ts",
     "./blueprints/*/persona": "./blueprints/*/files/lib/persona.ts"

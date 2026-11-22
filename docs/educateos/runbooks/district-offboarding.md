@@ -180,10 +180,12 @@ it (Cloudflare refuses to delete a bound Worker, code 10142); then Access, so no
 served without it; then storage. If anything in a phase fails, the next phase is not started: no
 storage is deleted from under a Worker that is still running.
 
-**R2 buckets are never emptied by the uninstall.** The installer has no object operation by design
-(its token could read them, but it never does). Cloudflare refuses to delete a bucket that still
-holds objects (HTTP 409, code 10008), and the uninstall reports that bucket as `FAILED` with what
-to do. Copy anything the district must keep, then empty the bucket: for a large one, a lifecycle
+**R2 buckets are never emptied by the uninstall.** It deletes only the objects the release's own
+Workers seeded at first start, by the exact keys the release manifest lists (`seededR2Objects`: the
+Workshop backend's bundled blueprints in its blueprint bucket, SCHO-444), and reads nothing. Anything
+else, such as the district's files, a blueprint a teacher published, or bundled blueprints an earlier
+release seeded, stays. Cloudflare refuses to delete a bucket that still holds objects (HTTP 409, code
+10008), and the uninstall reports that bucket as `FAILED` with what to do. Copy anything the district must keep, then empty the bucket: for a large one, a lifecycle
 rule that expires every object (R2, the bucket, Settings, Object lifecycle rules). A bucket with a
 Bucket Lock rule keeps its objects until the rule allows, and is reported until then. Then run the
 uninstall again.
